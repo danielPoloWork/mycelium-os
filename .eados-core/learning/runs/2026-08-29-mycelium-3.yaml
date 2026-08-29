@@ -1,0 +1,34 @@
+# Run record — appended by tools/record_run.py; a fact about a past run, never edited
+# after the fact. `phase` is the delivery phase that produced it (#215).
+slug: "mycelium"
+date: "2026-08-29"
+phase: "scaffold"
+lang: "python"
+kind: "cli"
+outcome: "ok"
+overrides:
+  - key: "identity.project_kind"
+    default: "library"
+    chosen: "cli"
+  - key: "ownership.assignee"
+    default: "@me"
+    chosen: "danielPoloWork"
+  - key: "ownership.license_id"
+    default: "MIT"
+    chosen: "Apache-2.0"
+  - key: "spec.provenance"
+    default: "coauthor"
+    chosen: "import"
+lessons_applied: ["L-0002", "L-0007", "L-0010"]
+failures: []
+rubric:
+  spec_measurability: 2
+  spec_ci_traceability: 2
+  architecture_rationale: 2
+  profile_fidelity: 1
+  pattern_fit: 2
+  test_strategy: 2
+  docs_coherence: 2
+  governance_fit: 1
+  capability_hygiene: 2
+  security_posture: 1
