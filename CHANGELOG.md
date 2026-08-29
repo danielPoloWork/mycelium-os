@@ -12,6 +12,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- `mycelium.sdk.types` — frozen pydantic v2 record contracts v0: document, KIR, chunk,
+  symbol, edge, entity, and snapshot manifest (spec 03 §§3–7), with validated identity
+  formats (ULID, `sha256:` digests, anchors) and RFC 3339 UTC timestamps (#14, ADR-0004).
+- `mycelium.sdk.schema` — byte-deterministic JSON Schema 2020-12 export of every record
+  contract (`export_json_schemas`) for non-Python consumers (#14).
+- First runtime dependency: `pydantic >= 2.11` (#14, ADR-0004).
+
 ### Changed
 
 ### Deprecated

@@ -10,6 +10,9 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12"
 authors = [{ name = "Daniel Polo" }]
+# First runtime dependency (ADR-0004): the spec pins the record contracts to pydantic
+# (spec 03 intro); >=2.11 for the `serialize_by_alias` model config.
+dependencies = ["pydantic>=2.11"]
 
 [project.urls]
 Homepage = "https://github.com/danielPoloWork/mycelium-os"

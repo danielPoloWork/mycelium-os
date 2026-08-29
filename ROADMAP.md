@@ -5,7 +5,8 @@ flip its checkbox (`- [ ]` → `- [x]`) **in the same PR**. New work goes at the
 its section with a fresh `<milestone>.<task>` number; never renumber.
 
 - **Versioning start:** pre-1.0 milestone-driven.
-- **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint: _none yet_.
+- **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
+  [2026-08-29 — sdk.types record contracts v0](docs/journal/2026/08/2026-08-29-sdk-types-v0.md).
 - **Traceability:** every item names the RFC it implements (RFC-0001 for the whole v1
   design of record — [`docs/rfc/0001-mycelium-os-v1.md`](docs/rfc/0001-mycelium-os-v1.md));
   milestone goals are the spec phases' exit gates (`.draft-specs/06`). Sizes are T-shirt
@@ -58,7 +59,7 @@ The thinnest slice that compiles, tests, and ships under the full quality bar.
 Mycelium OS builds and serves its own repository; TTFV < 10 min end-to-end via Claude Code; byte-identical rebuild in CI; mycelium eval runs and reports
 
 - [x] 2.1 Repo scaffold: uv workspace, ruff + mypy --strict + pytest, CI matrix Linux/macOS/Windows on CPython 3.12+ (RFC-0001) — size: XS · route: fast / low — reconciled: the tooling was delivered by M1 items 1.1–1.5; closes here alongside 1.4 on the same green-on-all-three-OSes evidence ([run 33264131144](https://github.com/danielPoloWork/mycelium-os/actions/runs/33264131144))
-- [ ] 2.2 mycelium.sdk.types: pydantic records v0 + JSON Schema export (spec 03 §§3–7) (RFC-0001) — size: M · route: frontier-reasoning / high (sets-pattern: the record schemas are the contracts everything else builds on)
+- [x] 2.2 mycelium.sdk.types: pydantic records v0 + JSON Schema export (spec 03 §§3–7) (RFC-0001) — size: M · route: frontier-reasoning / high (sets-pattern: the record schemas are the contracts everything else builds on) — delivered by PR #14: seven frozen pydantic v2 records (document, kir, chunk, symbol, edge, entity, manifest) in `src/mycelium/sdk/types.py`, byte-deterministic JSON Schema 2020-12 export in `sdk/schema.py`; first runtime dependency (pydantic ≥ 2.11, ADR-0004); spec examples are executable fixtures
 - [ ] 2.3 Canonical hashing + ULID + anchor-slug identity library, property-tested (spec 03 §2) (RFC-0001) — size: M · route: standard / medium
 - [ ] 2.4 Markdown→KIR adapter (markdown-it) + frontmatter contract + Mycelium Markdown Profile v1 (D-022) (RFC-0001) — size: M · route: standard / medium
 - [ ] 2.5 Heading-bounded chunker with the no-content-loss property test (RFC-0001) — size: M · route: standard / medium
@@ -145,7 +146,7 @@ progress · ✅ done · ❎ N/A.
 | Spec § | Requirement | Roadmap items | Status |
 |--------|-------------|---------------|--------|
 | §1 | Objective & business context | 2.9, 2.11 | ⏳ |
-| §2 | Functional requirements | 2.2–2.11, 3.1–3.7, 4.1–4.7, 5.1–5.6 | ⏳ |
+| §2 | Functional requirements | 2.2–2.11, 3.1–3.7, 4.1–4.7, 5.1–5.6 | 🚧 |
 | §3 | Non-functional requirements | 2.10, 3.7, 6.1, 6.3 | ⏳ |
 | §4 | Logical architecture | 2.7, 3.1 | ⏳ |
 | §5 | Public interface | 2.8, 2.9, 3.4, 6.1 | ⏳ |
