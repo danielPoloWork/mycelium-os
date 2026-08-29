@@ -22,10 +22,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   canonical-JSON hashing, in-repo monotonic ULIDs, heading slugs, chunk anchors, citation
   URIs, and the symbol/entity/edge reference forms (#16, ADR-0005).
 
+- `mycelium.markdown` — the authored lane (spec 03 §§3–4, D-022): the frontmatter contract
+  with its named field owners, Mycelium Markdown Profile v1 (wikilinks, embeds, inline
+  tags, callouts, GFM tables), and the markdown-it → KIR adapter (#17, ADR-0006).
+- Runtime dependencies `markdown-it-py >= 3.0` and `PyYAML >= 6.0` (#17, ADR-0006).
+
 ### Changed
 
 - `mycelium.sdk.types.Ulid` now requires a leading `0`–`7`: 26 Crockford characters carry
   130 bits, so the previous pattern admitted strings that overflow a 128-bit ULID (#16).
+- `KirNode` gains `lang`, `variant`, `title`, and `target`, and `SrcLocator` gains `lines`;
+  each kind now declares which optional fields it may carry, and illegal combinations are
+  rejected on construction (#17, ADR-0006).
 
 ### Deprecated
 

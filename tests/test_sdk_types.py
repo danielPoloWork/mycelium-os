@@ -20,6 +20,7 @@ from mycelium.sdk.types import (
     EdgeType,
     Entity,
     KirDocument,
+    KirNode,
     NodeKind,
     ProvenanceOrigin,
     SnapshotManifest,
@@ -254,6 +255,64 @@ def test_vocabularies_are_exact() -> None:
         "quote",
         "opaque",
     }
+
+
+# ---------------------------------------------------------------------------
+# KIR per-kind field legality (spec 03 §4; ADR-0006)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"kind": "heading", "level": 2, "text": "H"},
+        {"kind": "code_block", "lang": "python", "text": "x = 1"},
+        {"kind": "list", "variant": "ordered"},
+        {"kind": "table_row", "variant": "header"},
+        {"kind": "callout", "variant": "note", "title": "Careful"},
+        {"kind": "link", "target": "https://x", "title": "T", "text": "label"},
+        {"kind": "image", "target": "pic.png", "text": "alt"},
+        {"kind": "wikilink", "target": "api#Retries", "text": "the retry docs"},
+        {"kind": "embed", "target": "diagram"},
+        {"kind": "opaque", "media_type": "application/x-drawing", "note": "preserved"},
+        {"kind": "paragraph", "text": "plain"},
+    ],
+)
+def test_kir_nodes_accept_the_fields_their_kind_declares(fields: dict) -> None:
+    KirNode.model_validate({"id": "n1", "ord": 0, **fields})
+
+
+@pytest.mark.parametrize(
+    ("fields", "expected"),
+    [
+        ({"kind": "paragraph", "level": 2}, "level"),
+        ({"kind": "paragraph", "target": "x"}, "target"),
+        ({"kind": "heading", "level": 1, "lang": "python"}, "lang"),
+        ({"kind": "code_block", "target": "x"}, "target"),
+        ({"kind": "wikilink", "target": "a", "title": "t"}, "title"),
+        ({"kind": "list", "media_type": "text/plain"}, "media_type"),
+        ({"kind": "table", "variant": "header"}, "variant"),
+    ],
+)
+def test_kir_nodes_reject_fields_their_kind_does_not_declare(fields: dict, expected: str) -> None:
+    with pytest.raises(ValidationError, match=expected):
+        KirNode.model_validate({"id": "n1", "ord": 0, **fields})
+
+
+def test_heading_requires_a_level() -> None:
+    with pytest.raises(ValidationError, match="requires a level"):
+        KirNode.model_validate({"id": "n1", "ord": 0, "kind": "heading", "text": "H"})
+
+
+def test_src_locator_line_span_must_be_ordered() -> None:
+    node = KirNode.model_validate(
+        {"id": "n1", "ord": 0, "kind": "paragraph", "src": {"lines": [3, 9]}}
+    )
+    assert node.src is not None and node.src.lines == (3, 9)
+    with pytest.raises(ValidationError, match="lines start"):
+        KirNode.model_validate(
+            {"id": "n1", "ord": 0, "kind": "paragraph", "src": {"lines": [9, 3]}}
+        )
 
 
 # ---------------------------------------------------------------------------
