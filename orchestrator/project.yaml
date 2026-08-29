@@ -10,7 +10,7 @@
 schema_version: 1
 # manifest_rev is an OPTIMISTIC-CONCURRENCY counter (#214): bumped on every delivery_state
 # write-back; propose with --expect-rev <N> first.
-manifest_rev: 2
+manifest_rev: 3
 domain: software             # asked — Q0.4 (developer tool / infrastructure)
 
 # generated_by: deliberately absent — the vendored factory bundle carries no version
@@ -24,7 +24,7 @@ delivery_state:
   checkpoints:
     - { from: init, to: design, gates: ['manifest-valid'], at: 2026-08-29, confirmed_by: danielPoloWork, gate_results: { manifest-valid: OK } }
     - { from: design, to: plan, gates: ['rfc-approved'], at: 2026-08-29, confirmed_by: danielPoloWork, gate_results: { rfc-approved: OK } }
-  refs: { rfcs: ['RFC-0001'], milestones: [], prs: [], releases: [] }
+  refs: { rfcs: ['RFC-0001'], milestones: [], prs: ['#1'], releases: [] }
 
 identity:
   project_name:    "mycelium-os"        # asked — D-024 (engine repo name)
