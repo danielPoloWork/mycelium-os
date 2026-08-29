@@ -42,6 +42,7 @@ _Patterns named in the spec at intake are seeded below as **Planned**; each beco
 | — | Snapshot | Planned | immutable manifests + atomic CURRENT pointer swap give torn-free reads and O(1) rollback (D-015) | _TBD_ | _spec (intake)_ |
 | — | Plugin (typed Protocols + entry points) | Planned | Parser/Chunker/Embedder/Extractor/Synthesizer/Reranker plus four generic extension mechanisms; pinned resolution, never 'best available' (D-012/D-023) | _TBD_ | _spec (intake)_ |
 | 4 | Adapter | Implemented | parsers wrap the existing ecosystem (docling, markdown-it, pandoc) behind KIR — Mycelium OS owns the representation and its guarantees, not the parsers (D-007); markdown-it is the first one adapted | [src/mycelium/markdown/adapter.py](../../src/mycelium/markdown/adapter.py) | [ADR-0006](../adr/0006-adopt-markdown-it-adapter-and-kir-node-fields.md) / PR #17 |
+| 5 | Strategy | Implemented | token counting is one interchangeable algorithm behind a fixed signature: the default estimate ships no model and is reproducible, while a caller that needs a specific tokenizer supplies it through `ChunkingPolicy.count_tokens` | [src/mycelium/chunking.py](../../src/mycelium/chunking.py) | [ADR-0007](../adr/0007-adopt-structure-first-chunking.md) / PR #18 |
 
 
 ## Rejected
