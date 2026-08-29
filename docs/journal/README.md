@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-30 — MCP server (roadmap 2.9)](2026/08/2026-08-30-mcp-server.md)
 - [2026-08-30 — CLI skeleton (roadmap 2.8)](2026/08/2026-08-30-cli-skeleton.md)
 - [2026-08-30 — build orchestrator v0 (roadmap 2.7)](2026/08/2026-08-30-build-orchestrator-v0.md)
 - [2026-08-29 — SQLite store (roadmap 2.6)](2026/08/2026-08-29-sqlite-store.md)

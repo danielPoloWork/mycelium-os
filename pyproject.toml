@@ -41,6 +41,9 @@ dev = [
     "ruff>=0.7",
     "mypy>=1.13",
     "types-pyyaml>=6.0",
+    "mcp>=2.1",
+    "anyio>=4",
+    "jsonschema>=4",
 ]
 
 [tool.hatch.version]
