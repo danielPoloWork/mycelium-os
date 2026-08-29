@@ -1,0 +1,431 @@
+{
+  "artifact_digests": {
+    "chunks": "sha256:1085511bb2eb6750d74764a8281d6647e804d80a99afc1f712a28012656d7e40",
+    "documents": "sha256:44acee4359cb43412550a6f95513f4a21ad9c34213862b480298a3dbfe78d305",
+    "edges": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "chunks": [
+    {
+      "anchor": "knowledge/candidate/synthesis.md#/0",
+      "chunk_digest": "sha256:9347e98c021c95d8a603c211f63e09ba5be1e52a9b1db938daec42bc61d9f7e4",
+      "heading_path": [
+        "Delivery Semantics (draft)"
+      ],
+      "kind": "prose",
+      "lines": [
+        11,
+        15
+      ],
+      "tokens": 47
+    },
+    {
+      "anchor": "knowledge/candidate/synthesis.md#open-questions/0",
+      "chunk_digest": "sha256:241fe58b6542c87655261404d834eb36197aaad1fc75f5f57a6d82376059ce9f",
+      "heading_path": [
+        "Delivery Semantics (draft)",
+        "Open questions"
+      ],
+      "kind": "prose",
+      "lines": [
+        17,
+        20
+      ],
+      "tokens": 26
+    },
+    {
+      "anchor": "knowledge/evidence/extract.md#/0",
+      "chunk_digest": "sha256:a507ca7ceda5a4e1a30de0e94eebb7bf805457be91e941823eec544b231d6b90",
+      "heading_path": [
+        "Delivery Guarantees (extract)"
+      ],
+      "kind": "prose",
+      "lines": [
+        10,
+        13
+      ],
+      "tokens": 22
+    },
+    {
+      "anchor": "knowledge/evidence/extract.md#section-4-2/0",
+      "chunk_digest": "sha256:5f1fc7e196879a9d6acfeb0436e60be048049851a6cb932f779a8c1c03dfdb18",
+      "heading_path": [
+        "Delivery Guarantees (extract)",
+        "Section 4.2"
+      ],
+      "kind": "prose",
+      "lines": [
+        15,
+        18
+      ],
+      "tokens": 34
+    },
+    {
+      "anchor": "knowledge/evidence/extract.md#section-4-3/0",
+      "chunk_digest": "sha256:2aad42916fce0218f3545a3ea02eabb65684678e1daebd820fdc516554002b9d",
+      "heading_path": [
+        "Delivery Guarantees (extract)",
+        "Section 4.3"
+      ],
+      "kind": "prose",
+      "lines": [
+        20,
+        23
+      ],
+      "tokens": 29
+    },
+    {
+      "anchor": "knowledge/verified/architecture.md#/0",
+      "chunk_digest": "sha256:9ae5c7581691e9b03abe9f67efad7002180b0cb3ef3ccb78e9c6cadd56dbc003",
+      "heading_path": [
+        "Architecture"
+      ],
+      "kind": "prose",
+      "lines": [
+        9,
+        13
+      ],
+      "tokens": 46
+    },
+    {
+      "anchor": "knowledge/verified/architecture.md#event-bus-2/0",
+      "chunk_digest": "sha256:d2d10392ffeef955ef335fda1182663f353272abd3252207c1f386b88a7b41de",
+      "heading_path": [
+        "Architecture",
+        "Event Bus"
+      ],
+      "kind": "prose",
+      "lines": [
+        25,
+        35
+      ],
+      "tokens": 71
+    },
+    {
+      "anchor": "knowledge/verified/architecture.md#event-bus/0",
+      "chunk_digest": "sha256:47db3855f8b0c4b0cf3766430a9b920fd4fcd67d4ec66005807c3622d9c561c7",
+      "heading_path": [
+        "Architecture",
+        "Event Bus"
+      ],
+      "kind": "prose",
+      "lines": [
+        15,
+        18
+      ],
+      "tokens": 32
+    },
+    {
+      "anchor": "knowledge/verified/architecture.md#event-bus/delivery/0",
+      "chunk_digest": "sha256:b158e2e85a19f8dfa6f0c0c5c4a4faa9bb765cc648a49e707d1b687a6505de2d",
+      "heading_path": [
+        "Architecture",
+        "Event Bus",
+        "Delivery"
+      ],
+      "kind": "prose",
+      "lines": [
+        20,
+        23
+      ],
+      "tokens": 32
+    },
+    {
+      "anchor": "knowledge/verified/build-keys.md#/0",
+      "chunk_digest": "sha256:39bf643054df42181f003163d06da0ef1a5a5854d2faffac9e4e523355a75cbc",
+      "heading_path": [
+        "Build Keys"
+      ],
+      "kind": "prose",
+      "lines": [
+        8,
+        8
+      ],
+      "tokens": 2
+    },
+    {
+      "anchor": "knowledge/verified/build-keys.md#after-the-split/0",
+      "chunk_digest": "sha256:f16ae6c9a24f4d9a2ac26ca2d432de6a205aa52998e41b0c78b7c9f100b69b04",
+      "heading_path": [
+        "Build Keys",
+        "After the split"
+      ],
+      "kind": "prose",
+      "lines": [
+        36,
+        38
+      ],
+      "tokens": 18
+    },
+    {
+      "anchor": "knowledge/verified/build-keys.md#why-a-section-splits/0",
+      "chunk_digest": "sha256:d490a067fad4406b46c97441e43f54445024548801281010ccf0b33a5a36e5ae",
+      "heading_path": [
+        "Build Keys",
+        "Why a section splits"
+      ],
+      "kind": "prose",
+      "lines": [
+        10,
+        24
+      ],
+      "tokens": 753
+    },
+    {
+      "anchor": "knowledge/verified/build-keys.md#why-a-section-splits/1",
+      "chunk_digest": "sha256:a50d0c5cb4d545cc23233ce5b96e58e34139b89730c1c16f69a287000902977f",
+      "heading_path": [
+        "Build Keys",
+        "Why a section splits"
+      ],
+      "kind": "prose",
+      "lines": [
+        26,
+        34
+      ],
+      "tokens": 535
+    },
+    {
+      "anchor": "knowledge/verified/multilingual.md#/0",
+      "chunk_digest": "sha256:10720ccc49bd2df39bd6103ce06e6342534148fe73e9caec339913e5ce5fe9de",
+      "heading_path": [
+        "設計ノート"
+      ],
+      "kind": "prose",
+      "lines": [
+        8,
+        11
+      ],
+      "tokens": 60
+    },
+    {
+      "anchor": "knowledge/verified/multilingual.md#grössenordnung/0",
+      "chunk_digest": "sha256:0b1facfa02774a71506f78a2e52d38d382e9a9956fc85a4c231a640e4b9041fc",
+      "heading_path": [
+        "設計ノート",
+        "Größenordnung"
+      ],
+      "kind": "prose",
+      "lines": [
+        17,
+        20
+      ],
+      "tokens": 33
+    },
+    {
+      "anchor": "knowledge/verified/multilingual.md#术语/0",
+      "chunk_digest": "sha256:7fc74ec28795c6a2731be15908c658d28302ade0423c68d17239e19d6dd37b9e",
+      "heading_path": [
+        "設計ノート",
+        "术语"
+      ],
+      "kind": "prose",
+      "lines": [
+        22,
+        24
+      ],
+      "tokens": 24
+    },
+    {
+      "anchor": "knowledge/verified/multilingual.md#配送保証/0",
+      "chunk_digest": "sha256:98712c47b5b51cf98adc7e335d8e3ece446d9b2b55287df3d45d673e3f0798e8",
+      "heading_path": [
+        "設計ノート",
+        "配送保証"
+      ],
+      "kind": "prose",
+      "lines": [
+        13,
+        15
+      ],
+      "tokens": 37
+    },
+    {
+      "anchor": "knowledge/verified/retries.md#/0",
+      "chunk_digest": "sha256:de7418bb1e05d1ab0a78599f7894b041b75d35d4318c884789024a0e7c64ecef",
+      "heading_path": [
+        "Retry Policy"
+      ],
+      "kind": "prose",
+      "lines": [
+        11,
+        17
+      ],
+      "tokens": 46
+    },
+    {
+      "anchor": "knowledge/verified/retries.md#configuration/0",
+      "chunk_digest": "sha256:e046b14e49a2c9592813e568296a875c824e2b16b3d61f944eb25cb1159692f7",
+      "heading_path": [
+        "Retry Policy",
+        "Configuration"
+      ],
+      "kind": "code",
+      "lines": [
+        29,
+        37
+      ],
+      "tokens": 22
+    },
+    {
+      "anchor": "knowledge/verified/retries.md#configuration/1",
+      "chunk_digest": "sha256:3b4f74321a77e63548e0a5451ba1fd94f41f8ae92c0b1226b0972f3710177390",
+      "heading_path": [
+        "Retry Policy",
+        "Configuration"
+      ],
+      "kind": "prose",
+      "lines": [
+        39,
+        40
+      ],
+      "tokens": 32
+    },
+    {
+      "anchor": "knowledge/verified/retries.md#schedule/0",
+      "chunk_digest": "sha256:364b4cb2cde57f24da13721ab30df84988d462e9cb9828302352f734b5be0e4d",
+      "heading_path": [
+        "Retry Policy",
+        "Schedule"
+      ],
+      "kind": "table",
+      "lines": [
+        19,
+        27
+      ],
+      "tokens": 31
+    }
+  ],
+  "config_digest": "sha256:4fd437afca556d038ce9230d5cf9a5de37d263d87989ee092d1c40b4b7123c00",
+  "counts": {
+    "chunks": 21,
+    "documents": 6,
+    "edges": 0,
+    "quarantined": 0,
+    "symbols": 0,
+    "vectors": 0
+  },
+  "documents": [
+    {
+      "content_digest": "sha256:2f1fe6b0002fc0a8d4693aed1d043b8e517ce73eaaf0b6954dcbea5fde203421",
+      "created_at": "2026-01-01T00:00:00Z",
+      "path": "knowledge/candidate/synthesis.md",
+      "stats": {
+        "chunks": 2,
+        "headings": 2,
+        "links_out": 2,
+        "tokens": 73
+      },
+      "tags": [
+        "delivery"
+      ],
+      "title": "Delivery Semantics (draft)",
+      "trust_class": "authored",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "verification_status": "candidate"
+    },
+    {
+      "content_digest": "sha256:0b8e0dab45ae6ad9096be1e2362f05899fe6427f180c803b4b604cd8fd68ba43",
+      "created_at": "2026-01-01T00:00:00Z",
+      "path": "knowledge/evidence/extract.md",
+      "stats": {
+        "chunks": 3,
+        "headings": 3,
+        "links_out": 0,
+        "tokens": 85
+      },
+      "tags": [
+        "delivery"
+      ],
+      "title": "Delivery Guarantees (extract)",
+      "trust_class": "ingested",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "verification_status": "evidence"
+    },
+    {
+      "content_digest": "sha256:058b6c56322ea58e8feb930fb6d2871462cef445f5c795dcbe36b48cbb1c39c6",
+      "created_at": "2026-01-01T00:00:00Z",
+      "path": "knowledge/verified/architecture.md",
+      "stats": {
+        "chunks": 4,
+        "headings": 4,
+        "links_out": 3,
+        "tokens": 181
+      },
+      "tags": [
+        "architecture",
+        "event-bus"
+      ],
+      "title": "Architecture",
+      "trust_class": "authored",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "verification_status": "verified"
+    },
+    {
+      "content_digest": "sha256:6c044749ef1744e36551be12ca83dd5fe84925b8174eec3b577e60adafeb8e00",
+      "created_at": "2026-01-01T00:00:00Z",
+      "path": "knowledge/verified/build-keys.md",
+      "stats": {
+        "chunks": 4,
+        "headings": 3,
+        "links_out": 0,
+        "tokens": 1308
+      },
+      "tags": [
+        "compiler",
+        "determinism"
+      ],
+      "title": "Build Keys",
+      "trust_class": "authored",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "verification_status": "verified"
+    },
+    {
+      "content_digest": "sha256:18e0452e5b4444207e2f7b0e9ae77416278e9442d9d45da5c292c17ed945ab93",
+      "created_at": "2026-01-01T00:00:00Z",
+      "path": "knowledge/verified/multilingual.md",
+      "stats": {
+        "chunks": 4,
+        "headings": 4,
+        "links_out": 0,
+        "tokens": 154
+      },
+      "tags": [
+        "architecture",
+        "設計"
+      ],
+      "title": "設計ノート",
+      "trust_class": "authored",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "verification_status": "verified"
+    },
+    {
+      "content_digest": "sha256:2ebfa3afc1858b166c8f62fda48ab3705da5aee663d17871eed12931d49cafef",
+      "created_at": "2026-01-01T00:00:00Z",
+      "path": "knowledge/verified/retries.md",
+      "stats": {
+        "chunks": 4,
+        "headings": 3,
+        "links_out": 1,
+        "tokens": 131
+      },
+      "tags": [
+        "delivery",
+        "retries"
+      ],
+      "title": "Retry Policy",
+      "trust_class": "authored",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "verification_status": "verified"
+    }
+  ],
+  "schema_versions": {
+    "chunk": "v0",
+    "document": "v0",
+    "edge": "v0",
+    "entity": "v0",
+    "kir": "v0",
+    "manifest": "v0",
+    "symbol": "v0"
+  },
+  "warnings": []
+}

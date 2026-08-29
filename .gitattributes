@@ -1,0 +1,9 @@
+# Line-ending policy.
+#
+# Gate G6 compares compiled output against a committed golden observation, and the
+# golden asserts its own bytes (LF, trailing newline) so the diff a reviewer reads is
+# the same on every platform. Git's autocrlf would rewrite those endings on a Windows
+# checkout and the gate would fail on a correct tree — so the corpus and the golden are
+# pinned to LF here rather than left to each contributor's git configuration.
+tests/fixtures/determinism/**/*.md text eol=lf
+tests/fixtures/determinism/golden.json text eol=lf
