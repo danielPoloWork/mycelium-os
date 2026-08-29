@@ -23,6 +23,8 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   `mypy --strict` wired at the repo root; `dev` dependency group completed (hatch,
   pytest-benchmark added) and `uv.lock` committed, activating CI's toolchain jobs
   (roadmap 1.3).
+- CI matrix verified green end-to-end (build/test/lint/benchmark/consistency) on
+  Linux/Windows/macOS across CPython 3.12/3.13 (roadmap 1.4, 2.1).
 
 ### Changed
 
