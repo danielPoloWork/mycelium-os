@@ -19,6 +19,10 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   `__version__` constant (roadmap 1.1, 1.5).
 - Test framework: pytest + hypothesis declared as the `dev` dependency group, with a
   passing smoke test under `tests/` (roadmap 1.2).
+- Formatter + linter configs: `ruff format` (Black-compatible), `ruff check`, and
+  `mypy --strict` wired at the repo root; `dev` dependency group completed (hatch,
+  pytest-benchmark added) and `uv.lock` committed, activating CI's toolchain jobs
+  (roadmap 1.3).
 
 ### Changed
 

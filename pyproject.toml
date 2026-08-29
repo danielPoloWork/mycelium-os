@@ -15,13 +15,17 @@ authors = [{ name = "Daniel Polo" }]
 Homepage = "https://github.com/danielPoloWork/mycelium-os"
 Issues = "https://github.com/danielPoloWork/mycelium-os/issues"
 
-# BUG-0003 guard note (ROADMAP.md 1.3): this group must also cover pytest-benchmark, ruff
-# and mypy before `uv.lock` is committed — that commit is what flips CI's bootstrap probe
-# to ready=true, and a partial group re-creates the wall of red across every toolchain job.
+# BUG-0003 (ROADMAP.md 1.3): the group is now complete (hatch, pytest, pytest-benchmark,
+# ruff, mypy) and uv.lock ships alongside it — this is what flips CI's bootstrap probe to
+# ready=true, activating the build/lint/benchmark jobs.
 [dependency-groups]
 dev = [
+    "hatch>=1.13",
     "pytest>=8.3",
+    "pytest-benchmark>=4.0",
     "hypothesis>=6.112",
+    "ruff>=0.7",
+    "mypy>=1.13",
 ]
 
 [tool.hatch.version]
@@ -33,3 +37,27 @@ packages = ["src/mycelium"]
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.format]
+# Black-compatible (AGENTS.md §10); default quote/indent style already matches.
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+files = ["src"]
