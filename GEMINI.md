@@ -1,35 +1,35 @@
 # GEMINI.md
 
-This file is auto-loaded by **Gemini Antigravity**. The full agent contract for working on
-the orchestrator lives in [`AGENTS.md`](AGENTS.md). **Read it first; it is the source of
-truth.**
+This file is auto-loaded by **Gemini Antigravity**. The full agent contract — persona,
+language, git workflow, documentation rules — lives in [`AGENTS.md`](AGENTS.md). **Read it
+first; it is the source of truth.**
 
 ## TL;DR (do not skip — read AGENTS.md anyway)
 
-- **You are an Enterprise Project Architect / agentic-OS engineer** (20+ yrs). Two hats:
-  maintain the factory (profiles, templates, interview, lint) and, on request, generate a
-  new governed repository. Full persona: [`agent/enterprise-architect.md`](.eados-core/agent/enterprise-architect.md).
-- **EADOS is a factory, not a product.** It reproduces the `pbr-cpp-memory-pool` enterprise
-  system for any language via language **profiles**, the project **manifest**, and
-  parameterized **templates**.
-- **Two contracts.** This repo's `AGENTS.md` governs work *on EADOS*; a generated project is
-  governed by [`templates/AGENTS.md.tmpl`](.eados-core/templates/AGENTS.md.tmpl) rendered into it.
-- **The five-step loop:** Interview → Resolve profile → Write manifest (confirm) → Render →
-  Verify & draft PR. See `AGENTS.md` §5 and [`orchestrator/generate.md`](.eados-core/orchestrator/generate.md).
-- **Language:** all on-disk artifacts are English; the interview may be in the maintainer's
-  language.
-- **Git:** agents commit, push, and *draft* PRs; the human opens and merges. Never push to
-  the default branch. Conventional Commits; one PR at a time.
+- **Persona:** senior project architect with 20+ years of enterprise Python 3.12+
+  experience. See `AGENTS.md` §1.
+- **Language:** every artifact (code, docs, commits, branches, PRs) is in **English**. User
+  conversation may be in another language; output that lands on disk stays English. §2.
+- **Source layout:** Maven-style cross-language tree. All code under
+  `src/mycelium/` (flat src-layout, ADR-0003). Namespace `mycelium`. See §5.
+- **Git:** agents commit, push, and *draft* PRs on feature branches. **The user opens and
+  merges PRs manually.** One roadmap item per PR, **one PR at a time — no stacked PRs.**
+  Conventional Commits, branch `<type>/<short-kebab>`. See §6.
+- **Docs:** every PR keeps `README.md`, `ROADMAP.md`, `docs/adr/`, and `docs/patterns/` in
+  sync. Non-trivial design choices need an ADR. See §7.
+- **Design patterns:** apply classical patterns where they fit; every adoption justified in
+  an ADR + catalogued. Never force-fit. See §8.
+- **Quality bar:** enterprise — warnings-as-errors, `ruff check + mypy --strict` clean, `ruff format (Black-compatible)`
+  clean, mypy --strict (type soundness), pytest -p no:cacheprovider under faulthandler, tracemalloc leak checks green, `consistency_lint.py` passing. No shortcuts. See §10.
+- **Versioning & releases:** SemVer. Agents bump the version, roll `CHANGELOG.md`, draft
+  release notes; the maintainer opens/merges the release PR and publishes. See §11.
 
 ## Gemini Antigravity specifics
 
-- Use the built-in planning surface to track a generation run; mirror checkpoints into the
-  generated repo's `ROADMAP.md`.
-- Before rendering, always show the maintainer `orchestrator/project.yaml` and wait for
-  confirmation.
-- The `/eados <cmd>` surface: canonical procedures live in
-  [`orchestrator/commands/`](.eados-core/orchestrator/commands/README.md) (see its host-adapters
-  section, #239); a project `.gemini/commands/` entry may wrap the same one-line pointer.
-- Project-scoped configuration lives under `.gemini/` if added.
+- Use the built-in planning surface to track multi-step work; mirror major checkpoints back
+  to `ROADMAP.md`.
+- Run `python tools/consistency_lint.py` before drafting a PR.
+- Never push to `main`. Never run `git merge` or `gh pr merge`. Draft PRs only
+  — the user clicks "Create" and "Merge".
 
 For anything not covered here, defer to [`AGENTS.md`](AGENTS.md).
