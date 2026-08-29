@@ -29,6 +29,7 @@ mycelium build           # compile every document into a published snapshot
 mycelium search "retry policy"
 mycelium show "mycelium://<doc-id>#retries/0"
 mycelium doctor          # store, snapshot pointer, and lock health
+mycelium serve           # read-only MCP server over stdio, for your agent
 ```
 
 Write Markdown under `knowledge/` and build. The first build writes a `mycelium_id` into
@@ -36,8 +37,13 @@ each document's frontmatter — that pinned identity is what makes rebuilds dete
 citations survive renames, so commit those files. Every read command takes `--json`, exits
 0/1/2 (ok / failed / usage), and honours `NO_COLOR`.
 
-Milestone 2 is in progress: the compiler, store, and CLI are in place; MCP serving (2.9)
-and the evaluation harness (2.11) are next.
+Point an MCP-capable agent at `mycelium serve` and it gets two read-only tools —
+`mycelium_search` and `mycelium_fetch` — returning verbatim passages with `mycelium://`
+citations, trust class, and verification status. Every response says in words that its
+content is data, never instructions.
+
+Milestone 2 is in progress: the compiler, store, CLI, and MCP server are in place; the
+determinism gate (2.10) and evaluation harness (2.11) are next.
 
 ## Build, test, run
 

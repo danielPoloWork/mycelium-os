@@ -4,14 +4,15 @@
 
 v1 has exactly two public surfaces, CLI and MCP (D-011), so every flag here is a
 compatibility liability and the skeleton stays deliberately small: ``init``,
-``build``, ``search``, ``show``, ``doctor``. The rest of the spec's table arrives
-with the features behind it — ``ingest`` with milestone 4, ``snapshots`` and
-``rollback`` with 3.2, ``serve`` with 2.9.
+``build``, ``search``, ``show``, ``doctor``, and ``serve``. The rest of the spec's
+table arrives with the features behind it — ``ingest`` with milestone 4, and
+``snapshots``/``rollback`` with 3.2.
 
 The CLI is a shell, not a layer: it parses arguments, calls one function, and
 renders. Nothing here decides anything the library does not already decide.
 """
 
+from contextlib import suppress
 from pathlib import Path
 from typing import Annotated, Final
 
@@ -31,6 +32,7 @@ from mycelium.cli.output import (
     success,
     warn,
 )
+from mycelium.mcp import serve_stdio
 from mycelium.sdk.identity import IdentityError, anchor, citation_uri, parse_anchor
 from mycelium.sdk.identity import parse_citation_uri as parse_uri
 from mycelium.sdk.types import Chunk, TrustClass, VerificationStatus
@@ -421,6 +423,28 @@ def doctor(
                 typer.echo(f"FAIL  {check.name}: {check.detail}", err=True)
     if overall == "fail":
         raise typer.Exit(int(ExitCode.FAILED))
+
+
+# ---------------------------------------------------------------------------
+# serve
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def serve(
+    path: Annotated[Path, typer.Argument(help="Repository root.")] = Path(),
+    transport: Annotated[str, typer.Option("--transport", help="Only stdio in v1.")] = "stdio",
+) -> None:
+    """Start the read-only MCP server (stdio)."""
+    if transport != "stdio":
+        raise fail(
+            f"unsupported transport {transport!r}; v1 speaks stdio only", code=ExitCode.USAGE
+        )
+    # Nothing may be written to stdout but protocol messages, so the readiness
+    # line goes to stderr — where a client's logs collect it.
+    typer.echo(f"mycelium {__version__} serving MCP over stdio from {path}", err=True)
+    with suppress(KeyboardInterrupt):  # a client detaching is not an error
+        serve_stdio(path)
 
 
 def main() -> None:

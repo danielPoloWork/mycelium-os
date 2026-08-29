@@ -26,7 +26,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   with its named field owners, Mycelium Markdown Profile v1 (wikilinks, embeds, inline
   tags, callouts, GFM tables), and the markdown-it → KIR adapter (#17, ADR-0006).
 - Runtime dependencies `markdown-it-py >= 3.0` and `PyYAML >= 6.0` (#17, ADR-0006).
-- `mycelium` command line (spec 05 §1): `init`, `build`, `search`, `show`, `doctor`, with
+- `mycelium.mcp` — the MCP server over stdio (spec 05 §3): `mycelium_search` and
+  `mycelium_fetch`, the closed error taxonomy, and the data-not-instructions notice on
+  every response. Started with `mycelium serve` or `python -m mycelium.mcp`; no new
+  runtime dependency (#22, ADR-0011).
+- `mycelium` command line (spec 05 §1): `init`, `build`, `search`, `show`, `doctor`, `serve`, with
   `--json` on every read command, exit codes 0/1/2, `NO_COLOR` support, and no interactive
   prompts. Installed as the `mycelium` console script; new runtime dependency `typer`
   (#21, ADR-0010).
