@@ -68,6 +68,8 @@ Mycelium OS builds and serves its own repository; TTFV < 10 min end-to-end via C
 - [ ] 2.9 MCP server (stdio): mycelium_search + mycelium_fetch, typed errors, data-not-instructions notice (RFC-0001) — size: M · route: standard / medium
 - [ ] 2.10 Determinism golden test wired into CI (gate G6) (RFC-0001) — size: S · route: standard / medium
 - [ ] 2.11 Eval harness v0 + first 20 judged cases on Mycelium OS's own docs (RFC-0001) — size: M · route: standard / medium
+- [ ] 2.12 Brand + README redesign: vendor the legacy brand assets (banner / icon / logo → `docs/assets/brand/`) and rebuild the root README on the legacy skeleton (badges, language selector, Inspiration & Origins credit) with v1-true content — preserve what the lint reads (version badge, milestone table); legacy architecture SVGs are NOT salvaged, superseded design (RFC-0001, D-028) — size: S · route: standard / medium
+- [ ] 2.13 Enable the docs-i18n subsystem, structure only: `capabilities.i18n` on with targets it / zh-Hans / ja, `docs/i18n/` index + `translation-status.md` (all pages pending), `i18n_enabled: True` in the consistency-lint CONFIG — zero translations initially (RFC-0001, D-028; L-0002: a capability flag ships its artifacts) — size: S · route: fast / low
 
 ---
 
