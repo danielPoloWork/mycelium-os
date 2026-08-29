@@ -34,6 +34,7 @@ _Patterns named in the spec at intake are seeded below as **Planned**; each beco
 
 | # | Pattern | Status | Problem it addresses | Code location | ADR / PR |
 |---|---------|--------|----------------------|---------------|----------|
+| 1 | Immutable Object | Implemented | records are facts shared across pipeline stages; post-construction mutation is a defect class removed at the type layer (frozen `Record` base, tuple sequences) | [src/mycelium/sdk/types.py](../../src/mycelium/sdk/types.py) | [ADR-0004](../adr/0004-adopt-pydantic-v2-record-contracts.md) / PR #14 |
 | — | Pipeline | Planned | the compiler is a typed stage DAG with pure stages and declared inputs/outputs (D-008) | _TBD_ | _spec (intake)_ |
 | — | Content-Addressed Cache | Planned | build keys — SHA-256 over (stage, impl version, input digests, config, schema) — make rebuilds incremental and reproducible (D-008) | _TBD_ | _spec (intake)_ |
 | — | Snapshot | Planned | immutable manifests + atomic CURRENT pointer swap give torn-free reads and O(1) rollback (D-015) | _TBD_ | _spec (intake)_ |

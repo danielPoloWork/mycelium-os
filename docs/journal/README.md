@@ -13,8 +13,10 @@ At the close of a state-changing session, the agent:
 
 ## Index
 
-_No checkpoints yet._
-
 ### 2026
 
 _(newest first)_
+
+#### August
+
+- [2026-08-29 — sdk.types record contracts v0 (roadmap 2.2)](2026/08/2026-08-29-sdk-types-v0.md)
