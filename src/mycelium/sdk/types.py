@@ -78,9 +78,15 @@ __all__ = [
 
 type Ulid = Annotated[
     str,
-    StringConstraints(pattern=r"^[0-9A-HJKMNP-TV-Z]{26}$"),
+    StringConstraints(pattern=r"^[0-7][0-9A-HJKMNP-TV-Z]{25}$"),
 ]
-"""Entity identity: 26 chars of Crockford base32 (sortable, no coordination)."""
+"""Entity identity: 26 chars of Crockford base32 (sortable, no coordination).
+
+26 characters carry 130 bits but a ULID is 128, so the leading character is
+capped at ``7`` — the two high bits must be zero. Without that cap the pattern
+would admit strings :func:`mycelium.sdk.identity.decode_ulid` rejects as
+overflowing (ADR-0005).
+"""
 
 type Sha256Digest = Annotated[
     str,

@@ -18,14 +18,24 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 - `mycelium.sdk.schema` — byte-deterministic JSON Schema 2020-12 export of every record
   contract (`export_json_schemas`) for non-Python consumers (#14).
 - First runtime dependency: `pydantic >= 2.11` (#14, ADR-0004).
+- `mycelium.sdk.identity` — the identity library (spec 03 §§1–2): text normalization and
+  canonical-JSON hashing, in-repo monotonic ULIDs, heading slugs, chunk anchors, citation
+  URIs, and the symbol/entity/edge reference forms (#16, ADR-0005).
 
 ### Changed
+
+- `mycelium.sdk.types.Ulid` now requires a leading `0`–`7`: 26 Crockford characters carry
+  130 bits, so the previous pattern admitted strings that overflow a 128-bit ULID (#16).
 
 ### Deprecated
 
 ### Removed
 
 ### Fixed
+
+- The `Ulid` record contract accepted 26-character strings that overflow 128 bits and have
+  no valid decoding; it now refuses exactly what `identity.decode_ulid` refuses
+  ([BUG-0004](docs/bugs/2026/08/BUG-0004-ulid-pattern-admits-overflow.md), #16).
 
 ### Security
 

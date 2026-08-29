@@ -19,4 +19,5 @@ _(newest first)_
 
 #### August
 
+- [2026-08-29 — identity library (roadmap 2.3)](2026/08/2026-08-29-identity-library.md)
 - [2026-08-29 — sdk.types record contracts v0 (roadmap 2.2)](2026/08/2026-08-29-sdk-types-v0.md)
