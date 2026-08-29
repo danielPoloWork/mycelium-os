@@ -40,13 +40,20 @@ mechanical `route_advice.py` resolutions.
 The thinnest slice that compiles, tests, and ships under the full quality bar.
 
 - [x] 1.0 Stand up the EADOS delivery pipeline — manifest, RFC-0001, negotiated roadmap (RFC-0001) — size: M · route: frontier-reasoning / high (sets-pattern) — delivered by PR #1, merged 2026-08-29
-- [ ] 1.1 Lay down the build system (Hatch (PEP 517/518, pyproject.toml)) and a buildable skeleton under
-      `src/mycelium/` (flat src-layout, ADR-0003). (RFC-0001) — size: S · route: fast / low
+- [x] 1.1 Lay down the build system (Hatch (PEP 517/518, pyproject.toml)) and a buildable skeleton under
+      `src/mycelium/` (flat src-layout, ADR-0003). (RFC-0001) — size: S · route: fast / low — delivered by PR #5; `python -m build --wheel` produces an installable `mycelium-os` wheel
 - [ ] 1.2 Wire the test framework (pytest (+ hypothesis for property tests)) with one passing smoke test under
       `tests/` (flat src-layout, ADR-0003). (RFC-0001) — size: XS · route: fast / low
 - [ ] 1.3 Add formatter + linter configs (ruff format (Black-compatible), ruff check + mypy --strict) at the repo root. (RFC-0001) — size: XS · route: fast / low
+      > **Guard note (BUG-0003).** 1.2 and 1.3 together declare the dev dependency group and
+      > commit `uv.lock`, which is what flips CI's bootstrap guard to `ready=true`. The group
+      > must cover **hatch, pytest, pytest-benchmark, ruff and mypy** before `uv.lock` is
+      > committed: the guard opens all toolchain jobs at once (build, test, lint, benchmark),
+      > so a partial group re-creates the wall of red. `tests/bench/` also needs one real
+      > benchmark — `pytest tests/bench --benchmark-only` exits 5 ("no tests collected") on
+      > an empty directory, which reads as a failure.
 - [ ] 1.4 Stand up the CI matrix (Linux / Windows / macOS on CPython 3.12+) with build + test + format + lint. (RFC-0001) — size: S · route: fast / low
-- [ ] 1.5 Seed the version constant (__version__ = 'X.Y.Z') in `src/mycelium/__about__.py`. (RFC-0001) — size: XS · route: fast / low
+- [x] 1.5 Seed the version constant (__version__ = 'X.Y.Z') in `src/mycelium/__about__.py`. (RFC-0001) — size: XS · route: fast / low — delivered alongside 1.1 in PR #5 (hatch's dynamic version reads this file; the two are inseparable at build-system stand-up)
 - [x] 1.6 Replace LICENSE MIT → Apache-2.0 (D-018; owner-confirmed 2026-08-29) (RFC-0001) — size: XS · route: fast / low — delivered in the scaffold bootstrap PR
 - [x] 1.7 Rename default branch master → main (owner operation on GitHub; owner-confirmed 2026-08-29) (RFC-0001) — size: XS · route: fast / low — done by the owner 2026-08-29 (origin/HEAD → main)
 - [ ] 1.8 Add SECURITY.md (private disclosure channel), CONTRIBUTING.md (DCO), CODE_OF_CONDUCT.md (spec 06 §4) (RFC-0001) — size: S · route: fast / low — SECURITY.md complete (channel = GitHub private vulnerability reporting; activate the repo feature at public launch — register F3); CONTRIBUTING.md + CODE_OF_CONDUCT.md remain

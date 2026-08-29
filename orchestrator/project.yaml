@@ -119,9 +119,14 @@ ci:                          # imported — D-003 raises the profile's 3.10 floo
           with: { python-version: '3.12' }
         - uses: astral-sh/setup-uv@v3
         - run: uv sync --all-extras --dev
-        - run: ruff format --check . && ruff check . && mypy --strict src
+        - run: uv run ruff format --check . && uv run ruff check . && uv run mypy --strict src
   build_manifest: "pyproject.toml"   # bootstrap guard (#313): toolchain jobs SKIP until
-                                     # roadmap 2.1 lays the build system down (L-0010)
+                                     # roadmap 2.1 lays the build system down (L-0010).
+                                     # The probe requires this manifest AND a committed
+                                     # uv.lock: the manifest alone lands at 1.1 with an
+                                     # empty dev toolchain, and the jobs invoke hatch /
+                                     # pytest / ruff / mypy, which exist only after
+                                     # `uv sync` — see L-0015.
 
 governance:
   posture: standard          # defaulted Q0.5, echoed and owner-confirmed at init —

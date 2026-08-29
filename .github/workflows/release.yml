@@ -41,7 +41,9 @@ jobs:
 
       - name: Build (verify the tag builds clean)
         shell: bash
-        run: hatch build
+        # `uv sync` installs into .venv without putting it on PATH — invoke through `uv run`
+        # or the tag build dies with `hatch: command not found` (BUG-0002).
+        run: uv run hatch build
 
       - name: Draft the release (a human publishes it)
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
