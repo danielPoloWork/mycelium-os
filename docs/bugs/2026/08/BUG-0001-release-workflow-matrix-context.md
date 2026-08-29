@@ -54,8 +54,19 @@ Fixed in the audit PR: literal `python-version: '3.12'` in `draft-release`. `CHA
 `Fixed` entry added in the same PR. `fixed-in: 0.1.0` = the first tagged release that
 will contain the fix (merged pre-release).
 
+**Completion note (PR #5).** That fix was incomplete. The audit found the defect via
+`release.yml` and fixed it there, but the identical dead expression had been injected into a
+second matrix-less job — `benchmark / reproducible perf` in `.github/workflows/ci.yml` —
+which the audit did not check, because the bootstrap guard was skipping that job at the
+time. It is now pinned to a literal `'3.12'` as well, with the rationale (benchmark numbers
+must stay comparable run over run, NFR-1) recorded inline. `fixed-in` is unchanged: both
+sites are fixed pre-0.1.0. The lesson generalises the original one — when a shared
+`{{CI_SETUP_STEPS}}` block is the root cause, every injection site has to be swept, not just
+the one the finding came in through.
+
 ## References
 
 - Fixing PR: the bootstrap-audit PR (#4)
 - Register: [`docs/security/audit-2026-08-29-bootstrap.md`](../../../security/audit-2026-08-29-bootstrap.md) F1
-- Related: factory ADR-0009 §3 (profile-injected steps), EADOS lesson L-0015 (drafted)
+- Related: factory ADR-0009 §3 (profile-injected steps), EADOS lesson L-0015 (drafted);
+  second injection site swept in [BUG-0002](BUG-0002-ci-tools-not-on-path.md)'s PR (#5)

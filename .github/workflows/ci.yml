@@ -24,11 +24,17 @@ jobs:
   # Bootstrap guard (#313). Roadmap item 1.1 lays down the build system; until it lands there
   # is nothing for the toolchain jobs to build, so they SKIP rather than fail. A wall of red on
   # the bootstrap PR is not just noise — it teaches that red CI on this repo is normal, which is
-  # the opposite of what every other gate here is for. The moment `pyproject.toml` exists
-  # every job below runs for real, with no edit to this workflow or to the profile.
+  # the opposite of what every other gate here is for.
+  #
+  # The probe needs BOTH signals, not just the build manifest: every toolchain job below
+  # invokes hatch / pytest / ruff / mypy, and those reach the runner only through `uv sync`
+  # — that is, only once the dev toolchain is declared AND locked (roadmap 1.2 + 1.3).
+  # `pyproject.toml` alone lands at 1.1 with an empty dev toolchain, so gating on it made
+  # the jobs fail with `command not found` instead of skipping. The moment `uv.lock` is
+  # committed every job below runs for real, with no edit to this workflow or to the profile.
   # ---------------------------------------------------------------------------
   bootstrap:
-    name: bootstrap / is the build system in place?
+    name: bootstrap / is the toolchain in place?
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     outputs:
@@ -39,11 +45,11 @@ jobs:
         shell: bash
         run: |
           # compgen -G matches a literal name AND a glob, so a profile may declare either.
-          if compgen -G "pyproject.toml" > /dev/null; then
+          if compgen -G "pyproject.toml" > /dev/null && [ -f uv.lock ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
           else
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::notice title=Bootstrap pending::pyproject.toml is not present yet, so the toolchain jobs are skipped. They start running by themselves once roadmap item 1.1 lands the build system."
+            echo "::notice title=Bootstrap pending::The dev toolchain is not installable yet (needs both pyproject.toml and a committed uv.lock), so the toolchain jobs are skipped. They start running by themselves once roadmap items 1.2 + 1.3 declare and lock ruff, mypy, pytest and hatch."
           fi
 
   # ---------------------------------------------------------------------------
@@ -78,11 +84,11 @@ jobs:
 
       - name: Build
         shell: bash
-        run: hatch build
+        run: uv run hatch build
 
       - name: Test
         shell: bash
-        run: pytest -q
+        run: uv run pytest -q
 
   # ---------------------------------------------------------------------------
   # Cross-artifact congruence — the agent-runnable consistency lint.
@@ -115,7 +121,7 @@ jobs:
         with: { python-version: '3.12' }
       - uses: astral-sh/setup-uv@v7
       - run: uv sync --all-extras --dev
-      - run: ruff format --check . && ruff check . && mypy --strict src
+      - run: uv run ruff format --check . && uv run ruff check . && uv run mypy --strict src
 
   # Reproducible performance gate — runs only when the project has a benchmark suite.
   benchmark:
@@ -129,13 +135,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.toolchain == 'python-3.13' && '3.13' || '3.12' }}
+          # This job has no matrix — pin the floor interpreter explicitly so benchmark
+          # numbers stay comparable run over run (NFR-1 determinism).
+          python-version: '3.12'
       - name: Install uv
         uses: astral-sh/setup-uv@v7
       - name: Sync dependencies
         run: uv sync --all-extras --dev
       - name: Run the benchmark suite
         shell: bash
-        run: pytest tests/bench --benchmark-only
+        run: uv run pytest tests/bench --benchmark-only
 
 

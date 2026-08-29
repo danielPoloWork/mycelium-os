@@ -28,7 +28,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 - BUG-0001: the release workflow's `draft-release` job referenced `matrix.toolchain`
   without a matrix; the interpreter is now pinned literally
-  ([record](docs/bugs/2026/08/BUG-0001-release-workflow-matrix-context.md)).
+  ([record](docs/bugs/2026/08/BUG-0001-release-workflow-matrix-context.md)). The same dead
+  expression in CI's matrix-less `benchmark` job is pinned in this PR, completing the fix.
+- BUG-0002: every CI and release step invoked `hatch` / `pytest` / `ruff` / `mypy` by bare
+  name after `uv sync`, which installs into `.venv` without putting it on `PATH` — each
+  gate exited 127 instead of running. All invocations now go through `uv run`, in the
+  generated workflows and in the `orchestrator/project.yaml` block they are generated from
+  ([record](docs/bugs/2026/08/BUG-0002-ci-tools-not-on-path.md)).
+- BUG-0003: the CI bootstrap guard probed only for `pyproject.toml`, so the toolchain jobs
+  activated at roadmap item 1.1 — before the tools they invoke were declared — and failed
+  rather than skipping. The probe now also requires a committed `uv.lock`
+  ([record](docs/bugs/2026/08/BUG-0003-bootstrap-probe-too-coarse.md)).
 
 ### Security
 

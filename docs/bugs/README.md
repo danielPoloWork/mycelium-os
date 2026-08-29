@@ -19,3 +19,5 @@ a `fixed` record names its `fixed-in`) is enforced by the consistency lint's `bu
 | Bug | Title | Severity | Status | Fixed in |
 |-----|-------|----------|--------|----------|
 | [BUG-0001](2026/08/BUG-0001-release-workflow-matrix-context.md) | release workflow references matrix context in a matrix-less job | low | fixed | 0.1.0 |
+| [BUG-0002](2026/08/BUG-0002-ci-tools-not-on-path.md) | CI invokes hatch/pytest/ruff/mypy bare, but uv sync never puts .venv on PATH | high | fixed | 0.1.0 |
+| [BUG-0003](2026/08/BUG-0003-bootstrap-probe-too-coarse.md) | bootstrap guard probes only the build manifest, activating toolchain jobs too early | medium | fixed | 0.1.0 |
