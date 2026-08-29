@@ -17,6 +17,8 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 - Build system: Hatch (PEP 517/518) `pyproject.toml` and a buildable `mycelium` package
   skeleton under `src/mycelium/` (flat src-layout, ADR-0003), seeded with the
   `__version__` constant (roadmap 1.1, 1.5).
+- Test framework: pytest + hypothesis declared as the `dev` dependency group, with a
+  passing smoke test under `tests/` (roadmap 1.2).
 
 ### Changed
 
