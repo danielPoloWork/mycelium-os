@@ -1,0 +1,91 @@
+# Build outputs
+/build/
+/dist/
+/out/
+/target/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# Dependency / package manager caches
+/node_modules/
+/.venv/
+/venv/
+__pycache__/
+*.pyc
+/.gradle/
+/vendor/
+/.cargo/
+
+# Coverage & test artifacts
+/coverage/
+*.gcda
+*.gcno
+*.profraw
+.coverage
+htmlcov/
+
+# IDE / editor
+/.idea/
+/.vscode/
+*.swp
+.DS_Store
+
+# Tool caches
+/.mypy_cache/
+/.ruff_cache/
+/.pytest_cache/
+
+# Generated docs
+/docs/_site/
+/docs/doxygen/html/
+
+# Local agent / harness scratch (never commit)
+.questions
+.bugs
+.claude/settings.local.json
+
+# EADOS factory tooling — the .eados-core/ bundle is copied in to (re)generate this repo; it is
+# not part of the project's own source.
+#
+# EXCEPT the run records: every phase procedure appends one (record_run.py), and they are the
+# project's own delivery audit trail, not factory tooling. Ignoring them meant they were written,
+# reported as written, and never committed — so the trail did not survive a clone and the tools
+# that read it (autotune, lesson_audit, the run-record schema gate) saw an empty corpus on every
+# fresh checkout, indistinguishable from a genuinely new project (#353).
+#
+# The shape below is NOT stylistic and must not be "simplified" to `/.eados-core/` plus negations:
+# git cannot re-include a path whose PARENT directory is excluded — it never descends into it, so
+# the `!` lines would be silently dead. Excluding the CONTENTS (`/*`) at each level and
+# re-including the next one down is what makes it work. Verified both ways; the naive form leaves
+# the record ignored.
+/.eados-core/*
+!/.eados-core/learning/
+/.eados-core/learning/*
+!/.eados-core/learning/runs/
+
+# EADOS command adapters — generated, per HOST, and not this project's source (#372, ADR-0019
+# addendum 2026-07-27). `adapter_render.py --host <id>` writes them; they are pointers at the
+# procedures inside `.eados-core/`, which the rule above already excludes.
+#
+# Committing them looked helpful and is not, for two reasons that only became visible once trees
+# became per-host:
+#   1. A cloned adapter points at `.eados-core/orchestrator/commands/<cmd>.md`, which is NOT in the
+#      repository. Whoever clones gets slash commands that resolve to a missing file — worse than
+#      absent, because an absent command is obviously absent while a dangling one fails at the
+#      point of use and reads as a broken repo.
+#   2. It would impose the original author's host on everyone. A committed `.claude/` tree does
+#      nothing for a teammate on Gemini, Codex or OpenCode; each generates their own in one command.
+#
+# The commands are still discoverable without them: `AGENTS.md` §13 carries the full table, and
+# `.eados-core/tools/eados.py commands` works on every host, including hosts with no command
+# mechanism at all. Delete these lines if you would rather commit your team's tree.
+/.claude/commands/eados/
+/.gemini/commands/eados/
+/.opencode/commands/eados-*
+/.eados/adapters/

@@ -1,0 +1,16 @@
+# EADOS RFC review protocol — reference instance. Schema: ./_schema.md.
+# The `design` phase authors RFCs under this; the rfc-approved gate is verified by
+# ../../../tools/rfc_check.py. Roles are ids from ../authority/authority.yaml.
+version: 1
+
+required_sections: [Context, Decision, Alternatives, Consequences, Approval]
+
+author_roles: [tech-lead, product-manager]          # senior author; PM for product-facing RFCs
+reviewer_roles: [reviewer, enterprise-architect]    # peers + architect for cross-cutting impact
+approver_role: tech-lead                             # final approval within the team (RFC-level)
+
+approval:
+  heading: "## Approval"
+  marker: "approved-by:"            # line format: approved-by: <approver_role> (<YYYY-MM-DD>)
+
+gate: rfc-approved                  # satisfies the workflow design -> plan transition gate

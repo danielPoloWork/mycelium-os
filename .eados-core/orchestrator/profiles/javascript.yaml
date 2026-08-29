@@ -1,0 +1,77 @@
+# javascript.yaml — plain JavaScript (ESM, Node LTS) profile. For non-trivial apps the
+# language-fit advisory will suggest TypeScript; this profile is for deliberate JS projects.
+
+lang:             javascript
+display_name:     "JavaScript"
+default_standard: "ES2023 (Node.js 20 LTS, ESM)"
+src_ext:          js
+
+namespace_pattern: "@{group_leaf}/{project_slug} npm scope (e.g. @d4np/memorypool)"
+import_idiom:      "import { X } from '@{group_leaf}/{project_slug}';"
+
+toolchain:
+  build_tool:      "tsup/esbuild (bundle) or plain ESM; pnpm"
+  pkg_manager:     "pnpm (workspaces, locked)"
+  test_framework:  "Vitest (or Jest)"
+  formatter:       "Prettier"
+  linter:          "ESLint (flat config) + type-checking via JSDoc (`tsc --checkJs`)"
+  sanitizers:      "ESLint --max-warnings 0; vitest --detectOpenHandles (leak/handle)"
+  coverage_tool:   "Vitest coverage (v8) / c8"
+  doc_tool:        "JSDoc / TypeDoc (from JSDoc types)"
+  version_file:    "version.js"
+  version_const_hint: "export const VERSION = 'X.Y.Z'"
+  package_ecosystem: "npm"
+
+commands:
+  build:        "pnpm build"
+  test:         "pnpm test"
+  format_check: "pnpm prettier --check ."
+  lint:         "pnpm eslint . --max-warnings 0"
+  bench:        "pnpm bench"               # tinybench / vitest bench
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: package.json
+
+config_files:
+  - package.json
+  - .prettierrc
+  - eslint.config.js
+
+ci:
+  tier1_platforms: "Linux (Node.js 18, 20, 22)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: node-18, preset: default }
+    - { os: ubuntu-24.04, toolchain: node-20, preset: default }
+    - { os: ubuntu-24.04, toolchain: node-22, preset: default }
+  setup_steps: |
+    - uses: pnpm/action-setup@v4
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.toolchain == 'node-18' && '18' || matrix.toolchain == 'node-22' && '22' || '20' }}
+        cache: pnpm
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+  extra_jobs: |
+    lint:
+      name: lint / eslint + prettier
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: pnpm/action-setup@v4
+        - uses: actions/setup-node@v4
+          with: { node-version: '20', cache: pnpm }
+        - run: pnpm install --frozen-lockfile
+        - run: pnpm prettier --check . && pnpm eslint . --max-warnings 0
+  race_job: ""                             # single-threaded event loop; no data-race detector
+
+supports:
+  threading_sanitizer: false
+  bench: true
+  abi_stability: false
+notes: |
+  Plain ESM on Node LTS. For anything non-trivial prefer the typescript profile (type safety);
+  JSDoc + `tsc --checkJs` gives partial typing here. Dependabot ecosystem: npm.

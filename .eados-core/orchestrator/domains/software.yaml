@@ -1,0 +1,19 @@
+# Domain profile — software (service / library / CLI / app). Schema: ./_schema.md.
+# The baseline domain: engineering-only, SemVer, no hard hardware budgets.
+domain: software
+display_name: "Software (service / library / CLI / app)"
+roles: [product-manager, enterprise-architect, tech-lead, reviewer, security-auditor, producer, release-manager]
+role_labels:
+  product-manager: product-manager
+artifacts:
+  product_spec: PRD              # Product Requirements Document
+  design_doc: RFC
+  test_strategy: required
+nfr_axes:
+  - { axis: performance, hard_budget: false }
+  - { axis: security, hard_budget: false }
+  - { axis: portability, hard_budget: false }
+  - { axis: cost, hard_budget: false }
+milestone_vocabulary: semver
+cross_discipline_deps: []        # engineering-only
+workflow_overlay: software

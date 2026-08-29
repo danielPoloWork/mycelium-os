@@ -1,0 +1,43 @@
+# Local Build & Test
+
+How to build, test, and check `{{PROJECT_NAME}}` on your machine. CI runs the same commands
+on {{TIER1_PLATFORMS}}; reproducing them locally avoids a red round-trip.
+
+## Prerequisites
+
+- **{{LANG_NAME}}** toolchain.
+- **Build system:** {{BUILD_TOOL}}.
+- **Package manager:** {{PKG_MANAGER}}.
+- **Formatter / linter:** {{FORMATTER}}, {{LINTER}}.
+- **Docs:** {{DOC_TOOL}} (for the API docs build).
+
+## Commands
+
+```bash
+# Build
+{{CMD_BUILD}}
+
+# Test
+{{CMD_TEST}}
+
+# Format check
+{{CMD_FORMAT_CHECK}}
+
+# Lint
+{{CMD_LINT}}
+{{#IF_BENCH}}
+# Benchmark
+{{CMD_BENCH}}
+{{/IF_BENCH}}
+# Cross-artifact congruence (run before drafting any PR)
+python tools/consistency_lint.py
+```
+
+## Before you open a PR
+
+1. `{{CMD_FORMAT_CHECK}}` and `{{CMD_LINT}}` are clean.
+2. `{{CMD_TEST}}` passes; new/changed behavior is covered (≥ {{COVERAGE_TARGET}}% line).
+3. {{SANITIZERS}} are green where applicable.
+4. `python tools/consistency_lint.py` passes.
+5. The relevant docs (README, ROADMAP, ADRs, patterns, changelog) are updated in the same
+   PR — see [`../workflow/documentation.md`](../workflow/documentation.md).

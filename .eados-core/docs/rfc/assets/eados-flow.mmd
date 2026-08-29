@@ -1,0 +1,27 @@
+%% EADOS — "how it works": the phase state machine.
+%% Source of truth (diagram as code). GitHub renders this inline from the RFC's ```mermaid
+%% block; regenerate the SVG with:
+%%   npx -y @mermaid-js/mermaid-cli -i eados-flow.mmd -o eados-flow.svg
+%% Legend: "· H" on a transition = human-gated (the owner confirms). The generated repo's
+%% AGENTS.md stays the source of truth; EADOS phases are capabilities it invokes.
+flowchart LR
+  classDef data fill:#eef2ff,stroke:#8893c4,color:#1b2147;
+  classDef state fill:#eef7ee,stroke:#3a9a3a,color:#123012;
+  classDef phase fill:#ffffff,stroke:#555555,color:#111111;
+
+  LP["Language Profiles"]:::data
+  DP["Domain / Target Profiles<br/>software · game · mobile"]:::data
+  MAN[("Persistent Delivery Manifest<br/>shared state · reference-based")]:::state
+
+  LP --> MAN
+  DP --> MAN
+  MAN --> INIT
+
+  INIT["init<br/><i>architect</i>"]:::phase -->|"manifest-valid · H"| DESIGN["design · RFC<br/><i>tech-lead</i>"]:::phase
+  DESIGN -->|"rfc-approved · H"| PLAN["plan · roadmap<br/><i>producer</i>"]:::phase
+  PLAN -->|"roadmap-covers-rfcs · H"| SCAFFOLD["scaffold · generate<br/><i>architect</i>"]:::phase
+  SCAFFOLD -->|"consistency-lint + self-review"| AUDIT["audit · risk<br/><i>security-auditor</i>"]:::phase
+  AUDIT -->|"risk-register · H"| MIGRATE["migrate · brownfield<br/><i>architect</i>"]:::phase
+  PLAN -. resumable .-> DESIGN
+  INIT -. "adoption-recorded · H (#247)" .-> AUDIT
+  INIT -. "adoption-recorded · H (#247)" .-> MIGRATE

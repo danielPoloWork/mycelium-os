@@ -1,0 +1,13 @@
+# IDE
+.idea/
+
+# Local archive of the legacy codebase (renamed to mycelium-os-legacy on GitHub, D-024);
+# kept out of the new engine repo — the salvage map (.draft-specs/07 §6) references it.
+.mycelium-os-legacy/
+
+# Python
+__pycache__/
+*.pyc
+
+# Mycelium derived store (D-005) — always gitignored, for when the engine dogfoods itself
+.mycelium/

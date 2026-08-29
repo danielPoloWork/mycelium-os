@@ -1,0 +1,21 @@
+%% EADOS — end-to-end traceability / audit graph (intent → release → audit).
+%% Source of truth (diagram as code). Regenerate the SVG with:
+%%   npx -y @mermaid-js/mermaid-cli -i eados-end-to-end.mmd -o eados-end-to-end.svg
+%% Every edge is a cross-link the `git` spec mandates; the traceability-lint (M3/M4) walks the
+%% graph and fails on a dangling edge — that lineage IS the audit trail (it is the repo history).
+flowchart LR
+  classDef art fill:#ffffff,stroke:#555555,color:#111111;
+  classDef gate fill:#fdeef2,stroke:#a3466b,color:#3a1322;
+
+  REQ["Requirement<br/>(spec §)"]:::art --> RFC["RFC /<br/>Design Doc"]:::art
+  RFC --> MS["Milestone /<br/>roadmap item"]:::art
+  MS --> PR["Pull Request"]:::art
+  PR --> CM["Commit"]:::art
+  CM --> REL["Release tag"]:::art
+  REL --> DEP["Deploy<br/>(merge ≠ deploy)"]:::art
+
+  AUD["Audit /<br/>risk score"]:::gate -. scores .-> RFC
+  AUD -. scores .-> PR
+  TL{{"traceability-lint<br/>validates every edge"}}:::gate -. gates .-> MS
+  TL -. gates .-> PR
+  TL -. gates .-> REL

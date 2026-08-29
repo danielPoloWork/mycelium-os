@@ -1,0 +1,68 @@
+# cobol.yaml — COBOL (GnuCOBOL) legacy profile for mainframe-modernization work.
+# Honest caveat: the COBOL ecosystem has no standard formatter/doc/package-manager, so those
+# roles are filled with "none (...)" rather than a tool. The enterprise bar is therefore
+# DEGRADED vs modern languages — build, test, and CI are real; style/docs are manual.
+
+lang:             cobol
+display_name:     "COBOL"
+default_standard: "ISO COBOL 2014 (GnuCOBOL 3.x)"
+src_ext:          cob
+
+namespace_pattern: "PROGRAM-ID per module; no namespaces (prefix program-ids with {project_slug}-)"
+import_idiom:      "CALL '{project_slug}'  (or COPY '{project_slug}.cpy')"
+
+toolchain:
+  build_tool:      "GnuCOBOL (cobc) + Make"
+  pkg_manager:     "none (copybooks vendored in-repo)"
+  test_framework:  "cobol-check (or cutest)"
+  formatter:       "none (manual style guide)"
+  linter:          "cobc -Wall (compiler warnings)"
+  sanitizers:      "cobc -debug + Valgrind on the compiled binary"
+  coverage_tool:   "gcov on the cobc-generated C"
+  doc_tool:        "none (inline IDENTIFICATION/comment blocks)"
+  version_file:    "version.cpy"
+  version_const_hint: "01 VERSION-STRING PIC X(16) VALUE 'X.Y.Z'"
+  package_ecosystem: ""
+
+commands:
+  build:        "cobc -x -O2 -o build/app src/main/cobol/<group>/<project>/main.cob"
+  test:         "cobol-check -p tests"
+  format_check: ""
+  lint:         "cobc -fsyntax-only -Wall src/main/cobol/<group>/<project>/*.cob"
+  bench:        ""
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: Makefile
+
+config_files:
+  - Makefile
+
+ci:
+  tier1_platforms: "Linux x86_64 (GnuCOBOL 3.x)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: gnucobol-3, preset: default }
+  setup_steps: |
+    - name: Install GnuCOBOL
+      run: sudo apt-get update && sudo apt-get install -y gnucobol
+  extra_jobs: |
+    build-test:
+      name: build + test (GnuCOBOL)
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - run: sudo apt-get update && sudo apt-get install -y gnucobol
+        - run: make build && make test
+  race_job: ""
+
+supports:
+  threading_sanitizer: false
+  bench: false
+  abi_stability: false
+notes: |
+  Targets GnuCOBOL for portable, CI-able COBOL (mainframe modernization). For IBM Enterprise
+  COBOL on z/OS, adapt the matrix/commands to the site's build. There is no standard COBOL
+  formatter, doc generator, or package manager — those roles are "none" and handled manually;
+  set this expectation with the maintainer. Build (cobc), tests (cobol-check), and CI are real.

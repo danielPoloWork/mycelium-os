@@ -1,0 +1,71 @@
+# dart.yaml — Dart toolchain profile. pub ecosystem; isolates (no shared-memory races).
+
+lang:             dart
+display_name:     "Dart"
+default_standard: "Dart 3.4 (sound null safety)"
+src_ext:          dart
+
+namespace_pattern: "package:{project_slug} library imports (Dart has no nested namespaces)"
+import_idiom:      "import 'package:{project_slug}/{project_slug}.dart';"
+
+toolchain:
+  build_tool:      "Dart SDK (pub) — Flutter for apps"
+  pkg_manager:     "pub (pubspec.lock committed)"
+  test_framework:  "package:test"
+  formatter:       "dart format"
+  linter:          "dart analyze + very_good_analysis"
+  sanitizers:      "dart analyze --fatal-infos (soundness); isolates avoid shared-memory races"
+  coverage_tool:   "package:coverage (dart test --coverage)"
+  doc_tool:        "dartdoc"
+  version_file:    "version.dart"
+  version_const_hint: "const version = 'X.Y.Z'"
+  package_ecosystem: "pub"
+
+commands:
+  build:        "dart pub get"
+  test:         "dart test"
+  format_check: "dart format --output=none --set-exit-if-changed ."
+  lint:         "dart analyze --fatal-infos"
+  bench:        "dart run benchmark_harness"
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: pubspec.yaml
+
+config_files:
+  - pubspec.yaml
+  - analysis_options.yaml
+
+ci:
+  tier1_platforms: "Linux (Dart 3.x stable)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: dart-stable, preset: default }
+  setup_steps: |
+    - name: Set up Dart
+      uses: dart-lang/setup-dart@v1
+      with: { sdk: stable }
+    - name: Get dependencies
+      run: dart pub get
+  extra_jobs: |
+    quality:
+      name: quality / format + analyze + coverage
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: dart-lang/setup-dart@v1
+          with: { sdk: stable }
+        - run: dart pub get
+        - run: dart format --output=none --set-exit-if-changed .
+        - run: dart analyze --fatal-infos
+        - run: dart test --coverage=coverage
+  race_job: ""                             # isolates (no shared memory); no data-race detector
+
+supports:
+  threading_sanitizer: false
+  bench: true
+  abi_stability: false
+notes: |
+  Dart 3 with sound null safety; isolates instead of shared-memory threads (hence no race job).
+  Flutter apps adapt the build/test commands. Dependabot ecosystem: pub.

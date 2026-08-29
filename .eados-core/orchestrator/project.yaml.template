@@ -1,0 +1,193 @@
+# project.yaml — the single source of truth for one generated project.
+#
+# Copy this skeleton to `orchestrator/project.yaml`, fill it from the intake interview
+# merged with the resolved language profile, and confirm it with the maintainer BEFORE
+# rendering. Every value here resolves a placeholder from placeholders.md. A worked
+# example (the reference project itself) is shown in comments at each field.
+
+# --- EADOS delivery-state layer (M1-B) — OPTIONAL; the renderer ignores it. ---
+# schema_version versions the manifest for backward-compatible evolution (resolves OQ1).
+schema_version: 1
+# manifest_rev is an OPTIMISTIC-CONCURRENCY counter (#214): the phase runner prints the rev it read,
+# and you bump it by 1 every time you write delivery_state back. Before writing, re-run the propose
+# with `--expect-rev <N>` — it refuses if another session moved the rev, so parallel edits fail loud
+# instead of silently losing one. Absent == rev 0 (a legacy manifest is unlocked, still works).
+manifest_rev: 0
+domain: software             # development target: software|web|game|mobile -> orchestrator/domains/<domain>.yaml
+# delivery_state holds STATE + cross-link REFS (ids), never content — Git stays the source of
+# Which EADOS produced this repository (#319). Optional and additive: absent, the renderer derives
+# it from the factory's CHANGELOG + git at render time. RECORD it — copy what a render printed —
+# and it becomes durable: the repo keeps saying where it started even after the factory moves on,
+# which is what makes it possible to ask what has changed upstream since (ADR-0003 refuses to
+# re-render a generated repo; it does not refuse to tell you what changed). -> {{EADOS_PROVENANCE}}
+# generated_by:
+#   eados_version: "2.12.0"
+#   eados_commit: f6d487c
+#   rendered_at: "2026-07-27"
+
+# Which agent RUNTIME this project is worked on, for model/effort routing (#325, ADR-0024 D4).
+# Optional and additive: absent, the OS detects the host from environment markers, and where it
+# cannot it says so and still gives you a tier + effort (those are vendor-neutral). Set it when
+# you run on a host that declares no marker, or to pin one deliberately. A host id from
+# `os/routing/routing.yaml` — claude-code | codex | gemini | opencode | ...
+# routing:
+#   host: claude-code
+
+# truth for content (RFC-0001 §8). The phase runner (M1-E) reads/writes it; a legacy manifest
+# without this block renders unchanged.
+delivery_state:
+  phase: init                # init|design|plan|scaffold|audit|migrate
+  checkpoints: []            # [{from, to, gates, at, confirmed_by, gate_results}] — the transition
+                             # ledger (#199): a legal, contiguous chain ending at `phase`; a
+                             # human-gated move carries confirmed_by AND records gate_results for
+                             # its entry gates (#250 — evidence, not honor; `--propose` emits both)
+  refs: { rfcs: [], milestones: [], prs: [], releases: [] }   # cross-link ids, not content
+# adoption is the OPTIONAL brownfield record /eados adopt writes (#247, ADR-0021) — never for a
+# greenfield project. goals ⊆ governance-docs|retro-design|audit|migrate|bugfix (the closed menu);
+# gap_map_ref names where the read-only brownfield.py report was captured; provenance records how
+# each answer was settled (asked|defaulted|imported — its provenance lives HERE, not in interview.provenance).
+# adoption:
+#   goals: [audit, migrate]
+#   gap_map_ref: orchestrator/adoption-gap-map.md
+#   provenance: { goals: asked, gap_map_ref: imported }
+
+identity:
+  project_name:    ""        # Repository name (e.g. pbr-cpp-memory-pool). -> {{PROJECT_NAME}}
+  project_slug:    ""        # Short id used in generated paths (e.g. memorypool). -> {{PROJECT_SLUG}}
+  project_title:   ""        # Human-readable title (e.g. High-Performance Memory Pool). -> {{PROJECT_TITLE}}
+  project_tagline: ""        # One-line description (e.g. Fixed-block O(1) memory pool). -> {{PROJECT_TAGLINE}}
+  project_series:  ""        # Project family; blank if none (e.g. Purpose-Built References). -> {{PROJECT_SERIES}}
+  project_kind:    library   # One of: library|service|cli|app. -> {{PROJECT_KIND}}
+
+ownership:
+  owner:           ""        # GitHub owner or org login (e.g. danielPoloWork). -> {{OWNER}}
+  maintainer:      ""        # Maintainer's display name (e.g. Daniel Polo). -> {{MAINTAINER}}
+  author:          ""        # Copyright holder for generated files. -> {{AUTHOR}}
+  year:            "2026"    # Copyright year. -> {{YEAR}}
+  license_id:      MIT       # SPDX license id (e.g. MIT, Apache-2.0). -> {{LICENSE_ID}}
+  default_branch:  main      # Default Git branch. -> {{DEFAULT_BRANCH}}
+  assignee:        "@me"     # Default issue/PR assignee (@me or a login). -> {{ASSIGNEE}}
+
+language:
+  lang:            ""        # Source-tree segment / profile key (e.g. cpp). -> {{LANG}}
+  lang_name:       ""        # Language name + version (e.g. C++17). -> {{LANG_NAME}}
+  lang_standard:   ""        # Standard or spec (e.g. C++17 (ISO/IEC 14882:2017)). -> {{LANG_STANDARD}}
+  secondary_lang:  ""        # Interop language, or "" if none (e.g. c).
+  group_path:      ""        # REQUIRED — your own reverse-domain path, '/'-separated (e.g. com/acme); no default. -> {{GROUP_PATH}}
+  group_dotted:    ""        # Same namespace, '.'-separated (e.g. com.acme). -> {{GROUP_DOTTED}}
+  namespace:       ""        # Native namespace idiom (e.g. it::d4np::memorypool). -> {{NAMESPACE}}
+  src_ext:         ""        # Primary source extension (e.g. cpp, rs, py). -> {{SRC_EXT}}
+  comment_lang:    "en"      # Natural language for source comments (Q4.7); identifiers/API stay English (ADR-0016). -> {{CODE_COMMENT_LANG}}
+  public_include_hint: ""    # Example include/import shown in generated docs.
+
+# Derived from language + group_path + project_slug (computed during render):
+#   src_main  = src/main/<lang>/<group_path>/<project_slug>      -> {{SRC_MAIN}}
+#   src_test  = src/test/<lang>/<group_path>/<project_slug>      -> {{SRC_TEST}}
+#   src_bench = src/bench/<lang>/<group_path>/<project_slug>     -> {{SRC_BENCH}}
+
+toolchain:                   # Defaults come from profiles/<lang>.yaml; override as needed.
+  build_tool:      ""        # Build tool — blank uses the language profile. -> {{BUILD_TOOL}}
+  pkg_manager:     ""        # Package manager — blank uses the profile. -> {{PKG_MANAGER}}
+  test_framework:  ""        # Test framework — blank uses the profile. -> {{TEST_FRAMEWORK}}
+  formatter:       ""        # Formatter — blank uses the profile. -> {{FORMATTER}}
+  linter:          ""        # Linter — blank uses the profile. -> {{LINTER}}
+  sanitizers:      ""        # Sanitizers/analysis — blank uses the profile. -> {{SANITIZERS}}
+  coverage_tool:   ""        # Coverage tool — blank uses the profile. -> {{COVERAGE_TOOL}}
+  coverage_target: 80        # Target line-coverage percent.
+  doc_tool:        ""        # Doc generator — blank uses the profile. -> {{DOC_TOOL}}
+  version_file:    ""        # File that holds the version. -> {{VERSION_FILE}}
+  version_const_hint: ""     # Version constant/pattern for the renderer. -> {{VERSION_CONST_HINT}}
+  package_ecosystem: ""      # Dependabot ecosystem (usually from the profile). -> {{PKG_ECOSYSTEM}}
+  commands:
+    build:        ""         # Build command — blank uses the profile. -> {{CMD_BUILD}}
+    test:         ""         # Test command — blank uses the profile. -> {{CMD_TEST}}
+    format_check: ""         # Format-check command — blank uses the profile. -> {{CMD_FORMAT_CHECK}}
+    lint:         ""         # Lint command — blank uses the profile. -> {{CMD_LINT}}
+    bench:        ""         # Benchmark command (used when capabilities.bench). -> {{CMD_BENCH}}
+
+ci:                          # Defaults come from profiles/<lang>.yaml.
+  tier1_platforms: ""        # CI platforms (e.g. Linux, Windows, macOS). -> {{TIER1_PLATFORMS}}
+  matrix: []                 # CI cells: {os, toolchain, preset}. -> {{#EACH_CI_CELL}}
+  setup_steps: ""            # YAML snippet that sets up the toolchain. -> {{CI_SETUP_STEPS}}
+  extra_jobs:   ""           # YAML snippet for extra jobs (sanitizers/Valgrind/…). -> {{CI_EXTRA_JOBS}}
+  build_manifest: ""         # The file whose presence proves the build system exists (#313), from
+                             # the profile. Roadmap item 1.1 creates it, so a freshly rendered repo
+                             # does NOT have it — and the CI skips the toolchain jobs until it does,
+                             # instead of failing them. Empty = no guard (renders as before).
+                             # -> {{CI_BUILD_MANIFEST}} / {{#IF_BOOTSTRAP_GUARD}}
+
+governance:
+  posture: standard                               # standard | enterprise: raised governance/compliance bar on any domain (ADR-0015)
+  scopes: [api, build, tests, docs, ci]          # Conventional-Commit scopes for generated docs. -> {{#EACH_SCOPE}}
+  # Two distinct version fields — do not swap them (render validates start_version is X.Y.Z):
+  version_start: "pre-1.0 milestone-driven"       # PROSE policy descriptor      -> {{VERSION_START}}
+  start_version: "0.0.0"                           # NUMERIC X.Y.Z seed (badge++) -> {{START_VERSION}}
+  house_rules: ""                                 # Org governance overlay (from config/). -> {{HOUSE_RULES}}
+  capabilities:                                   # Optional generated features (toggle the #IF_* blocks).
+    bench:      false                             # Benchmark templates + commands.
+    threading:  false                             # Threading-specific placeholders.
+    public_api: true                              # Public-API docs + placeholders.
+    i18n:       false                             # Enables the i18n block below.
+    packaging:  false                             # Packaging/distribution artifacts.
+    service:    false                             # Service-specific templates.
+    announce:   false                             # Enables the announce block below.
+    layered:    false                             # Lay down a layered package skeleton from spec.layers (service/app/web).
+    api_spec:   false                             # Seed a docs/api/ OpenAPI/IDL contract stub (service/web). Toggles #IF_API_SPEC.
+
+i18n:                          # Doc translations (used when capabilities.i18n).
+  default_lang: "en"           # Canonical on-disk language. -> {{DOC_DEFAULT_LANG}}
+  targets: []                  # e.g. [{code: it, name: Italian}, {code: es, name: Spanish}]. -> {{#EACH_DOC_LANG}}
+
+announce:                      # Release/news announcements (used when capabilities.announce).
+  channels: []                 # e.g. [{name: X, handle: "@d4np", mode: draft}]. -> {{#EACH_ANNOUNCE_CHANNEL}}
+
+spec:                         # Filled from Phase 5 of the intake interview. SUBSTANCE FLOOR
+                              # (#170): the renderer rejects an empty objective/verification,
+                              # zero functional_reqs, or zero milestones — a hollow spec never
+                              # renders "OK" (a floor, not a taste test; measurability stays
+                              # the rubric's job, and there is no library escape hatch).
+  provenance:       coauthor  # import | coauthor — how the spec was produced (Q5.0); import = an existing PRD/SRS was validated in.
+  objective:        ""        # Project objective. -> {{SPEC_OBJECTIVE}}
+  functional_reqs:  []        # Functional requirements. -> {{#EACH_FUNCTIONAL_REQ}}
+  nonfunctional_reqs: []      # Non-functional requirements. -> {{#EACH_NONFUNCTIONAL_REQ}}
+  architecture:     ""        # Architecture prose + diagram for the spec & first ADRs.
+  architecture_style: ""      # Structured style from design-patterns.md §5 (Layered|Hexagonal|Clean|MVC|Event-Driven|CQRS|DDD|…); blank for a library. -> {{ARCHITECTURE_STYLE}}
+  patterns:         []        # Expected first-class patterns: [{name, why}]. Seeds docs/patterns/README.md. -> {{#EACH_PATTERN}}
+  pattern_discipline: advisory # advisory (agent advises, human decides) | enforced (force pattern discipline). -> {{PATTERN_DISCIPLINE}}
+  layers:           []        # Layered package names (used when capabilities.layered), e.g. [controller, service, repository, dto, mapper]. -> {{#EACH_LAYER}}
+  public_api:       []        # Public API (used when capabilities.public_api). -> {{#EACH_PUBLIC_API}}
+  verification:     ""        # Verification strategy. -> {{SPEC_VERIFICATION}}
+  milestone1_items: []        # Extra M1 items beyond the bootstrap. -> {{#EACH_MILESTONE1_ITEM}}
+  # The full forward roadmap, defined UP FRONT (Milestone 1 = the universal bootstrap, automatic).
+  # Each entry: {number, title, goal, items: [...]}.                        -> {{#EACH_MILESTONE}}
+  # An item is a plain string ("<n>.<m> task" — renders unchanged) or, to derive an advisory
+  # model/effort route into the ROADMAP (#306, ADR-0023), an object:
+  #   {text: "<n>.<m> task", signals: [security, adr, "severity:medium", sets-pattern, decision-heavy]}
+  # Signals — never tiers — are the os/routing vocabulary (routing.yaml rules + flags); the
+  # renderer resolves them through the same only-raise evaluator as route_advice.py. An object
+  # with no signals still renders the explicit floor route; an inert signal is rejected at --check.
+  milestones: []
+
+# Interview provenance (#169) — filled by the architect DURING the interview, never
+# retrospectively: for EVERY top-level answer key above, how it got its value.
+#   asked     — the question was posed and the maintainer answered.
+#   defaulted — assumed from the questionnaire default and echoed back at confirmation.
+#   imported  — carried in from an existing artifact (e.g. a validated PRD/SRS, Q5.0 import).
+# State, not a placeholder source: the confirmation step reads the `defaulted` entries; the
+# learning loop consumes the block. validate_manifest rejects a wrong value, a key that is not a
+# top-level key of this manifest, AND (#201) a block that is incomplete or missing
+# questionnaire_version — one entry per answer key, or the omitted sections silently derive no
+# override. Example (complete — every answer-bearing section above has an entry):
+#
+# interview:
+#   questionnaire_version: 1        # questionnaire.yaml meta.version at interview time
+#   provenance:
+#     identity: asked
+#     ownership: asked
+#     language: asked
+#     toolchain: defaulted
+#     ci: asked
+#     governance: asked
+#     i18n: defaulted
+#     announce: defaulted
+#     spec: imported

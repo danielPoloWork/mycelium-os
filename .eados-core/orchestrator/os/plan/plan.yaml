@@ -1,0 +1,16 @@
+# EADOS roadmap-negotiation protocol — reference instance. Schema: ./_schema.md.
+# The `/eados plan` command reads this; the gate is ../../../tools/traceability.py. Roles are ids
+# from ../authority/authority.yaml.
+version: 1
+
+roles:
+  proposes: product-manager      # the wishlist + business priorities (the "what we want, by when")
+  sizes: tech-lead               # macroscopic engineering estimate + the tech debt to pay
+  reconciles: producer           # capacity x estimates x dates -> the negotiated milestone roadmap
+
+sizing_scale: [XS, S, M, L, XL]  # T-shirt sizes — macroscopic, not story points
+
+inputs: [rfc]                    # the approved RFCs from the design phase (delivery_state.refs.rfcs)
+output: ROADMAP.md               # the single-source roadmap (milestones + numbered items)
+
+gate: roadmap-covers-rfcs        # every RFC -> >=1 milestone (traceability.py); plan -> scaffold

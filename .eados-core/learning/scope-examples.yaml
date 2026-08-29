@@ -1,0 +1,29 @@
+# learning/scope-examples.yaml — worked examples for the lesson-application decision (#224).
+#
+# Companion to lessons.yaml (the ledger stays a pure top-level LIST that its tools iterate — a bare
+# list can hold no sibling `examples:` key, and restructuring it would ripple through every reader).
+# This file is the few-shot policy surface for the judgment lessons.yaml can't carry: WHEN a
+# lesson's `scope` matches the run in hand. Shape-checked by eados_lint's `examples` check, exactly
+# like the interview + contribution surfaces.
+#
+# `apply` = the lesson's scope matches this run, apply it; `skip` = out of scope, do not.
+version: 1
+
+examples:
+  verdicts: [apply, skip]
+  cases:
+    - input: "a global-scope lesson, on any run"
+      verdict: apply
+      why: "global scope matches every run by definition"
+    - input: "a lang:python lesson, on a Rust service run"
+      verdict: skip
+      why: "the language scope does not match — applying it would import irrelevant guidance"
+    - input: "a kind:library lesson, on a library generation run"
+      verdict: apply
+      why: "the project-kind scope matches this run"
+    - input: "a lang:go lesson, on a Go CLI run"
+      verdict: apply
+      why: "the language scope matches; apply it alongside any global lessons"
+    - input: "a kind:service lesson, on a cli run"
+      verdict: skip
+      why: "the project-kind scope does not match this run"

@@ -1,0 +1,102 @@
+# rust.yaml — Rust toolchain profile
+#
+# Rust's ownership model subsumes much of what ASan/Valgrind catch; the remaining gaps
+# (UB in unsafe, data races across unsafe) are covered by Miri and ThreadSanitizer on
+# nightly. clippy + rustfmt are the formatter/linter; cargo-deny is the supply-chain gate.
+
+lang:             rust
+display_name:     "Rust"
+default_standard: "Rust 2021 edition (MSRV 1.75)"
+src_ext:          rs
+
+namespace_pattern: "{group_leaf}_{project_slug}"             # crate name d4np_ratelimiter
+import_idiom:      "use {group_leaf}_{project_slug}::...;"
+
+toolchain:
+  build_tool:      "Cargo (workspace)"
+  pkg_manager:     "Cargo (crates.io); Cargo.lock committed for bins"
+  test_framework:  "cargo test (built-in; proptest for property tests)"
+  formatter:       "rustfmt"
+  linter:          "clippy (-D warnings)"
+  sanitizers:      "Miri (UB in unsafe), ThreadSanitizer (nightly, -Zsanitizer=thread), cargo-deny"
+  coverage_tool:   "cargo-llvm-cov"
+  doc_tool:        "rustdoc (cargo doc)"
+  version_file:    "lib.rs"               # version asserted equal to Cargo.toml [package].version
+  version_const_hint: "pub const VERSION: &str = env!(\"CARGO_PKG_VERSION\")"
+  package_ecosystem: "cargo"              # Dependabot ecosystem
+
+commands:
+  build:        "cargo build"
+  test:         "cargo test"
+  format_check: "cargo fmt --check"
+  lint:         "cargo clippy --all-targets -- -D warnings"
+  bench:        "cargo bench"             # criterion; "" if no bench
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: Cargo.toml
+
+config_files:
+  - Cargo.toml
+  - rustfmt.toml
+  - clippy.toml
+  - deny.toml
+
+ci:
+  tier1_platforms: "Linux / Windows / macOS on stable + MSRV (1.75)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: "stable", preset: test }
+    - { os: ubuntu-24.04, toolchain: "1.75",   preset: test }
+    - { os: windows-2022, toolchain: "stable", preset: test }
+    - { os: macos-14,     toolchain: "stable", preset: test }
+  setup_steps: |
+    - name: Set up Rust
+      uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ matrix.toolchain }}
+        components: rustfmt, clippy
+    - uses: Swatinem/rust-cache@v2
+  extra_jobs: |
+    quality:
+      name: quality / fmt + clippy + deny
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: dtolnay/rust-toolchain@stable
+          with: { components: rustfmt, clippy }
+        - run: cargo fmt --check && cargo clippy --all-targets -- -D warnings
+        - uses: EmbarkStudios/cargo-deny-action@v2
+    miri:
+      name: miri / UB check (unsafe)
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: dtolnay/rust-toolchain@nightly
+          with: { components: miri }
+        - run: cargo miri test
+  race_job: |
+    tsan:
+      name: tsan / thread sanitizer (nightly)
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: dtolnay/rust-toolchain@nightly
+          with: { components: rust-src }
+        - name: cargo test under ThreadSanitizer
+          run: RUSTFLAGS="-Zsanitizer=thread" cargo test -Zbuild-std --target x86_64-unknown-linux-gnu
+
+supports:
+  threading_sanitizer: true    # nightly TSan + Miri; ownership covers most races at compile time
+  bench: true
+  abi_stability: false         # Rust has no stable ABI; SemVer protects the source API
+notes: |
+  The crate name is the namespace ({{NAMESPACE}} = group_leaf_project_slug). Miri replaces
+  Valgrind for unsafe-block UB; the borrow checker covers most of what ASan would. Keep the
+  unsafe surface minimal and document each unsafe block's invariants in an ADR — that is the
+  Rust analogue of the reference project's UB discipline.

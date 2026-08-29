@@ -1,0 +1,36 @@
+# Operations
+
+How `{{PROJECT_NAME}}` runs in production. This doc exists because the project is a
+**service** (`capabilities.service`); a library or CLI would not ship it. Keep it in step with
+the deployment as it evolves — a stale runbook is worse than none.
+
+## Runtime
+
+- **Process model:** {{LANG_NAME}}; concurrency model per the spec.
+- **Configuration:** config source and precedence (env vars → file → defaults). No secrets in
+  the image or repo — inject them at deploy time.
+- **Startup/shutdown:** fail fast on bad config; drain in-flight work on shutdown (graceful).
+
+## Health & readiness
+
+| Probe | Endpoint/signal | Meaning |
+|---|---|---|
+| Liveness | `/healthz` (or signal) | the process is up and not deadlocked |
+| Readiness | `/readyz` | dependencies are reachable; safe to receive traffic |
+
+## Deploy
+
+- **Target:** the deploy environment (container/orchestrator/host) and how an artifact gets there.
+- **Rollout:** strategy (rolling/blue-green/canary) and how to roll back.
+- **Migrations:** how schema/state changes are applied and reversed.
+
+## Observability
+
+- **Logs:** structured, levelled; no secrets/PII.
+- **Metrics:** the golden signals (latency, traffic, errors, saturation) + domain KPIs.
+- **Tracing/alerts:** what is traced and which conditions page a human.
+
+## SLOs
+
+State the service-level objectives (e.g. availability, p99 latency) and the error budget that
+gates risky changes. Tie each back to a measurable check where possible.

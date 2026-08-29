@@ -1,0 +1,84 @@
+# typescript.yaml — TypeScript / Node toolchain profile
+#
+# Enterprise TS stack. The "sanitizer" equivalents are: strict tsc (type soundness),
+# ESLint type-aware rules, and the test runner under --detectOpenHandles for leak detection.
+
+lang:             typescript
+display_name:     "TypeScript"
+default_standard: "TypeScript 5.x, ES2022, Node 20 LTS"
+src_ext:          ts
+
+namespace_pattern: "@{group_leaf}/{project_slug}"            # @d4np/ratelimiter (npm scope)
+import_idiom:      "import { ... } from '@{group_leaf}/{project_slug}';"
+
+toolchain:
+  build_tool:      "tsup (esbuild) / tsc --build"
+  pkg_manager:     "pnpm (workspaces, locked)"
+  test_framework:  "Vitest (or Jest)"
+  formatter:       "Prettier"
+  linter:          "ESLint (typescript-eslint, type-aware) + tsc --noEmit --strict"
+  sanitizers:      "tsc --strict (type soundness), vitest --detectOpenHandles (leak/handle), eslint --max-warnings 0"
+  coverage_tool:   "Vitest coverage (v8) / c8"
+  doc_tool:        "TypeDoc"
+  version_file:    "version.ts"           # under src_main; mirrors package.json version
+  version_const_hint: "export const VERSION = 'X.Y.Z'"
+  package_ecosystem: "npm"                # Dependabot ecosystem
+
+commands:
+  build:        "pnpm build"
+  test:         "pnpm test"
+  format_check: "prettier --check ."
+  lint:         "eslint . --max-warnings 0 && tsc --noEmit"
+  bench:        "pnpm vitest bench"        # "" if no bench
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: package.json
+
+config_files:
+  - package.json
+  - tsconfig.json
+  - .eslintrc.cjs
+  - .prettierrc.json
+
+ci:
+  tier1_platforms: "Linux / Windows / macOS on Node 18, 20, 22 LTS"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: "node-18", preset: test }
+    - { os: ubuntu-24.04, toolchain: "node-20", preset: test }
+    - { os: ubuntu-24.04, toolchain: "node-22", preset: test }
+    - { os: windows-2022, toolchain: "node-20", preset: test }
+    - { os: macos-14,     toolchain: "node-20", preset: test }
+  setup_steps: |
+    - name: Set up pnpm
+      uses: pnpm/action-setup@v4
+    - name: Set up Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.toolchain == 'node-18' && '18' || matrix.toolchain == 'node-22' && '22' || '20' }}
+        cache: pnpm
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+  extra_jobs: |
+    lint:
+      name: lint / eslint + tsc + prettier
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: pnpm/action-setup@v4
+        - uses: actions/setup-node@v4
+          with: { node-version: '20', cache: pnpm }
+        - run: pnpm install --frozen-lockfile
+        - run: pnpm prettier --check . && pnpm eslint . --max-warnings 0 && pnpm tsc --noEmit
+  race_job: ""                 # single-threaded event loop; no data-race detector
+
+supports:
+  threading_sanitizer: false   # single-threaded event loop; worker-thread stress if used
+  bench: true
+  abi_stability: false
+notes: |
+  Publishable as a dual ESM/CJS package; tsconfig in strict mode is non-negotiable (it is
+  the type-soundness gate). version.ts is generated from / asserted equal to
+  package.json "version" — the consistency lint checks that lockstep.

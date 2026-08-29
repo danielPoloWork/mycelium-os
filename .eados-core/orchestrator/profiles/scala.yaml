@@ -1,0 +1,81 @@
+# scala.yaml — Scala 3 (JVM) toolchain profile. sbt/Maven Central, scalafmt/Scalafix.
+
+lang:             scala
+display_name:     "Scala"
+default_standard: "Scala 3.3 (LTS) on JVM 21"
+src_ext:          scala
+
+namespace_pattern: "{group_dotted}.{project_slug} package (e.g. it.d4np.memorypool)"
+import_idiom:      "import {group_dotted}.{project_slug}.*"
+
+toolchain:
+  build_tool:      "sbt (or Mill)"
+  pkg_manager:     "sbt / Coursier (Maven Central)"
+  test_framework:  "MUnit (or ScalaTest) + ScalaCheck"
+  formatter:       "scalafmt"
+  linter:          "Scalafix + WartRemover (-Wunused, -Xfatal-warnings)"
+  sanitizers:      "-Xfatal-warnings (soundness); JCStress for concurrency"
+  coverage_tool:   "scoverage"
+  doc_tool:        "scaladoc"
+  version_file:    "Version.scala"
+  version_const_hint: "val Version = \"X.Y.Z\""
+  package_ecosystem: ""                    # Dependabot has no sbt ecosystem — use Scala Steward
+
+commands:
+  build:        "sbt compile"
+  test:         "sbt test"
+  format_check: "sbt scalafmtCheckAll"
+  lint:         "sbt 'scalafixAll --check'"
+  bench:        "sbt Jmh/run"              # sbt-jmh
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: build.sbt
+
+config_files:
+  - build.sbt
+  - .scalafmt.conf
+  - project/plugins.sbt
+
+ci:
+  tier1_platforms: "Linux (JVM 17, 21)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: temurin-17, preset: default }
+    - { os: ubuntu-24.04, toolchain: temurin-21, preset: default }
+  setup_steps: |
+    - name: Set up JDK + sbt
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: ${{ matrix.toolchain == 'temurin-17' && '17' || '21' }}
+        cache: sbt
+  extra_jobs: |
+    quality:
+      name: quality / scalafmt + scalafix + scoverage
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: actions/setup-java@v4
+          with: { distribution: temurin, java-version: '21', cache: sbt }
+        - run: sbt scalafmtCheckAll "scalafixAll --check" coverage test coverageReport
+  race_job: |
+    jcstress:
+      name: jcstress / concurrency stress
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: actions/setup-java@v4
+          with: { distribution: temurin, java-version: '21', cache: sbt }
+        - run: sbt Jcstress/run
+
+supports:
+  threading_sanitizer: true
+  bench: true
+  abi_stability: false                     # JVM; SemVer protects the source API
+notes: |
+  Scala 3 LTS on the JVM. Dependabot has no sbt ecosystem — wire Scala Steward for dependency
+  updates instead (package_ecosystem left blank). sbt-jmh for benchmarks.

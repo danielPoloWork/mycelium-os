@@ -1,0 +1,63 @@
+# orchestrator/triage.yaml — Step-0 triage (#225): the `/eados` front door.
+#
+# Before any phase machinery, classify the request and route it to the MINIMAL path. The steps are
+# ordered and STOP-AT-FIRST-MATCH: the first step whose `when` fits decides the route. Only a full
+# generation run enters the five-step loop; a plain question or a bounded maintenance edit must NOT
+# spin up interview -> resolve profile -> manifest -> render. This is agent-followed data, not a
+# hardcoded branch in a tool — the host reads it at the top of `/eados`.
+version: 1
+
+steps:
+  - id: 0-question
+    when: "a question, explanation, or status read — no file change is intended"
+    route: answer-directly
+    enters_pipeline: false            # answer, or run `/eados status`; never the pipeline
+  - id: 1-maintenance
+    when: "a bounded edit to the factory itself — a tool, a spec, a doc, a profile — not generating a repo"
+    route: focused-change
+    enters_pipeline: false            # one focused change on a branch -> a drafted PR
+    constraints:                      # a maintenance edit is still fully governed:
+      - ownership-map                 # the changed paths resolve to a glob the role owns (authority)
+      - one-pr-at-a-time              # git.yaml commit.one_pr_at_a_time
+      - human-gated-merge             # the human opens + merges (git.yaml pr.*_by: human; AGENTS.md §6)
+  - id: 2-generation
+    when: "generate or evolve a governed repository"
+    route: five-step-loop             # interview -> resolve profile -> manifest -> render -> verify/PR
+    enters_pipeline: true
+
+# M16 16.3 (#254): once the route is decided, ALSO state the recommended model tier + effort for
+# the work ahead - the os/routing policy (ADR-0017) evaluated by tools/route_advice.py
+# (offline: --labels "a,b" [--flags sets-pattern,decision-heavy]). Advisory only: the host states
+# tier/effort + today's catalog model and moves on; it never switches the session model - that
+# stays the human's call. `answer-directly` needs no advice (no work is being routed).
+routing_advice:
+  applies_to: [focused-change, five-step-loop]
+  tool: tools/route_advice.py
+  boundary: "advisory only - the human keeps final model authority (ADR-0017)"
+
+# #225 / #224: worked examples of the classification, shape-checked by eados_lint's `examples` gate.
+# `verdicts` are the `steps[].route` names, so the examples stay congruent with the routes they teach.
+examples:
+  verdicts: [answer-directly, focused-change, five-step-loop]
+  cases:
+    - input: "what phase is this project in?"
+      verdict: answer-directly
+      why: "a status read — run `/eados status`; do not enter the pipeline"
+    - input: "explain how the workflow gates work"
+      verdict: answer-directly
+      why: "a question — answer it directly; no file change, no pipeline"
+    - input: "fix a typo in an eados_lint message, or add an approved lesson"
+      verdict: focused-change
+      why: "a bounded factory edit — one focused PR, honoring ownership + the human merge gate"
+    - input: "add a new gate to workflow.yaml"
+      verdict: focused-change
+      why: "editing the factory, not generating a repo — a focused change, not the five-step loop"
+    - input: "generate a new Rust service repository"
+      verdict: five-step-loop
+      why: "a governed generation run — interview -> profile -> manifest -> render -> verify"
+    - input: "adopt EADOS governance in my existing repo"
+      verdict: five-step-loop
+      why: "evolving a repo under governance — the brownfield intake (/eados adopt, #247) enters the same pipeline"
+    - input: "scaffold the enterprise system for my Python CLI"
+      verdict: five-step-loop
+      why: "a full generation — the five-step loop with its human-gated manifest confirmation"

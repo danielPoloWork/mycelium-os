@@ -1,0 +1,38 @@
+# Threat model — {{PROJECT_NAME}}
+
+> **Owner:** the **security-auditor** role (it drafts here; findings feed the audit risk
+> register). Produced and kept current by the **audit threat-modeling sub-mode**
+> (`/eados security` → `/eados audit`). Method: **STRIDE**. Scaffolded empty on purpose —
+> an explicit `n/a` with a reason is honest; an unexamined boundary is not.
+
+## 1. Scope & trust boundaries
+
+List every boundary an attacker could stand on either side of — network edges, process/privilege
+boundaries, tenancy separation, third-party services — and for each: the **untrusted inputs**
+that cross it, and the **assumptions** the design makes about it.
+
+| Boundary | Untrusted inputs crossing it | Assumptions |
+|---|---|---|
+| _e.g. public HTTP edge_ | _request bodies, headers, auth tokens_ | _TLS terminated upstream_ |
+
+## 2. STRIDE pass
+
+Work the six categories (**S**-**T**-**R**-**I**-**D**-**E**) **per boundary/component** above.
+Every cell gets an entry — a threat, a mitigation, or an explicit `n/a (reason)`; never a blank.
+
+| Category | Threat considered | Boundary / component | Mitigation / control | Status |
+|---|---|---|---|---|
+| Spoofing — is the caller who it claims? | | | | ▢ |
+| Tampering — can data/code be altered in flight or at rest? | | | | ▢ |
+| Repudiation — can an action be denied for lack of a trail? | | | | ▢ |
+| Information disclosure — can data leak across a boundary? | | | | ▢ |
+| Denial of service — can the surface be exhausted? | | | | ▢ |
+| Elevation of privilege — can a caller gain authority it was not granted? | | | | ▢ |
+
+## 3. Findings → the risk register
+
+A threat that survives analysis lands in the audit **risk register** with its severity
+(low/medium/high/critical), affected component, realistic impact, and a concrete mitigation — the
+same record shape the audit phase emits. A confirmed, reproducible defect additionally becomes a
+[bug-ledger](../bugs/README.md) record; a vulnerability needing coordinated disclosure becomes a
+**draft** advisory the human publishes.

@@ -1,0 +1,233 @@
+# EADOS delivery state machine — reference instance.
+# Knowledge as data: the workflow checker (M2) reads this; nothing here is hardcoded in a tool.
+# Schema: ./_schema.md. Design: ../../../docs/rfc/0001-eados-delivery-os.md.
+version: 1
+
+# The phases, in canonical order. `role` is the owner from ../authority/authority.yaml.
+# `role` AUTHORS the phase's artifact. `state_writer` RECORDS the phase's outcome — the
+# delivery_state refs + transition checkpoint in the manifest, and the run record under
+# learning/runs/ (#250's uniform audit trail). They are the same role for the phases the architect
+# already owns, and deliberately different for design / plan / audit (#346, ADR-0025).
+#
+# The split is not bureaucracy: authority.yaml grants `orchestrator/project.yaml` and
+# `.eados-core/**` to the architect alone, so a procedure that told the tech-lead to write the
+# manifest was instructing an authority violation its own gate catches. Naming the writer in DATA
+# turns behaviour that was folklore — an unstated role switch, or splitting a phase across two PRs
+# — into something the tools can state and check.
+states:
+  - id: init
+    role: enterprise-architect
+    state_writer: enterprise-architect
+    produces: [manifest]
+  - id: design
+    role: tech-lead
+    state_writer: enterprise-architect
+    produces: [rfc]
+  - id: plan
+    role: producer
+    state_writer: enterprise-architect
+    produces: [roadmap]
+  - id: scaffold
+    role: enterprise-architect
+    state_writer: enterprise-architect
+    produces: [repository]
+  - id: audit
+    role: security-auditor
+    state_writer: enterprise-architect
+    produces: [risk-register]
+  - id: migrate
+    role: enterprise-architect
+    state_writer: enterprise-architect
+    produces: [migration-prs]
+
+# Legal transitions. Every move is gated; every move that changes committed direction is
+# human-gated. There is no automatic advance across phases.
+transitions:
+  - from: init
+    to: design
+    entry_gates: [manifest-valid]
+    human_gate: true
+  - from: design
+    to: plan
+    entry_gates: [rfc-approved]
+    human_gate: true
+  - from: plan
+    to: scaffold
+    entry_gates: [roadmap-covers-rfcs]
+    human_gate: true
+  - from: scaffold
+    to: audit
+    entry_gates: [consistency-lint, self-review]
+    human_gate: false
+  - from: audit
+    to: migrate
+    entry_gates: [risk-register-present, traceability-lint]   # the audit procedure's step 1 is
+    human_gate: true                                          # now an entry gate too (#250)
+  # design is resumable: a new RFC can re-open planning without restarting the project.
+  - from: plan
+    to: design
+    entry_gates: [manifest-valid]
+    human_gate: false
+  # Brownfield adoption route (#247, ADR-0021): an ADOPTED repo — manifest written by
+  # /eados adopt with an `adoption:` block — may enter audit or migrate directly from init,
+  # gated on the recorded adoption (adoption-recorded is `skipped` for greenfield manifests —
+  # the edges are listed but NOT READY, never takeable). Note: domain-overlay gates whose
+  # required_for includes audit attach to init->audit too (apply_overlay) — intended: an
+  # adopted web/game/mobile repo entering audit meets the same domain bar as a generated one.
+  - from: init
+    to: audit
+    entry_gates: [manifest-valid, adoption-recorded]
+    human_gate: true
+  - from: init
+    to: migrate
+    entry_gates: [manifest-valid, adoption-recorded]
+    human_gate: true
+
+# The gate registry. lint/test/security/build/human/manual share one shape, so the checker
+# treats them uniformly. `wired: in-process` marks the gates `eados.py` evaluates via its
+# GATE_EVALUATORS; everything else is `wired: external` — run by the agent following the phase
+# procedure, by CI, or confirmed by a human. Both claims are lint-enforced (`gate-executability`,
+# #164): every `python <script> --flag` command must name a real script whose source knows the
+# flag, and the in-process set must match eados.py exactly — so this data can no longer drift.
+gates:
+  - id: manifest-valid
+    kind: lint
+    runs: "python .eados-core/tools/render.py <manifest> --check"
+    wired: in-process
+    blocking: true
+    required_for: [design, scaffold]
+  - id: rfc-approved
+    kind: lint
+    runs: "python .eados-core/tools/rfc_check.py <rfc>"   # verifies the tech-lead approval record
+    wired: in-process
+    blocking: true
+    required_for: [plan]
+  - id: roadmap-covers-rfcs
+    kind: lint
+    runs: "python .eados-core/tools/traceability.py <roadmap> <rfc-ids>"   # every RFC -> a milestone
+    wired: in-process
+    blocking: true
+    required_for: [scaffold]
+  - id: consistency-lint
+    kind: lint
+    runs: "python tools/consistency_lint.py"   # the GENERATED repo's copy (shipped via templates/)
+    wired: external
+    blocking: true
+    required_for: [audit]
+  - id: self-review
+    kind: lint
+    runs: "python .eados-core/tools/self_review.py <repo>"
+    wired: external
+    blocking: true
+    required_for: [audit]
+  - id: risk-register-present
+    kind: security
+    runs: "manual:security-auditor produced a risk register"
+    wired: external
+    blocking: true
+    required_for: [migrate]
+  # Adoption gate (#247, ADR-0021): the manifest records a valid `adoption:` block (goals from
+  # the closed menu + gap_map_ref + provenance) — written by /eados adopt, validated in-process
+  # by eados.py (`skipped` when the block is absent: a greenfield project is not applicable;
+  # FAIL when present-but-malformed). Deliberately NOT external/manual: a manual mark always
+  # satisfies the checkpoint validator, which would make this gate decorative (ADR-0021 §4).
+  - id: adoption-recorded
+    kind: lint
+    runs: "python .eados-core/tools/eados.py init <manifest>"
+    wired: in-process
+    blocking: true
+    required_for: [audit, migrate]
+  # Cross-cutting CI gate that is ALSO, since #250, an entry gate of audit -> migrate (the audit
+  # procedure's step 1, now enforced at the transition). Registered here as the single source of
+  # gate ids; referenced by git.yaml's `traceability.gate` and validated by eados_lint's
+  # cross-spec gate (roadmap 6.8). Wired in-process since #250 (the documented gate finally has an
+  # evaluator): eados.py traces the graph when given --links; withheld links -> needs-input
+  # (fail-closed under --strict, #200).
+  - id: traceability-lint
+    kind: lint
+    runs: "python .eados-core/tools/traceability.py <roadmap> <rfc-ids> --links <links>"
+    wired: in-process
+    blocking: true
+    required_for: [migrate]
+  # Git-policy gate (#250): branch naming, Conventional-Commit shape, one-PR-at-a-time — the
+  # os/git/git.yaml policy evaluated deterministically by git_check.py (PR *metadata* stays
+  # pr_metadata_check.py's job). Cross-cutting like traceability-lint (required_for: []): the
+  # agent runs it pre-PR (self_check front-runs the same policy as a checklist; this is the
+  # evaluator), CI may gate on it, `--advisory` reports without failing. `wired: external`
+  # because it reads git/gh state, not the manifest — its owner is the acting agent + CI.
+  - id: git-policy
+    kind: lint
+    runs: "python .eados-core/tools/git_check.py"
+    wired: external
+    blocking: true
+    required_for: []
+  # Inbound-contribution review gate (M8): advisory + cross-cutting — it runs on a PR via
+  # `/eados review` (not a phase precondition), drafting a recommended disposition; the human
+  # disposes, so `blocking: false`. Referenced by git.yaml's `pr.review_gate`; cross-spec-validated.
+  - id: contribution-review
+    kind: lint
+    runs: "python .eados-core/tools/pr_review.py --pr <PR#>"
+    wired: external
+    blocking: false
+    required_for: []
+  # Domain-overlay gates (#165): the registry entries for the ids domain_overlays adds — a bare
+  # overlay id used to have no kind/runs/blocking at all (cross-spec now rejects that). kind:
+  # manual until real tooling exists, and `runs` is honest about it; `required_for` is where
+  # apply_overlay attaches each gate (the transition INTO that state gains it for the domain).
+  - id: accessibility-review
+    kind: manual
+    runs: "manual:WCAG conformance review of the rendered UI"
+    wired: external
+    blocking: true
+    required_for: [audit]
+  - id: web-vitals-budget
+    kind: manual
+    runs: "manual:Core Web Vitals budget verified against a production build"
+    wired: external
+    blocking: true
+    required_for: [audit]
+  - id: hardware-budget
+    kind: manual
+    runs: "manual:RAM / GPU / framerate budget verified on target hardware"
+    wired: external
+    blocking: true
+    required_for: [audit]
+  - id: store-compliance
+    kind: manual
+    runs: "manual:App Store / Play Store compliance review"
+    wired: external
+    blocking: true
+    required_for: [audit]
+  # Numeric NFR-budget gate (#249): every HARD nfr_axis of the manifest's domain (typed in
+  # domains/<domain>.yaml with unit/direction/scale/metrics) must carry a recorded budget in
+  # spec.nfr_budgets, and a recorded measurement must satisfy it. Evaluated in-process by
+  # eados.py — `skipped` when the domain declares no hard axes (the software baseline), AND for
+  # a greenfield manifest still at `init` (budgets arrive with the Phase-5 interview; without an
+  # adoption record the audit edges are not takeable anyway — eados.py init stays green, the
+  # adoption-recorded precedent). The MANUAL review gates above stay (a human verifies on real
+  # hardware / a real build); this gate is the mechanical floor beneath them: the number must
+  # exist and not be violated on record. Attached per-domain via domain_overlays.*.add_gates —
+  # which, since #247, also places it on init->audit: an ADOPTED repo of that domain is held to
+  # the same bar (ADR-0021), and its budgets are elicited at adoption time.
+  - id: nfr-budgets
+    kind: test
+    runs: "python .eados-core/tools/eados.py scaffold <manifest>"
+    wired: in-process
+    blocking: true
+    required_for: [audit]
+
+# Per-domain adaptations. Absent keys inherit the base machine. These encode the delivery
+# guide's domain specifics (e.g. a game's asset pipeline, a mobile store-compliance gate).
+# Applied at runtime by phase_runner.apply_overlay (#165): insert_states join the state set as
+# human-owner states; each add_gates id joins the entry_gates of every transition into the
+# state(s) its registry entry (above) names in required_for. Every add_gates id MUST have a
+# registry entry — cross-spec-consistency fails a bare id.
+domain_overlays:
+  software: {}                               # no hard axes -> no nfr-budgets gate either
+  web:
+    add_gates: [accessibility-review, web-vitals-budget, nfr-budgets]   # WCAG + CWV reviews + the numeric floor (#249)
+  game:
+    insert_states: [asset-pipeline-review]   # Art / Animation / Sound cross-discipline deps
+    add_gates: [hardware-budget, nfr-budgets]   # hardware review + the numeric floor (#249)
+  mobile:
+    add_gates: [store-compliance, nfr-budgets]  # store review + the numeric floor (#249)

@@ -1,0 +1,8 @@
+# CI-only, pinned + hashed. PyYAML is the real-parser used by the emitted-YAML gate
+# (profile_ci_lint.py) and the loader-fidelity differential (tests/test_loader.py). It is
+# NOT a runtime dependency of the renderer — the rendering path stays standard-library-only.
+# Install with:  pip install --require-hashes -r .eados-core/tools/requirements-ci.txt
+# Dependabot (pip ecosystem, see .github/dependabot.yml) proposes version bumps.
+pyyaml==6.0.3 \
+    --hash=sha256:ba1cc08a7ccde2d2ec775841541641e4548226580ab850948cbfda66a1befcdc \
+    --hash=sha256:d76623373421df22fb4cf8817020cbb7ef15c725b9d5e45f17e189bfc384190f

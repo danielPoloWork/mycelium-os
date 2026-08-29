@@ -1,0 +1,69 @@
+# pascal.yaml — Pascal (Free Pascal) legacy profile. Better-tooled than COBOL: fpc has a
+# unit-test framework, a formatter (ptop), coverage, docs (pasdoc), and a package manager (fppkg).
+
+lang:             pascal
+display_name:     "Pascal (Free Pascal)"
+default_standard: "Free Pascal 3.2 (ObjFPC mode)"
+src_ext:          pas
+
+namespace_pattern: "{group_dotted}.{project_slug} dotted unit name (e.g. it.d4np.memorypool)"
+import_idiom:      "uses {group_dotted}.{project_slug};"
+
+toolchain:
+  build_tool:      "Free Pascal (fpc) / lazbuild + fpmake"
+  pkg_manager:     "fppkg"
+  test_framework:  "FPCUnit"
+  formatter:       "ptop (or jcf)"
+  linter:          "fpc -vw -Sew (warnings as errors)"
+  sanitizers:      "fpc -gh (heaptrc leak check) + Valgrind"
+  coverage_tool:   "fpc -pc / lcov"
+  doc_tool:        "pasdoc"
+  version_file:    "version.inc"
+  version_const_hint: "const Version = 'X.Y.Z';"
+  package_ecosystem: ""
+
+commands:
+  build:        "fpc -Mobjfpc -O2 -Fusrc src/main/pascal/<group>/<project>/main.pas"
+  test:         "fpc -Mobjfpc testrunner.pas && ./testrunner --all"
+  format_check: "ptop -c ptop.cfg src/main check"
+  lint:         "fpc -vw -Sew -Mobjfpc src/main/pascal/<group>/<project>/*.pas"
+  bench:        ""
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: fpmake.pp
+
+config_files:
+  - fpmake.pp
+  - ptop.cfg
+
+ci:
+  tier1_platforms: "Linux x86_64, Windows x86_64 (FPC 3.2)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: fpc-3.2, preset: default }
+    - { os: windows-2022, toolchain: fpc-3.2, preset: default }
+  setup_steps: |
+    - name: Install Free Pascal
+      shell: bash
+      run: |
+        if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get update && sudo apt-get install -y fpc; fi
+  extra_jobs: |
+    build-test:
+      name: build + fpcunit
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - run: sudo apt-get update && sudo apt-get install -y fpc
+        - run: fpc -Mobjfpc testrunner.pas && ./testrunner --all
+  race_job: ""
+
+supports:
+  threading_sanitizer: false
+  bench: false
+  abi_stability: true                      # Pascal units expose stable interfaces
+notes: |
+  Free Pascal in ObjFPC mode (Delphi-compat available). heaptrc (-gh) gives leak detection;
+  pasdoc generates API docs; fppkg manages packages (no Dependabot ecosystem). Lighter tooling
+  than modern languages but build/test/format/coverage/docs all exist.

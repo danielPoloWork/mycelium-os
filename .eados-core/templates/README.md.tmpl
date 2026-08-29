@@ -1,0 +1,55 @@
+# {{PROJECT_NAME}}
+
+> {{PROJECT_TAGLINE}}
+
+![Status](https://img.shields.io/badge/Status-v{{START_VERSION}}-blue)
+
+{{#IF_SERIES}}Part of the **{{PROJECT_SERIES}}** series. {{/IF_SERIES}}A
+{{PROJECT_KIND}} written in **{{LANG_NAME}}**, built and governed to an enterprise quality
+bar: full CI matrix, static analysis, sanitizers, documented design decisions, and SemVer
+releases.
+
+## What it is
+
+{{SPEC_OBJECTIVE}}
+
+The frozen specification is in
+[`docs/specs/01_spec_{{PROJECT_SLUG}}.md`](docs/specs/01_spec_{{PROJECT_SLUG}}.md).
+
+## Build, test, run
+
+```bash
+{{CMD_BUILD}}
+{{CMD_TEST}}
+```
+
+- **Toolchain:** {{BUILD_TOOL}}, {{TEST_FRAMEWORK}}, {{FORMATTER}}, {{LINTER}}.
+- **Supported platforms:** {{TIER1_PLATFORMS}}.
+- Consumers import the public surface via: `{{PUBLIC_INCLUDE_HINT}}`.
+
+See [`docs/development/local-build.md`](docs/development/local-build.md) for the full local
+setup.
+
+## How this project is run
+
+| Document | Purpose |
+|---|---|
+| [`AGENTS.md`](AGENTS.md) | How AI agents (and humans) work in this repo — the contract. |
+| [`ROADMAP.md`](ROADMAP.md) | The numbered plan and what is done. |
+| [`docs/adr/`](docs/adr/) | Why it is built the way it is (Architecture Decision Records). |
+| [`docs/patterns/`](docs/patterns/) | Design patterns adopted, rejected, or considered. |
+| [`docs/workflow/`](docs/workflow/) | Git, documentation, release, and maintenance conventions. |
+| [`CHANGELOG.md`](CHANGELOG.md) | User-visible changes per release. |
+| [`SECURITY.md`](SECURITY.md) | How to report a vulnerability. |
+
+## Milestones
+
+| # | Title | Status |
+|---|---|---|
+| 1 | Project bootstrap & CI | ⏳ in progress |
+{{#EACH_MILESTONE}}| {{number}} | {{title}} | ⏳ planned |
+{{/EACH_MILESTONE}}
+
+## License
+
+{{LICENSE_ID}} © {{YEAR}} {{AUTHOR}}. See [`LICENSE`](LICENSE).

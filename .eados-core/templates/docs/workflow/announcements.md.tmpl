@@ -1,0 +1,51 @@
+# Release & News Announcements
+
+How `{{PROJECT_NAME}}` announces releases and notable news on external channels. This is a
+**human-published** step by design: like opening a PR or publishing a GitHub Release, the
+agent prepares the draft and a human presses send. Nothing here bypasses the
+[`AGENTS.md`](../../AGENTS.md) §6.1 / §11 agent-vs-human boundary.
+
+## Channels
+
+| Channel | Handle / target | Mode |
+|---|---|---|
+{{#EACH_ANNOUNCE_CHANNEL}}| {{name}} | `{{handle}}` | `{{mode}}` |
+{{/EACH_ANNOUNCE_CHANNEL}}
+
+`mode` is `draft` (agent writes a draft the maintainer posts) or `manual` (maintainer writes
+it entirely). No channel is `auto` unless an explicit, reviewed automation exists with the
+credentials scoped to it.
+
+## When to announce
+
+- **Every release** that closes a milestone or ships a user-visible change (a `MINOR`/`MAJOR`,
+  or a notable `PATCH` such as a security fix).
+- **Notable news** between releases only when it matters to users (a major roadmap commitment,
+  a deprecation notice). Routine internal work is not announced.
+
+## What an announcement contains
+
+1. One-line headline: what changed and why a user cares.
+2. The version and a link to the GitHub Release / `CHANGELOG.md` entry.
+3. 2–4 highlights (features, fixes, breaking changes) in plain language.
+4. A call to action (upgrade, read the docs, give feedback) and the canonical repo link.
+
+**Language.** The on-disk draft is **English** (the §2 rule). A human may localize the wording
+per channel/audience when posting; that localization is not committed to the repo.
+
+## Procedure (per release)
+
+1. After the release PR is merged and the GitHub Release is published, the agent drafts the
+   announcement text per channel under the release notes (or a scratch file the maintainer
+   copies from) — **drafts only**.
+2. The maintainer reviews, localizes if desired, and posts to each `draft`/`manual` channel.
+3. Record nothing secret in the repo (no tokens/webhook URLs in committed files — keep those
+   in GitHub Actions secrets or the maintainer's password manager).
+
+## Boundary
+
+| Action | Who |
+|---|---|
+| Draft the announcement text (English, per channel) | Agent |
+| Localize, schedule, and **post** to each channel | **Human** |
+| Hold the channel credentials / webhooks | **Human** (or scoped CI secret) |

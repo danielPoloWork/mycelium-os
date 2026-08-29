@@ -1,0 +1,75 @@
+# php.yaml — PHP toolchain profile. PSR-4/PSR-12, Composer ecosystem.
+
+lang:             php
+display_name:     "PHP"
+default_standard: "PHP 8.3"
+src_ext:          php
+
+namespace_pattern: "{group_dotted}\\{project_slug} in StudlyCase, PSR-4 (e.g. It\\D4np\\MemoryPool)"
+import_idiom:      "use {group_dotted}\\{project_slug}\\X;"
+
+toolchain:
+  build_tool:      "Composer (PSR-4 autoload)"
+  pkg_manager:     "Composer (composer.lock committed)"
+  test_framework:  "PHPUnit (Pest optional)"
+  formatter:       "PHP-CS-Fixer (PSR-12)"
+  linter:          "PHPStan (max level) + Psalm"
+  sanitizers:      "PHPStan/Psalm (type soundness); Xdebug/PCOV for coverage"
+  coverage_tool:   "PHPUnit + Xdebug/PCOV"
+  doc_tool:        "phpDocumentor"
+  version_file:    "Version.php"
+  version_const_hint: "public const VERSION = 'X.Y.Z'"
+  package_ecosystem: "composer"
+
+commands:
+  build:        "composer install --optimize-autoloader"
+  test:         "vendor/bin/phpunit"
+  format_check: "vendor/bin/php-cs-fixer fix --dry-run --diff"
+  lint:         "vendor/bin/phpstan analyse"
+  bench:        "vendor/bin/phpbench run --report=aggregate"
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: composer.json
+
+config_files:
+  - composer.json
+  - .php-cs-fixer.dist.php
+  - phpstan.neon
+  - phpunit.xml.dist
+
+ci:
+  tier1_platforms: "Linux (PHP 8.2, 8.3)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: php-8.2, preset: default }
+    - { os: ubuntu-24.04, toolchain: php-8.3, preset: default }
+  setup_steps: |
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.toolchain == 'php-8.2' && '8.2' || '8.3' }}
+        coverage: pcov
+    - name: Install dependencies
+      run: composer install --no-interaction --prefer-dist
+  extra_jobs: |
+    quality:
+      name: quality / cs-fixer + phpstan
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: shivammathur/setup-php@v2
+          with: { php-version: '8.3' }
+        - run: composer install --no-interaction --prefer-dist
+        - run: vendor/bin/php-cs-fixer fix --dry-run --diff
+        - run: vendor/bin/phpstan analyse
+  race_job: ""                             # request-isolated; no data-race detector
+
+supports:
+  threading_sanitizer: false
+  bench: true                              # phpbench
+  abi_stability: false
+notes: |
+  PSR-4 autoloading + PSR-12 style; PHPStan (max) and Psalm for soundness. Library scope keeps
+  runtime deps minimal. Dependabot ecosystem: composer.

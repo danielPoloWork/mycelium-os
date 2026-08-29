@@ -1,0 +1,276 @@
+# project.yaml — the single source of truth for the Mycelium OS delivery (EADOS manifest).
+#
+# Filled at /eados init (interview Phase 0, 2026-08-29) and /eados design (specification
+# import). The imported specification package `.draft-specs/` (docs 00–08) remains the
+# reference blueprint; decision ids (D-001…D-026) cited below point into its decision log
+# (.draft-specs/00-verdict-and-decisions.md §3). Owner-confirmed deviations from disk
+# state: LICENSE MIT→Apache-2.0 (D-018), default branch master→main — both are
+# milestone-1 items, neither is applied silently.
+
+schema_version: 1
+# manifest_rev is an OPTIMISTIC-CONCURRENCY counter (#214): bumped on every delivery_state
+# write-back; propose with --expect-rev <N> first.
+manifest_rev: 2
+domain: software             # asked — Q0.4 (developer tool / infrastructure)
+
+# generated_by: deliberately absent — the vendored factory bundle carries no version
+# marker (no CHANGELOG under .eados-core/); record it when the factory version is known.
+# routing.host: deliberately unpinned — this repo carries adapters for multiple hosts
+# (CLAUDE.md, GEMINI.md, AGENTS.md/Codex); per-session marker detection is more truthful
+# than a pin.
+
+delivery_state:
+  phase: plan
+  checkpoints:
+    - { from: init, to: design, gates: ['manifest-valid'], at: 2026-08-29, confirmed_by: danielPoloWork, gate_results: { manifest-valid: OK } }
+    - { from: design, to: plan, gates: ['rfc-approved'], at: 2026-08-29, confirmed_by: danielPoloWork, gate_results: { rfc-approved: OK } }
+  refs: { rfcs: ['RFC-0001'], milestones: [], prs: [], releases: [] }
+
+identity:
+  project_name:    "mycelium-os"        # asked — D-024 (engine repo name)
+  project_slug:    "mycelium"           # asked — D-024 (import package / binary)
+  project_title:   "Mycelium OS"
+  project_tagline: "The knowledge compiler for AI agents"   # asked — Q0.1, short form; the
+                                        # "compiler + serving layer" phrasing is reserved for
+                                        # README / spec objective (owner, 2026-08-29)
+  project_series:  "Mycelium LABS"      # imported — D-024 (org); echoed and confirmed at init
+  project_kind:    cli                  # asked — Q0.2 (CLI with an MCP `serve` subcommand)
+
+ownership:
+  owner:           "danielPoloWork"     # git remote github.com/danielPoloWork/mycelium-os
+  maintainer:      "Daniel Polo"
+  author:          "Daniel Polo"        # asked 2026-08-29 (copyright holder)
+  year:            "2026"
+  license_id:      Apache-2.0           # asked 2026-08-29 — D-018 holds over the on-disk MIT
+                                        # file; replacement is milestone item 1.x
+  default_branch:  main                 # asked 2026-08-29 — repo currently on `master`;
+                                        # rename is an owner operation, milestone item 1.x
+  assignee:        "danielPoloWork"
+
+language:
+  lang:            python               # imported — D-003
+  lang_name:       "Python 3.12+"       # imported — D-003 (single language v1)
+  lang_standard:   "Python 3.12+ (CPython); Rust only for profiled hotspots post-1.0 (D-003)"
+  secondary_lang:  ""                   # none — SQLite is a store component (ADR-0004 frame),
+                                        # not an interop language
+  group_path:      "mycelium"           # imported — D-024: flat top-level package `mycelium`;
+  group_dotted:    "mycelium"           # deliberate deviation from the reverse-domain
+  namespace:       "mycelium"           # convention ("one name everywhere; shipping two
+                                        # names is forbidden") — scaffold, if run, must honor
+                                        # the flat layout (src/mycelium), not {group}.{slug}
+  src_ext:         "py"
+  comment_lang:    "en"                 # defaulted — English-only artifacts
+  public_include_hint: "from mycelium.sdk.types import KirDocument"
+
+toolchain:                   # defaulted — profiles/python.yaml (uv, pytest+hypothesis,
+  build_tool:      ""        # ruff, mypy --strict, coverage.py). Build backend
+  pkg_manager:     ""        # (hatchling vs uv_build) is a plan-phase detail; the spec
+  test_framework:  ""        # fixes the toolchain surface (uv workspace, ruff, mypy
+  formatter:       ""        # strict, pytest — .draft-specs/06 §2 item 1) which the
+  linter:          ""        # profile already matches.
+  sanitizers:      ""
+  coverage_tool:   ""
+  coverage_target: 80        # defaulted — EADOS default gate
+  doc_tool:        ""
+  version_file:    ""
+  version_const_hint: ""
+  package_ecosystem: ""
+  commands:
+    build:        ""
+    test:         ""
+    format_check: ""
+    lint:         ""
+    bench:        ""
+
+ci:                          # imported — D-003 raises the profile's 3.10 floor to 3.12+
+  tier1_platforms: "Linux / Windows / macOS on CPython 3.12+"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: "python-3.12", preset: test }
+    - { os: ubuntu-24.04, toolchain: "python-3.13", preset: test }
+    - { os: windows-2022, toolchain: "python-3.12", preset: test }
+    - { os: macos-14,     toolchain: "python-3.12", preset: test }
+  setup_steps: ""            # defaulted — profile
+  extra_jobs:   ""           # defaulted — profile (ruff + mypy --strict lint job)
+  build_manifest: ""         # defaulted — profile (pyproject.toml bootstrap guard, #313)
+
+governance:
+  posture: standard          # defaulted Q0.5, echoed and owner-confirmed at init —
+                             # OSS small-team v1; the enterprise profile is re-sequenced
+                             # to spec Phase 5 (D-019)
+  scopes: [api, cli, mcp, compiler, retrieval, ingest, eval, build, tests, docs, ci]
+                             # derived — architecture components (spec 02) + EADOS defaults
+  version_start: "pre-1.0 milestone-driven"    # defaulted — matches SemVer pre-1.0 (06 §4)
+  start_version: "0.0.0"                        # defaulted
+  house_rules: ""
+  capabilities:
+    bench:      true         # derived — numeric latency budgets are hard NFRs (04 §1)
+    threading:  false        # single-writer lock + WAL readers; no threading surface (D-015)
+    public_api: true         # derived — five stable contracts + 4 MCP tools (02 §10)
+    i18n:       false        # defaulted — English canonical
+    packaging:  true         # derived — PyPI distribution `mycelium-os` (D-024)
+    service:    false        # no daemon/HTTP in v1; MCP is stdio via the CLI (D-011)
+    announce:   false        # defaulted — community strategy exists (06 §4) but channels
+                             # are undecided; enable via a later manifest edit
+    layered:    false
+    api_spec:   false        # no OpenAPI/IDL in v1 — MCP tool contracts live in spec 05 §3
+                             # and freeze at 1.0 (D-011)
+
+i18n:
+  default_lang: "en"
+  targets: []
+
+announce:
+  channels: []
+
+spec:                        # provenance: import (Q5.0) — the validated PRD/SRS is the
+                             # specification package .draft-specs/ (docs 00–08), reviewed
+                             # and accepted by the owner per its own status semantics;
+                             # amendment record 2026-07-31 in doc 00 §4.
+  provenance:       import
+  objective: |
+    Compile a project's knowledge — authored Markdown plus ingested sources (PDF, DOCX,
+    HTML, wikis) — into a deterministic, versioned, queryable substrate, and serve it to
+    AI agents over CLI and MCP with citations they can trust. Mycelium OS is a knowledge
+    compiler and serving layer: not an agent runtime, not a RAG framework, not a chat
+    product (D-001). v1 targets repo-scale, local-first, single-tenant corpora of
+    10^2–10^5 documents (D-002).
+  functional_reqs:
+    - "FR-1 Compiler: content-addressed incremental stage DAG (discover→acquire→parse→normalize→chunk→extract→embed→index→manifest) with pure typed stages, build keys, and immutable snapshot manifests (D-008; spec 02 §4)"
+    - "FR-2 Serving: read-only retrieval over exactly two public surfaces — the mycelium CLI and a stdio MCP server exposing mycelium_search / mycelium_fetch / mycelium_neighbors / mycelium_explain; every response carries snapshot id + citations (D-011; spec 05)"
+    - "FR-3 Retrieval: hybrid BM25 + vector with RRF fusion, transparent rule-based planner with explain output; graph expansion Phase 3 behind an ablation gate (D-009; spec 04)"
+    - "FR-4 Ingestion, dual-lane: deterministic evidence lane (CAS custody → KIR → verbatim projection + fidelity report) always; LLM synthesis lane authoring cited candidate docs when a provider is configured (D-020; spec 02 §5)"
+    - "FR-5 Verification workflow: folder-encoded status knowledge/{verified,candidate,evidence}; mycelium verify computes grounding (cites coverage + sampled entailment, gate G7); promotion/demotion is a human/Git action (D-021)"
+    - "FR-6 Authored format: Mycelium Markdown Profile v1 (Obsidian-flavored — wikilinks, callouts, frontmatter contract); wikilinks compile to typed edges; knowledge/ doubles as an Obsidian vault (D-022; spec 03 §3.1)"
+    - "FR-7 Plugins: in-process typed Protocols (Parser, Chunker, Embedder, Extractor, Synthesizer, Reranker) via entry points, plus four generic extension mechanisms — pipeline stages, lifecycle hooks, CLI subcommands, opt-in MCP tools (D-012/D-023; spec 05 §4)"
+    - "FR-8 Evaluation harness: mycelium eval with frozen dev/release sets, per-slice metrics, CI gates G1–G7, injection-resistance corpus, and the agent-task grep baseline (D-010; spec 04 §7)"
+    - "FR-9 Interchange: mycelium export writes JSONL bundles (documents/chunks/symbols/edges + manifest); JSONL is interchange, never the query engine (D-006; spec 03 §9)"
+    - "FR-10 Snapshot lifecycle: atomic CURRENT pointer publication, rollback by repointing, single-writer advisory lock, WAL concurrent readers, GC of unreferenced blobs (D-015; spec 02 §7)"
+  nonfunctional_reqs:
+    - "NFR-1 Determinism: identical (sources, config, toolchain) ⇒ byte-identical artifacts for deterministic stages; CI golden rebuild gate G6 (D-008)"
+    - "NFR-2 Search latency: mycelium_search end-to-end p95 ≤ 150 ms (local profile, 10^5 chunks, warm store; spec 04 §1)"
+    - "NFR-3 Incremental build: single-document edit rebuilds < 2 s p95 with output equal to a clean rebuild (spec 06 Phase-1 gate)"
+    - "NFR-4 Time-to-first-value: install → agent answering with citations over MCP in < 10 min (spec 06 Phase-0 gate)"
+    - "NFR-5 Citation integrity: citation coverage = 1.00 every release (gate G1); abstention false-answer rate ≤ 5 % on the unanswerable slice (gate G4)"
+    - "NFR-6 Security: all source content untrusted with tested injection resistance; read-only MCP by default; secret scan at ingestion; zero network calls unless configured; no telemetry (D-017; spec 02 §8)"
+    - "NFR-7 Crash safety: an interrupted build never corrupts CURRENT; readers never observe a torn state (D-015)"
+    - "NFR-8 Compatibility: SemVer; the five stable contracts (identity, KIR, snapshot manifest, MCP tools, plugin protocols) freeze at 1.0 with CI compatibility tests (spec 02 §10)"
+    - "NFR-9 Test coverage ≥ 80 % lines (EADOS gate); mypy --strict clean"
+  architecture: |
+    Single Python package, local-first (D-002/D-003). Three-tier authority model (D-004):
+    tier 1 evidence (content-addressed original bytes + KIR under .mycelium/cas), tier 2
+    authored truth (knowledge/**.md in Git, folder-encoded verification status), tier 3
+    derived store (.mycelium/: SQLite WAL + FTS5 + sqlite-vec, snapshot manifests,
+    journal — gitignored, disposable; the compiler is a pure function of tiers 1–2 +
+    config). Serving is one core query library wrapped by two thin shells (CLI, stdio
+    MCP). Ingestion is dual-lane (deterministic evidence + gated LLM synthesis). Plugins
+    are in-process typed Protocols resolved via entry points, pinned by config, recorded
+    in build keys and manifests. Full reference: .draft-specs/02-architecture.md.
+  architecture_style: "Hexagonal"   # inference: ports & adapters — typed plugin Protocols
+                                    # at the boundary, parsers/embedders/stores replaceable
+                                    # behind interfaces, two thin shells over one core
+  patterns:
+    - { name: "Pipeline",                why: "the compiler is a typed stage DAG with pure stages and declared inputs/outputs (D-008)" }
+    - { name: "Content-Addressed Cache", why: "build keys — SHA-256 over (stage, impl version, input digests, config, schema) — make rebuilds incremental and reproducible (D-008)" }
+    - { name: "Snapshot",                why: "immutable manifests + atomic CURRENT pointer swap give torn-free reads and O(1) rollback (D-015)" }
+    - { name: "Plugin (typed Protocols + entry points)", why: "Parser/Chunker/Embedder/Extractor/Synthesizer/Reranker plus four generic extension mechanisms; pinned resolution, never 'best available' (D-012/D-023)" }
+    - { name: "Adapter",                 why: "parsers wrap the existing ecosystem (docling, markdown-it, pandoc) behind KIR — Mycelium OS owns the representation and its guarantees, not the parsers (D-007)" }
+  pattern_discipline: advisory
+  layers: []
+  public_api:
+    - "MCP tools (stdio, read-only): mycelium_search, mycelium_fetch, mycelium_neighbors, mycelium_explain (spec 05 §3)"
+    - "CLI: mycelium init|build|ingest|verify|promote|demote|search|show|neighbors|eval|export|snapshots|rollback|gc|doctor|serve (spec 05 §1)"
+    - "mycelium.sdk plugin Protocols + PipelineStage/lifecycle-hook/CLI/MCP extension points (spec 05 §4)"
+    - "mycelium:// citation URI scheme + identity rules (spec 03 §2)"
+    - "KIR schema mycelium/kir/v0 and snapshot manifest schema mycelium/manifest/v0 (spec 03 §§4,7)"
+    - "mycelium.toml configuration contract (spec 05 §2)"
+  verification: |
+    Layered verification (spec 04): (1) static — mypy --strict and ruff as CI gates;
+    (2) property tests via pytest + hypothesis — chunk no-content-loss invariant,
+    identity/hashing laws, crash-safety; (3) determinism golden rebuild test (gate G6);
+    (4) the evaluation harness (mycelium eval --gate) on frozen dev/release sets with
+    per-slice metrics enforcing gates G1–G7, including the injection-resistance corpus
+    and the agent-task suite against the grep baseline (D-010) — a failed gate fails CI;
+    (5) coverage.py ≥ 80 % lines.
+  milestone1_items:
+    - "1.a Replace LICENSE MIT → Apache-2.0 (D-018; owner-confirmed 2026-08-29)"
+    - "1.b Rename default branch master → main (owner operation on GitHub; owner-confirmed 2026-08-29)"
+    - "1.c Add SECURITY.md (private disclosure channel), CONTRIBUTING.md (DCO), CODE_OF_CONDUCT.md (spec 06 §4)"
+  milestones:
+    - number: 2
+      title: "Walking skeleton (spec Phase 0)"
+      goal: "Mycelium OS builds and serves its own repository; TTFV < 10 min end-to-end via Claude Code; byte-identical rebuild in CI; mycelium eval runs and reports"
+      items:
+        - "2.1 Repo scaffold: uv workspace, ruff + mypy --strict + pytest, CI matrix Linux/macOS/Windows on CPython 3.12+"
+        - "2.2 mycelium.sdk.types: pydantic records v0 + JSON Schema export (spec 03 §§3–7)"
+        - "2.3 Canonical hashing + ULID + anchor-slug identity library, property-tested (spec 03 §2)"
+        - "2.4 Markdown→KIR adapter (markdown-it) + frontmatter contract + Mycelium Markdown Profile v1 (D-022)"
+        - "2.5 Heading-bounded chunker with the no-content-loss property test"
+        - "2.6 SQLite store: DDL, WAL, field-weighted FTS5, meta table (spec 03 §8)"
+        - "2.7 Build orchestrator v0 (sequential) + snapshot manifest + atomic CURRENT swap + single-writer lock"
+        - "2.8 CLI skeleton (typer): init/build/search/show/doctor with --json"
+        - "2.9 MCP server (stdio): mycelium_search + mycelium_fetch, typed errors, data-not-instructions notice"
+        - "2.10 Determinism golden test wired into CI (gate G6)"
+        - "2.11 Eval harness v0 + first 20 judged cases on Mycelium OS's own docs"
+    - number: 3
+      title: "v0.1 — The compiler (spec Phase 1)"
+      goal: "Incremental single-doc rebuild < 2 s p95 equal to clean output; search p95 < 150 ms on the 10^5-chunk reference corpus; gates G1/G2/G6 green (lexical-only default is a legitimate G2 outcome)"
+      items:
+        - "3.1 Content-addressed incremental DAG + build cache + dirty detection (D-008)"
+        - "3.2 Snapshot list/rollback + GC (mycelium snapshots, rollback, gc)"
+        - "3.3 Local ONNX embedder default (zero keys, offline) + vectors keyed (chunk_digest, model_id) + hybrid RRF (D-013/D-009)"
+        - "3.4 mycelium_neighbors on authored links + mycelium_explain"
+        - "3.5 Watch mode: debounced FS events → incremental builds"
+        - "3.6 mycelium export JSONL interchange bundle (D-006)"
+        - "3.7 Eval slices + CI gates G1–G6; agent-task suite v0 (≥ 20 tasks) vs the grep baseline (D-010)"
+    - number: 4
+      title: "v0.2 — Ingestion (spec Phase 2)"
+      goal: "Zero silent element loss on the fixture corpus; hostile-file suite quarantines without failing the build; an ingestion-heavy corpus joins the eval set"
+      items:
+        - "4.1 Connector/Parser protocols exercised for real: docling adapter (PDF/DOCX/HTML), pandoc fallback (D-007)"
+        - "4.2 CAS custody of originals; KIR v0 hardened on hostile fixtures; opaque-node escape hatch"
+        - "4.3 Evidence-lane projection with provenance frontmatter, fidelity reports, per-document loss budgets"
+        - "4.4 Synthesis lane via the wiki plugin: LLM-authored candidate docs with mandatory wikilink citations (D-020/D-026)"
+        - "4.5 mycelium verify / promote / demote with grounding gate G7 (D-021)"
+        - "4.6 Quarantine path + secret scanning (redact_secrets) (D-017)"
+        - "4.7 Ingestion fixture corpus with element inventories"
+    - number: 5
+      title: "v0.3 — Structure (spec Phase 3)"
+      goal: "Graph expansion earns default-on or stays opt-in (measured either way); chats module passes its acceptance gates with zero core patches; ≥ 200 judged cases across ≥ 3 corpora; ≥ 10 external repos dogfooding"
+      items:
+        - "5.1 Symbol extraction: tree-sitter for code, definition syntax for docs"
+        - "5.2 Wikilink + cross-reference typed edges; mycelium_neighbors full (controlled edge vocabulary, D-014)"
+        - "5.3 Graph expansion behind its ablation gate: ≥ +3 % nDCG@10 on the relationship slice, no overall regression (spec 04 §5)"
+        - "5.4 Entity extraction stage — optional, off by default"
+        - { text: "5.5 First contrib module: chats (spec doc 08) built exclusively on the public D-023 extension points — the end-to-end plugin-API validation before the freeze", signals: [sets-pattern] }
+        - "5.6 Stale-anchor handling proven on a heavily refactored corpus (ANCHOR_GONE semantics)"
+    - number: 6
+      title: "v1.0 — Stable (spec Phase 4)"
+      goal: "All gates G1–G7 green on the frozen release set; ≥ 3 recurring external contributors and ≥ 5 community plugins; zero critical security findings open; 1.0 compatibility promise published"
+      items:
+        - { text: "6.1 Freeze the five stable contracts (identity, KIR, snapshot manifest, MCP tools, plugin protocols) + compatibility test suite", signals: [adr, decision-heavy] }
+        - "6.2 Docs site: tutorial, how-tos, plugin-author guide, plugin cookiecutter"
+        - { text: "6.3 Security review pass: threat-model-derived test suite incl. injection corpus (D-017)", signals: [security] }
+        - "6.4 Public benchmark report with run manifests; agent-task gate quantified"
+        - "6.5 Trademark search + brand decision before the public branding push (product strategy §9)"
+        - "6.6 Contribution ladder: good-first-issues, CODEOWNERS, release automation, signed artifacts + SBOM"
+    - number: 7
+      title: "v2.x — Team & platform (spec Phase 5; separate RFC cycle)"
+      goal: "Each item enters only through its deferred-decision trigger (spec 06 §3) and its own RFC; gpt-specs is the reference blueprint on top of unchanged v1 contracts"
+      items:
+        - "7.1 Remote build cache — team-scale value without a server"
+        - { text: "7.2 Server profile: HTTP API, authn/z, namespaces/ACL with policy pushdown, Postgres catalog + object-store CAS, OpenSearch/Qdrant adapters, out-of-process plugin isolation, OTel", signals: [decision-heavy, security] }
+
+# Interview provenance (#169) — recorded during the interview, one entry per answer key.
+interview:
+  questionnaire_version: 1
+  provenance:
+    domain: asked            # Phase 0 Q0.4 (2026-08-29)
+    identity: asked          # Phase 0 Q0.1–Q0.3 (2026-08-29); series imported from D-024
+    ownership: asked         # license/branch/author asked 2026-08-29; owner/maintainer from git
+    language: imported       # D-003 (Python 3.12+), D-024 (flat `mycelium` namespace)
+    toolchain: defaulted     # profiles/python.yaml defaults, matching spec 06 §2 item 1
+    ci: imported             # D-003 raises the floor to CPython 3.12+
+    governance: defaulted    # posture standard (Q0.5 default, owner-confirmed); scopes/capabilities derived
+    i18n: defaulted
+    announce: defaulted
+    spec: imported           # Q5.0 import — .draft-specs/ package validated in

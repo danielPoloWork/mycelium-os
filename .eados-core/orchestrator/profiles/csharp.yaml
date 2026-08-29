@@ -1,0 +1,71 @@
+# csharp.yaml — C# / .NET toolchain profile. PascalCase namespaces, NuGet ecosystem.
+
+lang:             csharp
+display_name:     "C#"
+default_standard: ".NET 8 (LTS) / C# 12"
+src_ext:          cs
+
+namespace_pattern: "{group_dotted}.{project_slug} in PascalCase (e.g. It.D4np.MemoryPool)"
+import_idiom:      "using {group_dotted}.{project_slug};"
+
+toolchain:
+  build_tool:      "dotnet SDK (MSBuild), Directory.Build.props"
+  pkg_manager:     "NuGet (packages.lock.json committed)"
+  test_framework:  "xUnit (+ FsCheck for property tests)"
+  formatter:       "dotnet format / CSharpier"
+  linter:          "Roslyn analyzers + .editorconfig (warnings as errors)"
+  sanitizers:      "Nullable reference types + Roslyn analyzers (soundness); dotnet-counters (leaks)"
+  coverage_tool:   "coverlet + ReportGenerator"
+  doc_tool:        "DocFX"
+  version_file:    "Version.cs"
+  version_const_hint: "public const string Version = \"X.Y.Z\""
+  package_ecosystem: "nuget"
+
+commands:
+  build:        "dotnet build -c Release"
+  test:         "dotnet test -c Release"
+  format_check: "dotnet format --verify-no-changes"
+  lint:         "dotnet build -warnaserror"
+  bench:        "dotnet run -c Release --project bench"   # BenchmarkDotNet
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: Directory.Build.props
+
+config_files:
+  - .editorconfig
+  - Directory.Build.props
+  - global.json
+
+ci:
+  tier1_platforms: "Linux x64, Windows x64, macOS arm64 (.NET 8)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: dotnet8, preset: release }
+    - { os: windows-2022, toolchain: dotnet8, preset: release }
+    - { os: macos-14,     toolchain: dotnet8, preset: release }
+  setup_steps: |
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v4
+      with: { dotnet-version: '8.0.x' }
+  extra_jobs: |
+    quality:
+      name: quality / format + analyzers + coverage
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: actions/setup-dotnet@v4
+          with: { dotnet-version: '8.0.x' }
+        - run: dotnet format --verify-no-changes
+        - run: dotnet build -warnaserror
+        - run: dotnet test -c Release --collect:"XPlat Code Coverage"
+  race_job: ""                             # .NET has no standard data-race detector
+
+supports:
+  threading_sanitizer: false
+  bench: true                              # BenchmarkDotNet
+  abi_stability: false                     # assemblies; SemVer protects the public API
+notes: |
+  Targets the current .NET LTS. Nullable reference types + Roslyn analyzers stand in for
+  sanitizers; BenchmarkDotNet provides reproducible benchmarks. Dependabot ecosystem: nuget.

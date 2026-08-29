@@ -1,0 +1,22 @@
+# Domain profile — mobile app (iOS / Android). Schema: ./_schema.md.
+# Store-driven: app-size and cold-start are hard budgets; a store-compliance gate; UX design and
+# localization are cross-discipline dependencies.
+domain: mobile
+display_name: "Mobile app (iOS / Android)"
+roles: [product-manager, enterprise-architect, tech-lead, reviewer, security-auditor, producer, release-manager]
+role_labels:
+  product-manager: product-manager
+artifacts:
+  product_spec: PRD
+  design_doc: RFC
+  test_strategy: required
+# Hard axes are TYPED (#249): unit + direction make the budget checkable (the `nfr-budgets`
+# audit-overlay gate); `seed` is the suggested target Q5.3 offers.
+nfr_axes:
+  - { axis: app_size, hard_budget: true, unit: MB, direction: max, seed: 200 }    # store download-size limits
+  - { axis: cold_start, hard_budget: true, unit: s, direction: max, seed: 2 }     # launch-time target
+  - { axis: battery, hard_budget: false }
+  - { axis: offline, hard_budget: false }
+milestone_vocabulary: semver
+cross_discipline_deps: [design, localization]   # UX design + app-store localization
+workflow_overlay: mobile                          # adds the store-compliance gate

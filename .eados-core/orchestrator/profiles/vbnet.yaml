@@ -1,0 +1,70 @@
+# vbnet.yaml — Visual Basic .NET toolchain profile. Shares the .NET toolchain with C#;
+# primarily for legacy / line-of-business maintenance (rarely the greenfield choice).
+
+lang:             vbnet
+display_name:     "Visual Basic .NET"
+default_standard: ".NET 8 (LTS) / VB 16.9"
+src_ext:          vb
+
+namespace_pattern: "{group_dotted}.{project_slug} in PascalCase (e.g. It.D4np.MemoryPool)"
+import_idiom:      "Imports {group_dotted}.{project_slug}"
+
+toolchain:
+  build_tool:      "dotnet SDK (MSBuild), Directory.Build.props"
+  pkg_manager:     "NuGet (packages.lock.json committed)"
+  test_framework:  "xUnit (via dotnet test)"
+  formatter:       "dotnet format"
+  linter:          "Roslyn analyzers + .editorconfig (warnings as errors)"
+  sanitizers:      "Roslyn analyzers (soundness); dotnet-counters (leaks)"
+  coverage_tool:   "coverlet"
+  doc_tool:        "DocFX"
+  version_file:    "Version.vb"
+  version_const_hint: "Public Const Version As String = \"X.Y.Z\""
+  package_ecosystem: "nuget"
+
+commands:
+  build:        "dotnet build -c Release"
+  test:         "dotnet test -c Release"
+  format_check: "dotnet format --verify-no-changes"
+  lint:         "dotnet build -warnaserror"
+  bench:        ""
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: Directory.Build.props
+
+config_files:
+  - .editorconfig
+  - Directory.Build.props
+  - global.json
+
+ci:
+  tier1_platforms: "Linux x64, Windows x64 (.NET 8)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: dotnet8, preset: release }
+    - { os: windows-2022, toolchain: dotnet8, preset: release }
+  setup_steps: |
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v4
+      with: { dotnet-version: '8.0.x' }
+  extra_jobs: |
+    quality:
+      name: quality / format + analyzers
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: actions/setup-dotnet@v4
+          with: { dotnet-version: '8.0.x' }
+        - run: dotnet format --verify-no-changes
+        - run: dotnet build -warnaserror
+  race_job: ""                             # .NET has no standard data-race detector
+
+supports:
+  threading_sanitizer: false
+  bench: false
+  abi_stability: false
+notes: |
+  VB.NET on modern .NET shares the C# toolchain (MSBuild, NuGet, Roslyn). Choose it for legacy
+  or LOB maintenance; greenfield work usually picks C# — the language-fit advisory will say so.
