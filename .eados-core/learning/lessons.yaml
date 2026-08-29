@@ -100,3 +100,10 @@
   context: D-024 fixed a flat top-level import package (`mycelium`), but the normative Maven-style tree rendered `src/main/python/mycelium/mycelium` — a doubled name Python packaging tooling fights — so the scaffold needed a superseding ADR (ADR-0003) plus manual relocation and path fixes across nine generated artifacts.
   rule: Flat-package ecosystems need a first-class layout knob (profile or manifest) so the renderer can emit the language's src-layout directly; when the knob is absent, plan the superseding ADR and the relocation as scaffold-time work, never as hand-edits without a decision record.
   source: "mycelium-os scaffold run 2026-08-29 (maintainer-approved; ADR-0003)"
+
+- id: L-0015
+  date: 2026-08-29
+  scope: global
+  context: The manifest's shared ci.setup_steps block was written for ci.yml's build matrix and the release template injected the same {{CI_SETUP_STEPS}} into a matrix-less job — the `matrix.toolchain` expression resolved correctly there only because an undefined context compares false (BUG-0001 in the generated repo; found by the bootstrap audit, not by any gate).
+  rule: A shared multi-line block injected into more than one template must be valid in EVERY context that receives it — write shared setup blocks matrix-independent, or the renderer must provide per-context variants; an expression that references a context only one recipient defines is latent breakage wearing a green run.
+  source: "mycelium-os bootstrap audit 2026-08-29 (maintainer-approved; BUG-0001, register F1)"
