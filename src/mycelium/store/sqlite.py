@@ -334,6 +334,11 @@ class SqliteStore:
 
     # -- reads -------------------------------------------------------------
 
+    def document_ids(self) -> tuple[str, ...]:
+        """Every document id in the store, in stable (sorted) order."""
+        rows = self._connection.execute("SELECT doc_id FROM documents ORDER BY doc_id").fetchall()
+        return tuple(str(row["doc_id"]) for row in rows)
+
     def get_document(self, doc_id: str) -> Document | None:
         row = self._connection.execute(
             "SELECT * FROM documents WHERE doc_id = ?", (doc_id,)
