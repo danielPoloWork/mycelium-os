@@ -56,6 +56,6 @@ will contain the fix (merged pre-release).
 
 ## References
 
-- Fixing PR: the bootstrap-audit PR (#3)
+- Fixing PR: the bootstrap-audit PR (#4)
 - Register: [`docs/security/audit-2026-08-29-bootstrap.md`](../../../security/audit-2026-08-29-bootstrap.md) F1
 - Related: factory ADR-0009 §3 (profile-injected steps), EADOS lesson L-0015 (drafted)
