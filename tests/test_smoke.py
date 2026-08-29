@@ -6,4 +6,4 @@ import mycelium
 
 
 def test_package_exposes_version() -> None:
-    assert mycelium.__version__ == "0.0.0"
+    assert mycelium.__version__ == "0.1.0"
