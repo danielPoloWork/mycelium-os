@@ -29,7 +29,7 @@ This package does three things the prior artifacts do not:
 
 | # | Document | Contents |
 |---|----------|----------|
-| 0 | [00-verdict-and-decisions.md](00-verdict-and-decisions.md) | Critical review of both inputs; the decision log (D-001…D-028) |
+| 0 | [00-verdict-and-decisions.md](00-verdict-and-decisions.md) | Critical review of both inputs; the decision log (D-001…D-029) |
 | 1 | [01-product-strategy.md](01-product-strategy.md) | Mission, wedge, personas, competition, differentiation, success metrics |
 | 2 | [02-architecture.md](02-architecture.md) | v1 system architecture: authority model, compiler, store, serving, concurrency |
 | 3 | [03-data-model.md](03-data-model.md) | Identity, hashing, record schemas, SQLite layout, export bundles |
