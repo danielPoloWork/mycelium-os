@@ -23,7 +23,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- BUG-0001: the release workflow's `draft-release` job referenced `matrix.toolchain`
+  without a matrix; the interpreter is now pinned literally
+  ([record](docs/bugs/2026/08/BUG-0001-release-workflow-matrix-context.md)).
+
 ### Security
+
+- Bootstrap security audit: trust boundaries + STRIDE pass recorded in
+  [docs/security/threat-model.md](docs/security/threat-model.md); scored risk register at
+  [docs/security/audit-2026-08-29-bootstrap.md](docs/security/audit-2026-08-29-bootstrap.md)
+  (score: critical → security-auditor gate run; findings F1–F5, no advisory needed).
 
 ---
 

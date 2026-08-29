@@ -32,7 +32,8 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: ${{ matrix.toolchain == 'python-3.13' && '3.13' || '3.12' }}
+          # BUG-0001: this job has no matrix — pin the interpreter literally.
+          python-version: '3.12'
       - name: Install uv
         uses: astral-sh/setup-uv@v7
       - name: Sync dependencies

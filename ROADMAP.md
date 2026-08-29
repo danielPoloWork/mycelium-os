@@ -48,8 +48,8 @@ The thinnest slice that compiles, tests, and ships under the full quality bar.
 - [ ] 1.4 Stand up the CI matrix (Linux / Windows / macOS on CPython 3.12+) with build + test + format + lint. (RFC-0001) — size: S · route: fast / low
 - [ ] 1.5 Seed the version constant (__version__ = 'X.Y.Z') in `src/mycelium/__about__.py`. (RFC-0001) — size: XS · route: fast / low
 - [x] 1.6 Replace LICENSE MIT → Apache-2.0 (D-018; owner-confirmed 2026-08-29) (RFC-0001) — size: XS · route: fast / low — delivered in the scaffold bootstrap PR
-- [ ] 1.7 Rename default branch master → main (owner operation on GitHub; owner-confirmed 2026-08-29) (RFC-0001) — size: XS · route: fast / low
-- [ ] 1.8 Add SECURITY.md (private disclosure channel), CONTRIBUTING.md (DCO), CODE_OF_CONDUCT.md (spec 06 §4) (RFC-0001) — size: S · route: fast / low — SECURITY.md skeleton rendered; disclosure channel + the other two files remain
+- [x] 1.7 Rename default branch master → main (owner operation on GitHub; owner-confirmed 2026-08-29) (RFC-0001) — size: XS · route: fast / low — done by the owner 2026-08-29 (origin/HEAD → main)
+- [ ] 1.8 Add SECURITY.md (private disclosure channel), CONTRIBUTING.md (DCO), CODE_OF_CONDUCT.md (spec 06 §4) (RFC-0001) — size: S · route: fast / low — SECURITY.md complete (channel = GitHub private vulnerability reporting; activate the repo feature at public launch — register F3); CONTRIBUTING.md + CODE_OF_CONDUCT.md remain
 
 ---
 

@@ -2,32 +2,47 @@
 
 > **Owner:** the **security-auditor** role (it drafts here; findings feed the audit risk
 > register). Produced and kept current by the **audit threat-modeling sub-mode**
-> (`/eados security` → `/eados audit`). Method: **STRIDE**. Scaffolded empty on purpose —
-> an explicit `n/a` with a reason is honest; an unexamined boundary is not.
+> (`/eados security` → `/eados audit`). Method: **STRIDE**. First filled by the
+> **bootstrap audit, 2026-08-29** (register:
+> [`audit-2026-08-29-bootstrap.md`](audit-2026-08-29-bootstrap.md)). Boundaries marked
+> *(design)* come from the accepted design (RFC-0001 / spec docs 02 §8, 04 §6) and gain
+> their mechanical controls at the named milestone — they are modeled now so the controls
+> are built in, not bolted on.
 
 ## 1. Scope & trust boundaries
 
-List every boundary an attacker could stand on either side of — network edges, process/privilege
-boundaries, tenancy separation, third-party services — and for each: the **untrusted inputs**
-that cross it, and the **assumptions** the design makes about it.
-
 | Boundary | Untrusted inputs crossing it | Assumptions |
 |---|---|---|
-| _e.g. public HTTP edge_ | _request bodies, headers, auth tokens_ | _TLS terminated upstream_ |
+| **B1 — GitHub PR/CI edge** (today): external contributions execute workflows | PR diffs (workflow-adjacent files, `tools/consistency_lint.py` runs on PR code) | `pull_request` event only (never `pull_request_target`); default `GITHUB_TOKEN` is read-only in ci.yml (`permissions: contents: read`); no repository secrets exist for CI to leak; repo currently private (no external contributors yet) |
+| **B2 — GitHub Actions supply chain** (today): third-party actions run with repo access | Action code resolved at run time | Template-native actions SHA-pinned with version labels; profile-injected actions (setup-python, setup-uv) tag-pinned **by decision** (factory ADR-0009 §3) and Dependabot-managed weekly; release.yml has `contents: write` but fires only on `v*.*.*` tag push — tags are owner-pushed |
+| **B3 — Vendored EADOS factory** (today): `.eados-core/` tooling executes locally and (lint only) in CI | The bundle's own code; future `/eados upgrade` diffs | Vendored tracked by owner decision (PR #1); updates arrive as reviewable diffs, never silent; only `tools/consistency_lint.py` (generated, in-repo) runs in CI |
+| **B4 — Ingested source content** *(design — lands M4)*: PDFs/DOCX/HTML/wikis enter the compiler | File bytes, embedded instructions, hostile structures (zip-bombs, parser exploits) | D-017: **all** source content untrusted, including the user's own; parsers wrapped behind KIR with quarantine-not-abort; secret scan at ingestion; loss budgets make silent loss visible |
+| **B5 — LLM synthesis lane** *(design — lands M4)*: provider-generated Markdown enters tier 2 | Model output (potential fabrication, injected instructions from evidence it read) | D-020/D-021: synthesized docs are born `candidate`, cite evidence per statement, earn `verified` only through grounding gate G7 + human promotion; the LLM never writes indexes |
+| **B6 — MCP serving edge** *(design — lands M2)*: any MCP client queries the store | Tool-call arguments (queries, URIs, filters) | D-011/D-017: read-only tools only; typed errors; every response carries the data-not-instructions notice; retrieved text returned as quoted evidence, never interpreted |
+| **B7 — Plugins** *(design — lands M4/M5)*: third-party code in-process | Plugin package code | D-012 stance: a plugin is installed code, same trust as any pip dependency — stated plainly in docs; pinned resolution recorded in build keys/manifest; sandboxing deferred with an explicit trigger (spec 06 §3) |
+| **B8 — Network egress** *(design)*: remote embedders/sources when configured | Provider responses | D-013/D-017: zero network by default (local ONNX embedder); remote providers opt-in via config; no telemetry |
 
 ## 2. STRIDE pass
 
-Work the six categories (**S**-**T**-**R**-**I**-**D**-**E**) **per boundary/component** above.
-Every cell gets an entry — a threat, a mitigation, or an explicit `n/a (reason)`; never a blank.
-
 | Category | Threat considered | Boundary / component | Mitigation / control | Status |
 |---|---|---|---|---|
-| Spoofing — is the caller who it claims? | | | | ▢ |
-| Tampering — can data/code be altered in flight or at rest? | | | | ▢ |
-| Repudiation — can an action be denied for lack of a trail? | | | | ▢ |
-| Information disclosure — can data leak across a boundary? | | | | ▢ |
-| Denial of service — can the surface be exhausted? | | | | ▢ |
-| Elevation of privilege — can a caller gain authority it was not granted? | | | | ▢ |
+| Spoofing — is the caller who it claims? | A PR author impersonating a maintainer to merge | B1 | Only the owner merges (contract §6); GitHub authn; branch protection pending public/Pro — interim control is collaborator roles + policy (register F2) | ✅ mitigated / F2 tracks residual |
+| Spoofing | A forged `v*.*.*` tag triggering a release draft | B2 | Tag push requires write access (owner); workflow only **drafts** — a human publishes | ✅ mitigated |
+| Spoofing | An MCP client is not authenticated in v1 | B6 (design) | n/a by design at v1 scale: stdio transport, local single-user (D-002); authn arrives with the Phase-5 server profile via its own RFC | ▢ n/a (reason recorded) |
+| Tampering — can data/code be altered? | A malicious action version altering the repo or release artifacts | B2 | SHA pins for template actions; tag-pinned profile actions are Dependabot-managed (ADR-0009 §3 — decided trade-off); `contents: write` confined to the tag-triggered release job | ✅ mitigated / decided residual |
+| Tampering | Hostile ingested file corrupting the store or projections | B4 (design) | Quarantine path (never abort the build), KIR opaque nodes, fidelity reports, hostile-fixture suite is an M4 exit gate | ▢ design control — M4 |
+| Tampering | Synthesized doc silently entering `verified` truth | B5 (design) | Folder-encoded status; G7 grounding gate (cites ≥ 0.95, entailment ≥ 0.90); promotion is a human/Git action; builds never move tier-2 files | ▢ design control — M4 |
+| Repudiation — actions deniable? | Phase moves / merges without a trail | B1/B3 | Checkpoint ledger in the manifest (gate_results + confirmed_by), run records under `.eados-core/learning/runs/`, Git history, PR cross-links (traceability graph verified whole this audit) | ✅ mitigated |
+| Repudiation | A build unexplainable from its output | B3/B4 (design) | Snapshot manifests record inputs, config digest, toolchain, plugin identities (D-008/D-023); journal.jsonl for diagnostics | ▢ design control — M2/M3 |
+| Information disclosure — can data leak? | Secrets committed to the repo | B1 | Secret-pattern grep clean this audit; `.gitignore` excludes local agent settings; **no repository secrets configured**; ingestion-time secret scanning (redact_secrets) lands M4 | ✅ today / M4 extends |
+| Information disclosure | CI leaking data from a private repo | B1/B2 | ci.yml `permissions: contents: read`; no secrets available to PR workflows; telemetry: none (D-017) | ✅ mitigated |
+| Information disclosure | Indexed content served across a trust boundary | B6 (design) | v1 is single-user local (D-002) — n/a until the server profile; `trust:` filters + labels exist from M2 so consumers can exclude low-trust tiers | ▢ n/a at v1 scale (reason recorded) |
+| Denial of service — exhaustible surface? | A hostile document exhausting the build (zip-bomb, pathological parse) | B4 (design) | Quarantine + loss budgets + hostile-fixture exit gate (M4); build is a local, owner-initiated action — no public compute to exhaust | ▢ design control — M4 |
+| Denial of service | CI-minute exhaustion via PR spam | B1 | Private repo today; concurrency group cancels superseded PR runs; GitHub-side rate controls; revisit at public launch | ✅ adequate for current exposure |
+| Denial of service | MCP query exhausting the local store | B6 (design) | Budgeted packing (`budget_tokens`), typed `BUDGET_EXCEEDED`, latency budgets are CI gates (G5) | ▢ design control — M2/M3 |
+| Elevation of privilege — ungranted authority? | A PR gaining write via workflow modification | B1 | `pull_request` event runs with read-only token regardless of workflow edits in the PR; release workflow unreachable from PRs (tag trigger) | ✅ mitigated |
+| Elevation of privilege | Agent exceeding its delivery authority (merge, publish, phase-skip) | B3 | Authority model (authority.yaml) + human-gated transitions + owner-only merge/publish; `authority_check.py` run per phase; this audit's own boundary: draft-only advisories | ✅ mitigated |
+| Elevation of privilege | Retrieved content acting as instructions in a client agent | B6 (design) | D-017 doctrine: quoted-evidence contract + explicit notice string; injection corpus is a release gate (G-series, 04 §6) — the residual (what the *client* does) is documented as the client's responsibility | ▢ design control — M2+, residual documented |
 
 ## 3. Findings → the risk register
 
@@ -36,3 +51,6 @@ A threat that survives analysis lands in the audit **risk register** with its se
 same record shape the audit phase emits. A confirmed, reproducible defect additionally becomes a
 [bug-ledger](../bugs/README.md) record; a vulnerability needing coordinated disclosure becomes a
 **draft** advisory the human publishes.
+
+Current register: [`audit-2026-08-29-bootstrap.md`](audit-2026-08-29-bootstrap.md) —
+findings F1–F5 (one confirmed defect → [BUG-0001](../bugs/2026/08/BUG-0001-release-workflow-matrix-context.md)).
