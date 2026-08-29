@@ -6,7 +6,7 @@ its section with a fresh `<milestone>.<task>` number; never renumber.
 
 - **Versioning start:** pre-1.0 milestone-driven.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-29 — Markdown→KIR adapter](docs/journal/2026/08/2026-08-29-markdown-kir-adapter.md).
+  [2026-08-29 — heading-bounded chunker](docs/journal/2026/08/2026-08-29-heading-bounded-chunker.md).
 - **Traceability:** every item names the RFC it implements (RFC-0001 for the whole v1
   design of record — [`docs/rfc/0001-mycelium-os-v1.md`](docs/rfc/0001-mycelium-os-v1.md));
   milestone goals are the spec phases' exit gates (`.draft-specs/06`). Sizes are T-shirt
@@ -62,7 +62,7 @@ Mycelium OS builds and serves its own repository; TTFV < 10 min end-to-end via C
 - [x] 2.2 mycelium.sdk.types: pydantic records v0 + JSON Schema export (spec 03 §§3–7) (RFC-0001) — size: M · route: frontier-reasoning / high (sets-pattern: the record schemas are the contracts everything else builds on) — delivered by PR #14: seven frozen pydantic v2 records (document, kir, chunk, symbol, edge, entity, manifest) in `src/mycelium/sdk/types.py`, byte-deterministic JSON Schema 2020-12 export in `sdk/schema.py`; first runtime dependency (pydantic ≥ 2.11, ADR-0004); spec examples are executable fixtures
 - [x] 2.3 Canonical hashing + ULID + anchor-slug identity library, property-tested (spec 03 §2) (RFC-0001) — size: M · route: standard / medium — delivered by PR #16: `mycelium.sdk.identity` (normalization, canonical JSON, SHA-256 digests, in-repo monotonic ULIDs, heading slugs, anchors, citation URIs, edge/symbol/entity reference forms), ADR-0005; property tests cover idempotence, digest-invariance, order-equals-time, and parser round-trips. Writing the constructors against 2.2's contracts surfaced [BUG-0004](docs/bugs/2026/08/BUG-0004-ulid-pattern-admits-overflow.md) (fixed here)
 - [x] 2.4 Markdown→KIR adapter (markdown-it) + frontmatter contract + Mycelium Markdown Profile v1 (D-022) (RFC-0001) — size: M · route: standard / medium — delivered by PR #17: `mycelium.markdown` (frontmatter contract with named owners, Profile v1 syntax — wikilinks/embeds/tags/callouts — and the token-stream→KIR mapping), ADR-0006. Settles ADR-0004's deferred question: `KirNode` stays a single record, with a declared per-kind field table enforced on construction (adds `lang`/`variant`/`title`/`target`, and `lines` on `SrcLocator`)
-- [ ] 2.5 Heading-bounded chunker with the no-content-loss property test (RFC-0001) — size: M · route: standard / medium
+- [x] 2.5 Heading-bounded chunker with the no-content-loss property test (RFC-0001) — size: M · route: standard / medium — delivered by PR #18: `mycelium.chunking` (heading-bounded sections, atomic tables/code, paragraph-boundary splits, dependency-free token estimate behind a pluggable counter), ADR-0007. The invariant is property-tested as an ordered-subsequence check over KIR node texts; anchors are unique by construction (sibling slug numbering — the collision case ADR-0005 deferred here — plus slug-path-scoped ordinals)
 - [ ] 2.6 SQLite store: DDL, WAL, field-weighted FTS5, meta table (spec 03 §8) (RFC-0001) — size: M · route: standard / medium
 - [ ] 2.7 Build orchestrator v0 (sequential) + snapshot manifest + atomic CURRENT swap + single-writer lock (RFC-0001) — size: L · route: frontier-reasoning / high (sets-pattern: publication/crash-safety semantics set here bind every later phase)
 - [ ] 2.8 CLI skeleton (typer): init/build/search/show/doctor with --json (RFC-0001) — size: S · route: fast / low
