@@ -15,8 +15,21 @@ authors = [{ name = "Daniel Polo" }]
 Homepage = "https://github.com/danielPoloWork/mycelium-os"
 Issues = "https://github.com/danielPoloWork/mycelium-os/issues"
 
+# BUG-0003 guard note (ROADMAP.md 1.3): this group must also cover pytest-benchmark, ruff
+# and mypy before `uv.lock` is committed — that commit is what flips CI's bootstrap probe
+# to ready=true, and a partial group re-creates the wall of red across every toolchain job.
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "hypothesis>=6.112",
+]
+
 [tool.hatch.version]
 path = "src/mycelium/__about__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mycelium"]
+
+[tool.pytest.ini_options]
+addopts = "-p no:cacheprovider"
+testpaths = ["tests"]

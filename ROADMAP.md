@@ -42,8 +42,8 @@ The thinnest slice that compiles, tests, and ships under the full quality bar.
 - [x] 1.0 Stand up the EADOS delivery pipeline — manifest, RFC-0001, negotiated roadmap (RFC-0001) — size: M · route: frontier-reasoning / high (sets-pattern) — delivered by PR #1, merged 2026-08-29
 - [x] 1.1 Lay down the build system (Hatch (PEP 517/518, pyproject.toml)) and a buildable skeleton under
       `src/mycelium/` (flat src-layout, ADR-0003). (RFC-0001) — size: S · route: fast / low — delivered by PR #5; `python -m build --wheel` produces an installable `mycelium-os` wheel
-- [ ] 1.2 Wire the test framework (pytest (+ hypothesis for property tests)) with one passing smoke test under
-      `tests/` (flat src-layout, ADR-0003). (RFC-0001) — size: XS · route: fast / low
+- [x] 1.2 Wire the test framework (pytest (+ hypothesis for property tests)) with one passing smoke test under
+      `tests/` (flat src-layout, ADR-0003). (RFC-0001) — size: XS · route: fast / low — delivered by PR #6; `dev` dependency group declares pytest + hypothesis. Per the BUG-0003 guard note below, `uv.lock` stays uncommitted until 1.3 completes the group (hatch, pytest-benchmark, ruff, mypy) — committing a partial lock would flip the CI bootstrap probe to ready=true before the lint/benchmark jobs have anything to run
 - [ ] 1.3 Add formatter + linter configs (ruff format (Black-compatible), ruff check + mypy --strict) at the repo root. (RFC-0001) — size: XS · route: fast / low
       > **Guard note (BUG-0003).** 1.2 and 1.3 together declare the dev dependency group and
       > commit `uv.lock`, which is what flips CI's bootstrap guard to `ready=true`. The group
