@@ -68,11 +68,11 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.toolchain == 'python-3.13' && '3.13' || '3.12' }}
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v7
       - name: Sync dependencies
         run: uv sync --all-extras --dev
 
@@ -110,10 +110,10 @@ jobs:
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with: { python-version: '3.12' }
-      - uses: astral-sh/setup-uv@v3
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync --all-extras --dev
       - run: ruff format --check . && ruff check . && mypy --strict src
 
@@ -127,11 +127,11 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.toolchain == 'python-3.13' && '3.13' || '3.12' }}
       - name: Install uv
-        uses: astral-sh/setup-uv@v3
+        uses: astral-sh/setup-uv@v7
       - name: Sync dependencies
         run: uv sync --all-extras --dev
       - name: Run the benchmark suite
