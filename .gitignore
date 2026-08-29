@@ -1,13 +1,83 @@
-# IDE
-.idea/
+# Build outputs
+/build/
+/dist/
+/out/
+/target/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
 
-# Local archive of the legacy codebase (renamed to mycelium-os-legacy on GitHub, D-024);
-# kept out of the new engine repo — the salvage map (.draft-specs/07 §6) references it.
-.mycelium-os-legacy/
-
-# Python
+# Dependency / package manager caches
+/node_modules/
+/.venv/
+/venv/
 __pycache__/
 *.pyc
+/.gradle/
+/vendor/
+/.cargo/
 
-# Mycelium derived store (D-005) — always gitignored, for when the engine dogfoods itself
-.mycelium/
+# Coverage & test artifacts
+/coverage/
+*.gcda
+*.gcno
+*.profraw
+.coverage
+htmlcov/
+
+# IDE / editor
+/.idea/
+/.vscode/
+*.swp
+.DS_Store
+
+# Tool caches
+/.mypy_cache/
+/.ruff_cache/
+/.pytest_cache/
+
+# Generated docs
+/docs/_site/
+/docs/doxygen/html/
+
+# Local agent / harness scratch (never commit)
+.questions
+.bugs
+.claude/settings.local.json
+
+# EADOS factory — DEVIATION from the rendered default (which gitignores the bundle): this
+# repository vendors `.eados-core/` TRACKED, by owner decision (PR #1, merged 2026-08-29).
+# The delivery pipeline runs in-repo, the /eados adapters resolve against the bundle, and
+# the run records under .eados-core/learning/runs/ are the project's own audit trail —
+# all of which requires the bundle to survive a clone.
+
+# EADOS command adapters — generated, per HOST, and not this project's source (#372, ADR-0019
+# addendum 2026-07-27). `adapter_render.py --host <id>` writes them; they are pointers at the
+# procedures inside `.eados-core/`, which the rule above already excludes.
+#
+# Committing them looked helpful and is not, for two reasons that only became visible once trees
+# became per-host:
+#   1. A cloned adapter points at `.eados-core/orchestrator/commands/<cmd>.md`, which is NOT in the
+#      repository. Whoever clones gets slash commands that resolve to a missing file — worse than
+#      absent, because an absent command is obviously absent while a dangling one fails at the
+#      point of use and reads as a broken repo.
+#   2. It would impose the original author's host on everyone. A committed `.claude/` tree does
+#      nothing for a teammate on Gemini, Codex or OpenCode; each generates their own in one command.
+#
+# The commands are still discoverable without them: `AGENTS.md` §13 carries the full table, and
+# `.eados-core/tools/eados.py commands` works on every host, including hosts with no command
+# mechanism at all. Delete these lines if you would rather commit your team's tree.
+# (deviation, same owner decision as above: the Claude Code tree stays tracked — it is
+# this repo's active host and the vendored bundle it points at is committed)
+/.gemini/commands/eados/
+/.opencode/commands/eados-*
+/.eados/adapters/
+
+# Project-local (mycelium-os)
+/.mycelium-os-legacy/
+/.mycelium/

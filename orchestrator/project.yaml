@@ -63,25 +63,29 @@ language:
   comment_lang:    "en"                 # defaulted — English-only artifacts
   public_include_hint: "from mycelium.sdk.types import KirDocument"
 
-toolchain:                   # defaulted — profiles/python.yaml (uv, pytest+hypothesis,
-  build_tool:      ""        # ruff, mypy --strict, coverage.py). Build backend
-  pkg_manager:     ""        # (hatchling vs uv_build) is a plan-phase detail; the spec
-  test_framework:  ""        # fixes the toolchain surface (uv workspace, ruff, mypy
-  formatter:       ""        # strict, pytest — .draft-specs/06 §2 item 1) which the
-  linter:          ""        # profile already matches.
-  sanitizers:      ""
-  coverage_tool:   ""
+toolchain:                   # defaulted — materialized verbatim from profiles/python.yaml
+                             # (the renderer substitutes literally; a blank field renders
+                             # empty, it does NOT fall back to the profile — scaffold run
+                             # 2026-08-29). Build backend (hatchling vs uv_build) stays a
+                             # roadmap-2.1 detail; Hatch is the profile default.
+  build_tool:      "Hatch (PEP 517/518, pyproject.toml)"
+  pkg_manager:     "uv (or pip-tools) with a locked pyproject.toml"
+  test_framework:  "pytest (+ hypothesis for property tests)"
+  formatter:       "ruff format (Black-compatible)"
+  linter:          "ruff check + mypy --strict"
+  sanitizers:      "mypy --strict (type soundness), pytest -p no:cacheprovider under faulthandler, tracemalloc leak checks"
+  coverage_tool:   "coverage.py / pytest-cov"
   coverage_target: 80        # defaulted — EADOS default gate
-  doc_tool:        ""
-  version_file:    ""
-  version_const_hint: ""
-  package_ecosystem: ""
+  doc_tool:        "mkdocs-material (or Sphinx for API-heavy libs)"
+  version_file:    "__about__.py"
+  version_const_hint: "__version__ = 'X.Y.Z'"
+  package_ecosystem: "pip"
   commands:
-    build:        ""
-    test:         ""
-    format_check: ""
-    lint:         ""
-    bench:        ""
+    build:        "hatch build"
+    test:         "pytest -q"
+    format_check: "ruff format --check ."
+    lint:         "ruff check . && mypy --strict src"
+    bench:        "pytest tests/bench --benchmark-only"
 
 ci:                          # imported — D-003 raises the profile's 3.10 floor to 3.12+
   tier1_platforms: "Linux / Windows / macOS on CPython 3.12+"
@@ -90,9 +94,33 @@ ci:                          # imported — D-003 raises the profile's 3.10 floo
     - { os: ubuntu-24.04, toolchain: "python-3.13", preset: test }
     - { os: windows-2022, toolchain: "python-3.12", preset: test }
     - { os: macos-14,     toolchain: "python-3.12", preset: test }
-  setup_steps: ""            # defaulted — profile
-  extra_jobs:   ""           # defaulted — profile (ruff + mypy --strict lint job)
-  build_manifest: ""         # defaulted — profile (pyproject.toml bootstrap guard, #313)
+  # setup_steps/extra_jobs materialized from the profile (see toolchain note); the
+  # python-version expression is adapted to THIS matrix (3.12/3.13 — D-003), since the
+  # profile's covers 3.10–3.12.
+  setup_steps: |
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.toolchain == 'python-3.13' && '3.13' || '3.12' }}
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+    - name: Sync dependencies
+      run: uv sync --all-extras --dev
+  extra_jobs: |
+    lint:
+      name: lint / ruff + mypy
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: actions/setup-python@v5
+          with: { python-version: '3.12' }
+        - uses: astral-sh/setup-uv@v3
+        - run: uv sync --all-extras --dev
+        - run: ruff format --check . && ruff check . && mypy --strict src
+  build_manifest: "pyproject.toml"   # bootstrap guard (#313): toolchain jobs SKIP until
+                                     # roadmap 2.1 lays the build system down (L-0010)
 
 governance:
   posture: standard          # defaulted Q0.5, echoed and owner-confirmed at init —
@@ -192,10 +220,11 @@ spec:                        # provenance: import (Q5.0) — the validated PRD/S
     per-slice metrics enforcing gates G1–G7, including the injection-resistance corpus
     and the agent-task suite against the grep baseline (D-010) — a failed gate fails CI;
     (5) coverage.py ≥ 80 % lines.
-  milestone1_items:              # numbering matches ROADMAP.md Milestone 1
-    - "1.1 Replace LICENSE MIT → Apache-2.0 (D-018; owner-confirmed 2026-08-29)"
-    - "1.2 Rename default branch master → main (owner operation on GitHub; owner-confirmed 2026-08-29)"
-    - "1.3 Add SECURITY.md (private disclosure channel), CONTRIBUTING.md (DCO), CODE_OF_CONDUCT.md (spec 06 §4)"
+  milestone1_items:              # 1.1–1.5 are the template's universal bootstrap items;
+                                 # these continue the numbering (scaffold run 2026-08-29)
+    - "1.6 Replace LICENSE MIT → Apache-2.0 (D-018; owner-confirmed 2026-08-29)"
+    - "1.7 Rename default branch master → main (owner operation on GitHub; owner-confirmed 2026-08-29)"
+    - "1.8 Add SECURITY.md (private disclosure channel), CONTRIBUTING.md (DCO), CODE_OF_CONDUCT.md (spec 06 §4)"
   milestones:
     - number: 2
       title: "Walking skeleton (spec Phase 0)"
