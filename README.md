@@ -2,7 +2,7 @@
 
 > The knowledge compiler for AI agents
 
-![Status](https://img.shields.io/badge/Status-v0.0.0-blue)
+![Status](https://img.shields.io/badge/Status-v0.1.0-blue)
 
 Part of the **Mycelium LABS** series. A
 cli written in **Python 3.12+**, built and governed to an enterprise quality
