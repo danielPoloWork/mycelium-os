@@ -26,6 +26,9 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   with its named field owners, Mycelium Markdown Profile v1 (wikilinks, embeds, inline
   tags, callouts, GFM tables), and the markdown-it → KIR adapter (#17, ADR-0006).
 - Runtime dependencies `markdown-it-py >= 3.0` and `PyYAML >= 6.0` (#17, ADR-0006).
+- `mycelium.store` — the derived store (spec 03 §8): SQLite DDL, WAL, a field-weighted
+  FTS5 lexical index, meta-table schema versioning, read-only connections for concurrent
+  agents, and a `Store` protocol that keeps the engine replaceable (#19, ADR-0008).
 - `mycelium.chunking` — the heading-bounded chunker (spec 03 §5): sections become chunks,
   tables and code blocks are atomic, oversize sections split at paragraph boundaries, and
   anchors are unique by construction. Token budgets use a dependency-free estimate behind
