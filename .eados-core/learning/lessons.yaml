@@ -86,3 +86,17 @@
   context: Seven consecutive issues (#306, #313, #346, #347, #350, #353, #358) were all found by a downstream consumer, six naming the same two field repos, and ZERO were found by CI. Not seven unrelated misses - one structural gap. Every tool a generated repo runs was tested only against hand-built fixtures; nothing ever ran a factory tool inside a rendered repository. The two nearest tests each missed a different half - one renders a repo but exercises only the tool templated INTO it, the other drives the real CLIs but over a fixture. The intersection nobody occupied is exactly where the defects lived, and one of them (git_check reading the factory's scope list) was wrong in both directions for months while its gate reported into an advisory void.
   rule: A tool that reads policy must be tested against an artifact the tool's author did not write - render the consumer and run the real CLI inside it. A hand-built fixture encodes the same assumptions as the code under test, so it cannot contradict them; only a generated artifact carries the other party's contract. When adding such a test, assert the vocabulary the tool NAMES when it rejects something, not merely that it rejected - and resurrect the defect on demand (drive the tool at the wrong contract deliberately) so the assertion is proven non-vacuous rather than passing because nothing is being checked.
   source: "#359 (the consumer-smoke gate); the seven field reports it was filed against, #358 and #350 being the two it reproduces"
+
+- id: L-0013
+  date: 2026-08-29
+  scope: global
+  context: A manifest left toolchain/ci fields blank expecting profile fallback (the interview glosses blank as "uses the profile"), but render.py substitutes literally — the rendered ROADMAP carried empty parentheses, ci.yml had empty run steps and no bootstrap guard, and the first CI run would have been the red wall L-0010 exists to prevent.
+  rule: Before rendering, materialize every profile default the templates consume into the manifest itself (or teach the renderer the Step-1 profile merge it documents) — "blank means profile" is an interview convention the renderer does not implement, and the two meanings of blank must not be allowed to diverge silently.
+  source: "mycelium-os scaffold run 2026-08-29 (maintainer-approved; recovery: manifest fix + re-render)"
+
+- id: L-0014
+  date: 2026-08-29
+  scope: lang:python
+  context: D-024 fixed a flat top-level import package (`mycelium`), but the normative Maven-style tree rendered `src/main/python/mycelium/mycelium` — a doubled name Python packaging tooling fights — so the scaffold needed a superseding ADR (ADR-0003) plus manual relocation and path fixes across nine generated artifacts.
+  rule: Flat-package ecosystems need a first-class layout knob (profile or manifest) so the renderer can emit the language's src-layout directly; when the knob is absent, plan the superseding ADR and the relocation as scaffold-time work, never as hand-edits without a decision record.
+  source: "mycelium-os scaffold run 2026-08-29 (maintainer-approved; ADR-0003)"
