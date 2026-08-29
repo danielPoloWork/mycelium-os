@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mycelium-os"
+dynamic = ["version"]
+description = "The knowledge compiler for AI agents."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+authors = [{ name = "Daniel Polo" }]
+
+[project.urls]
+Homepage = "https://github.com/danielPoloWork/mycelium-os"
+Issues = "https://github.com/danielPoloWork/mycelium-os/issues"
+
+[tool.hatch.version]
+path = "src/mycelium/__about__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mycelium"]
