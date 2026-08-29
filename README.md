@@ -46,12 +46,14 @@ setup.
 | [`docs/workflow/`](docs/workflow/) | Git, documentation, release, and maintenance conventions. |
 | [`CHANGELOG.md`](CHANGELOG.md) | User-visible changes per release. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability. |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to propose and submit a change (DCO required). |
+| [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | Community standards for participation. |
 
 ## Milestones
 
 | # | Title | Status |
 |---|---|---|
-| 1 | Project bootstrap & CI | ⏳ in progress |
+| 1 | Project bootstrap & CI | ✅ done |
 | 2 | Walking skeleton (spec Phase 0) | ⏳ planned |
 | 3 | v0.1 — The compiler (spec Phase 1) | ⏳ planned |
 | 4 | v0.2 — Ingestion (spec Phase 2) | ⏳ planned |
