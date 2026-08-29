@@ -16,8 +16,6 @@ a `fixed` record names its `fixed-in`) is enforced by the consistency lint's `bu
 
 ## Index
 
-_No defects recorded yet._
-
 | Bug | Title | Severity | Status | Fixed in |
 |-----|-------|----------|--------|----------|
-| —   | —     | —        | —      | —        |
+| [BUG-0001](2026/08/BUG-0001-release-workflow-matrix-context.md) | release workflow references matrix context in a matrix-less job | low | fixed | 0.1.0 |

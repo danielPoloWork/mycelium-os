@@ -10,7 +10,7 @@
 schema_version: 1
 # manifest_rev is an OPTIMISTIC-CONCURRENCY counter (#214): bumped on every delivery_state
 # write-back; propose with --expect-rev <N> first.
-manifest_rev: 6
+manifest_rev: 7
 domain: software             # asked — Q0.4 (developer tool / infrastructure)
 
 # generated_by: deliberately absent — the vendored factory bundle carries no version
@@ -20,11 +20,12 @@ domain: software             # asked — Q0.4 (developer tool / infrastructure)
 # than a pin.
 
 delivery_state:
-  phase: scaffold
+  phase: audit
   checkpoints:
     - { from: init, to: design, gates: ['manifest-valid'], at: 2026-08-29, confirmed_by: danielPoloWork, gate_results: { manifest-valid: OK } }
     - { from: design, to: plan, gates: ['rfc-approved'], at: 2026-08-29, confirmed_by: danielPoloWork, gate_results: { rfc-approved: OK } }
     - { from: plan, to: scaffold, gates: ['roadmap-covers-rfcs'], at: 2026-08-29, confirmed_by: danielPoloWork, gate_results: { roadmap-covers-rfcs: OK } }
+    - { from: scaffold, to: audit, gates: ['consistency-lint', 'self-review'], at: 2026-08-29, gate_results: { consistency-lint: manual, self-review: manual } }
   refs: { rfcs: ['RFC-0001'], milestones: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7'], prs: ['#1', '#2'], releases: [] }
 
 identity:
