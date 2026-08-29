@@ -10,9 +10,16 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12"
 authors = [{ name = "Daniel Polo" }]
-# First runtime dependency (ADR-0004): the spec pins the record contracts to pydantic
-# (spec 03 intro); >=2.11 for the `serialize_by_alias` model config.
-dependencies = ["pydantic>=2.11"]
+# Runtime closure, kept deliberately small and offline (D-013/D-017):
+#   pydantic       — the record contracts, pinned by the spec (ADR-0004); >=2.11 for
+#                    the `serialize_by_alias` model config.
+#   markdown-it-py — CommonMark + the rule pipeline the profile extends (ADR-0006).
+#   PyYAML         — frontmatter (ADR-0006 records the YAML 1.1 caveat).
+dependencies = [
+    "markdown-it-py>=3.0",
+    "pydantic>=2.11",
+    "pyyaml>=6.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/danielPoloWork/mycelium-os"
@@ -29,6 +36,7 @@ dev = [
     "hypothesis>=6.112",
     "ruff>=0.7",
     "mypy>=1.13",
+    "types-pyyaml>=6.0",
 ]
 
 [tool.hatch.version]

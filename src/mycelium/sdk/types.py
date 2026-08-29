@@ -24,7 +24,7 @@ manifest (§7) schemas are two of the five stable contracts that freeze at 1.0
 
 from datetime import UTC, date, datetime
 from enum import StrEnum
-from typing import Annotated, Literal, Self
+from typing import Annotated, Final, Literal, Self
 
 from pydantic import (
     AfterValidator,
@@ -343,7 +343,9 @@ class SrcLocator(Record):
     """Source locator: the smallest practical unit the connector can provide.
 
     Spec 03 §4 names the units — page/bbox, byte range, cell range, timecode —
-    all optional; a connector fills what it can.
+    all optional; a connector fills what it can. ``lines`` is the same idea for
+    line-oriented formats, where it is both the smallest unit a Markdown parser
+    reports and the unit :class:`Chunk` already stores (ADR-0006).
     """
 
     page: int | None = Field(default=None, ge=1)
@@ -351,31 +353,93 @@ class SrcLocator(Record):
         default=None, description="(x0, y0, x1, y1) on the given page."
     )
     byte_range: tuple[NonNegativeInt, NonNegativeInt] | None = None
+    lines: tuple[NonNegativeInt, NonNegativeInt] | None = Field(
+        default=None, description="Inclusive 1-based (start, end) line span in the source."
+    )
     cell_range: str | None = None
     timecode: str | None = None
+
+    @model_validator(mode="after")
+    def _lines_ordered(self) -> Self:
+        if self.lines is not None and self.lines[0] > self.lines[1]:
+            msg = f"lines start {self.lines[0]} > end {self.lines[1]}"
+            raise ValueError(msg)
+        return self
+
+
+_KIND_FIELDS: Final[dict[NodeKind, frozenset[str]]] = {
+    NodeKind.HEADING: frozenset({"level"}),
+    NodeKind.CODE_BLOCK: frozenset({"lang"}),
+    NodeKind.LIST: frozenset({"variant"}),
+    NodeKind.TABLE_ROW: frozenset({"variant"}),
+    NodeKind.CALLOUT: frozenset({"variant", "title"}),
+    NodeKind.LINK: frozenset({"target", "title"}),
+    NodeKind.IMAGE: frozenset({"target", "title"}),
+    NodeKind.WIKILINK: frozenset({"target"}),
+    NodeKind.EMBED: frozenset({"target"}),
+    NodeKind.OPAQUE: frozenset({"media_type", "blob", "note"}),
+}
+"""Which optional fields each kind may carry; every other kind takes none.
+
+The vocabulary is closed (spec 03 §4) but the per-kind field sets are not stated,
+so they are declared here and enforced — adding one is a deliberate, reviewable
+schema event rather than a field quietly appearing on a node kind (ADR-0006).
+"""
+
+_KIND_SPECIFIC: Final[frozenset[str]] = frozenset(
+    {"level", "lang", "variant", "title", "target", "media_type", "blob", "note"}
+)
 
 
 class KirNode(Record):
     """One node of the KIR document AST v0.
 
-    The shape is deliberately a single open record, not a per-kind discriminated
-    union: spec 03 §4 fixes the kind vocabulary but not every kind's field set,
-    so v0 carries the common core plus the kind-specific fields the spec shows
-    (``level`` for headings; ``media_type``/``blob``/``note`` for ``opaque``, the
-    lawful escape hatch, F-3). Per-kind refinement lands with the first producer
-    (roadmap 2.4). KIR adds fields by minor version and never repurposes them.
+    A single open record rather than a per-kind discriminated union: spec 03 §4
+    fixes the kind vocabulary but not every kind's field set, and the ingestion
+    connectors (roadmap 4.1) will bring kinds this milestone cannot see. What the
+    union would buy — no nonsense combinations — is bought instead by
+    :data:`_KIND_FIELDS`, which declares the optional fields each kind may carry
+    and is enforced on construction (ADR-0006).
+
+    ``text``, ``parent``, ``ord`` and ``src`` are the common core every kind may
+    use. KIR adds fields by minor version and never repurposes them.
     """
 
     id: NonEmptyStr
     kind: NodeKind
     text: str | None = None
-    level: int | None = Field(default=None, ge=1)
+    level: int | None = Field(default=None, ge=1, description="Heading depth, 1-6.")
+    lang: str | None = Field(default=None, description="Code-block language tag.")
+    variant: str | None = Field(
+        default=None,
+        description="Kind-specific subtype: callout type, list ordering, row role.",
+    )
+    title: str | None = Field(default=None, description="Link/image title or callout title.")
+    target: str | None = Field(
+        default=None, description="Link, image, wikilink, or embed destination."
+    )
     media_type: str | None = None
     blob: Sha256Digest | None = None
     note: str | None = None
     parent: str | None = None
     ord: NonNegativeInt
     src: SrcLocator | None = None
+
+    @model_validator(mode="after")
+    def _fields_are_legal_for_kind(self) -> Self:
+        allowed = _KIND_FIELDS.get(self.kind, frozenset())
+        used = {
+            name
+            for name in _KIND_SPECIFIC
+            if getattr(self, name) is not None and name not in allowed
+        }
+        if used:
+            msg = f"{self.kind.value} node must not carry {sorted(used)}"
+            raise ValueError(msg)
+        if self.kind is NodeKind.HEADING and self.level is None:
+            msg = "heading node requires a level"
+            raise ValueError(msg)
+        return self
 
 
 class KirDocument(Record):

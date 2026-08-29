@@ -41,7 +41,7 @@ _Patterns named in the spec at intake are seeded below as **Planned**; each beco
 | — | Content-Addressed Cache | Planned | build keys — SHA-256 over (stage, impl version, input digests, config, schema) — make rebuilds incremental and reproducible (D-008) | _TBD_ | _spec (intake)_ |
 | — | Snapshot | Planned | immutable manifests + atomic CURRENT pointer swap give torn-free reads and O(1) rollback (D-015) | _TBD_ | _spec (intake)_ |
 | — | Plugin (typed Protocols + entry points) | Planned | Parser/Chunker/Embedder/Extractor/Synthesizer/Reranker plus four generic extension mechanisms; pinned resolution, never 'best available' (D-012/D-023) | _TBD_ | _spec (intake)_ |
-| — | Adapter | Planned | parsers wrap the existing ecosystem (docling, markdown-it, pandoc) behind KIR — Mycelium OS owns the representation and its guarantees, not the parsers (D-007) | _TBD_ | _spec (intake)_ |
+| 4 | Adapter | Implemented | parsers wrap the existing ecosystem (docling, markdown-it, pandoc) behind KIR — Mycelium OS owns the representation and its guarantees, not the parsers (D-007); markdown-it is the first one adapted | [src/mycelium/markdown/adapter.py](../../src/mycelium/markdown/adapter.py) | [ADR-0006](../adr/0006-adopt-markdown-it-adapter-and-kir-node-fields.md) / PR #17 |
 
 
 ## Rejected
