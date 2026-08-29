@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-29 — SQLite store (roadmap 2.6)](2026/08/2026-08-29-sqlite-store.md)
 - [2026-08-29 — heading-bounded chunker (roadmap 2.5)](2026/08/2026-08-29-heading-bounded-chunker.md)
 - [2026-08-29 — Markdown→KIR adapter (roadmap 2.4)](2026/08/2026-08-29-markdown-kir-adapter.md)
 - [2026-08-29 — identity library (roadmap 2.3)](2026/08/2026-08-29-identity-library.md)
