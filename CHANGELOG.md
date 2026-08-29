@@ -26,6 +26,10 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   with its named field owners, Mycelium Markdown Profile v1 (wikilinks, embeds, inline
   tags, callouts, GFM tables), and the markdown-it → KIR adapter (#17, ADR-0006).
 - Runtime dependencies `markdown-it-py >= 3.0` and `PyYAML >= 6.0` (#17, ADR-0006).
+- `mycelium` command line (spec 05 §1): `init`, `build`, `search`, `show`, `doctor`, with
+  `--json` on every read command, exit codes 0/1/2, `NO_COLOR` support, and no interactive
+  prompts. Installed as the `mycelium` console script; new runtime dependency `typer`
+  (#21, ADR-0010).
 - `mycelium.build` — build orchestrator v0 (RFC-0001 pseudocode): sequential full
   rebuild, the `.mycelium/lock` single-writer lock (heartbeat + stale takeover),
   immutable snapshot manifests, the atomic `CURRENT` pointer swap, per-document

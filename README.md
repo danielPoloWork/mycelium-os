@@ -21,6 +21,24 @@ product (D-001). v1 targets repo-scale, local-first, single-tenant corpora of
 The frozen specification is in
 [`docs/specs/01_spec_mycelium.md`](docs/specs/01_spec_mycelium.md).
 
+## Try it
+
+```bash
+mycelium init            # scaffold knowledge/, mycelium.toml, the gitignore entry
+mycelium build           # compile every document into a published snapshot
+mycelium search "retry policy"
+mycelium show "mycelium://<doc-id>#retries/0"
+mycelium doctor          # store, snapshot pointer, and lock health
+```
+
+Write Markdown under `knowledge/` and build. The first build writes a `mycelium_id` into
+each document's frontmatter — that pinned identity is what makes rebuilds deterministic and
+citations survive renames, so commit those files. Every read command takes `--json`, exits
+0/1/2 (ok / failed / usage), and honours `NO_COLOR`.
+
+Milestone 2 is in progress: the compiler, store, and CLI are in place; MCP serving (2.9)
+and the evaluation harness (2.11) are next.
+
 ## Build, test, run
 
 ```bash
