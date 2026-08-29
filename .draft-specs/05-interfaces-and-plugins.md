@@ -240,6 +240,12 @@ CLI mount, logs):
 5. Mycological pet names (spore, hyphae, …) are **reserved for Phase-4 marketing** of
    sub-brands, not for identifiers — an operator greping logs at 2 a.m. must not need
    the brand book.
+6. **"Skill" is a reserved term (D-027):** engine extensions are *plugins*, activatable
+   capability packages are *modules*. "Skill" may only ever name a future **agent-facing**
+   instruction/capability package (a separate artifact class serving agent runtimes —
+   e.g. an Agent Skill teaching a client the `mycelium_*` tool flow), never an
+   alternative word for plugin or module: Mycelium serves agents, it is not one
+   (D-001/F-10, risk R9).
 
 First registered names: `wiki` (default Synthesizer — authors interlinked wiki-style
 candidate docs; heritage: Karpathy's llm-wiki, credited in the description, not the id)
