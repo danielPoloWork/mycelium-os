@@ -1,0 +1,88 @@
+# Lessons ledger — the factory's durable, generalizable memory.
+# Read at the start of a run; append (drafted, human-approved) after corrections.
+# Schema per entry (validated by tools/eados_lint.py): id, date, scope, context, rule, [source].
+# scope is one of: global | lang:<lang> | kind:<library|service|cli|app>.
+
+- id: L-0001
+  date: 2026-06-16
+  scope: global
+  context: A multi-line block (CI setup steps) injected into a template landed at column 0, producing invalid YAML.
+  rule: A placeholder that injects a multi-line block must carry the target indentation, and the renderer must indent continuation lines to that column.
+  source: feat(tools) deterministic renderer
+
+- id: L-0002
+  date: 2026-06-16
+  scope: global
+  context: A capability flag (i18n) gated a lint check whose required file had no template, so enabling it failed the generated lint on day zero.
+  rule: Every capability flag that a check depends on must ship the artifact that check reads; verify by rendering a variant with the flag on.
+  source: feat i18n subsystem
+
+- id: L-0003
+  date: 2026-07-01
+  scope: global
+  context: The hand-rolled YAML loader silently truncated constructs outside its subset (unclosed flow collections and quoted scalars at end-of-line) in the questionnaire, so a maintainer's input could vanish with no error.
+  rule: A hand-rolled parser must loudly reject any construct it cannot represent instead of silently truncating it, and prove its supported subset with a differential against a reference parser.
+  source: "audit #153; fix #166 (yamlmini loud rejection; ADR-0006/0008)"
+
+- id: L-0004
+  date: 2026-06-28
+  scope: global
+  context: A re-audit flagged profile CI actions shipping version-tag pins (vs the factory's SHA pins) as an inconsistency, but ADR-0009 §3 had already decided it — profile actions stay tag-pinned and Dependabot-managed by design.
+  rule: Before filing an apparent inconsistency as a gap, check whether the governing ADR already decided it; a re-discovered trade-off is an addendum, not a new issue.
+  source: "audit #132; ADR-0009 §3 addendum (PR #137)"
+
+- id: L-0005
+  date: 2026-07-11
+  scope: global
+  context: A milestone plan reserved "ADR-0019" for a not-yet-written decision; another milestone's work landed first and consumed that number, so the reservation was stale by the time the plan's own decision was ready to write up.
+  rule: Never hardcode a future ADR number in a plan doc — numbering is sequential and never reused, so a reservation made ahead of authoring can be consumed by unrelated work that lands first; resolve the actual number at authoring time and correct the plan in the same PR.
+  source: M17 17.1 (#277); ADR-0022 (numbering corrected from the reserved "ADR-0019")
+
+- id: L-0006
+  date: 2026-07-12
+  scope: global
+  context: The route checkpoint can verify the session MODEL against the routed tier, but no host exposes the session's EFFORT setting, and the model identity is the agent's own self-report — so it can mechanically observe only part of what it governs.
+  rule: A checkpoint that can observe only part of what it governs must exit non-blocking AND state the unobservable part in its own output (what is verified, what is trusted self-report) — partial verification presented as complete is a dishonest gate.
+  source: M18 18.2 (#297); route_advice.py --check (effort/self-report caveat; ADR-0015/0016 honesty posture)
+
+- id: L-0007
+  date: 2026-07-16
+  scope: global
+  context: The OS routed model/effort per unit of work (os/routing, ADR-0017) and the plan phase attached routes to roadmap items, but the scaffold's rendered ROADMAP carried none of it — the maintainer's first post-hand-off question was which model to use per step, answered by hand-annotating the generated artifact.
+  rule: A delivery surface the OS governs must be visible in the artifact the maintainer actually plans from — when a policy layer gains a consumer-facing effect, extend template parity to it in the same milestone, or record the deliberate omission as an ADR.
+  source: "field run egl-utils-js 2026-07-16 (local lesson L-0008, maintainer-approved); upstreamed by #306 / ADR-0023"
+
+- id: L-0008
+  date: 2026-07-26
+  scope: global
+  context: Two CLI --check cases in test_route_advice.py hardcoded model names copied from the routing catalog and asserted only the process exit code, which is 0 for every verdict by design; correcting the catalog moved 'Sonnet 5' from fast to standard so the mismatch case silently became a second passing OK, and dropping 'Opus 4.8' turned the OK case into an unknown-model — both stayed green while asserting nothing.
+  rule: A test whose expected outcome depends on data owned elsewhere must derive its fixture from that data and assert the classification it is named for, never a proxy that every branch satisfies (an exit code, a non-empty result) — a copied value that drifts out of its intended case leaves the test green and vacuous, so the assertion must be one the drift can falsify.
+  source: "#326 / PR #330 — the same decay disarmed two cases in one PR"
+
+- id: L-0009
+  date: 2026-07-27
+  scope: global
+  context: Two gates over two-sided relationships checked one side only. check_agent_registry verified that every persona had an index link (#202) and routing-delegation verified that every catalog host had a matrix row (#327); in both cases the UNCHECKED direction was where the rot actually was — a live index link to a deleted persona, and a matrix documenting hosts the catalog never had, so a supported-looking host errored on use. The second gate also matched by substring, so a host named in ordinary prose counted as a declaration and deleting its real row kept the gate green.
+  rule: A gate over a two-sided relationship must be walked in BOTH directions, and must match the declaration site structurally rather than by substring — a one-way check validates half a relationship and reports it as whole, and a name found anywhere in a file is evidence of a mention, not of a declaration.
+  source: "#202 / fix #212 (agent registry, one-way); #327 / fix #340 (routing delegation, one-way + substring)"
+
+- id: L-0010
+  date: 2026-07-27
+  scope: global
+  context: A freshly rendered repository opened on a wall of red CI. Roadmap item 1.1 is what lays down the build system, so the build manifest is absent by design on day zero — but the rendered workflow ran the toolchain jobs anyway and every one of them failed at its install or build step. It was not a broken promise; the stated quality bar only guarantees the congruence lint passes out of the box. It was still the wrong first experience, and the damage is not the failure itself — a maintainer's first signal from their new repo taught them that red CI here is normal, which is the opposite of what every other gate is for.
+  rule: A generated artifact must be green on day zero for the work not yet done, not merely green for the work already finished — where a job cannot succeed until a later roadmap item lands, make it SKIP on a declared condition rather than fail, and drive that condition from profile data so the guard is generic across every toolchain and self-disables the moment the item lands.
+  source: "#313 (field report, egl-utils-js javascript/pnpm scaffold run 2026-07-16); local L-0008 upstreamed"
+
+- id: L-0011
+  date: 2026-07-27
+  scope: global
+  context: A merge resolved two ci.yml lines to main's SHA while keeping the branch's version comment, landing the v7.0.0 commit under a "# v7.0.1" label. The gate that caught it (action-pins) compares a pin's SHA ACROSS files, so it only saw the disagreement because the mangling was NON-uniform; reproduced during the fix, the same wrong SHA applied uniformly to ci.yml and all three workflow templates yields zero findings. ADR-0009 mandated the version comment's PRESENCE and named its two consumers, but never its truthfulness. Worse, the obvious remedy was wrong: sync_action_pins.py --fix copies the factory CI's SHA into the templates, so on that tree it would have propagated the incorrect commit under a right-looking label and turned the gate green over a uniformly wrong pin set.
+  rule: When a record carries a machine-readable key and a human-readable label, gate the label's TRUTH and not merely its presence — a label nobody resolves lies for exactly as long as nobody resolves it, and a cross-file consistency check cannot see an error applied consistently. When such a drift is found, resolve it toward the EXTERNAL source of truth, never toward the local artifact a sync tool happens to treat as canonical; a fixer that copies rather than resolves will make a uniform error look correct.
+  source: "#309/#310 (the mislabeled actions/checkout pin, 2026-07-26); #312 fix — the pin-label-truth gate and the ADR-0009 2026-07-27 addendum"
+
+- id: L-0012
+  date: 2026-07-27
+  scope: global
+  context: Seven consecutive issues (#306, #313, #346, #347, #350, #353, #358) were all found by a downstream consumer, six naming the same two field repos, and ZERO were found by CI. Not seven unrelated misses - one structural gap. Every tool a generated repo runs was tested only against hand-built fixtures; nothing ever ran a factory tool inside a rendered repository. The two nearest tests each missed a different half - one renders a repo but exercises only the tool templated INTO it, the other drives the real CLIs but over a fixture. The intersection nobody occupied is exactly where the defects lived, and one of them (git_check reading the factory's scope list) was wrong in both directions for months while its gate reported into an advisory void.
+  rule: A tool that reads policy must be tested against an artifact the tool's author did not write - render the consumer and run the real CLI inside it. A hand-built fixture encodes the same assumptions as the code under test, so it cannot contradict them; only a generated artifact carries the other party's contract. When adding such a test, assert the vocabulary the tool NAMES when it rejects something, not merely that it rejected - and resurrect the defect on demand (drive the tool at the wrong contract deliberately) so the assertion is proven non-vacuous rather than passing because nothing is being checked.
+  source: "#359 (the consumer-smoke gate); the seven field reports it was filed against, #358 and #350 being the two it reproduces"

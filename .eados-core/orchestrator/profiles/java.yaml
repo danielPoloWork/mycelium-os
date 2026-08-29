@@ -1,0 +1,89 @@
+# java.yaml — Java (JVM) toolchain profile
+#
+# The reference source tree is already Maven-style, so Java maps almost 1:1. Sanitizer
+# equivalents: ErrorProne/NullAway (compile-time soundness), JCStress (concurrency), and
+# the JVM's own leak semantics covered by leak-sensitive tests.
+
+lang:             java
+display_name:     "Java"
+default_standard: "Java 21 (LTS), --release 17 floor"
+src_ext:          java
+
+namespace_pattern: "{group_dotted}.{project_slug}"           # it.d4np.ratelimiter (package)
+import_idiom:      "import {group_dotted}.{project_slug}.*;"
+
+toolchain:
+  build_tool:      "Gradle (Kotlin DSL) or Maven"
+  pkg_manager:     "Gradle/Maven coordinates (Maven Central publish)"
+  test_framework:  "JUnit 5 (+ AssertJ; jqwik for property tests)"
+  formatter:       "Spotless (google-java-format)"
+  linter:          "ErrorProne + NullAway + Checkstyle"
+  sanitizers:      "ErrorProne/NullAway (soundness), JCStress (concurrency), JFR leak profiling"
+  coverage_tool:   "JaCoCo"
+  doc_tool:        "Javadoc"
+  version_file:    "Version.java"         # under src_main; mirrors the build version
+  version_const_hint: "public static final String VERSION = \"X.Y.Z\""
+  package_ecosystem: "gradle"             # Dependabot ecosystem (use "maven" if Maven-built)
+
+commands:
+  build:        "./gradlew build"
+  test:         "./gradlew test"
+  format_check: "./gradlew spotlessCheck"
+  lint:         "./gradlew check"          # ErrorProne/Checkstyle wired into compile/check
+  bench:        "./gradlew jmh"            # JMH; "" if no bench
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: build.gradle.kts
+
+config_files:
+  - build.gradle.kts
+  - settings.gradle.kts
+  - config/checkstyle/checkstyle.xml
+  - gradle/wrapper/gradle-wrapper.properties
+
+ci:
+  tier1_platforms: "Linux / Windows / macOS on Temurin JDK 17 & 21"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: "temurin-17", preset: test }
+    - { os: ubuntu-24.04, toolchain: "temurin-21", preset: test }
+    - { os: windows-2022, toolchain: "temurin-21", preset: test }
+    - { os: macos-14,     toolchain: "temurin-21", preset: test }
+  setup_steps: |
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: ${{ matrix.toolchain == 'temurin-17' && '17' || '21' }}
+        cache: gradle
+  extra_jobs: |
+    quality:
+      name: quality / spotless + errorprone + jacoco
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: actions/setup-java@v4
+          with: { distribution: temurin, java-version: '21', cache: gradle }
+        - run: ./gradlew spotlessCheck check jacocoTestCoverageVerification
+  race_job: |
+    jcstress:
+      name: jcstress / concurrency stress
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: actions/setup-java@v4
+          with: { distribution: temurin, java-version: '21', cache: gradle }
+        - run: ./gradlew jcstress
+
+supports:
+  threading_sanitizer: true    # JCStress for concurrency correctness
+  bench: true
+  abi_stability: true          # binary compatibility matters for published artifacts
+notes: |
+  Java is the closest fit to the reference's Maven-style tree — src/main/java/<group>/<slug>
+  is idiomatic, not an imposition. Binary compatibility is part of the SemVer contract;
+  consider japicmp in a release job. JCStress is the TSan analogue for the threading flag.

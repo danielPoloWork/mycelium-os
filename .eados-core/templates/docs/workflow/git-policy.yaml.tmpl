@@ -1,0 +1,47 @@
+# {{PROJECT_NAME}} — git policy, as data.
+#
+# The machine-readable instance of the branch / commit rules this repository's `AGENTS.md` §6
+# states in prose, and of `docs/workflow/git-workflow.md` next door. It exists so the checks can
+# read THIS project's contract instead of someone else's (#358): `.eados-core/` is gitignored here,
+# so the manifest that declared these scopes does not survive a clone — this file does.
+#
+# Evaluated by:
+#     python .eados-core/tools/git_check.py [--advisory]
+#
+# which discovers this file from the repository root. It is deliberately NOT a copy of the EADOS
+# factory's own `os/git/git.yaml`: the universal parts of that policy (who drafts, who merges, who
+# publishes, semver, traceability) are stated in this repo's `AGENTS.md`, which is authoritative
+# here and does not defer back to EADOS (ADR-0003). Duplicating them into a second file would only
+# create something to drift.
+#
+# Keep it in step with `AGENTS.md` §6: adding a subsystem means adding its scope in BOTH places.
+version: 1
+
+branch_naming:
+  pattern: "<type>/<short-kebab>"
+  # The Conventional Commit types. Not project-specific — rendered from the factory spec so the two
+  # cannot disagree at generation time.
+  types: [{{GIT_BRANCH_TYPES}}]
+
+commit:
+  convention: conventional-commits
+  # THIS project's subsystem nouns, from the manifest's `governance.scopes`. The list every other
+  # repository has a different version of, and the reason this file exists.
+  scopes: [{{GIT_COMMIT_SCOPES}}]
+  # Max length of the subject line YOU write. The squash-merge's trailing ` (#PR)` is excluded
+  # before measuring — you did not write it and cannot prevent it. Yours to change.
+  subject_max: {{GIT_SUBJECT_MAX}}
+  one_logical_change_per_pr: true
+  one_pr_at_a_time: true
+  # WHOSE open PRs the limit counts: `authored` (human/agent) or `all`. The rule is about not
+  # stacking work in flight, not about capping a dependency bot's queue — counting bots put a
+  # generated repo in violation of its own policy minutes after bootstrap (#350). Matched on the
+  # author TYPE, so a new bot is covered the day it arrives with nothing to keep current.
+  one_pr_counts: authored
+
+pr:
+  default_branch: {{DEFAULT_BRANCH}}
+  # WHOSE PRs the assignee / one-label / milestone contract binds. A bot cannot assign, cannot set
+  # a milestone, and its requested label is dropped until `.github/labels.yml` is imported — so
+  # reporting those fields INCOMPLETE on a dependency PR only teaches people to ignore the check.
+  metadata_applies_to: authored

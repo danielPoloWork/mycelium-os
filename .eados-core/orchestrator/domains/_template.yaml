@@ -1,0 +1,16 @@
+# Scaffold for a NEW domain/target profile. Copy to `<domain>.yaml` and fill every key.
+# Underscore-prefixed -> not checked by the `domain-completeness` gate (it is a scaffold).
+# Schema: ./_schema.md. Adding a domain is editing data, never a tool (anti-fragmentation).
+domain: ""                       # id; must match the filename stem
+display_name: ""                 # human-readable name
+roles: []                        # canonical authority.yaml role ids active in this domain
+role_labels: {}                  # canonical-role -> domain label (e.g. product-manager: game-designer)
+artifacts:
+  product_spec: ""               # PRD | GDD
+  design_doc: RFC
+  test_strategy: required
+nfr_axes: []                     # [{ axis, hard_budget, unit?, direction: min|max, seed?, scale?, metrics? }, …]
+                                 # a hard axis is TYPED (#249): unit + direction (+ seed) — never a bare boolean
+milestone_vocabulary: semver     # semver | alpha-beta-rc
+cross_discipline_deps: []        # [art, animation, sound, localization, …] or []
+workflow_overlay: ""             # the workflow.yaml domain_overlays key for this domain

@@ -1,0 +1,29 @@
+# Domain profile — web (website / web app / web service). Schema: ./_schema.md.
+# Browser-facing delivery: accessibility (WCAG) and Core Web Vitals are FIRST-CLASS, hard NFR axes
+# (a legal/measurable bar the spec treats as non-negotiable), UX/UI design and content are the
+# cross-discipline dependencies, and the `web` workflow overlay adds an accessibility + web-vitals
+# gate. Same authority roles as the baseline (a domain activates a subset, it does not invent roles);
+# the web vocabulary is carried by role_labels. This is the seed for the most common modern target,
+# so it ships rather than being written from _template.yaml (ADR-0015 / issue #149).
+domain: web
+display_name: "Web (website / web app / web service)"
+roles: [product-manager, enterprise-architect, tech-lead, reviewer, security-auditor, producer, release-manager]
+role_labels:
+  product-manager: product-owner        # the Product Owner grooms the web product backlog
+  enterprise-architect: web-architect
+  tech-lead: full-stack-lead            # frontend + backend technical lead
+artifacts:
+  product_spec: PRD
+  design_doc: RFC
+  test_strategy: required
+# Hard axes are TYPED (#249): the `nfr-budgets` audit-overlay gate FAILs a hard axis with no
+# recorded budget in spec.nfr_budgets. `accessibility` is a LEVEL axis (`scale`, target drawn
+# from it); `core_web_vitals` is a composite (one budget entry per `metrics` name, each numeric).
+nfr_axes:
+  - { axis: accessibility,   hard_budget: true, unit: "WCAG 2.2 level", direction: min, scale: "A|AA|AAA", seed: AA }   # often a legal bar
+  - { axis: core_web_vitals, hard_budget: true, unit: "s / ms / score", direction: max, metrics: "LCP|INP|CLS", seed: "LCP 2.5 s - INP 200 ms - CLS 0.1" }
+  - { axis: security,        hard_budget: false }   # OWASP web attack surface
+  - { axis: latency,         hard_budget: false }   # server response / TTFB
+milestone_vocabulary: semver
+cross_discipline_deps: [design, content]            # UX/UI design + content/copy pipeline
+workflow_overlay: web                               # adds accessibility-review + web-vitals-budget gates

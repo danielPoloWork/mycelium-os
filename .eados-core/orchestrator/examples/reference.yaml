@@ -1,0 +1,151 @@
+# reference.yaml — the pbr-cpp-memory-pool manifest, used as a worked example and as the
+# render-smoke fixture in EADOS's own CI. Rendering it must produce a repo whose generated
+# consistency_lint.py passes out of the box.
+
+identity:
+  project_name: pbr-cpp-memory-pool
+  project_slug: memorypool
+  project_title: High-Performance Memory Pool
+  project_tagline: a fixed-block O(1) memory pool for C++17
+  project_series: Purpose-Built References (PBR)
+  project_kind: library
+
+ownership:
+  owner: danielPoloWork
+  maintainer: Daniel Polo
+  author: Daniel Polo
+  year: "2026"
+  license_id: MIT
+  default_branch: main
+  assignee: ""              # blank -> the repo owner (danielPoloWork); never "@me"
+
+language:
+  lang: cpp
+  lang_name: C++17
+  lang_standard: C++17 (ISO/IEC 14882:2017)
+  secondary_lang: ""
+  group_path: it/d4np
+  group_dotted: it.d4np
+  namespace: it::d4np::memorypool
+  src_ext: cpp
+  comment_lang: en             # confirmed at Q4.7 — comments in English (the default; ADR-0016)
+  public_include_hint: "#include <it/d4np/memorypool/memory_pool.h>"
+
+toolchain:
+  build_tool: CMake + Ninja
+  pkg_manager: vcpkg / Conan
+  test_framework: doctest
+  formatter: clang-format
+  linter: clang-tidy
+  sanitizers: ASan, UBSan, TSan, Valgrind
+  coverage_tool: llvm-cov / gcovr
+  coverage_target: 80
+  doc_tool: Doxygen
+  version_file: version.hpp
+  version_const_hint: PBR_MEMORYPOOL_VERSION_*
+  package_ecosystem: ""
+  commands:
+    build: cmake --build --preset debug
+    test: ctest --preset debug --output-on-failure
+    format_check: clang-format --dry-run --Werror <files>
+    lint: clang-tidy --warnings-as-errors='*' <files>
+    bench: cmake --build --preset bench
+
+ci:
+  tier1_platforms: Linux x86_64, Windows x86_64, macOS arm64
+  matrix:
+    - { os: ubuntu-24.04, toolchain: gcc, preset: debug }
+    - { os: windows-2022, toolchain: msvc, preset: debug }
+    - { os: macos-14, toolchain: apple-clang, preset: debug }
+  setup_steps: |
+    - name: Install a recent CMake and Ninja
+      uses: lukka/get-cmake@e0566b3900d662ef5b1dc36fb560c4d2b1b6d6bd # v4.3.3
+  extra_jobs: |
+    format:
+      name: format / clang-format check
+      runs-on: ubuntu-24.04
+      steps:
+        - uses: actions/checkout@v6
+        - name: Verify formatting
+          run: clang-format --version
+
+governance:
+  scopes: [api, build, tests, docs, ci]
+  version_start: pre-1.0 milestone-driven
+  start_version: "0.0.0"
+  capabilities:
+    bench: true
+    threading: false
+    public_api: true
+    i18n: false
+    packaging: false
+    service: false
+    announce: false
+
+i18n:
+  default_lang: en
+  targets: []
+
+announce:
+  channels: []
+
+spec:
+  provenance: coauthor        # this reference spec was co-authored through Phase 5 (Q5.0)
+  objective: A fixed-block O(1) memory pool that removes allocation jitter on hot paths.
+  functional_reqs:
+    - O(1) allocate and deallocate
+    - Fixed block size fixed at construction
+  nonfunctional_reqs:
+    - No heap allocation after construction
+    - Zero leaks under Valgrind leak-check=full
+  architecture: A free-list over a contiguous arena; allocate pops a node, deallocate pushes one.
+  architecture_style: ""        # a library exposes an API, not an application architecture style
+  pattern_discipline: advisory
+  patterns:
+    - name: Object Pool
+      why: "Reuse pre-allocated fixed-size blocks instead of per-operation malloc/free."
+    - name: Free List
+      why: "Track available blocks as an intrusive singly-linked list for O(1) alloc/dealloc."
+  public_api:
+    - "memory_pool(block_size, block_count)"
+    - "void* allocate()"
+    - "void deallocate(void* p)"
+  verification: doctest unit tests, ASan/UBSan/TSan, Valgrind leak-check, reproducible benchmarks.
+  milestone1_items:
+    - "1.6 Implement the free-list arena and the allocate/deallocate fast paths"
+  # Items exercise BOTH forms (#306, ADR-0023): plain strings render unchanged (the legend's
+  # floor covers them); {text, signals[]} objects render a derived advisory route — signals,
+  # never tiers (the os/routing rules own that mapping).
+  milestones:
+    - number: 2
+      title: "Concurrency & safety"
+      goal: "Make the pool thread-safe and prove it under the sanitizers."
+      items:
+        - text: "2.1 Add the thread-safe allocation path (lock-free free-list or sharded locks)"
+          signals: [sets-pattern]
+        - "2.2 Wire TSan into CI and add the multi-threaded stress test"
+        - "2.3 Document the threading contract in the public API docs"
+    - number: 3
+      title: "Benchmarks & 1.0 hardening"
+      goal: "Lock the public API, prove performance, and cut the first stable release."
+      items:
+        - text: "3.1 Add the reproducible allocation/deallocation benchmarks"
+        - text: "3.2 Freeze the public interface and record the API-stability ADR"
+          signals: [adr]
+        - "3.3 Cut v1.0.0 (SemVer) with the release workflow"
+
+# Interview provenance (#169): how each top-level answer got its value — asked (posed to the
+# maintainer), defaulted (assumed and echoed back), imported (carried in from an existing
+# artifact). State for the confirmation step and the learning loop; never rendered.
+interview:
+  questionnaire_version: 1
+  provenance:
+    identity: asked
+    ownership: asked
+    language: asked
+    toolchain: asked          # profile pre-fill, confirmed per project (Phase 3)
+    ci: asked
+    governance: asked
+    i18n: defaulted           # no translations wanted — the en-only default stood
+    announce: defaulted       # no channels — the off default stood
+    spec: asked               # co-authored through Phase 5 (spec.provenance: coauthor)

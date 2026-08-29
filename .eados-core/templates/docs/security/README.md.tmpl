@@ -1,0 +1,19 @@
+# Security docs — {{PROJECT_NAME}}
+
+The **analysis** side of the project's security story, owned by the **security-auditor** role.
+Three artifacts, three jobs — keep them distinct:
+
+| Artifact | Job | Lives |
+|---|---|---|
+| `SECURITY.md` (repo root) | the **policy** — supported versions, private reporting channel | root |
+| [`threat-model.md`](threat-model.md) | the **analysis** — trust boundaries + the STRIDE pass | here |
+| the audit **risk register** | the **outcome** — scored findings of a concrete audit run | audit records |
+
+The threat model is scaffolded empty and **filled by the audit phase's threat-modeling sub-mode**
+(`/eados security`, an alias into `/eados audit` — ADR-0019 §2: a sub-mode adds no new phase or
+state). Update it when a trust boundary changes — a new untrusted input, a new dependency on an
+external service, a privilege change — in the same PR as the change, exactly like the spec.
+
+A confirmed, reproducible defect found here becomes a [bug-ledger](../bugs/README.md) record; a
+vulnerability that warrants coordinated disclosure becomes a **draft** advisory (a human
+publishes — never the agent).

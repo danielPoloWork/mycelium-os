@@ -1,0 +1,47 @@
+# Software Specification: {{PROJECT_TITLE}} ({{LANG_NAME}})
+
+> Rendered from the intake interview (Phase 5). Frozen contract: diverging implementation
+> updates this spec in the same PR or adds an ADR superseding the relevant section.
+
+## 1. Objective & Business Context
+
+{{SPEC_OBJECTIVE}}
+
+## 2. Functional Requirements
+
+{{#EACH_FUNCTIONAL_REQ}}- {{.}}
+{{/EACH_FUNCTIONAL_REQ}}
+
+## 3. Non-Functional Requirements
+
+<!-- Scalability / load budgets belong here as NUMBERS, not adjectives (the design "scalability"
+     fold): a value per hard NFR axis — throughput / concurrency, p99 latency, memory ceiling,
+     target FPS, cold-start budget — each phrased so CI could prove a violation. -->
+{{#EACH_NONFUNCTIONAL_REQ}}- {{.}}
+{{/EACH_NONFUNCTIONAL_REQ}}
+
+## 4. Logical Architecture & Core Algorithm
+
+<!-- For a non-obvious core algorithm, include a short LANGUAGE-FREE pseudocode sketch (control
+     flow + invariants) alongside the prose + diagram (the design "pseudocode" fold); skip it when
+     the approach is standard. If the design owns persistent state, capture the data model here —
+     entities, relations, normal form, migration policy — within ADR-0004's secondary-SQL frame. -->
+{{SPEC_ARCHITECTURE}}
+
+## 5. Public Interface
+
+<!-- The API contract (the design "api" fold): each operation with its payload shapes, the error
+     model (the failure taxonomy, not just the happy path), and the versioning / SemVer surface.
+     A service/web project may keep the written-out contract under docs/api/ (capabilities.api_spec). -->
+Consumers import via `{{PUBLIC_INCLUDE_HINT}}`. The public surface:
+
+{{#EACH_PUBLIC_API}}- {{.}}
+{{/EACH_PUBLIC_API}}
+
+## 6. Verification & Test Strategy
+
+{{SPEC_VERIFICATION}}
+
+Toolchain: built with {{BUILD_TOOL}}, tested with {{TEST_FRAMEWORK}}, checked with
+{{SANITIZERS}}, coverage target ≥ {{COVERAGE_TARGET}}% line. Every functional and
+non-functional requirement above maps to a CI gate (see [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml)).

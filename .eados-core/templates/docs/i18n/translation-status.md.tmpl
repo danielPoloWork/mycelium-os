@@ -1,0 +1,24 @@
+# Translation Status
+
+Canonical source language: **{{DOC_DEFAULT_LANG}}** — the on-disk sources are English; the
+rows below track *derived* translations under `docs/i18n/<code>/`.
+
+**Legend** — `pending`: not yet translated (ignored by the freshness check) · `translated`:
+current as of the recorded source commit · the lint flags it stale automatically once the
+English source advances past that commit.
+
+## Tracked pages
+
+One row per `(source page × target language)`. When a translation lands, change its status
+to `translated` and set the **Source commit** to the SHA of the English page it was made
+from. The link in a `translated` row is resolved **relative to this file's directory**
+(`docs/i18n/`) and must point at the English source (e.g. `../../README.md`).
+
+| Source page | Language | Status | Source commit |
+|---|---|---|---|
+| — | — | `pending` | — |
+
+## Target languages
+
+{{#EACH_DOC_LANG}}- **{{name}}** (`{{code}}`) — `docs/i18n/{{code}}/`
+{{/EACH_DOC_LANG}}

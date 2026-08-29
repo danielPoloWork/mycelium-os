@@ -1,0 +1,78 @@
+# swift.yaml — Swift toolchain profile. SwiftPM; namespaces are modules.
+
+lang:             swift
+display_name:     "Swift"
+default_standard: "Swift 6 (tools 5.10+)"
+src_ext:          swift
+
+namespace_pattern: "{project_slug} module in PascalCase (Swift namespaces by module; no nested namespaces)"
+import_idiom:      "import {project_slug}"
+
+toolchain:
+  build_tool:      "Swift Package Manager (SwiftPM)"
+  pkg_manager:     "SwiftPM (Package.resolved committed)"
+  test_framework:  "swift-testing (or XCTest)"
+  formatter:       "swift-format"
+  linter:          "SwiftLint (--strict)"
+  sanitizers:      "ASan, TSan, UBSan (swift build --sanitize=...)"
+  coverage_tool:   "llvm-cov (swift test --enable-code-coverage)"
+  doc_tool:        "DocC"
+  version_file:    "Version.swift"
+  version_const_hint: "public let version = \"X.Y.Z\""
+  package_ecosystem: "swift"
+
+commands:
+  build:        "swift build -c release"
+  test:         "swift test"
+  format_check: "swift-format lint --strict --recursive Sources"
+  lint:         "swiftlint --strict"
+  bench:        "swift run -c release Bench"   # package-benchmark
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: Package.swift
+
+config_files:
+  - Package.swift
+  - .swiftlint.yml
+  - .swift-format
+
+ci:
+  tier1_platforms: "macOS arm64, Linux x86_64 (Swift 5.10/6)"
+  matrix:
+    - { os: macos-14,     toolchain: swift-6,  preset: release }
+    - { os: ubuntu-24.04, toolchain: swift-6,  preset: release }
+  setup_steps: |
+    - name: Set up Swift (Linux)
+      if: runner.os == 'Linux'
+      uses: swift-actions/setup-swift@v2
+      with: { swift-version: '6.0' }
+  extra_jobs: |
+    quality:
+      name: quality / swiftlint + swift-format
+      runs-on: macos-14
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - run: swiftlint --strict
+        - run: swift-format lint --strict --recursive Sources
+  race_job: |
+    tsan:
+      name: tsan / thread sanitizer
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: swift-actions/setup-swift@v2
+          with: { swift-version: '6.0' }
+        - run: swift test --sanitize=thread
+
+supports:
+  threading_sanitizer: true
+  bench: true
+  abi_stability: false                     # library evolution exists; SemVer protects the source API
+notes: |
+  Swift 6 via SwiftPM (macOS + Linux). ASan/TSan/UBSan through `swift build --sanitize`. For
+  Apple-app targets (iOS/macOS UI) add an Xcode build cell. Dependabot ecosystem: swift.

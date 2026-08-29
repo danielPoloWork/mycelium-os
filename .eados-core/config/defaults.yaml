@@ -1,0 +1,26 @@
+# Customization overlay — defaults that override the built-in questionnaire defaults.
+# Precedence: this overlay > language profile > built-in. A blank value or omitted key falls
+# through to the next layer, so set only what your organization standardizes on.
+#
+# The architect reads this at interview time, pre-fills the answers, and still echoes every
+# defaulted value back for confirmation (a wrong overlay is caught at the manifest checkpoint).
+
+ownership:
+  default_branch: ""        # e.g. main
+  license_id: ""            # e.g. Apache-2.0
+  assignee: ""              # blank -> the repo owner; never @me (it resolves to the drafting actor)
+  author: ""                # e.g. ACME Corp
+
+language:
+  group_path: ""            # e.g. com/acme   (group_dotted is derived)
+
+toolchain:
+  coverage_target: ""       # e.g. 85
+
+governance:
+  scopes: []                # e.g. [api, core, build, tests, docs, ci]
+  version_start: ""         # e.g. "start at 1.0.0"
+
+i18n:
+  default_lang: ""          # e.g. en
+  targets: []               # e.g. [{ code: it, name: Italian }]

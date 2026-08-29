@@ -1,0 +1,30 @@
+# Documentation i18n
+
+`{{PROJECT_NAME}}` keeps its **canonical documentation in {{DOC_DEFAULT_LANG}}** (the
+English-only rule of [`AGENTS.md`](../../AGENTS.md) §2 applies to every *source* artifact).
+Translations are **derived copies**, never the source of truth, and live under
+`docs/i18n/<language-code>/` mirroring the original path.
+
+## How it works
+
+- The English page is authoritative. A translation is a snapshot of it at a known commit.
+- [`translation-status.md`](translation-status.md) records, per translated page, the
+  **source commit SHA** the translation was made from.
+- The consistency lint's `i18n-freshness` check fails when the English source has advanced
+  past that SHA — i.e. the translation is stale and must be refreshed (in its own PR).
+- A page with status `pending` is not yet translated and is ignored by the freshness check,
+  so a freshly generated repo passes the lint with no translations present.
+
+## Target languages
+
+{{#EACH_DOC_LANG}}- **{{name}}** (`{{code}}`) → `docs/i18n/{{code}}/`
+{{/EACH_DOC_LANG}}
+
+## Adding or updating a translation
+
+1. Copy the English source to `docs/i18n/<code>/<same-relative-path>`.
+2. Translate the prose (keep code blocks, identifiers, and links unchanged).
+3. Add or update its row in [`translation-status.md`](translation-status.md): set the
+   status to `translated` and the source commit to the current `{{DEFAULT_BRANCH}}` SHA of
+   the English page.
+4. Run `python tools/consistency_lint.py` and open the PR (one logical change, as always).

@@ -1,0 +1,77 @@
+# lua.yaml — Lua toolchain profile. Modules via require, LuaRocks ecosystem; commonly embedded.
+
+lang:             lua
+display_name:     "Lua"
+default_standard: "Lua 5.4 (and LuaJIT)"
+src_ext:          lua
+
+namespace_pattern: "{group_dotted}.{project_slug} module path via require (e.g. it.d4np.memorypool)"
+import_idiom:      "local {project_slug} = require('{group_dotted}.{project_slug}')"
+
+toolchain:
+  build_tool:      "LuaRocks (rockspec)"
+  pkg_manager:     "LuaRocks (pinned rockspec)"
+  test_framework:  "busted"
+  formatter:       "stylua"
+  linter:          "luacheck (+ selene)"
+  sanitizers:      "luacheck (static); Valgrind on the C host when embedded"
+  coverage_tool:   "LuaCov"
+  doc_tool:        "LDoc"
+  version_file:    "version.lua"
+  version_const_hint: "M.VERSION = 'X.Y.Z'"
+  package_ecosystem: ""                    # LuaRocks is not a Dependabot ecosystem
+
+commands:
+  build:        "luarocks make"
+  test:         "busted"
+  format_check: "stylua --check ."
+  lint:         "luacheck ."
+  bench:        "lua bench/run.lua"
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: "*.rockspec"
+
+config_files:
+  - "*.rockspec"
+  - .luacheckrc
+  - stylua.toml
+  - .busted
+
+ci:
+  tier1_platforms: "Linux (Lua 5.4, LuaJIT)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: lua-5.4, preset: default }
+    - { os: ubuntu-24.04, toolchain: luajit,  preset: default }
+  setup_steps: |
+    - name: Set up Lua
+      uses: leafo/gh-actions-lua@v10
+      with:
+        luaVersion: ${{ matrix.toolchain == 'luajit' && 'luajit' || '5.4' }}
+    - name: Set up LuaRocks
+      uses: leafo/gh-actions-luarocks@v4
+    - name: Install dependencies
+      run: luarocks install --deps-only *.rockspec || true
+  extra_jobs: |
+    quality:
+      name: quality / luacheck + stylua
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: leafo/gh-actions-lua@v10
+          with: { luaVersion: '5.4' }
+        - uses: leafo/gh-actions-luarocks@v4
+        - run: luarocks install luacheck && luacheck .
+        - uses: JohnnyMorganz/stylua-action@v4
+          with: { version: latest, args: --check . }
+  race_job: ""                             # single-threaded; coroutines are cooperative, not preemptive
+
+supports:
+  threading_sanitizer: false
+  bench: true
+  abi_stability: false                     # C-API stability matters when embedding (note it in the spec)
+notes: |
+  Lua 5.4 with a LuaJIT cell for performance-sensitive consumers. busted/luacheck/stylua are the
+  de-facto trio. When embedded in a C/C++ host, verify the host with the C/C++ profile's tools.

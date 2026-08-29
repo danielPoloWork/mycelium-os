@@ -1,0 +1,30 @@
+# API contract — {{PROJECT_NAME}}
+
+The written-down public API contract for `{{PROJECT_NAME}}`. The design RFC (Decision → *API
+contract* fold) **states** the contract; this directory is where it is **recorded** in a
+machine-checkable form, and the spec's §5 *Public Interface* is its prose summary. Keep the three
+in sync — a change to the surface updates the RFC, this stub, and spec §5 in the same PR.
+
+## Format
+
+Write the contract in the form your stack consumes:
+
+- **HTTP / REST** → an OpenAPI 3.x document (`openapi.yaml`) — one path per endpoint, request/
+  response schemas, and the **error responses** (not just `200`).
+- **gRPC / IPC** → the `.proto` (or IDL) files, with the service and message definitions.
+- **Library** → this stub is usually unnecessary; the public API lives in the headers/signatures
+  and spec §5. Enable `capabilities.api_spec` only when there is a wire/service surface.
+
+## The contract must state
+
+- **Operations** — every endpoint/RPC, with its verb/route or method signature.
+- **Payloads** — request and response shapes, with the required-vs-optional split.
+- **Error model** — the failure taxonomy consumers must handle (status codes / error types), so a
+  client can be written against the contract without reading the implementation.
+- **Versioning** — the compatibility promise and the **SemVer surface**: what constitutes a
+  breaking (MAJOR) change to this API.
+
+## Convention
+
+Regenerate any client/server stubs from the document here — never hand-edit generated code, and
+never let the running service and this document diverge (a drift is a defect, not a doc-debt).

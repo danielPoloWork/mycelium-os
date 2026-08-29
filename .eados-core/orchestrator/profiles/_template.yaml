@@ -1,0 +1,71 @@
+# _template.yaml — copy this to <lang>.yaml to teach EADOS a NEW language.
+#
+# EADOS is open to ANY programming language: the templates only ever reference *roles*
+# (build tool, test runner, formatter, linter, …), never a specific tool. A language profile
+# binds those roles to concrete tools and commands. The six shipped profiles are just seeds;
+# this stub is how you add the seventh, or the seventieth.
+#
+# Steps (the `profile-author` role, ../../agent/profile-author.md):
+#   1. cp _template.yaml <lang>.yaml   (e.g. csharp.yaml, kotlin.yaml, swift.yaml, ruby.yaml)
+#   2. Fill every field below — every key is REQUIRED (see _schema.md). Pick the de-facto
+#      enterprise tool for each role; justify any exotic choice in `notes` and an ADR.
+#   3. Add the language's framework follow-ups to the interview (Phase 2) if it needs them.
+#   4. Record an ADR for the new language and add a row to the README supported-language note.
+#   5. Prove it: `python tools/eados_lint.py` (completeness) AND render a manifest for the
+#      language whose generated `consistency_lint.py` passes (the render-smoke pattern).
+
+lang:             ""          # source-tree segment, lowercase   e.g. csharp | kotlin | swift
+display_name:     ""          # human name                       e.g. "C#"
+default_standard: ""          # default standard/edition string  e.g. ".NET 8 / C# 12"
+src_ext:          ""          # primary source extension (no dot) e.g. cs
+
+# How the native namespace/package forms from group_dotted + project_slug. Use the tokens
+# {group_dotted} / {group_path} / {project_slug}; describe the idiom precisely.
+namespace_pattern: ""         # e.g. "{group_dotted}.{project_slug}"  -> It.D4np.MemoryPool
+import_idiom:      ""         # e.g. "using {group_dotted}.{project_slug};"
+
+toolchain:
+  build_tool:      ""         # e.g. "dotnet SDK (MSBuild)"
+  pkg_manager:     ""         # e.g. "NuGet (lock file committed)"
+  test_framework:  ""         # e.g. "xUnit (+ FsCheck for property tests)"
+  formatter:       ""         # e.g. "dotnet format / CSharpier"
+  linter:          ""         # e.g. "Roslyn analyzers (warnings as errors)"
+  sanitizers:      ""         # the language's moral equivalent: race/leak/type checkers
+  coverage_tool:   ""         # e.g. "coverlet"
+  doc_tool:        ""         # e.g. "DocFX"
+  version_file:    ""         # relative path under src_main holding the version constant
+  version_const_hint: ""      # how the version constant is named/expressed
+  package_ecosystem: ""       # Dependabot ecosystem: nuget|pip|npm|cargo|gomod|gradle|… ("" if none)
+
+commands:                     # must run unmodified on a freshly generated repo (after M1)
+  build:        ""            # e.g. "dotnet build -c Release"
+  test:         ""            # e.g. "dotnet test"
+  format_check: ""            # e.g. "dotnet format --verify-no-changes"
+  lint:         ""            # e.g. "dotnet build -warnaserror"
+  bench:        ""            # e.g. "dotnet run -c Release --project bench"  ("" if no bench)
+
+config_files:                 # repo-root config the generator stubs so day-one tooling works
+  - ""                        # e.g. .editorconfig
+  - ""                        # e.g. Directory.Build.props
+
+ci:
+  tier1_platforms: ""         # human description, e.g. "Linux x64, Windows x64, macOS arm64"
+  matrix:                     # build matrix cells rendered into ci.yml
+    - { os: "", toolchain: "", preset: "" }
+  setup_steps: |              # YAML steps (literal block) that set up the toolchain in a job
+    - name: ...
+      uses: ...
+  extra_jobs: |               # language-specific quality jobs (format/lint/leak/etc.)
+    your-job:
+      name: ...
+      runs-on: ubuntu-24.04
+      steps: [ ... ]
+  race_job: ""                # data-race/concurrency job (use a `|` block); "" if the language has none
+
+supports:                     # informational; project answers still decide what is enabled
+  threading_sanitizer: false
+  bench: false
+  abi_stability: false
+notes: |
+  Free text — gotchas, idioms, why each tool was chosen, sanitizer mapping. Mirror cpp.yaml's
+  rigor (it is the ground-truth profile), not its tools.

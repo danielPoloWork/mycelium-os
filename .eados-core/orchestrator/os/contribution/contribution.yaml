@@ -1,0 +1,95 @@
+# EADOS inbound-contribution policy — reference instance. Schema: ./_schema.md.
+# Encodes the maintainer's external-PR practice — verify the change (not the person); we NEVER merge a
+# non-owner's commits — a good idea is adopted via co-author + an in-house re-implementation; the human
+# posts the close (the #94 episode) — as data the gates validate. The evaluator is
+# ../../../tools/pr_review.py (M8 8.3); the reviewer persona is ../../agent/contribution-reviewer.md (M8 8.2).
+# Roles are ids from ../authority/authority.yaml.
+version: 1
+
+# Where "owned" comes from: authorship at/above `collaborator` is trusted; everyone else is an
+# external fork. CODEOWNERS is authoritative; the manifest's owner is the fallback.
+owner_identity:
+  source: CODEOWNERS                  # .github/CODEOWNERS — authoritative for owned paths
+  manifest_fallback: ownership.owner  # project.yaml `ownership.owner` when CODEOWNERS is absent
+
+# Trust tiers, least -> most scrutiny. Scrutiny attaches to the diff + provenance, NEVER to who
+# opened it (the #94 principle). `external-fork` (unknown / first-time, from a fork) gets the most.
+# Note: the tier sets scrutiny only — a non-owner's commits are never merged regardless of tier
+# (courtesy.merge_nonowner_commits); the change is adopted by re-implementing it in-house.
+trust_tiers:
+  - id: owner
+    scrutiny: standard
+  - id: collaborator
+    scrutiny: standard
+  - id: external-fork
+    scrutiny: high
+
+# Every inbound PR is evaluated against these before a disposition is recommended.
+required_checks:
+  - ci-green                # the factory CI (self-lint + render-smoke) is green
+  - provenance-clear        # author + fork status known; no unexpected co-authors
+  - no-added-secrets        # no added secrets/tokens; no new workflow secret exposure
+  - scope-matches-intent    # the diff matches the linked issue / stated intent
+  - gate-coverage-holds     # touched files stay gated — no new ungated class (the M-hardening invariant)
+
+# What the reviewer may RECOMMEND — drafts only; the human disposes (git.yaml `pr.merged_by: human`).
+# A non-owner's commits are NEVER merged (courtesy.merge_nonowner_commits): a good change is ADOPTED
+# via re-implement-in-house, declined via close-with-thanks, or escalated via needs-maintainer.
+dispositions:
+  - id: re-implement-in-house     # adopt the idea our way — the path for any non-owner change we want
+    label: "review:re-implement-in-house"
+    requires:                     # the full courtesy ritual the maintainer applies by hand (#94)
+      - reimplement-ourselves     # we author it to our style / descriptions / enterprise standard
+      - co-author-credit          # Co-authored-by: <contributor> + a credit in our PR body + CHANGELOG
+      - rationale-comment         # comment on THEIR PR explaining WHY we re-implemented (motivate it)
+      - thank-then-close          # thank for the contribution; the human then closes their PR
+  - id: close-with-thanks         # redundant / out of scope / not pursued — thank + close (human posts it)
+    label: "review:close-with-thanks"
+    requires:
+      - rationale-comment         # a comment explaining why we are not adopting it
+      - thank-then-close          # thank for the contribution; the human then closes their PR
+  - id: needs-maintainer          # owned-path / security / judgment call — route to the human decider
+    label: "review:needs-maintainer"
+
+# The load-bearing rule: an external-fork PR that touches an owned path is NEVER auto-disposed —
+# it is routed to the human decider for maintainer review.
+escalation:
+  on: external-fork-touches-owned-path
+  decider: human-owner            # the terminal decider (AGENTS.md §6); matches authority escalation
+  disposition: needs-maintainer   # must be one of `dispositions` above
+
+# The boundary, restated as data: the reviewer reports + recommends; the human acts.
+boundary:
+  recommends_only: true           # drafts a report + a disposition; never approves / merges
+  closes_by: human                # closing an external PR is the human's outward-facing act
+
+# How a non-owner contribution is handled (the #94 principle): we NEVER merge their commits — a good
+# idea enters the tree ONLY as our in-house re-implementation (co-author credit). Acceptance is never
+# silent, and every disposition thanks the contributor.
+courtesy:
+  always_thank: true              # EVERY disposition on a non-owner PR thanks the contributor
+  acceptance_requires_reasoning: true   # no silent / auto accept — a recommendation always states
+                                        # why, and the human (not the agent) disposes
+  merge_nonowner_commits: false   # we never merge a non-owner's commits; provenance stays 100% in-house
+  adopt_via: re-implement-in-house   # the ONLY way a non-owner change enters the tree (co-author credit)
+
+# #224: worked examples — the adopt / decline / escalate call as a few-shot policy surface, as data
+# the lint shape-checks (never a prose list that rots). `verdicts` are the `dispositions` ids above.
+examples:
+  verdicts: [re-implement-in-house, close-with-thanks, needs-maintainer]
+  cases:
+    - input: "an external fork sends a clean, wanted bugfix touching src/ (not an owned path)"
+      verdict: re-implement-in-house
+      why: "a non-owner's commits are never merged; adopt the idea in-house with co-author credit"
+    - input: "a collaborator proposes a small, correct doc fix we agree with"
+      verdict: re-implement-in-house
+      why: "still a non-owner commit — re-author it ourselves, credit them, thank then close"
+    - input: "an external PR duplicates a change already on main"
+      verdict: close-with-thanks
+      why: "redundant — thank the contributor and close with a rationale comment"
+    - input: "an external PR pushes a direction we are deliberately not pursuing"
+      verdict: close-with-thanks
+      why: "out of scope — decline with reasoning, always thanking the contributor"
+    - input: "an external fork touches an owned path (.github, AGENTS.md) or adds a secret"
+      verdict: needs-maintainer
+      why: "owned-path / security — never auto-disposed; route to the human decider"

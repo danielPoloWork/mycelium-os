@@ -1,0 +1,27 @@
+# Domain profile — video game. Schema: ./_schema.md.
+# Hard hardware budgets, Alpha/Beta/RC vocabulary, GDD instead of PRD, and the asset pipeline
+# (Art/Animation/Sound) as a first-class cross-discipline dependency (delivery guide §5).
+domain: game
+display_name: "Video game"
+roles: [product-manager, enterprise-architect, tech-lead, reviewer, security-auditor, producer, release-manager]
+role_labels:
+  product-manager: game-designer        # the Game Designer owns the vision
+  enterprise-architect: technical-director
+  tech-lead: lead-programmer
+  producer: producer                    # the Producer is the roadmap guardian (final word on scope)
+artifacts:
+  product_spec: GDD                      # Game Design Document
+  design_doc: RFC                        # feature/tech spec (combat system, etc.)
+  test_strategy: required
+# Hard axes are TYPED (#249): unit + direction make the budget checkable (the `nfr-budgets`
+# audit-overlay gate FAILs a hard axis with no recorded number in spec.nfr_budgets, and a
+# recorded measurement that violates it). `seed` is the suggested target Q5.3 offers — the
+# interview elicits the real value; the seed is data, never a comment.
+nfr_axes:
+  - { axis: framerate, hard_budget: true, unit: fps, direction: min, seed: 60 }   # non-negotiable
+  - { axis: memory, hard_budget: true, unit: MB, direction: max, seed: 512 }      # RAM per console/platform
+  - { axis: gpu, hard_budget: true, unit: "draw calls", direction: max, seed: 2000 }
+  - { axis: load_time, hard_budget: true, unit: s, direction: max, seed: 30 }
+milestone_vocabulary: alpha-beta-rc          # Alpha / Beta / Release Candidate / Gold
+cross_discipline_deps: [art, animation, sound]   # the asset pipeline
+workflow_overlay: game                       # inserts asset-pipeline-review + the hardware-budget gate

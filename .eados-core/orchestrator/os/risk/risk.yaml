@@ -1,0 +1,47 @@
+# EADOS risk model — reference instance. Schema: ./_schema.md.
+# The scorer is ../../../tools/risk_score.py. Levels, weights, and thresholds are all data so a
+# domain can be stricter or more lenient (per-domain overrides below; roadmap 6.2 / F3).
+version: 1
+
+# Changing any of these raises the security-surface factor (the biggest weight).
+security_globs:
+  - ".github/**"          # CI / release = supply-chain surface
+  - "tools/**"            # the renderer + write-guards (ADR-0007)
+  - "SECURITY.md"
+  - "**/auth/**"          # authentication / authorization code
+  - "**/*secret*"         # anything named like a secret
+
+size_buckets: { M: 100, L: 400 }   # lines changed: medium >= 100, large >= 400
+
+levels: [low, medium, high, critical]
+
+# Factor weights — points added when a factor applies. Data (not hardcoded in the scorer) so a
+# domain can tune them, exactly as it tunes mandatory_gate_level (roadmap 6.2 / F3).
+weights:
+  security_surface: 3       # any changed path matches a security_globs entry (the biggest weight)
+  large_change: 2           # lines changed >= size_buckets.L
+  medium_change: 1          # lines changed >= size_buckets.M (and < L)
+  wide_blast_radius: 1      # change spans >= blast_radius_threshold distinct top-level areas
+
+blast_radius_threshold: 3   # distinct top-level areas at/above which "wide blast radius" applies
+
+# Cumulative points -> level: the inclusive max points for each level except the last (a catch-all),
+# in `levels` order. Here: <=0 low, <=2 medium, <=4 high, else critical.
+score_thresholds: [0, 2, 4]
+
+mandatory_gate_level: high          # default: at/above HIGH the security-auditor gate is required
+
+# OQ2 + F3 — per-domain overrides: mandatory_gate_level AND any of weights / blast_radius_threshold /
+# score_thresholds / size_buckets (weights are shallow-merged onto the base). Mobile is stricter.
+domain_overrides:
+  mobile: { mandatory_gate_level: medium }
+  game:   { mandatory_gate_level: high }
+
+# The audit threat-modeling sub-mode (#241, ADR-0019 §2 — the `security` wishlist verb): where the
+# artifact lives in a generated repo, the method it works, and the role that owns it. Data, so the
+# command surface, the persona, and any future check point at ONE source of truth. The scorer
+# ignores this block (deterministic scoring unchanged).
+threat_model:
+  artifact: docs/security/threat-model.md
+  method: STRIDE
+  owner_role: security-auditor

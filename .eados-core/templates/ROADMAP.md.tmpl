@@ -1,0 +1,68 @@
+# Roadmap — {{PROJECT_NAME}}
+
+The project's plan as a numbered, checkbox-driven list. When an item completes in a PR,
+flip its checkbox (`- [ ]` → `- [x]`) **in the same PR**. New work goes at the bottom of
+its section with a fresh `<milestone>.<task>` number; never renumber.
+
+- **Versioning start:** {{VERSION_START}}.
+- **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint: _none yet_.
+
+## Model & effort routing (advisory)
+
+An item may carry an advisory **route** — `route: <tier> / <effort>` — derived from its intake
+signals through the `os/routing` policy's only-raise resolution (ADR-0017: start at the floor;
+matched signals only ever raise, never lower). Tiers, cheapest → most capable: {{ROUTE_TIERS}}.
+Efforts: {{ROUTE_EFFORTS}}. An item with no route takes the floor ({{ROUTE_FLOOR}}). The route
+*recommends*; **the human keeps final model authority** — switch with your host's own model
+control, never mid-session by the agent.
+
+Tiers map to concrete models only through the dated catalog (as of {{ROUTE_CATALOG_AS_OF}};
+a stale date is the review cue):
+
+{{ROUTE_CATALOG}}
+
+Where the EADOS core is vendored (`.eados-core/`), the authoritative per-issue call once tracker
+labels exist is `python .eados-core/tools/route_advice.py --issue <N>`.
+
+---
+
+## Milestone 1 — Project bootstrap & CI
+
+The thinnest slice that compiles, tests, and ships under the full quality bar.
+
+- [ ] 1.1 Lay down the build system ({{BUILD_TOOL}}) and a buildable skeleton under
+      `src/main/{{LANG}}/{{GROUP_PATH}}/{{PROJECT_SLUG}}/`.
+- [ ] 1.2 Wire the test framework ({{TEST_FRAMEWORK}}) with one passing smoke test under
+      `src/test/{{LANG}}/{{GROUP_PATH}}/{{PROJECT_SLUG}}/`.
+- [ ] 1.3 Add formatter + linter configs ({{FORMATTER}}, {{LINTER}}) at the repo root.
+- [ ] 1.4 Stand up the CI matrix ({{TIER1_PLATFORMS}}) with build + test + format + lint.
+- [ ] 1.5 Seed the version constant ({{VERSION_CONST_HINT}}) in `{{VERSION_FILE}}`.
+{{#EACH_MILESTONE1_ITEM}}- [ ] {{.}}
+{{/EACH_MILESTONE1_ITEM}}
+{{#EACH_MILESTONE}}
+---
+
+## Milestone {{number}} — {{title}}
+
+{{goal}}
+
+{{#ITEMS}}- [ ] {{.}}
+{{/ITEMS}}
+{{/EACH_MILESTONE}}
+
+---
+
+## Spec Coverage Map
+
+Tracks which spec section is fulfilled by which roadmap item(s). Every spec section has a
+row with at least one fulfilling item and a status glyph. Legend: ⏳ not started · 🚧 in
+progress · ✅ done · ❎ N/A.
+
+| Spec § | Requirement | Roadmap items | Status |
+|--------|-------------|---------------|--------|
+| §1 | Objective & business context | 1.1 | ⏳ |
+| §2 | Functional requirements | 1.1, 1.2 | ⏳ |
+| §3 | Non-functional requirements | 1.3, 1.4 | ⏳ |
+| §4 | Logical architecture | 1.1 | ⏳ |
+| §5 | Public interface | 1.2 | ⏳ |
+| §6 | Verification & test strategy | 1.2, 1.4 | ⏳ |

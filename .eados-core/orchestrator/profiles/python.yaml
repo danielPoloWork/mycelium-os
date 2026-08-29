@@ -1,0 +1,84 @@
+# python.yaml — Python toolchain profile
+#
+# Maps the reference enterprise roles onto the de-facto modern Python stack. The moral
+# equivalents of C++ sanitizers are: mypy (type soundness), pytest under faulthandler,
+# and the race/leak concerns handled by hypothesis property tests + tracemalloc.
+
+lang:             python
+display_name:     "Python"
+default_standard: "Python 3.12"
+src_ext:          py
+
+namespace_pattern: "{group_dotted}.{project_slug}"           # it.d4np.ratelimiter (package path)
+import_idiom:      "from {group_dotted}.{project_slug} import ..."
+
+toolchain:
+  build_tool:      "Hatch (PEP 517/518, pyproject.toml)"
+  pkg_manager:     "uv (or pip-tools) with a locked pyproject.toml"
+  test_framework:  "pytest (+ hypothesis for property tests)"
+  formatter:       "ruff format (Black-compatible)"
+  linter:          "ruff check + mypy --strict"
+  sanitizers:      "mypy --strict (type soundness), pytest -p no:cacheprovider under faulthandler, tracemalloc leak checks"
+  coverage_tool:   "coverage.py / pytest-cov"
+  doc_tool:        "mkdocs-material (or Sphinx for API-heavy libs)"
+  version_file:    "__about__.py"         # under src_main
+  version_const_hint: "__version__ = 'X.Y.Z'"
+  package_ecosystem: "pip"                # Dependabot ecosystem
+
+commands:
+  build:        "hatch build"
+  test:         "pytest -q"
+  format_check: "ruff format --check ."
+  lint:         "ruff check . && mypy --strict src"
+  bench:        "pytest tests/bench --benchmark-only"   # pytest-benchmark; "" if no bench
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: pyproject.toml
+
+config_files:
+  - pyproject.toml
+  - ruff.toml
+  - mypy.ini
+
+ci:
+  tier1_platforms: "Linux / Windows / macOS on CPython 3.10–3.12"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: "python-3.10", preset: test }
+    - { os: ubuntu-24.04, toolchain: "python-3.11", preset: test }
+    - { os: ubuntu-24.04, toolchain: "python-3.12", preset: test }
+    - { os: windows-2022, toolchain: "python-3.12", preset: test }
+    - { os: macos-14,     toolchain: "python-3.12", preset: test }
+  setup_steps: |
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.toolchain == 'python-3.10' && '3.10' || matrix.toolchain == 'python-3.11' && '3.11' || '3.12' }}
+    - name: Install uv
+      uses: astral-sh/setup-uv@v3
+    - name: Sync dependencies
+      run: uv sync --all-extras --dev
+  extra_jobs: |
+    lint:
+      name: lint / ruff + mypy
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: actions/setup-python@v5
+          with: { python-version: '3.12' }
+        - uses: astral-sh/setup-uv@v3
+        - run: uv sync --all-extras --dev
+        - run: ruff format --check . && ruff check . && mypy --strict src
+  race_job: ""                 # GIL-bound; no standard data-race detector (use thread stress tests)
+
+supports:
+  threading_sanitizer: false   # GIL-bound; use faulthandler + thread stress tests instead
+  bench: true
+  abi_stability: false
+notes: |
+  "Sanitizer-equivalent" for Python is the type+property+coverage trio: mypy --strict
+  stands in for compile-time soundness, hypothesis for fuzz/property coverage, and
+  coverage.py for the >=80% gate. The library still targets a zero-runtime-dependency
+  stance where feasible (deps gated to extras). version_file lives at the package root.

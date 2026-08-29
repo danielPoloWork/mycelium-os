@@ -1,0 +1,240 @@
+# questionnaire.yaml — machine-readable intake question bank
+#
+# Companion to interview.md (the human protocol). Each question maps to one or more
+# manifest keys. `default` is what the architect assumes when it does not ask; `ask_when`
+# states the condition under which the question is actually worth posing. `follow_ups`
+# are conditional deeper questions. Phases are walked in order.
+#
+# The architect's rule: ask only questions whose answer it cannot safely default for the
+# stated project, and always echo the assumed defaults back for confirmation.
+
+meta:
+  version: 1
+  conducted_in: maintainer_language     # answers transcribed to English in project.yaml
+  output: orchestrator/project.yaml
+  # #169: record asked|defaulted|imported per top-level answer key in the manifest's
+  # interview: block AS the interview proceeds (never retrospectively); copy `version`
+  # above into interview.questionnaire_version.
+  provenance: as-you-go
+
+phases:
+
+  - id: 0
+    name: Frame
+    questions:
+      - id: Q0.1
+        prompt: "What are we building, in one sentence?"
+        sets: [PROJECT_TAGLINE, PROJECT_TITLE]
+      - id: Q0.2
+        prompt: "What kind of artifact is it?"
+        choices: [library, service, cli, app]
+        default: library
+        sets: [PROJECT_KIND]
+      - id: Q0.3
+        prompt: "Repository name (kebab-case)? I can propose one."
+        sets: [PROJECT_NAME, PROJECT_SLUG]
+      - id: Q0.4
+        prompt: "Development target?"
+        choices: [software, web, game, mobile]
+        default: software
+        validate: domain_profile_exists    # else: author domains/<domain>.yaml from _template first
+        sets: [domain]                      # loads orchestrator/domains/<domain>.yaml
+      - id: Q0.5
+        prompt: "Enterprise posture (raised governance/compliance bar)?"
+        choices: [standard, enterprise]
+        default: standard
+        sets: [governance.posture]         # orthogonal to domain, not a target of its own (ADR-0015)
+
+  - id: 1
+    name: Languages
+    questions:
+      - id: Q1.1
+        prompt: "Primary implementation language and standard/edition?"
+        sets: [LANG, LANG_NAME, LANG_STANDARD]
+        validate: profile_exists           # else: author profiles/<lang>.yaml + ADR first
+      - id: Q1.2
+        prompt: "Any secondary / interop language (C ABI, bindings, WASM)?"
+        default: none
+        sets: [SECONDARY_LANG]
+      - id: Q1.3
+        prompt: "Reverse-domain group path?"
+        # ask-always: no built-in default — it/d4np is only the reference project's value (#163)
+        sets: [GROUP_PATH, GROUP_DOTTED]    # NAMESPACE derived by the profile
+    follow_ups:
+      - when: "LANG in {c, cpp, rust}"
+        ask: ["ABI stability target?", "memory/concurrency model?"]
+        sets: [IF_PUBLIC_API, IF_THREADING]
+      - when: "LANG in {java, python, typescript, go}"
+        ask: ["minimum supported runtime version?"]
+        sets: [RUNTIME_FLOOR]
+
+  - id: 2
+    name: Frameworks
+    questions:
+      - id: Q2.1
+        prompt: "Application/domain frameworks, or standard library only?"
+        default: "standard library only"
+        sets: [FRAMEWORKS]
+      - id: Q2.2
+        prompt: "Runtime / concurrency model (sync, async+runtime, threads, actor)?"
+        default: sync
+        sets: [CONCURRENCY_MODEL, IF_THREADING]
+      - id: Q2.3
+        prompt: "Stable public API/ABI? Supported consumers and platforms?"
+        sets: [IF_PUBLIC_API, TIER1_PLATFORMS]
+    follow_ups:
+      - when: "CONCURRENCY_MODEL == async"
+        ask: ["which executor/runtime?", "race-detection in CI?"]
+      - when: "PROJECT_KIND == service"
+        ask: ["health/readiness?", "config source?", "deploy target?"]
+        sets: [IF_SERVICE]
+
+  - id: 3
+    name: Tools
+    note: "Defaults come from the resolved language profile; only override per project."
+    questions:
+      - id: Q3.1
+        prompt: "Build system & package manager?"
+        default: from_profile
+        sets: [BUILD_TOOL, PKG_MANAGER]
+      - id: Q3.2
+        prompt: "Test framework & coverage tool (and target %)?"
+        default: from_profile
+        sets: [TEST_FRAMEWORK, COVERAGE_TOOL, COVERAGE_TARGET]
+      - id: Q3.3
+        prompt: "Formatter & linter?"
+        default: from_profile
+        sets: [FORMATTER, LINTER]
+      - id: Q3.4
+        prompt: "Runtime checkers / sanitizers?"
+        default: from_profile
+        sets: [SANITIZERS]
+      - id: Q3.5
+        prompt: "API documentation generator?"
+        default: from_profile
+        sets: [DOC_TOOL]
+      - id: Q3.6
+        prompt: "Reproducible benchmark suite needed?"
+        default: false
+        sets: [IF_BENCH, SRC_BENCH, CMD_BENCH]
+
+  - id: 4
+    name: Governance
+    questions:
+      - id: Q4.1
+        prompt: "GitHub owner/org, default branch, maintainer name?"
+        defaults: { DEFAULT_BRANCH: main }
+        sets: [OWNER, DEFAULT_BRANCH, MAINTAINER, AUTHOR]
+      - id: Q4.2
+        prompt: "License?"
+        default: MIT
+        sets: [LICENSE_ID, YEAR]
+      - id: Q4.3
+        prompt: "Conventional-commit scopes?"
+        default: "derive from architecture + {build, tests, docs, ci}"
+        sets: [SCOPES]
+      - id: Q4.4
+        prompt: "Versioning: pre-1.0 milestone-driven, or start at 1.0.0?"
+        default: "pre-1.0 milestone-driven"
+        sets: [VERSION_START]
+      - id: Q4.5
+        prompt: "PR metadata policy (assignee, one-type-label, per-release milestone, project)?"
+        defaults: { ASSIGNEE: "" }   # blank -> the owner; never "@me" (it resolves to the drafting actor)
+        sets: [ASSIGNEE]
+      - id: Q4.6
+        prompt: "Packaging/distribution via a package registry?"
+        default: false
+        sets: [IF_PACKAGING]
+      - id: Q4.7
+        # NOTE: prompts stay SINGLE-LINE — the loader does not fold multi-line quoted scalars.
+        # Once a #153 silent truncation here; since #166 yamlmini REJECTS the construct loudly.
+        # Asked UNCONDITIONALLY (#150): the doc + comment language defaults are stated for
+        # confirmation, never applied silently; naming extra target languages is what turns i18n on.
+        prompt: "Authoring languages — documentation language (default en), code-comment language (default en; identifiers/API/commits stay English), and any extra doc translation languages (naming them enables i18n)?"
+        default: { DOC_DEFAULT_LANG: en, CODE_COMMENT_LANG: en, IF_I18N: false }
+        sets: [DOC_DEFAULT_LANG, CODE_COMMENT_LANG, IF_I18N, DOC_LANGS]
+      - id: Q4.8
+        prompt: "Announce releases/news on social channels? If yes, which (X, Discord, LinkedIn, Reddit, Mastodon, a blog, …)?"
+        default: { IF_ANNOUNCE: false }
+        sets: [IF_ANNOUNCE, ANNOUNCE_CHANNELS]
+    follow_ups:
+      # NOTE: multi-line ask lists are BLOCK sequences — the loader does not parse a flow
+      # sequence ([...]) that spans lines. Once a #153 silent truncation here; since #166
+      # yamlmini REJECTS the construct loudly.
+      - when: "IF_I18N == true"
+        ask:
+          - "Canonical on-disk language (default en — the English-only rule keeps sources English; translations are derived copies)?"
+          - "Target languages as code + name pairs (e.g. it=Italian, es=Spanish)?"
+        sets: [DOC_DEFAULT_LANG, DOC_LANGS]
+      - when: "IF_ANNOUNCE == true"
+        ask:
+          - "Which channels, and who owns each handle/webhook?"
+          - "Auto-draft the announcement at release time, or fully manual?"
+        sets: [ANNOUNCE_CHANNELS]
+
+  - id: 5
+    name: Specification
+    note: "The substantive conversation; produces docs/specs/01_spec.md for the new repo."
+    questions:
+      - id: Q5.0
+        prompt: "Do you already have a technical spec / PRD / SRS to import, or shall we co-author one?"
+        choices: [import, coauthor]
+        default: coauthor
+        sets: [spec.provenance]
+        # import (a): ingest the doc, map onto the six sections, run the gap audit (apply the
+        #   testability follow-up to each requirement), then ask Q5.1-Q5.7 ONLY for the gaps.
+        # coauthor (b): the full Q5.1-Q5.7 flow below. Either path -> the same frozen 01_spec.
+      - id: Q5.1
+        prompt: "Objective & business context — what problem, for whom, what pain removed?"
+        sets: [SPEC_OBJECTIVE]
+      - id: Q5.2
+        prompt: "Functional requirements (measurable, testable phrasing)?"
+        sets: [FUNCTIONAL_REQS]
+      - id: Q5.3
+        prompt: "Non-functional requirements (perf, memory, security, deps, portability)? Plus a NUMERIC budget per hard domain axis (nfr_axes hard_budget, seeded from the axis's typed seed) - never an adjective."
+        sets: [NONFUNCTIONAL_REQS, spec.nfr_budgets]
+      - id: Q5.4
+        prompt: "Logical architecture & core algorithm/data structure? Plus a STRUCTURED architecture style (design-patterns.md §5: Layered|Hexagonal|Clean|MVC|Event-Driven|CQRS|DDD|…; none for a library), the expected first-class patterns, and the pattern-discipline posture."
+        default: { architecture_style: "", pattern_discipline: advisory }   # per kind/domain: library->none; service/app->Layered|Hexagonal; web->Layered|MVC|Clean; mobile->MVVM|Clean
+        sets: [SPEC_ARCHITECTURE, ARCHITECTURE_STYLE, PATTERNS, PATTERN_DISCIPLINE]
+      - id: Q5.5
+        prompt: "Public interface (functions/types/endpoints) and error model?"
+        sets: [PUBLIC_API, PUBLIC_INCLUDE_HINT]
+      - id: Q5.6
+        prompt: "Verification & test strategy — how is each requirement proven in CI?"
+        sets: [SPEC_VERIFICATION]
+      - id: Q5.7
+        prompt: "Full roadmap up front — Milestone 1 is the universal bootstrap; lay out ALL further milestones now (each: number, title, goal, pre-numbered items), not one at a time. Optionally tag an item with routing signals (security, adr, severity:medium|high, sets-pattern, decision-heavy) via the {text, signals[]} item form to derive its advisory model/effort route (#306)."
+        sets: [MILESTONE1_ITEMS, MILESTONES]
+    follow_ups:
+      - for_each: requirement
+        ask: "How would CI mechanically prove this requirement was violated?"
+        rule: "refine until there is a check, or mark it an explicit manual gate"
+      - when: "PROJECT_KIND in {service, app} or domain == web"    # a library keeps the flat shape
+        ask:
+          - "Lay down a layered package skeleton (controller/service/repository/dto/mapper/…)?"
+          - "Which layer packages, driven by the architecture style?"
+        sets: [LAYERED, LAYERS]                                     # capabilities.layered + spec.layers
+
+# #224: worked examples — the ask-vs-default call (the architect's core discipline: "ask only
+# questions whose answer it cannot safely default") as a few-shot policy surface the lint
+# shape-checks. `ask` = pose the question; `default` = assume the documented default and echo it
+# back for confirmation.
+examples:
+  verdicts: [ask, default]
+  cases:
+    - input: "Q0.2 artifact kind, for a brief that already says 'a small Python CLI'"
+      verdict: default
+      why: "the kind is stated — assume cli and echo it back, do not re-ask"
+    - input: "Q0.4 development target, when the brief gives no hint of a platform"
+      verdict: ask
+      why: "the domain axis has no safe default here; a wrong guess mis-scaffolds the whole repo"
+    - input: "license, when every other repo by this maintainer is MIT"
+      verdict: default
+      why: "a strong signal exists — assume MIT and confirm, rather than interrogate"
+    - input: "a follow-up gated on i18n, on a run where i18n was not enabled"
+      verdict: default
+      why: "the ask_when condition is false — take the default (skip it), never ask blindly"
+    - input: "the primary programming language, for a greenfield brief with no stack named"
+      verdict: ask
+      why: "language drives the entire profile — never guess it silently"

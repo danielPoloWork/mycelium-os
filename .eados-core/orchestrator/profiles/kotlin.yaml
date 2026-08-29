@@ -1,0 +1,92 @@
+# kotlin.yaml — Kotlin (JVM) toolchain profile. Gradle/Maven Central, ktlint/detekt.
+
+lang:             kotlin
+display_name:     "Kotlin"
+default_standard: "Kotlin 2.0 on JVM 21"
+src_ext:          kt
+
+namespace_pattern: "{group_dotted}.{project_slug} package (e.g. it.d4np.memorypool)"
+import_idiom:      "import {group_dotted}.{project_slug}.*"
+
+toolchain:
+  build_tool:      "Gradle (Kotlin DSL)"
+  pkg_manager:     "Gradle (Maven Central / packages.lock)"
+  test_framework:  "JUnit 5 + Kotest"
+  formatter:       "ktlint"
+  linter:          "detekt (+ ktlint)"
+  sanitizers:      "detekt (soundness); JCStress + kotlinx-coroutines-test for concurrency"
+  coverage_tool:   "Kover"
+  doc_tool:        "Dokka"
+  version_file:    "Version.kt"
+  version_const_hint: "const val VERSION = \"X.Y.Z\""
+  package_ecosystem: "gradle"
+
+commands:
+  build:        "./gradlew build"
+  test:         "./gradlew test"
+  format_check: "./gradlew ktlintCheck"
+  lint:         "./gradlew detekt"
+  bench:        "./gradlew jmh"            # kotlinx-benchmark / JMH
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: build.gradle.kts
+
+config_files:
+  - build.gradle.kts
+  - settings.gradle.kts
+  - .editorconfig
+  - config/detekt/detekt.yml
+
+ci:
+  tier1_platforms: "Linux (JVM 17, 21)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: temurin-17, preset: default }
+    - { os: ubuntu-24.04, toolchain: temurin-21, preset: default }
+  setup_steps: |
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: ${{ matrix.toolchain == 'temurin-17' && '17' || '21' }}
+        cache: gradle
+  extra_jobs: |
+    quality:
+      name: quality / ktlint + detekt + kover
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: actions/setup-java@v4
+          with: { distribution: temurin, java-version: '21', cache: gradle }
+        - run: ./gradlew ktlintCheck detekt koverVerify
+    abicheck:
+      name: abi / binary-compatibility-validator
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: actions/setup-java@v4
+          with: { distribution: temurin, java-version: '21', cache: gradle }
+        - run: ./gradlew apiCheck
+  race_job: |
+    jcstress:
+      name: jcstress / concurrency stress
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: actions/setup-java@v4
+          with: { distribution: temurin, java-version: '21', cache: gradle }
+        - run: ./gradlew jcstress
+
+supports:
+  threading_sanitizer: true
+  bench: true
+  abi_stability: true                      # public ABI guarded by binary-compatibility-validator
+notes: |
+  Kotlin 2.0 on the JVM (Android/Multiplatform adapt the matrix). ktlint = format, detekt =
+  lint, Kover = coverage, Dokka = docs. Dependabot ecosystem: gradle.

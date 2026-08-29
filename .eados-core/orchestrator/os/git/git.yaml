@@ -1,0 +1,96 @@
+# EADOS Git / PR / CI / release policy — reference instance.
+# Encodes AGENTS.md §6 as data so the workflow gates enforce it. Schema: ./_schema.md.
+# Design: ../../../docs/rfc/0001-eados-delivery-os.md.
+version: 1
+
+branch_naming:
+  pattern: "<type>/<short-kebab>"
+  types: [feat, fix, refactor, perf, docs, test, build, chore, ci]
+
+commit:
+  convention: conventional-commits
+  # The subsystem vocabulary, and the SINGLE source of truth for it — `AGENTS.md` §6 restates this
+  # list and the `git-scope-lockstep` gate holds the two together (#365). They had drifted to 8 vs
+  # 21 with nothing watching, so the surface an agent reads first was the most wrong.
+  #
+  # Widened 2026-07-27 from 21 to 34. The rule for what earned a place: it names a real top-level
+  # subsystem or artifact AND was used more than once on `main`. 98 of 227 scoped commits used a
+  # scope NEITHER surface declared — not typos, but real subsystems (`render`, `learning`,
+  # `roadmap`, `orchestrator`, `routing`) nobody added. A vocabulary 43% of commits ignore is not
+  # being enforced, it is being worked around. Coverage of `main`: 57% -> 87%.
+  #
+  # Deliberately NOT added: `install` (a synonym of `setup` — a vocabulary with two words for one
+  # thing invites the next split), `loader`/`generate` (covered by `tools`/`orchestrator`), and
+  # `refactor` (a commit TYPE, not a subsystem). Kept as ONE LINE: the loader's multi-line flow
+  # support is untested, and this list is read by every gate.
+  scopes: [interview, profiles, templates, lint, agent, docs, adr, ci, os, workflow, authority, git, rfc, plan, risk, contribution, commands, traceability, tools, setup, release, render, readme, learning, roadmap, orchestrator, routing, interaction, issues, changelog, manifest, bundle, i18n, maintenance]
+  # Max length of the subject line the AUTHOR writes (#363). Data, not a constant in git_check.py —
+  # it was the one numeric threshold of this policy that lived in code, in an OS whose rule is that
+  # knowledge is data; a generated repo could not change it without editing a vendored tool.
+  #
+  # 80, not 72. 72 was never this repository's practice: 178 of 255 commits on `main` broke it, the
+  # median subject is 80, and a rule at 30% compliance is a decision about the rule. 80 is the
+  # classic line width, it still bites (~30% of history would fail it), and it leaves room for
+  # `type(scope): ` before the subject even starts. A cap nobody meets is not a stricter rule — it
+  # is an ignored one, which is how 178 violations accumulated in silence.
+  #
+  # It governs what the author WRITES: squash-merge appends ` (#PR)` (6-7 chars) that no author can
+  # prevent, and git_check excludes it before measuring. So a subject at the cap renders ~87 in
+  # `git log` — the honest trade for measuring only what someone can actually control.
+  subject_max: 80
+  one_logical_change_per_pr: true
+  one_pr_at_a_time: true
+  # WHOSE open PRs the limit counts (#350). `authored` = human/agent PRs only; `all` = literally
+  # every open PR. The rule exists so an agent does not stack work in flight — it was never meant to
+  # cap a dependency bot's queue, and counting bots put a generated repo in violation of its own
+  # policy minutes after bootstrap, with nobody having done anything. Matched on the AUTHOR TYPE
+  # (`gh` `author.is_bot`), never a login denylist: a list of bot names is a list to keep current,
+  # and the next bot would be counted until someone remembered to add it.
+  one_pr_counts: authored
+  # Evaluated by the cross-cutting `git-policy` gate — tools/git_check.py (#250): branch naming,
+  # commit convention, one-PR-at-a-time; PR *metadata* stays tools/pr_metadata_check.py (#141).
+  # The squash-merge commit (squash is the only merge method) MUST carry a verbose, professional
+  # body — context / change / verification — NOT just the PR title collapsed to a one-liner (#144).
+  squash_body:
+    required: true                # the merge commit body is mandatory, not a one-line subject collapse
+    subject: conventional-commit  # subject line = the Conventional-Commit one-liner (the PR title)
+    body_from: pull_request       # body = the PR description (context, change, verification), kept on squash
+
+pr:
+  draft_by: implementing-role     # the agent role that owns the phase drafts the PR
+  opened_by: human                # the owner opens / marks ready
+  merged_by: human                # the owner squash-merges — never the agent
+  merge_method: squash            # the repository allows squash only
+  one_type_label: true
+  required_crosslinks: [rfc, milestone]   # PR *body* references (traceability edges) — distinct from `metadata` below
+  template: ".github/PULL_REQUEST_TEMPLATE.md"
+  review_gate: contribution-review   # M8: /eados review drafts a recommendation on an inbound PR; the human disposes
+  # GitHub project-board fields SET ON CREATION via `gh pr create` (#141) — distinct from the body
+  # cross-links above (those are referenced *in* the body for traceability; these are gh metadata
+  # flags). `assignee` resolves to the OWNER, never "@me" (which is whichever actor — human or agent —
+  # drafts the PR): EADOS's own repo -> the owner (danielPoloWork); a generated repo -> the manifest owner.
+  # WHOSE PRs the metadata contract binds (#350). A bot cannot assign, cannot set a milestone, and
+  # its requested label is silently dropped until the repo's labels are imported — so every one of
+  # these fields is unsatisfiable for a dependency PR, and reporting them INCOMPLETE teaches
+  # maintainers to ignore the check. A check that is routinely ignored has stopped being a check.
+  metadata_applies_to: authored   # authored | all — bot-authored PRs report n/a, never INCOMPLETE
+  metadata:
+    assignee: owner          # the repository owner, NOT "@me"/the gh actor that drafts the PR
+    label: one-type          # exactly one type label matching the lead commit's <type> (see one_type_label)
+    milestone: current-open  # the current open release / roadmap milestone
+    project: if-present      # the GitHub Project, attached when the repo has one
+
+release:
+  scheme: semver
+  pre_1_0_milestone_driven: true
+  tag_flow: "annotated tag on the merge commit, post-merge"
+  merge_is_not_deploy: true       # merged -> tagged/released -> deployed are distinct states
+  # Carry-through: the agent always takes a release up to a DRAFT — the human only clicks Publish.
+  tag_by: agent                   # the agent creates + pushes the annotated tag, post-merge
+  draft_release_by: agent         # ...and opens the GitHub Release as a DRAFT (CI drafts it on tag-push in generated repos)
+  publish_by: human               # the human reviews the draft and publishes — the deliberate checkpoint
+  delegation_flag: false          # owner may flip this to delegate the publish step too (then the agent publishes)
+
+traceability:
+  graph: "requirement(spec §) -> rfc -> milestone -> branch/pr -> commit -> release tag -> audit"
+  gate: traceability-lint         # built in M3/M4; derives the graph from the cross-links above

@@ -1,0 +1,361 @@
+# EADOS model & effort routing - reference instance. Schema: ./_schema.md (ADR-0017 + ADR-0024).
+# Advisory-first: the OS recommends, the human keeps final model authority. The rules speak
+# capability TIERS; concrete model names live ONLY in the dated catalog below, so model churn is
+# a catalog edit - never a policy or code change. Evaluator: tools/route_advice.py.
+#
+# SCHEMA v2 (M19 19.2, ADR-0024). The catalog is two levels: `providers` say what exists and what
+# it can do; `hosts` say what a runtime can actually reach. That split is what makes a
+# model-agnostic host (one runtime, many vendors) representable as ONE entry instead of a
+# pseudo-host per host x provider pair. Resolution is by CAPABILITY, never by name: escalation
+# computes the quality floor, then selection picks the cheapest reachable model that clears it.
+version: 2
+
+# Ordered cheapest -> most capable / lowest -> highest. Resolution starts at the `defaults` floor
+# and matched rules only ever RAISE (max over floor + matches) - the same only-add-never-relax
+# principle as the workflow's domain overlays. Deterministic and order-independent.
+tiers: [fast, standard, frontier-reasoning]
+efforts: [low, medium, high, extra, max]
+
+# Derived signals beyond tracker labels, asserted by an evaluator heuristic or a human judgment.
+flags:
+  sets-pattern: "first of its class - fixes the template; the follower issues inherit a cheaper route"
+  decision-heavy: "the decision IS the deliverable (ADR / architecture call)"
+
+# The STEP within a unit of work (19.7). Routing resolved per ISSUE, which is the right grain for
+# an issue and not the grain the work is actually done at: the steps inside one item differ, so
+# they all inherited the item's route - over-routing the mechanical ones and under-routing the
+# design of a nominally simple item. A step is a third signal kind alongside label: and flag:.
+#
+# Steps RAISE like every other signal and can never lower a route (the only-add-never-relax
+# invariant). So an item that earned a protected floor keeps it in every one of its steps; a step
+# can only ever ask for more, never for less.
+steps:
+  design: "decide the shape - what gets built, and why that way"
+  implement: "build what design settled, against a spec that already exists"
+  test: "exercise the built thing against the spec's acceptance criteria"
+  review: "judge someone else's change and return findings"
+  optimize: "measure-first tuning against a numeric budget"
+
+# The floor: absent any matching rule, work routes to the cheapest tier at the lowest effort
+# (doc fixes, small authoring). Everything above is earned by a signal.
+defaults:
+  tier: fast
+  effort: low
+
+# Signals whose earned floor NOTHING may reduce - not selection, not a cost preference, not a
+# future budget posture (ADR-0024 D3). Declared as data so the guarantee is checkable rather than
+# a property of the code that happens to hold.
+protected:
+  - "label:security"
+  - "label:adr"
+  - "flag:decision-heavy"
+
+# How selection chooses AMONG the models that already clear the floor. Cost operates HERE and
+# only here: it can pick the cheapest sufficient model, and it can never lower the floor itself.
+# `lowest_cost` falls back to declaration order for models whose relative_cost is unrecorded.
+selection:
+  objective: quality-first
+  prefer: [lowest_cost]
+
+# Signal vocabulary: "label:<tracker label>" or "flag:<flags key>". A rule matches when ALL of
+# its `when` signals hold; it raises the result to at least min_tier / min_effort.
+#
+# EFFORT RE-READ (19.2, 2026-07-27). Inserting `extra` between `high` and `max` changed what every
+# existing `min_effort: high` MEANS - it used to sit one step below the ceiling and now sits two.
+# Each rule was re-read against the five-point scale rather than migrated mechanically; the
+# outcome, changed or deliberately unchanged, is recorded per rule below.
+rules:
+  - id: severity-medium
+    when:
+      - "label:severity:medium"
+    min_tier: standard
+    min_effort: medium
+    why: "a significant gap deserves substantive work - standard tier, real effort"
+    # re-read: UNCHANGED. Mid-scale work; it sat mid-scale before and still does.
+  - id: severity-high
+    when:
+      - "label:severity:high"
+    min_tier: standard
+    min_effort: high
+    why: "core-guarantee work needs sustained effort; tier rises via flags, not severity alone"
+    # re-read: UNCHANGED. The `why` already says severity alone does not buy the top; `high` is
+    # still the right "substantive but not maximal", and it now reads as exactly that.
+  - id: security-surface
+    when:
+      - "label:security"
+    min_tier: frontier-reasoning
+    min_effort: extra
+    why: "on security posture the cost of a subtle miss dwarfs the routing saving"
+    # re-read: RAISED high -> extra. The stated argument wants near-ceiling effort; `high` no
+    # longer is near-ceiling, so leaving it would have quietly weakened the rule.
+  - id: decision-heavy
+    when:
+      - "flag:decision-heavy"
+    min_tier: frontier-reasoning
+    min_effort: extra
+    why: "when the decision is the deliverable, reasoning depth is the product"
+    # re-read: RAISED high -> extra. Same argument as security-surface: depth IS the deliverable.
+  - id: adr-is-decision-heavy
+    when:
+      - "label:adr"
+    min_tier: frontier-reasoning
+    min_effort: extra
+    why: "an ADR-bearing issue is decision-heavy by definition"
+    # re-read: RAISED high -> extra. This is the label form of `decision-heavy`; the two must move
+    # together or the same work routes differently depending on which signal was asserted.
+  - id: sets-pattern
+    when:
+      - "flag:sets-pattern"
+    min_tier: frontier-reasoning
+    min_effort: high
+    why: "the first of a class fixes the template every follower copies - amortized quality"
+    # re-read: UNCHANGED, deliberately. The amortization argument justifies the TIER, not maximal
+    # effort. Holding at `high` is what now distinguishes it from the three rules above.
+  - id: foundational-decision
+    when:
+      - "flag:decision-heavy"
+      - "label:severity:high"
+    min_tier: frontier-reasoning
+    min_effort: max
+    why: "a wrong foundational call is the most expensive artifact the factory can produce"
+    # re-read: UNCHANGED. The ceiling by design; `extra` exists below it, not in place of it.
+
+  # --- per-step rules (19.7). Only the steps that genuinely earn more carry one; `implement` and
+  # `test` route on their ITEM's signals alone, which is the point - the cheap steps of an
+  # expensive item stop paying for the whole item's tier.
+  - id: step-design
+    when:
+      - "step:design"
+    min_tier: standard
+    min_effort: high
+    why: "the design step decides the shape every later step copies - thinking is the deliverable"
+  - id: step-review
+    when:
+      - "step:review"
+    min_effort: high
+    why: "review is where a missed defect stops being cheap - it raises effort, never tier"
+  - id: step-optimize
+    when:
+      - "step:optimize"
+    min_effort: medium
+    why: "measure-first tuning is bounded work against a numeric budget, but not mechanical"
+
+# The ONLY place model names live.
+#
+# PROVENANCE. `assessed: true` means the MAINTAINER has judged this model against EADOS and placed
+# it on the ladder - a dated judgment, not a benchmark run. A model nobody has assessed is
+# catalogued as REACHABLE and carries NO `meets_tier`: you cannot claim a capability you have not
+# verified, and selection skips it (ADR-0024 D6). Inventing a tier to fill the table is exactly
+# how #326 happened - the catalog routed every ADR and security unit of work to a model the README
+# itself called unbenchmarked, for weeks, because a confident claim was indistinguishable from a
+# verified one. A provider with `models: []` records only that hosts can reach it.
+#
+# `relative_cost` (cheapest = 1) and `context` are OPTIONAL and currently unrecorded: real figures
+# are a maintainer task, and fabricated ones would be worse than none. Where cost is absent,
+# selection falls back to declaration order within the tier.
+catalog:
+  as_of: "2026-07-27"
+  max_age_days: 90
+
+  providers:
+    - id: anthropic
+      name: "Anthropic"
+      models:
+        - id: fable-5
+          name: "Fable 5"
+          meets_tier: frontier-reasoning
+          max_effort: max
+          assessed: true
+          verified: "2026-07-26"
+        - id: opus-5
+          name: "Opus 5"
+          meets_tier: standard
+          max_effort: max
+          assessed: true
+          verified: "2026-07-26"
+        - id: sonnet-5
+          name: "Sonnet 5"
+          meets_tier: fast
+          max_effort: max
+          assessed: true
+          verified: "2026-07-26"
+        - id: haiku-4-5
+          name: "Haiku 4.5"
+          assessed: false
+          notes: "reachable and cheaper than Sonnet 5; never assessed against EADOS, so no tier claim"
+    - id: openai
+      name: "OpenAI"
+      models:
+        - id: gpt-sol
+          name: "GPT Sol"
+          meets_tier: frontier-reasoning
+          assessed: true
+          verified: "2026-07-26"
+          notes: "maintainer-supplied ladder; the model NAMES are not independently verified in-repo"
+        - id: gpt-terra
+          name: "GPT Terra"
+          meets_tier: standard
+          assessed: true
+          verified: "2026-07-26"
+          notes: "maintainer-supplied ladder; the model NAMES are not independently verified in-repo"
+        - id: gpt-luna
+          name: "GPT Luna"
+          meets_tier: fast
+          assessed: true
+          verified: "2026-07-26"
+          notes: "maintainer-supplied ladder; the model NAMES are not independently verified in-repo"
+    - id: google
+      name: "Google"
+      models:
+        - id: gemini-3-5-flash
+          name: "Gemini 3.5 Flash"
+          assessed: false
+          notes: "the README records that it works; that is not a tier assessment, so no claim here"
+    - id: mistral
+      name: "Mistral AI"
+      models: []
+      notes: "reachability recorded; the README states it is not benchmarked for EADOS"
+    - id: alibaba-qwen
+      name: "Qwen (Alibaba)"
+      models: []
+      notes: "reachability recorded; no model catalogued or assessed"
+    - id: moonshot
+      name: "Moonshot AI (Kimi)"
+      models: []
+      notes: "reachability recorded; no model catalogued or assessed"
+    - id: sakana
+      name: "Sakana AI"
+      models: []
+      notes: "reachability recorded; the README states it is not benchmarked for EADOS"
+
+  # What each runtime can reach. A mono-vendor host lists one provider; a model-agnostic one lists
+  # every vendor it can drive - the case the flat v1 shape could not express at all.
+  #
+  # `detect:` are the environment markers that identify the RUNTIME (19.4, ADR-0024 D4). The OS
+  # never asks the agent which MODEL it is - a route built on a hallucinated self-description is
+  # worse than none, because it is wrong AND authoritative-looking. Marker vocabulary:
+  #     - env: NAME                 the variable is set
+  #     - env: NAME + matches: RE   it is set AND its value matches
+  # Only markers actually OBSERVED are listed. A host with `detect: []` never auto-detects and must
+  # be named (--host, or `routing.host` in the manifest) - the same honesty as an unassessed model:
+  # a guessed marker either never fires, or fires on the wrong host, and the second is worse than
+  # no detection at all. Adding one is a data edit, no code change.
+  hosts:
+    # `commands:` declares HOW a host surfaces the /eados verbs, as data (#375, ADR-0019
+    # addendum 2026-07-27). One renderer emits a tree for any host whose scope is `project`;
+    # 14 commands x 4 hosts maintained by hand would be 56 files and guaranteed drift.
+    #   scope       project = EADOS may write it into the repo | home = it lives outside the
+    #               project and EADOS must never write there | none = no verified mechanism
+    #   dir/ext     where the files go and what extension the host discovers
+    #   format      md-frontmatter | toml | md-yaml-frontmatter
+    #   nest        true when a subdirectory namespaces the command, false when names must be flat
+    #   invocation  what the user actually types
+    # Every entry below was verified against the host's current documentation on 2026-07-27; an
+    # unverified host declares `scope: none` rather than a guess, because shipping a directory a
+    # host does not read looks like support.
+    - id: claude-code
+      name: "Claude Code"
+      providers: [anthropic]
+      delegation: applied
+      commands:
+        scope: project
+        dir: ".claude/commands/eados"
+        ext: ".md"
+        format: md-frontmatter
+        nest: true
+        invocation: "/eados:<name>"
+      detect:
+        - env: CLAUDECODE
+        - env: CLAUDE_CODE_ENTRYPOINT
+        - env: AI_AGENT
+          matches: "^claude-code"
+      effort_aliases:
+        ultracode: max
+        ultrathink: max
+    - id: codex
+      name: "ChatGPT Codex"
+      providers: [openai]
+      delegation: advisory-only
+      detect: []      # no marker observed yet - name it explicitly
+      # HOME-scoped, and that is a constraint rather than an omission: custom prompts live in
+      # ~/.codex/prompts and are documented as "not shared through your repository". EADOS writing
+      # there would break the containment posture its installer is built on, so it renders the tree
+      # INSIDE the project and prints the one command to install it.
+      # Also verified 2026-07-27: custom prompts are DEPRECATED in favour of skills, which ARE
+      # project-scoped - but skills are invocable implicitly (model-triggered), which ADR-0019
+      # deliberately rejected for exactly that reason. Left open for the maintainer; see the ADR.
+      commands:
+        scope: home
+        dir: ".eados/adapters/codex"
+        install_to: "~/.codex/prompts"
+        ext: ".md"
+        format: md-frontmatter
+        nest: false
+        invocation: "/eados-<name>"
+    - id: gemini
+      name: "Gemini Antigravity"
+      providers: [google]
+      delegation: advisory-only
+      detect: []      # no marker observed yet - name it explicitly
+      # Verified 2026-07-27: project commands live in <project>/.gemini/commands/, TOML, `prompt`
+      # required and `description` optional, and a subdirectory namespaces the command with `:` -
+      # so eados/init.toml surfaces as /eados:init, exactly parallel to Claude Code.
+      commands:
+        scope: project
+        dir: ".gemini/commands/eados"
+        ext: ".toml"
+        format: toml
+        nest: true
+        invocation: "/eados:<name>"
+    - id: opencode
+      name: "OpenCode (model-agnostic)"
+      providers: [anthropic, openai, google, mistral, alibaba-qwen, moonshot, sakana]
+      delegation: advisory-only
+      detect: []      # no marker observed yet - name it explicitly
+      # Verified 2026-07-27: project commands are .opencode/commands/<name>.md with YAML
+      # frontmatter, and the filename becomes the command name. The NESTING rule is NOT documented,
+      # so names are flat (`eados-init`) rather than relying on behaviour nobody wrote down -
+      # `nest: false` records that this is a verified limit, not a preference.
+      commands:
+        scope: project
+        dir: ".opencode/commands"
+        ext: ".md"
+        format: md-yaml-frontmatter
+        nest: false
+        invocation: "/eados-<name>"
+
+# Worked-example decision surface (#224) - the judgment call is WHICH TIER a unit of work
+# deserves. Shape-checked by the `examples` gate; drawn from the maintainer-reviewed M15
+# assessment of 2026-07-09 (.issues/M16-model-effort-routing-milestone.md, backfill table).
+examples:
+  verdicts: [fast, standard, frontier-reasoning]
+  cases:
+    - input: "Doc drift - two playbooks omit a domain the code already ships (severity:low)"
+      verdict: fast
+      why: "mechanical prose fix against a known source of truth; no design, small blast radius"
+    - input: "Author a persona file plus a worked config example (severity:low)"
+      verdict: fast
+      why: "authoring to an established format; review catches style drift cheaply"
+    - input: "Third cross-cutting command doc, after the first fixed the template (severity:medium)"
+      verdict: standard
+      why: "substantive but pattern-following; the expensive thinking was spent on the first of the class"
+    - input: "Reconcile a defect backlog against in-tree fixes and build a regression index (severity:high)"
+      verdict: standard
+      why: "meticulous verification, not open-ended design - effort high, tier standard"
+    - input: "The taxonomy ADR every other issue in the milestone builds on (label:adr, severity:high)"
+      verdict: frontier-reasoning
+      why: "decision-heavy and foundational; a wrong call here is repaid with interest downstream"
+    - input: "First command of a new class - fixes the shape its siblings will copy (sets-pattern)"
+      verdict: frontier-reasoning
+      why: "sets-pattern - the marginal cost of the best model is amortized across every follower"
+    # Per-step (19.7): the SAME item routes differently across its steps, and a protected item
+    # routes the same across all of them. Both halves of the invariant, as worked cases.
+    - input: "Design step of a small fix - deciding the shape (severity:low, step:design)"
+      verdict: standard
+      why: "the cheap item's one expensive moment; every later step copies what is decided here"
+    - input: "Test step of that same small fix, against a settled spec (severity:low, step:test)"
+      verdict: fast
+      why: "mechanical work against criteria that already exist - the item's own floor is right"
+    - input: "Test step of a SECURITY item (label:security, step:test)"
+      verdict: frontier-reasoning
+      why: "steps only raise - a protected floor holds in every step, including the mechanical ones"

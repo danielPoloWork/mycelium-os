@@ -1,0 +1,71 @@
+# ruby.yaml — Ruby toolchain profile. Bundler ecosystem; RuboCop trio.
+
+lang:             ruby
+display_name:     "Ruby"
+default_standard: "Ruby 3.3"
+src_ext:          rb
+
+namespace_pattern: "{group_dotted}::{project_slug} as CamelCase modules (e.g. It::D4np::MemoryPool)"
+import_idiom:      "require '{group_path}/{project_slug}'"
+
+toolchain:
+  build_tool:      "Bundler + Rake (gemspec)"
+  pkg_manager:     "Bundler (Gemfile.lock committed)"
+  test_framework:  "RSpec (or Minitest)"
+  formatter:       "RuboCop (-A autocorrect)"
+  linter:          "RuboCop (+ Sorbet for optional typing)"
+  sanitizers:      "RuboCop (style/soundness); GVL means no data-race detector"
+  coverage_tool:   "SimpleCov"
+  doc_tool:        "YARD"
+  version_file:    "version.rb"
+  version_const_hint: "VERSION = 'X.Y.Z'"
+  package_ecosystem: "bundler"
+
+commands:
+  build:        "bundle install"
+  test:         "bundle exec rspec"
+  format_check: "bundle exec rubocop"
+  lint:         "bundle exec rubocop"
+  bench:        "bundle exec ruby bench/run.rb"   # benchmark-ips
+
+# The one config file whose presence proves the build system exists (#313). Until it is
+# there, the rendered CI SKIPS the toolchain jobs instead of failing them. A glob is legal.
+build_manifest: Gemfile
+
+config_files:
+  - Gemfile
+  - .rubocop.yml
+  - .rspec
+
+ci:
+  tier1_platforms: "Linux (Ruby 3.2, 3.3)"
+  matrix:
+    - { os: ubuntu-24.04, toolchain: ruby-3.2, preset: default }
+    - { os: ubuntu-24.04, toolchain: ruby-3.3, preset: default }
+  setup_steps: |
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: ${{ matrix.toolchain == 'ruby-3.2' && '3.2' || '3.3' }}
+        bundler-cache: true
+  extra_jobs: |
+    quality:
+      name: quality / rubocop + simplecov
+      runs-on: ubuntu-24.04
+      needs: bootstrap
+      if: needs.bootstrap.outputs.ready == 'true'
+      steps:
+        - uses: actions/checkout@v6
+        - uses: ruby/setup-ruby@v1
+          with: { ruby-version: '3.3', bundler-cache: true }
+        - run: bundle exec rubocop
+        - run: bundle exec rspec
+  race_job: ""                             # GVL; no data-race detector
+
+supports:
+  threading_sanitizer: false
+  bench: true
+  abi_stability: false
+notes: |
+  Ruby 3.3; RuboCop serves as both formatter and linter. Sorbet adds optional static typing.
+  Dependabot ecosystem: bundler.
