@@ -44,14 +44,7 @@ The thinnest slice that compiles, tests, and ships under the full quality bar.
       `src/mycelium/` (flat src-layout, ADR-0003). (RFC-0001) — size: S · route: fast / low — delivered by PR #5; `python -m build --wheel` produces an installable `mycelium-os` wheel
 - [x] 1.2 Wire the test framework (pytest (+ hypothesis for property tests)) with one passing smoke test under
       `tests/` (flat src-layout, ADR-0003). (RFC-0001) — size: XS · route: fast / low — delivered by PR #6; `dev` dependency group declares pytest + hypothesis. Per the BUG-0003 guard note below, `uv.lock` stays uncommitted until 1.3 completes the group (hatch, pytest-benchmark, ruff, mypy) — committing a partial lock would flip the CI bootstrap probe to ready=true before the lint/benchmark jobs have anything to run
-- [ ] 1.3 Add formatter + linter configs (ruff format (Black-compatible), ruff check + mypy --strict) at the repo root. (RFC-0001) — size: XS · route: fast / low
-      > **Guard note (BUG-0003).** 1.2 and 1.3 together declare the dev dependency group and
-      > commit `uv.lock`, which is what flips CI's bootstrap guard to `ready=true`. The group
-      > must cover **hatch, pytest, pytest-benchmark, ruff and mypy** before `uv.lock` is
-      > committed: the guard opens all toolchain jobs at once (build, test, lint, benchmark),
-      > so a partial group re-creates the wall of red. `tests/bench/` also needs one real
-      > benchmark — `pytest tests/bench --benchmark-only` exits 5 ("no tests collected") on
-      > an empty directory, which reads as a failure.
+- [x] 1.3 Add formatter + linter configs (ruff format (Black-compatible), ruff check + mypy --strict) at the repo root. (RFC-0001) — size: XS · route: fast / low — delivered by PR #7: `[tool.ruff]`/`[tool.ruff.lint]`/`[tool.mypy]` in `pyproject.toml`, dev group completed (hatch, pytest, pytest-benchmark, ruff, mypy), `uv.lock` committed (BUG-0003 guard now `ready=true`), one benchmark added under `tests/bench/`. Locally green: `ruff format --check`, `ruff check`, `mypy --strict src`, `pytest -q`, `pytest tests/bench --benchmark-only`
 - [ ] 1.4 Stand up the CI matrix (Linux / Windows / macOS on CPython 3.12+) with build + test + format + lint. (RFC-0001) — size: S · route: fast / low
 - [x] 1.5 Seed the version constant (__version__ = 'X.Y.Z') in `src/mycelium/__about__.py`. (RFC-0001) — size: XS · route: fast / low — delivered alongside 1.1 in PR #5 (hatch's dynamic version reads this file; the two are inseparable at build-system stand-up)
 - [x] 1.6 Replace LICENSE MIT → Apache-2.0 (D-018; owner-confirmed 2026-08-29) (RFC-0001) — size: XS · route: fast / low — delivered in the scaffold bootstrap PR
