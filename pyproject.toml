@@ -55,6 +55,9 @@ packages = ["src/mycelium"]
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"
 testpaths = ["tests"]
+markers = [
+    "determinism: gate G6 — byte-identical rebuild against the committed golden corpus",
+]
 
 [tool.ruff]
 line-length = 100

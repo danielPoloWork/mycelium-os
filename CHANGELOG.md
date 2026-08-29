@@ -26,6 +26,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   with its named field owners, Mycelium Markdown Profile v1 (wikilinks, embeds, inline
   tags, callouts, GFM tables), and the markdown-it → KIR adapter (#17, ADR-0006).
 - Runtime dependencies `markdown-it-py >= 3.0` and `PyYAML >= 6.0` (#17, ADR-0006).
+- `mycelium.determinism` — the observation behind gate G6 (spec 04 §7): what a
+  byte-identical rebuild claims, and what it deliberately does not. Enforced in CI
+  against a committed fixture corpus and a reviewable golden, with
+  `tools/update_determinism_golden.py` to re-bless an intended compiler change
+  (#23, ADR-0012).
 - `mycelium.mcp` — the MCP server over stdio (spec 05 §3): `mycelium_search` and
   `mycelium_fetch`, the closed error taxonomy, and the data-not-instructions notice on
   every response. Started with `mycelium serve` or `python -m mycelium.mcp`; no new

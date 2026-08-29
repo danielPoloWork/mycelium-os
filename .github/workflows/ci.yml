@@ -123,6 +123,32 @@ jobs:
       - run: uv sync --all-extras --dev
       - run: uv run ruff format --check src tests && uv run ruff check src tests && uv run mypy --strict src
 
+  # ---------------------------------------------------------------------------
+  # Gate G6 — byte-identical rebuild (spec 04 §7, D-008). The determinism tests also
+  # run inside the build matrix on all three operating systems, which is where
+  # cross-platform reproducibility is actually proven; this job exists so the gate
+  # is legible by name in the checks list rather than buried in a suite of 380.
+  # ---------------------------------------------------------------------------
+  determinism:
+    name: determinism / gate G6
+    needs: bootstrap
+    if: needs.bootstrap.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Byte-identical rebuild against the committed golden corpus
+        shell: bash
+        run: uv run pytest -m determinism -q
+
   # Reproducible performance gate — runs only when the project has a benchmark suite.
   benchmark:
     name: benchmark / reproducible perf
