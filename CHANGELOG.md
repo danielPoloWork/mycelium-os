@@ -25,6 +25,8 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   (roadmap 1.3).
 - CI matrix verified green end-to-end (build/test/lint/benchmark/consistency) on
   Linux/Windows/macOS across CPython 3.12/3.13 (roadmap 1.4, 2.1).
+- `CONTRIBUTING.md` (DCO sign-off policy, dev setup, PR process) and
+  `CODE_OF_CONDUCT.md` (Contributor Covenant v2.1), completing Milestone 1 (roadmap 1.8).
 
 ### Changed
 
