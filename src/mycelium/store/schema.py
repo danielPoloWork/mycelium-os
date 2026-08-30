@@ -16,12 +16,13 @@ two stores built from the same sources hold byte-identical column values.
 
 from typing import Final
 
-SCHEMA_VERSION: Final = "mycelium/store/v2"
+SCHEMA_VERSION: Final = "mycelium/store/v3"
 """Bumped whenever the DDL below changes. v1 migration policy is rebuild (D-016):
 a *writer* that meets a foreign version recreates the file (the store is derived
 data, D-005 — ADR-0015); a *reader* refuses and points at `mycelium build`.
 History: v0 → v1 added `doc_state` (roadmap 3.1, incremental builds);
-v1 → v2 added `snapshot_state` (roadmap 3.2, restorable snapshots)."""
+v1 → v2 added `snapshot_state` (roadmap 3.2, restorable snapshots);
+v2 → v3 added `doc_state.graph_json` (roadmap 3.4, the authored link graph)."""
 
 META_SCHEMA_VERSION: Final = "schema_version"
 META_CURRENT_SNAPSHOT: Final = "current_snapshot"
@@ -143,7 +144,13 @@ CREATE TABLE IF NOT EXISTS doc_state (
     env_digest      TEXT NOT NULL,
     document_digest TEXT NOT NULL,
     chunks_digest   TEXT NOT NULL,
-    warnings_json   TEXT NOT NULL
+    warnings_json   TEXT NOT NULL,
+    -- This document's contribution to the link graph: the references it makes,
+    -- the aliases it answers to, and its heading slugs (roadmap 3.4). Edge
+    -- *resolution* is global — a wikilink's meaning depends on every other
+    -- document — so these are kept per document and re-resolved every build,
+    -- which is what keeps extraction cached while the graph stays correct.
+    graph_json      TEXT NOT NULL DEFAULT '{}'
 );
 
 -- What each published snapshot contained, as one CAS pointer per snapshot

@@ -42,6 +42,7 @@ mycelium init              # scaffold knowledge/, mycelium.toml, the gitignore e
 mycelium build             # compile what changed into a published snapshot
 mycelium search "retry policy"          # add --hybrid for the vector leg, --explain for why
 mycelium show "mycelium://<doc-id>#retries/0"
+mycelium neighbors doc.md  # what this links to, and what links to it
 mycelium snapshots         # what has been published, newest first
 mycelium rollback <id>     # serve an earlier snapshot again - nothing recompiles
 mycelium gc                # drop snapshots beyond retention and unreachable artifacts
@@ -55,9 +56,10 @@ each document's frontmatter — that pinned identity is what makes rebuilds dete
 citations survive renames, so commit those files. Every read command takes `--json`, exits
 0/1/2 (ok / failed / usage), and honours `NO_COLOR`.
 
-Point an MCP-capable agent at `mycelium serve` and it gets two read-only tools —
-`mycelium_search` and `mycelium_fetch` — returning verbatim passages with `mycelium://`
-citations, trust class, and verification status. Every response states in words that its
+Point an MCP-capable agent at `mycelium serve` and it gets four read-only tools —
+`mycelium_search`, `mycelium_fetch`, `mycelium_neighbors` (the graph of links your documents
+actually contain), and `mycelium_explain` (how a query was planned, and why) — returning
+verbatim passages with `mycelium://` citations, trust class, and verification status. Every response states in words that its
 content is data, never instructions: retrieved text is quoted evidence, and injection
 resistance is a tested property, not a promise (D-017).
 

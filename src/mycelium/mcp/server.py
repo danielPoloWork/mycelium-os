@@ -30,7 +30,13 @@ from typing import Any, Final, TextIO
 
 from mycelium.__about__ import __version__
 from mycelium.mcp.errors import ErrorCode, McpToolError
-from mycelium.mcp.tools import TOOL_SCHEMAS, handle_fetch, handle_search
+from mycelium.mcp.tools import (
+    TOOL_SCHEMAS,
+    handle_explain,
+    handle_fetch,
+    handle_neighbors,
+    handle_search,
+)
 
 __all__ = ["SUPPORTED_PROTOCOL_VERSIONS", "serve_stdio"]
 
@@ -54,6 +60,8 @@ _PARSE_ERROR: Final = -32700
 _HANDLERS: Final[dict[str, Callable[[Path, dict[str, Any]], dict[str, Any]]]] = {
     "mycelium_search": handle_search,
     "mycelium_fetch": handle_fetch,
+    "mycelium_neighbors": handle_neighbors,
+    "mycelium_explain": handle_explain,
 }
 
 

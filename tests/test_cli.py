@@ -271,6 +271,49 @@ def test_gc_rejects_negative_retention_as_usage(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# neighbors (roadmap 3.4)
+# ---------------------------------------------------------------------------
+
+
+def test_neighbors_shows_both_directions_with_provenance(tmp_path: Path) -> None:
+    seeded(tmp_path, "knowledge/verified/retries.md", DOC + "\nSee [[api]].\n")
+    seeded(tmp_path, "knowledge/verified/api.md", "# API\n\nEndpoints.\n")
+    run_build(tmp_path)
+
+    outgoing = invoke("neighbors", "knowledge/verified/retries.md", "--path", str(tmp_path))
+    assert outgoing.exit_code == ExitCode.OK
+    assert "-> doc:knowledge/verified/api.md" in outgoing.stdout
+    assert "links_to, authored" in outgoing.stdout
+    assert "via wikilink" in outgoing.stdout
+
+    incoming = invoke("neighbors", "knowledge/verified/api.md", "--path", str(tmp_path))
+    assert "<- doc:knowledge/verified/retries.md" in incoming.stdout
+
+    payload = json.loads(
+        invoke("neighbors", "knowledge/verified/api.md", "--path", str(tmp_path), "--json").stdout
+    )
+    assert payload["origin"] == "doc:knowledge/verified/api.md"
+    assert payload["neighbors"][0]["direction"] == "in"
+
+
+def test_neighbors_of_a_document_with_no_links_says_so(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    run_build(tmp_path)
+    result = invoke("neighbors", "knowledge/verified/retries.md", "--path", str(tmp_path))
+    assert result.exit_code == ExitCode.OK
+    assert "No neighbors" in result.stdout
+
+
+def test_neighbors_of_an_unknown_document_fails_with_guidance(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    run_build(tmp_path)
+    result = invoke("neighbors", "knowledge/nowhere.md", "--path", str(tmp_path))
+    assert result.exit_code == ExitCode.FAILED
+    assert "no document at" in result.stderr
+    assert result.stdout == ""
+
+
+# ---------------------------------------------------------------------------
 # search
 # ---------------------------------------------------------------------------
 

@@ -12,6 +12,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- The authored link graph, and the two MCP tools that were waiting for it (D-014).
+  `mycelium build` now derives `links_to` edges from wikilinks, embeds, and Markdown links
+  between documents — everything `authored`, nothing mined — resolving them by basename,
+  path, or alias per spec 03 §3.1, with `[[doc#Heading]]` targeting the section. An
+  unresolvable *or ambiguous* link is a build warning naming the candidates, never a guess.
+- `mycelium neighbors <path|uri|anchor> [--type T] [--depth N]` and the MCP tools
+  `mycelium_neighbors` and `mycelium_explain`, completing the four-tool surface spec 05 §3
+  defines. Both directions are reported — what a document cites and what cites it — and
+  `mycelium_explain` returns the retrieval plan, per-leg candidate ranks, per-stage timings
+  and the configuration behind them, with no passage text (ADR-0018).
 - A local embedding stage and hybrid retrieval (D-013/D-009). Builds compile vectors with
   `bge-small-en-v1.5` running offline through ONNX — no API key, no account — keyed
   `(chunk_digest, model_id)` so unchanged text is never re-embedded and switching models
@@ -55,6 +65,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- Store schema is `mycelium/store/v3` (`doc_state.graph_json` at 3.4). A build that meets an
+  older store recreates it in place and recompiles, as before.
+- The snapshot manifest's `edges` digest is now real rather than the digest of an empty
+  list, and a rollback re-resolves the graph and verifies it against that digest — so a
+  restored snapshot serves the graph it published, not the newer build's (ADR-0018).
 - **Retrieval stays lexical by default, and now that is a measurement rather than an
   assumption.** Hybrid gains +12.7 % nDCG@10 overall on our judged cases but regresses the
   `exact` slice by 17.8 % (the bar is −2 %) and answers every unanswerable query where
@@ -77,6 +92,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- The MCP server's bare-interpreter entry point (`python -m mycelium.mcp`) wrote its
+  JSON-RPC stream without configuring the encoding, so on Windows it used the console code
+  page on a channel the specification defines as UTF-8. A single non-ASCII character —
+  an em dash in a tool description, or any multilingual passage in a search result — made
+  the client's decoder fail *inside its read loop*, so the session hung rather than
+  erroring. `mycelium serve` was unaffected; both entry points now share the same stream
+  setup ([BUG-0009](docs/bugs/2026/08/BUG-0009-mcp-stdio-uses-the-console-code-page.md), #34).
 - A UTF-8 byte-order mark hid a document's frontmatter, because the `---` fence was no
   longer at position zero. Affected documents lost their authored metadata (title, tags,
   collection, provenance) and had the frontmatter block itself — `mycelium_id` included —

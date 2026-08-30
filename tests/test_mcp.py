@@ -24,6 +24,7 @@ from mycelium.mcp import (
     handle_search,
     serve_stdio,
 )
+from mycelium.mcp.tools import handle_explain, handle_neighbors
 
 DOC = """---
 collection: core-docs
@@ -32,6 +33,7 @@ collection: core-docs
 # Retry Policy
 
 Failed deliveries retry with exponential backoff, up to five attempts.
+See [[draft]] for the unreviewed notes.
 
 ## Limits
 
@@ -257,10 +259,105 @@ def test_an_unbuilt_repository_reports_snapshot_unavailable(tmp_path: Path) -> N
     for handler, arguments in (
         (handle_search, {"query": "anything"}),
         (handle_fetch, {"uri": "mycelium://01J1ZF8Q4R6XKQ3F0V9T8B2M7N#a/0"}),
+        (handle_neighbors, {"uri": "knowledge/verified/retries.md"}),
+        (handle_explain, {"query": "anything"}),
     ):
         with pytest.raises(McpToolError) as error:
             handler(tmp_path, arguments)
         assert error.value.code is ErrorCode.SNAPSHOT_UNAVAILABLE
+
+
+# ---------------------------------------------------------------------------
+# mycelium_neighbors (spec 05 §3.3)
+# ---------------------------------------------------------------------------
+
+
+def test_neighbors_returns_typed_weighted_edges_with_status(repo: Path) -> None:
+    payload = handle_neighbors(repo, {"uri": "knowledge/verified/retries.md"})
+
+    assert payload["snapshot_id"]
+    assert payload["origin"] == "doc:knowledge/verified/retries.md"
+    (neighbour,) = payload["neighbors"]
+    assert neighbour["ref"] == "doc:knowledge/candidate/draft.md"
+    assert neighbour["type"] == "links_to"
+    assert neighbour["status"] == "authored"  # nothing is mined before roadmap 5.1
+    assert neighbour["weight"] == 1.0
+    assert neighbour["direction"] == "out"
+    assert neighbour["provenance"]["kind"] == "wikilink"
+    assert neighbour["provenance"]["anchor"].startswith("knowledge/verified/retries.md#")
+
+
+def test_neighbors_accepts_a_uri_a_path_or_a_reference(repo: Path) -> None:
+    """A caller should not have to learn the graph's key format to use it."""
+    by_path = handle_neighbors(repo, {"uri": "knowledge/verified/retries.md"})
+    by_ref = handle_neighbors(repo, {"uri": "doc:knowledge/verified/retries.md"})
+    by_uri = handle_neighbors(repo, {"uri": first_uri(repo)})
+
+    assert by_path["neighbors"] == by_ref["neighbors"] == by_uri["neighbors"]
+
+
+def test_neighbors_answers_the_reverse_question_too(repo: Path) -> None:
+    payload = handle_neighbors(repo, {"uri": "knowledge/candidate/draft.md"})
+    (neighbour,) = payload["neighbors"]
+    assert neighbour["direction"] == "in"
+    assert neighbour["ref"] == "doc:knowledge/verified/retries.md"
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {"uri": "knowledge/verified/retries.md", "types": ["not_a_type"]},
+        {"uri": "knowledge/verified/retries.md", "types": "links_to"},
+        {"uri": "knowledge/verified/retries.md", "depth": 0},
+        {"uri": "knowledge/verified/retries.md", "depth": 99},
+        {"uri": ""},
+    ],
+)
+def test_bad_neighbors_arguments_are_invalid_argument(repo: Path, arguments: dict) -> None:
+    with pytest.raises(McpToolError) as error:
+        handle_neighbors(repo, arguments)
+    assert error.value.code is ErrorCode.INVALID_ARGUMENT
+
+
+def test_neighbors_of_an_unknown_document_is_not_found(repo: Path) -> None:
+    with pytest.raises(McpToolError) as error:
+        handle_neighbors(repo, {"uri": "knowledge/nowhere.md"})
+    assert error.value.code is ErrorCode.NOT_FOUND
+
+
+# ---------------------------------------------------------------------------
+# mycelium_explain (spec 05 §3.4)
+# ---------------------------------------------------------------------------
+
+
+def test_explain_reports_the_plan_the_timings_and_the_config(repo: Path) -> None:
+    payload = handle_explain(repo, {"query": "retry policy"})
+
+    assert payload["snapshot_id"]
+    assert payload["query"] == "retry policy"
+    plan = payload["plan"]
+    assert plan["profile"] == "lexical"  # the shipped default (ADR-0017)
+    assert plan["stages"] == ["lexical"]
+    assert payload["fusion"] == {"method": "rrf", "k": 60, "vector_candidates": 50}
+    assert "total" in payload["timings_ms"]
+    assert payload["config"]["field_weights"] == {"title": 3.0, "heading_path": 2.0, "body": 1.0}
+
+
+def test_explain_accounts_for_each_candidate_without_returning_its_text(repo: Path) -> None:
+    """The debugging surface, not a second way to read the corpus."""
+    payload = handle_explain(repo, {"query": "retry policy"})
+
+    candidates = payload["candidates"]
+    assert candidates
+    for candidate in candidates:
+        assert candidate["uri"].startswith("mycelium://")
+        assert candidate["legs"] == ["lexical"]
+        assert candidate["ranks"]["lexical"] >= 1
+        assert "text" not in candidate
+
+
+def test_explain_respects_k(repo: Path) -> None:
+    assert len(handle_explain(repo, {"query": "retry", "k": 1})["candidates"]) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -292,13 +389,30 @@ def test_initialize_negotiates_and_advertises_tools(repo: Path) -> None:
     assert unknown["result"]["protocolVersion"] == SUPPORTED_PROTOCOL_VERSIONS[0]
 
 
-def test_tools_list_exposes_exactly_the_two_v1_tools(repo: Path) -> None:
+def test_tools_list_exposes_exactly_the_four_v1_tools(repo: Path) -> None:
+    """Spec 05 §3's whole surface, and nothing beyond it: every tool is a
+    permanent compatibility liability (D-011)."""
     (response,) = drive(repo, request(1, "tools/list"))
     tools = response["result"]["tools"]
-    assert [tool["name"] for tool in tools] == ["mycelium_search", "mycelium_fetch"]
+    assert sorted(tool["name"] for tool in tools) == [
+        "mycelium_explain",
+        "mycelium_fetch",
+        "mycelium_neighbors",
+        "mycelium_search",
+    ]
     for tool in tools:
         assert tool["inputSchema"]["type"] == "object"
         assert tool["description"]
+
+
+def test_every_tool_description_survives_a_legacy_console(repo: Path) -> None:
+    """BUG-0009: this stream is UTF-8 by specification, and a Windows console
+    hands Python a legacy code page — so a single em dash in a description was
+    enough to corrupt the frame and hang the client. The entry point now fixes
+    the encoding; this keeps the failure visible if that regresses."""
+    (response,) = drive(repo, request(1, "tools/list"))
+    payload = json.dumps(response, ensure_ascii=False)
+    assert payload.encode("utf-8").decode("utf-8") == payload
 
 
 def test_notifications_get_no_response(repo: Path) -> None:
@@ -406,7 +520,12 @@ async def test_the_official_mcp_client_can_drive_this_server(repo: Path) -> None
         assert initialized.server_info.name == "mycelium"
 
         listed = await session.list_tools()
-        assert {tool.name for tool in listed.tools} == {"mycelium_search", "mycelium_fetch"}
+        assert {tool.name for tool in listed.tools} == {
+            "mycelium_search",
+            "mycelium_fetch",
+            "mycelium_neighbors",
+            "mycelium_explain",
+        }
 
         found = await session.call_tool("mycelium_search", {"query": "exponential backoff"})
         assert found.is_error is False
@@ -419,6 +538,16 @@ async def test_the_official_mcp_client_can_drive_this_server(repo: Path) -> None
         )
         assert fetched.is_error is False
         assert json.loads(fetched.content[0].text)["content"]  # type: ignore[union-attr]
+
+        walked = await session.call_tool(
+            "mycelium_neighbors", {"uri": "knowledge/verified/retries.md"}
+        )
+        assert walked.is_error is False
+        assert json.loads(walked.content[0].text)["neighbors"]  # type: ignore[union-attr]
+
+        explained = await session.call_tool("mycelium_explain", {"query": "retry"})
+        assert explained.is_error is False
+        assert json.loads(explained.content[0].text)["plan"]["stages"]  # type: ignore[union-attr]
 
         failed = await session.call_tool("mycelium_search", {"query": ""})
         assert failed.is_error is True

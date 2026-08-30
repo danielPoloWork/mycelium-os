@@ -4,10 +4,10 @@
 
 v1 has exactly two public surfaces, CLI and MCP (D-011), so every flag here is a
 compatibility liability and the skeleton stays deliberately small: ``init``,
-``build``, ``snapshots``, ``rollback``, ``gc``, ``search``, ``show``, ``doctor``,
-``eval``, and ``serve``. The rest of the spec's table arrives with the features
-behind it — ``ingest``, ``verify``, and ``promote`` with milestone 4,
-``neighbors`` with 3.4, ``export`` with 3.6.
+``build``, ``snapshots``, ``rollback``, ``gc``, ``search``, ``show``,
+``neighbors``, ``doctor``, ``eval``, and ``serve``. The rest of the spec's table
+arrives with the features behind it — ``ingest``, ``verify``, and ``promote``
+with milestone 4, ``export`` with 3.6.
 
 The CLI is a shell, not a layer: it parses arguments, calls one function, and
 renders. Nothing here decides anything the library does not already decide.
@@ -42,11 +42,13 @@ from mycelium.cli.output import (
 from mycelium.config import ConfigError, MyceliumConfig, RetrievalConfig, load_config
 from mycelium.embedding import Embedder, EmbeddingError, build_embedder
 from mycelium.eval import EvaluationError, load_cases, run_evaluation, write_run
+from mycelium.graph import MAX_DEPTH
+from mycelium.graph import neighbours as graph_neighbours
 from mycelium.mcp import serve_stdio
 from mycelium.retrieval import search as run_search
-from mycelium.sdk.identity import IdentityError, anchor, citation_uri, parse_anchor
+from mycelium.sdk.identity import IdentityError, anchor, citation_uri, doc_ref, parse_anchor
 from mycelium.sdk.identity import parse_citation_uri as parse_uri
-from mycelium.sdk.types import Chunk, TrustClass, VerificationStatus
+from mycelium.sdk.types import Chunk, EdgeType, TrustClass, VerificationStatus
 from mycelium.store import (
     STORE_DIRNAME,
     SearchFilters,
@@ -511,6 +513,70 @@ def _query_embedder(settings: MyceliumConfig, retrieval: RetrievalConfig) -> Emb
         )
     except EmbeddingError:
         return None
+
+
+@app.command()
+def neighbors(
+    target: Annotated[
+        str, typer.Argument(help="A document path, a mycelium:// URI, or a chunk anchor.")
+    ],
+    path: Annotated[Path, typer.Option("--path", help="Repository root.")] = Path(),
+    types: Annotated[
+        list[EdgeType] | None, typer.Option("--type", help="Restrict to an edge type.")
+    ] = None,
+    depth: Annotated[int, typer.Option("--depth", min=1, max=MAX_DEPTH, help="Hops to walk.")] = 1,
+    limit: Annotated[int, typer.Option("-k", "--limit", min=1, help="Maximum results.")] = 20,
+    as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+) -> None:
+    """Show the typed neighbourhood of a document or section."""
+    store = _open_store(path)
+    try:
+        origin = _graph_ref(store, target)
+        found = graph_neighbours(store, origin, types=types or None, depth=depth, limit=limit)
+        results = [item.as_dict() for item in found]
+    finally:
+        store.close()
+
+    if as_json:
+        emit_json({"origin": origin, "neighbors": results})
+        return
+    if not results:
+        typer.echo(f"No neighbors of {origin}.")
+        detail("  (edges come from authored links; run `mycelium build` after adding some)")
+        return
+    typer.echo(f"{origin}")
+    for item in results:
+        arrow = "->" if item["direction"] == "out" else "<-"
+        provenance = item["provenance"]
+        assert isinstance(provenance, dict)
+        typer.echo(f"  {arrow} {item['ref']}  [{item['type']}, {item['status']}]")
+        where = provenance.get("anchor")
+        detail(f"     via {provenance['kind']}{f' at {where}' if where else ''}")
+
+
+def _graph_ref(store: SqliteStore, target: str) -> str:
+    """Turn what a human typed into the reference the graph uses.
+
+    A path, a `mycelium://` URI, a chunk anchor, or an already-formed `doc:` ref
+    all name the same thing to a reader; the graph keys on `doc:<path>`, and
+    making the caller know that would be a leak, not a contract.
+    """
+    if target.startswith("doc:"):
+        return target
+    if target.startswith("mycelium://"):
+        try:
+            parsed = parse_uri(target)
+        except IdentityError as error:
+            raise fail(str(error), code=ExitCode.USAGE) from error
+        document = store.get_document(parsed.doc_id)
+        if document is None:
+            raise fail(f"no document {parsed.doc_id} in this snapshot")
+        return doc_ref(document.path)
+    path_part = target.split("#", 1)[0]
+    document = store.get_document_by_path(path_part)
+    if document is None:
+        raise fail(f"no document at {path_part} in this snapshot")
+    return doc_ref(document.path)
 
 
 @app.command()

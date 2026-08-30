@@ -10,12 +10,19 @@ the conformance test drive the server as a real subprocess.
 import sys
 from pathlib import Path
 
+from mycelium.cli.output import configure_streams
 from mycelium.mcp.server import serve_stdio
 
 
 def main(argv: list[str] | None = None) -> int:
     arguments = sys.argv[1:] if argv is None else argv
     root = Path(arguments[0]) if arguments else Path()
+    # MCP is UTF-8 by specification, and a Windows console hands Python a legacy
+    # code page instead — so a single non-ASCII byte on this stream is not a
+    # cosmetic problem but a corrupt protocol frame, and the client's decoder
+    # gives up on the session (BUG-0009). `mycelium serve` has done this since
+    # ADR-0010; the bare-interpreter entry point had been left out.
+    configure_streams()
     # stdout is the protocol channel; nothing but messages may go there.
     sys.stderr.write(f"mycelium MCP server on stdio, root={root}\n")
     sys.stderr.flush()
