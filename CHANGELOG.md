@@ -20,6 +20,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- The release workflow built the wheel and sdist to verify the tag, then drafted the
+  GitHub Release without attaching them, so v0.1.0 and v0.2.0 carried no downloadable
+  artifacts while `docs/workflow/release.md` promised CI would attach them. The draft now
+  carries `dist/*`, the artifact version is checked against the tag, and an existing tag
+  can be re-drafted with `gh workflow run release.yml --ref main -f tag=v<X.Y.Z>`
+  ([BUG-0006](docs/bugs/2026/08/BUG-0006-release-drafts-carry-no-artifacts.md), #30).
+
 ### Security
 
 ---

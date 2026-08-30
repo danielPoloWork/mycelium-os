@@ -30,7 +30,13 @@ pre-1.0 milestone-driven.
    `git push origin v<X.Y.Z>` immediately after merge; the tag push lets CI open the GitHub Release
    as a **draft**. The agent always carries the release this far — only **Publish** is the human's.
 9. **Publish** the GitHub Release — *the maintainer* (the deliberate human checkpoint).
-10. **CI builds & attaches artifacts** on the tag push.
+10. **CI builds & attaches artifacts** on the tag push — the wheel and sdist are uploaded
+    to the draft, and the build is refused if the artifact version does not equal the tag.
+
+If a tag was pushed before a fix to this workflow (or the drafting step failed after the
+build), re-run it from the default branch rather than moving the tag:
+`gh workflow run release.yml --ref main -f tag=v<X.Y.Z>`. Re-running the original run
+would replay the workflow file *as it existed at that tag* (BUG-0006).
 
 
 ## Boundary
