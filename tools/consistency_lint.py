@@ -50,7 +50,7 @@ CONFIG = {
     # The source root that pattern code-locations must live under.
     "src_main": "src/mycelium",
     # Whether documentation i18n is enabled (gates check 7).
-    "i18n_enabled": False,
+    "i18n_enabled": True,
 }
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

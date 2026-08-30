@@ -68,6 +68,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   retrieval-time RAG, and the Karpathy `llm-wiki` credit the project grew out of (#25).
 - Brand assets vendored to [`docs/assets/brand/`](docs/assets/brand/README.md) — banner,
   icon, and logo, with the logo's superseded tagline documented as a use restriction (#25).
+- Documentation i18n is enabled, structure first (D-028): English stays canonical at its
+  canonical paths, translations are derived copies under `docs/i18n/<code>/` for `it`,
+  `zh-Hans`, and `ja`, tracked per page in
+  [`docs/i18n/translation-status.md`](docs/i18n/translation-status.md) and gated by the
+  consistency lint's `i18n-freshness` check. Every page is `pending` — no translations
+  yet. `AGENTS.md` §2 gains the matching carve-out (#26).
 
 ### Deprecated
 

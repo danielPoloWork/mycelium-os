@@ -11,7 +11,9 @@
 [![Security Policy](https://img.shields.io/badge/security-policy-green)](SECURITY.md)
 ![Python](https://img.shields.io/badge/python-3.12%2B-blue)
 
-**English** (canonical) · Italiano · 中文 (简体) · 日本語 — *translations land with roadmap 2.13*
+**English** (canonical) · [Italiano](docs/i18n/README.md#it) ·
+[中文（简体）](docs/i18n/README.md#zh-hans) · [日本語](docs/i18n/README.md#ja) —
+*translations are tracked and [pending](docs/i18n/translation-status.md)*
 
 </div>
 

@@ -141,7 +141,9 @@ governance:
     bench:      true         # derived — numeric latency budgets are hard NFRs (04 §1)
     threading:  false        # single-writer lock + WAL readers; no threading surface (D-015)
     public_api: true         # derived — five stable contracts + 4 MCP tools (02 §10)
-    i18n:       false        # defaulted — English canonical
+    i18n:       true         # owner decision D-028 — English canonical, derived
+                             # translations under docs/i18n/<code>/, freshness-gated
+                             # (roadmap 2.13 ships the structure; content follows)
     packaging:  true         # derived — PyPI distribution `mycelium-os` (D-024)
     service:    false        # no daemon/HTTP in v1; MCP is stdio via the CLI (D-011)
     announce:   false        # defaulted — community strategy exists (06 §4) but channels
@@ -152,7 +154,8 @@ governance:
 
 i18n:
   default_lang: "en"
-  targets: []
+  targets: ["it", "zh-Hans", "ja"]   # D-028; zh-Hans deliberately, not the legacy
+                                     # Traditional variant
 
 announce:
   channels: []
@@ -307,6 +310,6 @@ interview:
     toolchain: defaulted     # profiles/python.yaml defaults, matching spec 06 §2 item 1
     ci: imported             # D-003 raises the floor to CPython 3.12+
     governance: defaulted    # posture standard (Q0.5 default, owner-confirmed); scopes/capabilities derived
-    i18n: defaulted
+    i18n: asked              # owner asked for multilingual docs 2026-08-29 → D-028
     announce: defaulted
     spec: imported           # Q5.0 import — .draft-specs/ package validated in
