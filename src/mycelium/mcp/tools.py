@@ -22,7 +22,11 @@ from typing import Any, Final
 
 from mycelium.build.publish import read_current
 from mycelium.chunking import estimate_tokens
+from mycelium.config import ConfigError, MyceliumConfig, load_config
+from mycelium.embedding import Embedder, EmbeddingError, build_embedder
 from mycelium.mcp.errors import ErrorCode, McpToolError
+from mycelium.retrieval import RRF_K
+from mycelium.retrieval import search as run_search
 from mycelium.sdk.identity import IdentityError, anchor, citation_uri, parse_anchor
 from mycelium.sdk.identity import parse_citation_uri as parse_uri
 from mycelium.sdk.types import Chunk, TrustClass, VerificationStatus
@@ -178,6 +182,41 @@ def _enum_arg(arguments: dict[str, Any], key: str, allowed: tuple[str, ...], def
 # ---------------------------------------------------------------------------
 
 
+def _config(root: Path) -> MyceliumConfig:
+    """The repository's configuration, or defaults when it is unreadable.
+
+    A malformed `mycelium.toml` must not take the server down mid-session: the
+    query path degrades to documented defaults, and `mycelium doctor` is where an
+    operator is told the file is broken.
+    """
+    try:
+        return load_config(root)
+    except ConfigError:
+        return MyceliumConfig()
+
+
+def _query_embedder(settings: MyceliumConfig) -> Embedder | None:
+    """The query-side embedder, or ``None`` — never an error.
+
+    A read-only server that cannot load a model still serves lexical results, and
+    says which leg is missing in `explain`. Failing the query instead would trade
+    a complete answer for no answer.
+    """
+    if not settings.retrieval.hybrid:
+        return None
+    try:
+        return build_embedder(
+            provider=settings.embedding.provider,
+            model_id=settings.embedding.model_id,
+            model_path=Path(settings.embedding.model_path)
+            if settings.embedding.model_path
+            else None,
+            allow_download=settings.embedding.allow_download,
+        )
+    except EmbeddingError:
+        return None
+
+
 def _filters(raw: Any) -> tuple[SearchFilters, list[TrustClass]]:
     """Translate the tool's filter object, rejecting anything unrecognised."""
     if raw is None:
@@ -237,22 +276,30 @@ def handle_search(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
 
     filters, trust_classes = _filters(arguments.get("filters"))
     snapshot = _snapshot_id(root)
+    settings = _config(root)
     store = _open_store(root)
     try:
         # Over-fetch when trust filtering happens after ranking, so a filtered
         # query still returns k results when the corpus has them.
-        hits = store.search_chunks(
-            query, limit=limit if not trust_classes else min(_MAX_K, limit * 4), filters=filters
+        outcome = run_search(
+            store,
+            query,
+            limit=limit if not trust_classes else min(_MAX_K, limit * 4),
+            filters=filters,
+            config=settings.retrieval,
+            embedder=_query_embedder(settings),
         )
+        fused = outcome.hits
         if trust_classes:
-            hits = tuple(hit for hit in hits if hit.trust_class in trust_classes)[:limit]
+            fused = tuple(item for item in fused if item.hit.trust_class in trust_classes)[:limit]
     finally:
         store.close()
 
     results: list[dict[str, Any]] = []
     omitted: list[str] = []
     spent = 0
-    for hit in hits:
+    for item in fused:
+        hit = item.hit
         text = _render_text(hit.chunk.text, include_text)
         cost = estimate_tokens(text) if text else 0
         uri = _chunk_uri(hit.chunk)
@@ -277,8 +324,8 @@ def handle_search(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
                 "lines": list(hit.chunk.lines),
                 "trust_class": hit.trust_class.value,
                 "verification_status": hit.verification_status.value,
-                "score": round(hit.score, 4),
-                "via": ["bm25"],  # lexical only until hybrid retrieval earns its gate
+                "score": round(item.score, 6),
+                "via": list(item.legs),
             }
         )
 
@@ -291,13 +338,16 @@ def handle_search(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
     }
     if arguments.get("explain"):
         payload["explain"] = {
-            "plan": "lexical",
+            "plan": settings.retrieval.profile,
             "rationale": (
-                "v1 ships lexical-only retrieval; hybrid must earn its gate on "
-                "evaluation evidence before becoming the default (D-009/G2)."
+                "candidates are generated per leg and fused by Reciprocal Rank Fusion; "
+                "raw scores from different backends are never added (spec 04 §3)"
             ),
-            "stages": ["fts5-bm25"],
+            "stages": list(outcome.legs),
+            "fusion": {"method": "rrf", "k": RRF_K},
             "field_weights": {"title": 3.0, "heading_path": 2.0, "body": 1.0},
+            "degraded": list(outcome.degraded),
+            "notes": list(outcome.notes),
             "tokens_returned": spent,
         }
     return payload

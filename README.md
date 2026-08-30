@@ -40,7 +40,7 @@ The design of record is [RFC-0001](docs/rfc/0001-mycelium-os-v1.md); the specifi
 ```bash
 mycelium init              # scaffold knowledge/, mycelium.toml, the gitignore entry
 mycelium build             # compile what changed into a published snapshot
-mycelium search "retry policy"
+mycelium search "retry policy"          # add --hybrid for the vector leg, --explain for why
 mycelium show "mycelium://<doc-id>#retries/0"
 mycelium snapshots         # what has been published, newest first
 mycelium rollback <id>     # serve an earlier snapshot again - nothing recompiles
@@ -95,6 +95,24 @@ surviving ancestor, never silently wrong content.
 That last row is the honest one: the evaluation harness ships in Milestone 2, not as a
 victory lap. If compiled knowledge cannot beat grep on a corpus, the harness is built to say
 so.
+
+### Retrieval is lexical by default, and that was measured
+
+Mycelium OS compiles vectors with a local embedder (no API key, no account, offline once the
+model is on disk), and can fuse them with BM25 by Reciprocal Rank Fusion. **It does not do
+so by default.** Gate G2 requires hybrid retrieval to earn the default — ≥ +5 % nDCG@10 with
+no slice worse than −2 % — and on this repository's own judged cases it did not: +12.7 %
+overall, but −17.8 % on the `exact` slice, and it answers every question the corpus cannot
+answer, where lexical search correctly stays silent.
+
+So the shipped default is `[retrieval] profile = "lexical"`. Turn hybrid on with one setting
+or `mycelium search --hybrid`, and read the numbers, the sweep that failed to fix abstention,
+and what has to change before it earns a default in
+[ADR-0017](docs/adr/0017-adopt-the-local-embedder-and-hybrid-retrieval.md).
+
+Embeddings are an optional install — `pip install mycelium-os[embeddings]` — and a build
+without them publishes normally, marked `degraded: ["vectors"]`, with lexical search intact.
+Nothing is ever downloaded unless `[embedding] allow_download` says so.
 
 ## Inspiration & Origins
 

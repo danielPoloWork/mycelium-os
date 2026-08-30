@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- A local embedding stage and hybrid retrieval (D-013/D-009). Builds compile vectors with
+  `bge-small-en-v1.5` running offline through ONNX — no API key, no account — keyed
+  `(chunk_digest, model_id)` so unchanged text is never re-embedded and switching models
+  adds rows instead of destroying them. Install with `pip install mycelium-os[embeddings]`;
+  the model is pinned by SHA-256 and **never downloaded unless `[embedding] allow_download`
+  says so**. A build without the dependency or the model publishes normally, marked
+  `degraded: ["vectors"]`, with lexical search untouched; `mycelium build --require-vectors`
+  turns that into a failure for pipelines that promised vectors.
+- `[retrieval]` is now honoured: `profile` (`lexical` | `hybrid`), `k`, and `budget_tokens`.
+  `mycelium search --hybrid` opts in per query and `--explain` reports which candidate
+  generators produced each result and its rank in each.
+- Gate **G2** is enforced whenever the hybrid retriever runs: it scores the lexical baseline
+  on the same cases and the same snapshot, because "hybrid ≥ +5 % vs BM25-only" cannot be
+  read from one number.
+
 - `mycelium snapshots`, `mycelium rollback <id>`, and `mycelium gc` (spec 05 §1).
   Snapshots are **restorable**, not just named: every build records the state it can be
   restored from, so rollback reinstates the documents, chunks, and incremental build
@@ -40,6 +55,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **Retrieval stays lexical by default, and now that is a measurement rather than an
+  assumption.** Hybrid gains +12.7 % nDCG@10 overall on our judged cases but regresses the
+  `exact` slice by 17.8 % (the bar is −2 %) and answers every unanswerable query where
+  lexical abstains, so it did not earn the default — exactly the outcome spec 04 §7.3
+  prescribes. The numbers, the similarity-floor sweep that failed to restore abstention, and
+  the vector leg's latency limit are all in
+  [ADR-0017](docs/adr/0017-adopt-the-local-embedder-and-hybrid-retrieval.md).
 - Store schema is `mycelium/store/v2` (`doc_state` at 3.1, `snapshot_state` at 3.2). A build that meets an
   older store recreates it in place and recompiles — journaled, no manual deletion
   needed (D-016 rebuild policy); read-only consumers still refuse foreign stores with
@@ -55,6 +77,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- A UTF-8 byte-order mark hid a document's frontmatter, because the `---` fence was no
+  longer at position zero. Affected documents lost their authored metadata (title, tags,
+  collection, provenance) and had the frontmatter block itself — `mycelium_id` included —
+  indexed as prose, where it could come back as a search result. Windows editors emit BOMs
+  routinely; found by running the real binary against files a PowerShell script had written
+  ([BUG-0008](docs/bugs/2026/08/BUG-0008-bom-hides-frontmatter.md), #33).
 - The release workflow built the wheel and sdist to verify the tag, then drafted the
   GitHub Release without attaching them, so v0.1.0 and v0.2.0 carried no downloadable
   artifacts while `docs/workflow/release.md` promised CI would attach them. The draft now

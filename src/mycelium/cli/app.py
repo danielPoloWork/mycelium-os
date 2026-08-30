@@ -39,9 +39,11 @@ from mycelium.cli.output import (
     success,
     warn,
 )
-from mycelium.config import ConfigError
+from mycelium.config import ConfigError, MyceliumConfig, RetrievalConfig, load_config
+from mycelium.embedding import Embedder, EmbeddingError, build_embedder
 from mycelium.eval import EvaluationError, load_cases, run_evaluation, write_run
 from mycelium.mcp import serve_stdio
+from mycelium.retrieval import search as run_search
 from mycelium.sdk.identity import IdentityError, anchor, citation_uri, parse_anchor
 from mycelium.sdk.identity import parse_citation_uri as parse_uri
 from mycelium.sdk.types import Chunk, TrustClass, VerificationStatus
@@ -84,9 +86,17 @@ max_tokens = 800               # hard ceiling: prose splits at the paragraph bef
 target_tokens = 400            # advisory today - the packer fills toward max_tokens
 atomic = ["table", "code"]     # tables and code blocks are never split
 
-[embedding]                    # honoured from roadmap 3.3; recorded in the build now
+[embedding]                    # the vector stage; "none" switches it off entirely
 provider = "local-onnx"        # default: zero keys, offline
 model_id = "bge-small-en-v1.5"
+allow_download = false         # no network call unless you say so; 133 MB from HuggingFace
+# model_path = "vendor/bge"    # or point at files you placed yourself, and never download
+
+[retrieval]
+profile = "lexical"            # "hybrid" adds the vector leg - opt-in: it has not
+                               # earned the default on our own eval set (ADR-0017)
+k = 10                         # default result count
+budget_tokens = 4000           # default packing budget for MCP responses
 
 [modules]
 enabled = []                   # the first module ships at roadmap 5.5
@@ -186,10 +196,21 @@ def build(
             "either way; this is the escape hatch, not a stronger build.",
         ),
     ] = False,
+    require_vectors: Annotated[
+        bool,
+        typer.Option(
+            "--require-vectors",
+            help="Fail instead of publishing a snapshot without vectors.",
+        ),
+    ] = False,
 ) -> None:
     """Compile the repository (incrementally) and publish a snapshot."""
     try:
-        result = run_build(path, clean=clean)
+        result = run_build(path, clean=clean, require_vectors=require_vectors)
+    except EmbeddingError as error:
+        # Only reachable under --require-vectors: otherwise a missing embedder
+        # degrades the snapshot instead of failing the build.
+        raise fail(str(error)) from error
     except ConfigError as error:
         # A stated intent that cannot be satisfied is a usage error, not a build
         # failure: nothing was attempted, and the fix is in the operator's file.
@@ -215,8 +236,10 @@ def build(
                     "removed": stats.removed,
                     "parse_cache_hits": stats.parse_hits,
                     "chunk_cache_hits": stats.chunk_hits,
+                    "embedded": stats.embedded,
                     "clean": clean,
                 },
+                "degraded": list(manifest.degraded),
                 "timings_ms": manifest.timings_ms,
                 "warnings": list(manifest.warnings),
                 "pinned": pinned,
@@ -234,10 +257,13 @@ def build(
     detail(
         f"  rebuilt {stats.rebuilt}, reused {stats.reused}"
         f"{f', removed {stats.removed}' if stats.removed else ''}"
+        f"{f', embedded {stats.embedded}' if stats.embedded else ''}"
         f"{' (clean build)' if clean else ''}"
     )
     for warning in manifest.warnings:
         warn(warning)
+    for reason in result.degraded_reasons:
+        warn(reason)
     if pinned:
         typer.echo(f"Pinned mycelium_id into {len(pinned)} file(s) - commit them:")
         for item in pinned:
@@ -386,13 +412,32 @@ def search(
         VerificationStatus | None, typer.Option(help="Restrict by verification status.")
     ] = None,
     path_prefix: Annotated[str | None, typer.Option(help="Restrict by path prefix.")] = None,
+    hybrid: Annotated[
+        bool,
+        typer.Option(
+            "--hybrid",
+            help="Add the vector leg for this query (opt-in: it has not earned the default).",
+        ),
+    ] = False,
+    explain: Annotated[
+        bool, typer.Option("--explain", help="Show which legs produced each result.")
+    ] = False,
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
     """Query the published snapshot."""
+    try:
+        settings = load_config(path)
+    except ConfigError as error:
+        raise fail(str(error), code=ExitCode.USAGE) from error
+    retrieval = settings.retrieval
+    if hybrid:
+        retrieval = retrieval.model_copy(update={"profile": "hybrid"})
+
     store = _open_store(path)
     try:
         snapshot = read_current(path / STORE_DIRNAME)
-        hits = store.search_chunks(
+        outcome = run_search(
+            store,
             query,
             limit=limit,
             filters=SearchFilters(
@@ -401,35 +446,71 @@ def search(
                 verification_status=status,
                 path_prefix=path_prefix,
             ),
+            config=retrieval,
+            embedder=_query_embedder(settings, retrieval),
         )
         results = [
             {
-                "uri": _chunk_uri(hit.chunk),
-                "path": hit.path,
-                "title": hit.title,
-                "heading_path": list(hit.chunk.heading_path),
-                "lines": list(hit.chunk.lines),
-                "score": round(hit.score, 4),
-                "trust_class": hit.trust_class.value,
-                "verification_status": hit.verification_status.value,
-                "text": hit.chunk.text,
+                "uri": _chunk_uri(fused.hit.chunk),
+                "path": fused.hit.path,
+                "title": fused.hit.title,
+                "heading_path": list(fused.hit.chunk.heading_path),
+                "lines": list(fused.hit.chunk.lines),
+                "score": round(fused.score, 6),
+                "trust_class": fused.hit.trust_class.value,
+                "verification_status": fused.hit.verification_status.value,
+                "text": fused.hit.chunk.text,
+                "explain": fused.explain(),
             }
-            for hit in hits
+            for fused in outcome.hits
         ]
     finally:
         store.close()
 
     if as_json:
-        emit_json({"snapshot_id": snapshot, "query": query, "results": results})
+        emit_json(
+            {
+                "snapshot_id": snapshot,
+                "query": query,
+                "retrieval": outcome.explain(),
+                "results": results,
+            }
+        )
         return
+    for note in outcome.degraded:
+        warn(note)
     if not results:
         typer.echo("No results.")
         return
-    for rank, result in enumerate(results, start=1):
-        heading = " / ".join(str(part) for part in result["heading_path"])  # type: ignore[union-attr]
+    for rank, (result, fused) in enumerate(zip(results, outcome.hits, strict=True), start=1):
+        heading = " / ".join(fused.hit.chunk.heading_path)
         typer.echo(f"{rank}. {result['title']} - {heading}  ({result['score']})")
         detail(f"   {result['uri']}")
+        if explain:
+            detail(f"   via {'+'.join(fused.legs)} at {fused.ranks}")
         typer.echo(f"   {_snippet(str(result['text']))}")
+
+
+def _query_embedder(settings: MyceliumConfig, retrieval: RetrievalConfig) -> Embedder | None:
+    """The embedder for the query side, or ``None`` when search stays lexical.
+
+    A query-time failure is never fatal: an operator whose model has gone missing
+    still gets lexical results, and :func:`mycelium.retrieval.search` reports the
+    missing leg. Refusing to answer would be a strictly worse trade.
+    """
+    if not retrieval.hybrid:
+        return None
+    try:
+        return build_embedder(
+            provider=settings.embedding.provider,
+            model_id=settings.embedding.model_id,
+            model_path=Path(settings.embedding.model_path)
+            if settings.embedding.model_path
+            else None,
+            allow_download=settings.embedding.allow_download,
+        )
+    except EmbeddingError:
+        return None
 
 
 @app.command()

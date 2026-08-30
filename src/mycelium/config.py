@@ -24,7 +24,7 @@ default (ADR-0014).
 import tomllib
 from collections.abc import Mapping
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Any, Final, Self
+from typing import Any, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, model_validator
 
@@ -40,21 +40,21 @@ __all__ = [
     "ModulesConfig",
     "MyceliumConfig",
     "ProjectConfig",
+    "RetrievalConfig",
     "UNHONOURED_SECTIONS",
     "load_config",
 ]
 
 CONFIG_FILENAME: Final = "mycelium.toml"
 
-UNHONOURED_SECTIONS: Final = frozenset(
-    {"ingest", "synthesis", "verification", "sources", "retrieval", "eval"}
-)
+UNHONOURED_SECTIONS: Final = frozenset({"ingest", "synthesis", "verification", "sources", "eval"})
 """Sections spec 05 §2 documents whose features this milestone has not built.
 
 They are accepted so a spec-valid file is not rejected, and digested so a build
 remains reproducible from its config, but nothing reads their values yet:
 `ingest` (roadmap 4.1), `synthesis` (4.4), `verification` (4.5), `sources` (4.1),
-`retrieval` (3.3), `eval` (the harness takes its case set on the command line).
+`eval` (the harness takes its case set on the command line). `retrieval` left this
+set at roadmap 3.3, when hybrid search gave it something to control.
 """
 
 _SUPPORTED_ATOMIC: Final = ("code", "table")
@@ -152,10 +152,81 @@ class ChunkingConfig(_Section):
 
 
 class EmbeddingConfig(_Section):
-    """`[embedding]` — recorded now, honoured when the embedder lands (roadmap 3.3)."""
+    """`[embedding]` — which vectors a build produces, and where the model comes from.
+
+    `provider = "none"` switches the vector stage off entirely; it is the setting
+    a lexical-only deployment states rather than achieves by accident. The two
+    keys beyond spec 05 §2's file exist because a local model has to come from
+    somewhere: `model_path` points at a directory you populated (vendored or
+    air-gapped), and `allow_download` is the explicit consent D-017 requires
+    before Mycelium makes any network call (ADR-0017).
+    """
 
     provider: str = "local-onnx"
     model_id: str = "bge-small-en-v1.5"
+    model_path: str | None = None
+    allow_download: bool = False
+
+    @model_validator(mode="after")
+    def _known_provider(self) -> Self:
+        if self.provider not in {"local-onnx", "none"}:
+            msg = (
+                f'[embedding] provider "{self.provider}" is not supported; v1 ships '
+                '"local-onnx" (the default) and "none" (no vector stage)'
+            )
+            raise ValueError(msg)
+        return self
+
+
+class RetrievalConfig(_Section):
+    """`[retrieval]` — the query path's defaults (spec 05 §2, spec 04 §§2-3).
+
+    `profile` is gate G2's dial, and the one setting here decided by measurement
+    rather than judgment. **It defaults to `lexical` because hybrid did not earn
+    the default** (ADR-0017): on this repository's 20 judged cases hybrid gains
+    +12.7 % nDCG@10 overall — comfortably past the +5 % bar — but regresses the
+    `exact` slice by 17.8 % (the bar is −2 %), and answers *every* unanswerable
+    query where lexical abstains. Spec 04 §7.3 prescribes exactly this outcome:
+    "otherwise the shipped default config is lexical-only and the README says so".
+
+    Set `profile = "hybrid"` to opt in; nothing else changes, and the snapshot
+    already carries the vectors.
+
+    Fusion constants are deliberately *not* here. Spec 04 §3 fixes RRF at k=60
+    over 50 vector candidates, and per-profile weights are a Phase-3 concern; a
+    knob nobody has eval evidence for is a liability, not a feature (D-011).
+    """
+
+    profile: Literal["hybrid", "lexical"] = "lexical"
+    k: int = Field(default=10, gt=0, description="Default result count for a query.")
+    budget_tokens: int = Field(default=4000, gt=0, description="Default packing budget.")
+    include_candidate: bool = True
+    graph_expansion: bool = False
+
+    @property
+    def hybrid(self) -> bool:
+        """Whether the vector leg participates in candidate generation."""
+        return self.profile == "hybrid"
+
+    @model_validator(mode="after")
+    def _only_what_exists(self) -> Self:
+        if not self.include_candidate:
+            # Serving verified+evidence only needs a "status is not candidate"
+            # filter, which the store's single-value filter cannot express yet.
+            msg = (
+                "[retrieval] include_candidate = false is not supported yet (roadmap 3.9); "
+                "candidates are served with explicit labels, and `trust: verified` on a "
+                "single query already excludes them"
+            )
+            raise ValueError(msg)
+        if self.graph_expansion:
+            msg = (
+                "[retrieval] graph_expansion = true is not supported yet: there are no "
+                "edges to expand over until roadmap 5.2, and the default flips only if "
+                "the ablation gate passes (spec 04 §5)"
+            )
+            raise ValueError(msg)
+        return self
 
 
 class ModulesConfig(_Section):
@@ -184,6 +255,7 @@ class MyceliumConfig(BaseModel):
     project: ProjectConfig = ProjectConfig()
     chunking: ChunkingConfig = ChunkingConfig()
     embedding: EmbeddingConfig = EmbeddingConfig()
+    retrieval: RetrievalConfig = RetrievalConfig()
     modules: ModulesConfig = ModulesConfig()
     future: dict[str, JsonValue] = Field(
         default_factory=dict,
@@ -213,6 +285,7 @@ class MyceliumConfig(BaseModel):
                 "project": self.project.model_dump(mode="json"),
                 "chunking": self.chunking.model_dump(mode="json"),
                 "embedding": self.embedding.model_dump(mode="json"),
+                "retrieval": self.retrieval.model_dump(mode="json"),
                 "modules": self.modules.model_dump(mode="json"),
                 "future": self.future,
             }
@@ -249,7 +322,7 @@ def load_config(root: Path) -> MyceliumConfig:
         msg = f"{path}: cannot be read - {exc}"
         raise ConfigError(msg) from exc
 
-    honoured = {"project", "chunking", "embedding", "modules"}
+    honoured = {"project", "chunking", "embedding", "retrieval", "modules"}
     unknown = sorted(set(raw) - honoured - UNHONOURED_SECTIONS)
     if unknown:
         known = ", ".join(sorted(honoured | UNHONOURED_SECTIONS))

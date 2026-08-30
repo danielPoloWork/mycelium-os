@@ -70,6 +70,7 @@ from mycelium.build.publish import (
 from mycelium.build.snapshots import record_snapshot_state
 from mycelium.chunking import ChunkingPolicy, chunk_document
 from mycelium.config import MyceliumConfig, load_config
+from mycelium.embedding import Embedder, EmbedderUnavailableError, build_embedder
 from mycelium.markdown import Frontmatter, MarkdownDocument, parse_markdown
 from mycelium.markdown.frontmatter import DELIMITER, parse_frontmatter
 from mycelium.sdk.identity import digest_json, digest_text, new_ulid
@@ -82,6 +83,7 @@ from mycelium.sdk.types import (
     Chunk,
     Document,
     DocumentStats,
+    EmbeddingInfo,
     KirNode,
     NodeKind,
     Provenance,
@@ -106,6 +108,9 @@ _STATUS_FOLDERS: Final = {
     "verified": VerificationStatus.VERIFIED,
 }
 _BOM: Final = "﻿"
+_EMBED_BATCH: Final = 64
+"""Chunks per embedder call. Bounded so a large corpus does not build one giant
+tensor, and so the build lock's heartbeat is refreshed while a cold embed runs."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +133,8 @@ class BuildStats:
     parse_hits: int
     chunked: int
     chunk_hits: int
+    embedded: int = 0
+    """Chunks sent to the embedder — 0 when vectors are off, cached, or unavailable."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,6 +146,8 @@ class BuildResult:
     pinned: tuple[Path, ...]
     """Source files that received a ``mycelium_id`` this build (commit them)."""
     stats: BuildStats
+    degraded_reasons: tuple[str, ...] = ()
+    """Why each ``manifest.degraded`` flag is set — operator-facing, and actionable."""
 
 
 class _Outcome(Enum):
@@ -450,6 +459,91 @@ def _restorability(mycelium_dir: Path, states: tuple[DocState, ...]) -> tuple[bo
 
 
 # ---------------------------------------------------------------------------
+# The embed stage (roadmap 3.3) — the one declared non-deterministic stage
+# ---------------------------------------------------------------------------
+
+
+def _resolve_embedder(
+    config: MyceliumConfig, *, require_vectors: bool
+) -> tuple[Embedder | None, str | None]:
+    """Construct the configured embedder, or explain its absence.
+
+    Three outcomes, deliberately distinct: an embedder; ``(None, None)`` when the
+    operator configured ``provider = "none"`` and wants no vectors; and
+    ``(None, reason)`` when they want vectors and cannot have them here — which
+    degrades the snapshot instead of failing the build (spec 02 §4.3), unless
+    `require_vectors` says a build without them is worthless.
+    """
+    settings = config.embedding
+    try:
+        embedder = build_embedder(
+            provider=settings.provider,
+            model_id=settings.model_id,
+            model_path=Path(settings.model_path) if settings.model_path else None,
+            allow_download=settings.allow_download,
+        )
+    except EmbedderUnavailableError as error:
+        if require_vectors:
+            raise
+        return None, f"vectors unavailable: {error}"
+    return embedder, None
+
+
+def _embed_missing(
+    store: SqliteStore,
+    embedder: Embedder,
+    pending: dict[str, str],
+    lock: BuildLock,
+) -> int:
+    """Embed every chunk digest this model has not seen, and store the vectors.
+
+    Runs *inside* the publication transaction, after the chunks are written, for
+    two reasons: the work list is then exactly what the published corpus needs
+    (``digests_without_vectors`` sees the new rows), and the vectors commit
+    atomically with the chunks they describe — a crash cannot leave a snapshot
+    whose manifest counts vectors that were rolled back.
+
+    The work list is O(new text), not O(corpus), because vectors are keyed
+    ``(chunk_digest, model_id)`` (D-013): an edit that leaves a section untouched
+    re-uses its vector, and two documents sharing a chunk share one.
+    """
+    missing = store.digests_without_vectors(embedder.model_id)
+    if not missing:
+        return 0
+
+    texts: list[str] = []
+    digests: list[str] = []
+    for digest in missing:
+        text = pending.get(digest)
+        if text is None:
+            # A chunk this build did not recompile: it predates the embedder
+            # being enabled, so its text comes from the store rather than memory.
+            chunk = store.get_chunk_by_digest(digest)
+            if chunk is None:  # pragma: no cover - the digest came from this table
+                continue
+            text = chunk.text
+        texts.append(text)
+        digests.append(digest)
+
+    written = 0
+    for start in range(0, len(texts), _EMBED_BATCH):
+        lock.heartbeat()
+        window = slice(start, start + _EMBED_BATCH)
+        vectors = embedder.embed_documents(texts[window])
+        written += store.put_vectors(embedder.model_id, zip(digests[window], vectors, strict=True))
+    return written
+
+
+def _embedding_info(embedder: Embedder) -> EmbeddingInfo:
+    return EmbeddingInfo(
+        model_id=embedder.model_id,
+        dim=embedder.dim,
+        deterministic=embedder.deterministic,
+        provider=embedder.provider,
+    )
+
+
+# ---------------------------------------------------------------------------
 # The build
 # ---------------------------------------------------------------------------
 
@@ -461,6 +555,7 @@ def build(
     config: MyceliumConfig | None = None,
     stale_after_s: float = DEFAULT_STALE_AFTER_S,
     clean: bool = False,
+    require_vectors: bool = False,
 ) -> BuildResult:
     """Compile the repository at `root` and publish one snapshot.
 
@@ -475,6 +570,12 @@ def build(
     `config` defaults to the repository's own `mycelium.toml` (or built-in
     defaults when it has none); `namespace` overrides the configured one, which
     is how a caller scopes a build without editing the file.
+
+    `require_vectors` turns the vector stage's absence into a failure. By default
+    a build whose embedder cannot be constructed publishes a *degraded* snapshot
+    — lexical search keeps working, and the manifest says vectors are missing
+    (spec 02 §4.3) — which is right for a laptop that has not fetched a model and
+    wrong for a release pipeline that promised hybrid retrieval.
 
     Raises :class:`~mycelium.config.ConfigError` when the file exists and is
     invalid, and :class:`~mycelium.build.lock.BuildLockedError` when a live build
@@ -497,6 +598,7 @@ def build(
                 namespace=effective_namespace,
                 config=settings,
                 clean=clean,
+                require_vectors=require_vectors,
             )
         except BaseException as error:
             append_journal(mycelium_dir, "build.failed", error=f"{type(error).__name__}: {error}")
@@ -514,6 +616,7 @@ def build(
             removed=stats.removed,
             parse_hits=stats.parse_hits,
             chunk_hits=stats.chunk_hits,
+            embedded=stats.embedded,
             clean=clean,
             duration_ms=result.manifest.timings_ms["total"],
         )
@@ -604,10 +707,12 @@ def _build_locked(
     namespace: str,
     config: MyceliumConfig,
     clean: bool,
+    require_vectors: bool,
 ) -> BuildResult:
     snapshot_id = new_ulid()
     parent_id = read_current(mycelium_dir)
     policy = config.chunking.to_policy()
+    embedder, embed_reason = _resolve_embedder(config, require_vectors=require_vectors)
     env = BuildEnv.compute(namespace=namespace, policy=policy)
     env_digest = env.digest
     sources = _discover(root, config.project.knowledge_dir)
@@ -715,6 +820,17 @@ def _build_locked(
         live_states = {entry.doc_path: _state_of(entry, env_digest) for entry in live}
         restorable, unrestorable = _restorability(mycelium_dir, tuple(live_states.values()))
         manifest_warnings = [w for entry in entries for w in entry.warnings]
+        degraded: list[str] = []
+        reasons: list[str] = []
+        if embed_reason is not None:
+            # Spec 02 §4.3 designates `degraded` for exactly this ("vectors:
+            # absent when the embedder was unavailable"), so the flag goes in the
+            # manifest and the explanation goes to the journal and the operator.
+            # Repeating the same sentence in `warnings` on every build would bury
+            # the per-document problems that field exists for.
+            degraded.append("vectors")
+            reasons.append(embed_reason)
+            append_journal(mycelium_dir, "build.degraded", flag="vectors", reason=embed_reason)
         if not restorable:
             # Recorded as a warning rather than hidden: the snapshot publishes and
             # serves normally, it just cannot be rolled back to (ADR-0016).
@@ -736,8 +852,18 @@ def _build_locked(
                 store.cache_put(key, digest, cache_stamp)
             if restorable:
                 record_snapshot_state(mycelium_dir, store, snapshot_id, tuple(live_states.values()))
-            counts = store.counts()
             timer.lap("store")
+
+            embedded = 0
+            if embedder is not None:
+                pending = {
+                    chunk.chunk_digest: chunk.text for entry in rebuilt for chunk in entry.chunks
+                }
+                embedded = _embed_missing(store, embedder, pending, lock)
+                store.delete_orphan_vectors()
+                timer.lap("embed")
+
+            counts = store.counts()
 
             timings = timer.total()
             manifest = SnapshotManifest(
@@ -754,7 +880,7 @@ def _build_locked(
                     name: record_schema_version(RECORD_MODELS[name]).rsplit("/", 1)[-1]
                     for name in SNAPSHOT_ARTIFACT_CLASSES
                 },
-                embedding=None,  # no vector stage yet (arrives at 3.3)
+                embedding=_embedding_info(embedder) if embedder is not None else None,
                 counts=SnapshotCounts(
                     documents=counts["documents"],
                     chunks=counts["chunks"],
@@ -771,7 +897,7 @@ def _build_locked(
                     "chunks": digest_json([entry.chunks_digest for entry in live]),
                     "edges": digest_json([]),
                 },
-                degraded=() if restorable else ("snapshot_state",),
+                degraded=tuple(degraded) if restorable else (*degraded, "snapshot_state"),
                 warnings=tuple(manifest_warnings),
                 timings_ms=timings,
             )
@@ -791,7 +917,12 @@ def _build_locked(
         parse_hits=parse_hits,
         chunked=chunked_count,
         chunk_hits=chunk_hits,
+        embedded=embedded,
     )
     return BuildResult(
-        manifest=manifest, manifest_path=manifest_file, pinned=tuple(pinned), stats=stats
+        manifest=manifest,
+        manifest_path=manifest_file,
+        pinned=tuple(pinned),
+        stats=stats,
+        degraded_reasons=tuple(reasons),
     )

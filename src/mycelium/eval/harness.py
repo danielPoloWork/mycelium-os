@@ -16,8 +16,10 @@ G1      **Enforced.** Citation coverage must be 1.00 — every returned anchor
 G4      **Enforced.** False-answer rate on `unanswerable` cases ≤ 5 %: a query
         whose vocabulary the corpus does not contain must return nothing rather
         than confident noise.
-G2      Not applicable: hybrid retrieval does not exist yet (roadmap 3.3), so
-        there is nothing to earn its keep against.
+G2      **Enforced when the hybrid retriever runs** (roadmap 3.3). Hybrid must
+        beat the lexical baseline by ≥ 5 % nDCG@10 with no slice worse than
+        −2 %, on the same cases and the same snapshot; otherwise the shipped
+        default is lexical-only and says so.
 G3      Not applicable: no previous release on a frozen set to regress against.
         It becomes meaningful once a release set is frozen (3.7).
 G5      Measured, not gated: latency percentiles are recorded, but the budget is
@@ -40,6 +42,8 @@ from typing import Final
 
 from mycelium.__about__ import __version__
 from mycelium.build.publish import read_current
+from mycelium.config import load_config
+from mycelium.embedding import Embedder, EmbeddingError, build_embedder
 from mycelium.eval.metrics import (
     citation_coverage,
     ndcg_at_k,
@@ -135,6 +139,46 @@ def _evaluate_case(case: EvalCase, retriever: Retriever, resolvable: set[str]) -
     )
 
 
+def _gate_g2(
+    hybrid: MetricSummary,
+    baseline: MetricSummary,
+    hybrid_slices: dict[str, MetricSummary],
+    baseline_slices: dict[str, MetricSummary],
+) -> GateResult:
+    """Gate G2 — hybrid must *earn* the default (spec 04 §7.3).
+
+    Two conditions, both relative to the lexical baseline on the same cases:
+    ≥ +5 % nDCG@10 overall, and no slice worse than −2 %. A slice the baseline
+    scores 0 on cannot regress, so it is reported as an improvement rather than a
+    division by zero.
+    """
+    overall_delta = _relative(hybrid.ndcg_at_10, baseline.ndcg_at_10)
+    regressions = []
+    for name, summary in sorted(hybrid_slices.items()):
+        before = baseline_slices.get(name)
+        if before is None:
+            continue
+        delta = _relative(summary.ndcg_at_10, before.ndcg_at_10)
+        if delta < -0.02:
+            regressions.append(f"{name} {delta:+.1%}")
+
+    passed = overall_delta >= 0.05 and not regressions
+    verdict = "earns the default" if passed else "does not earn the default; ship lexical-only"
+    detail = (
+        f"hybrid nDCG@10 {hybrid.ndcg_at_10:.4f} vs lexical {baseline.ndcg_at_10:.4f} "
+        f"({overall_delta:+.1%}; needs +5.0%)"
+    )
+    if regressions:
+        detail += f"; slice regressions beyond -2%: {', '.join(regressions)}"
+    return GateResult(gate="G2 Earn hybrid", passed=passed, detail=f"{detail} - {verdict}")
+
+
+def _relative(after: float, before: float) -> float:
+    if before == 0.0:
+        return 1.0 if after > 0.0 else 0.0
+    return (after - before) / before
+
+
 def _gates(overall: MetricSummary, unanswerable_cases: int) -> tuple[GateResult, ...]:
     coverage_ok = overall.citation_coverage == 1.0
     gates = [
@@ -171,30 +215,11 @@ def _gates(overall: MetricSummary, unanswerable_cases: int) -> tuple[GateResult,
     return tuple(gates)
 
 
-def run_evaluation(
-    root: Path,
-    cases: Sequence[EvalCase],
-    *,
-    retriever_name: str = "mycelium",
-    case_set: str = "cases.jsonl",
-) -> EvalRunManifest:
-    """Score `cases` against the published snapshot at `root`."""
-    if not cases:
-        msg = "no evaluation cases to run"
-        raise EvaluationError(msg)
-
-    snapshot = read_current(root / STORE_DIRNAME)
-    if snapshot is None:
-        msg = f"no published snapshot at {root}; run `mycelium build` first"
-        raise EvaluationError(msg)
-
-    with SqliteStore.open(root, read_only=True) as store:
-        retriever = build_retriever(retriever_name, store)
-        resolvable = resolvable_anchors(store)
-        results = [_evaluate_case(case, retriever, resolvable) for case in cases]
-        retriever_config = dict(retriever.config)
-
-    overall = _summarise(cases, results)
+def _score(
+    cases: Sequence[EvalCase], retriever: Retriever, resolvable: set[str]
+) -> tuple[list[CaseResult], MetricSummary, dict[str, MetricSummary]]:
+    """Run one retriever over the case set and summarise it overall and per slice."""
+    results = [_evaluate_case(case, retriever, resolvable) for case in cases]
     by_id = {case.case_id: case for case in cases}
     per_slice: dict[str, MetricSummary] = {}
     for slice_name in sorted({s.value for case in cases for s in case.slices}):
@@ -204,6 +229,49 @@ def run_evaluation(
             if slice_name in {s.value for s in by_id[result.case_id].slices}
         ]
         per_slice[slice_name] = _summarise([by_id[result.case_id] for result in sliced], sliced)
+    return results, _summarise(cases, results), per_slice
+
+
+def run_evaluation(
+    root: Path,
+    cases: Sequence[EvalCase],
+    *,
+    retriever_name: str = "mycelium",
+    case_set: str = "cases.jsonl",
+) -> EvalRunManifest:
+    """Score `cases` against the published snapshot at `root`.
+
+    Running the `hybrid` retriever also runs the lexical one, because gate G2 is
+    a *comparison*: "hybrid ≥ +5 % nDCG@10 vs BM25-only" cannot be evaluated from
+    one number, and taking the baseline from a previous run would compare across
+    snapshots. Both retrievers see the same cases, the same snapshot, and the
+    same anchor space.
+    """
+    if not cases:
+        msg = "no evaluation cases to run"
+        raise EvaluationError(msg)
+
+    snapshot = read_current(root / STORE_DIRNAME)
+    if snapshot is None:
+        msg = f"no published snapshot at {root}; run `mycelium build` first"
+        raise EvaluationError(msg)
+
+    embedder = _embedder_for(root, retriever_name)
+    with SqliteStore.open(root, read_only=True) as store:
+        try:
+            retriever = build_retriever(retriever_name, store, embedder)
+        except ValueError as error:
+            raise EvaluationError(str(error)) from error
+        resolvable = resolvable_anchors(store)
+        results, overall, per_slice = _score(cases, retriever, resolvable)
+        retriever_config = dict(retriever.config)
+
+        gates = list(_gates(overall, sum(1 for case in cases if not case.answerable)))
+        if retriever_name == "hybrid":
+            _, lexical, lexical_slices = _score(
+                cases, build_retriever("mycelium", store), resolvable
+            )
+            gates.append(_gate_g2(overall, lexical, per_slice, lexical_slices))
 
     return EvalRunManifest(
         run_id=new_ulid(),
@@ -219,8 +287,27 @@ def run_evaluation(
         overall=overall,
         per_slice=per_slice,
         results=tuple(results),
-        gates=_gates(overall, sum(1 for case in cases if not case.answerable)),
+        gates=tuple(gates),
     )
+
+
+def _embedder_for(root: Path, retriever_name: str) -> Embedder | None:
+    """Load the configured embedder when the run needs one, with a usable error."""
+    if retriever_name != "hybrid":
+        return None
+    settings = load_config(root)
+    try:
+        return build_embedder(
+            provider=settings.embedding.provider,
+            model_id=settings.embedding.model_id,
+            model_path=Path(settings.embedding.model_path)
+            if settings.embedding.model_path
+            else None,
+            allow_download=settings.embedding.allow_download,
+        )
+    except EmbeddingError as error:
+        msg = f"cannot evaluate the hybrid retriever: {error}"
+        raise EvaluationError(msg) from error
 
 
 def write_run(root: Path, manifest: EvalRunManifest) -> Path:

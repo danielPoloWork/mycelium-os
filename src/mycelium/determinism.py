@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any, Final
 
 from mycelium.build import build
+from mycelium.config import load_config
 from mycelium.sdk.types import SnapshotManifest
 from mycelium.store import SqliteStore
 
@@ -80,10 +81,24 @@ def pin_mtimes(root: Path, *, mtime: float = PINNED_MTIME) -> None:
 
 
 def observe_build(root: Path, *, pin: bool = True) -> DeterminismObservation:
-    """Build `root` and record what determinism claims about the result."""
+    """Build `root` with the deterministic stages only, and record the result.
+
+    The vector stage is switched off explicitly (``provider = "none"``), not left
+    to chance. It is the compiler's one *declared* non-deterministic stage
+    (spec 02 §4.1): ONNX Runtime picks kernels by instruction set, so two correct
+    machines may produce different last bits, and a gate that demanded otherwise
+    would be asserting something the stage never promised (ADR-0017). Leaving it
+    to the ambient configuration would be worse than either choice — the golden
+    would then depend on whether the machine running CI happened to have a model
+    cached.
+    """
     if pin:
         pin_mtimes(root)
-    result = build(root)
+    config = load_config(root)
+    deterministic_only = config.model_copy(
+        update={"embedding": config.embedding.model_copy(update={"provider": "none"})}
+    )
+    result = build(root, config=deterministic_only)
     return _observe(root, result.manifest)
 
 

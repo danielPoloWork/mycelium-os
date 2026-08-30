@@ -409,7 +409,11 @@ def test_journal_records_the_build_lifecycle(tmp_path: Path) -> None:
         for line in (root / ".mycelium" / "journal.jsonl").read_text(encoding="utf-8").splitlines()
     ]
     events = [line["event"] for line in lines]
-    assert events == ["build.started", "build.published"]
+    # `build.degraded` sits between them here: no embedding model is available in
+    # the test environment, so the vector stage reports its absence (roadmap 3.3).
+    assert events[0] == "build.started"
+    assert events[-1] == "build.published"
+    assert set(events) <= {"build.started", "build.degraded", "build.published"}
     published = lines[-1]
     assert published["snapshot_id"] == result.manifest.snapshot_id
     assert published["documents"] == 1
