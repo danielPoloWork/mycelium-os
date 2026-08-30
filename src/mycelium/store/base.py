@@ -19,7 +19,31 @@ from typing import Protocol, runtime_checkable
 
 from mycelium.sdk.types import Chunk, Document, Sha256Digest
 
-__all__ = ["DocState", "Store"]
+__all__ = ["CacheEntry", "DocState", "SnapshotState", "Store"]
+
+
+@dataclass(frozen=True, slots=True)
+class CacheEntry:
+    """One row of the build-cache index (roadmap 3.1), as garbage collection sees it."""
+
+    build_key: str
+    artifact_digest: Sha256Digest
+    created_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class SnapshotState:
+    """A published snapshot's pointer to the state it can be restored from (3.2).
+
+    ``state_blob`` addresses a CAS blob holding the snapshot's whole
+    :class:`DocState` table in canonical JSON — the Memento that makes
+    ``mycelium rollback`` restore data rather than merely repoint a name
+    (ADR-0016).
+    """
+
+    snapshot_id: str
+    state_blob: Sha256Digest
+    created_at: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,6 +94,14 @@ class Store(Protocol):
 
     def cache_put(self, build_key: str, artifact_digest: str, created_at: str) -> None: ...
 
+    def put_snapshot_state(self, state: SnapshotState) -> None: ...
+
+    def delete_snapshot_state(self, snapshot_id: str) -> None: ...
+
+    def delete_cache_entries(self, build_keys: Iterable[str]) -> int: ...
+
+    def clear_documents(self) -> None: ...
+
     # -- reads -------------------------------------------------------------
 
     def get_document(self, doc_id: str) -> Document | None: ...
@@ -89,3 +121,9 @@ class Store(Protocol):
     def doc_states(self) -> tuple[DocState, ...]: ...
 
     def cache_get(self, build_key: str) -> str | None: ...
+
+    def cache_entries(self) -> tuple[CacheEntry, ...]: ...
+
+    def snapshot_states(self) -> tuple[SnapshotState, ...]: ...
+
+    def get_snapshot_state(self, snapshot_id: str) -> SnapshotState | None: ...

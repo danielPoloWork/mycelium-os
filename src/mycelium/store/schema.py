@@ -16,11 +16,12 @@ two stores built from the same sources hold byte-identical column values.
 
 from typing import Final
 
-SCHEMA_VERSION: Final = "mycelium/store/v1"
+SCHEMA_VERSION: Final = "mycelium/store/v2"
 """Bumped whenever the DDL below changes. v1 migration policy is rebuild (D-016):
 a *writer* that meets a foreign version recreates the file (the store is derived
 data, D-005 — ADR-0015); a *reader* refuses and points at `mycelium build`.
-History: v0 → v1 added `doc_state` (roadmap 3.1, incremental builds)."""
+History: v0 → v1 added `doc_state` (roadmap 3.1, incremental builds);
+v1 → v2 added `snapshot_state` (roadmap 3.2, restorable snapshots)."""
 
 META_SCHEMA_VERSION: Final = "schema_version"
 META_CURRENT_SNAPSHOT: Final = "current_snapshot"
@@ -143,6 +144,21 @@ CREATE TABLE IF NOT EXISTS doc_state (
     document_digest TEXT NOT NULL,
     chunks_digest   TEXT NOT NULL,
     warnings_json   TEXT NOT NULL
+);
+
+-- What each published snapshot contained, as one CAS pointer per snapshot
+-- (roadmap 3.2, ADR-0016). The blob is the snapshot's whole `doc_state` table in
+-- canonical JSON, so a snapshot can be *restored* — not merely named — and
+-- `mycelium gc` has a defined live set: a blob is garbage exactly when no
+-- retained snapshot's state and no retained cache row points at it.
+--
+-- One row and one (deduplicated) blob per snapshot, deliberately not one row per
+-- document per snapshot: publication stays O(changed) writes, and a rebuild that
+-- changed nothing re-addresses the identical blob instead of writing anything.
+CREATE TABLE IF NOT EXISTS snapshot_state (
+    snapshot_id TEXT PRIMARY KEY,
+    state_blob  TEXT NOT NULL,
+    created_at  TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS meta (

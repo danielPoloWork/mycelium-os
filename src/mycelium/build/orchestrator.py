@@ -51,12 +51,13 @@ from pathlib import Path
 from typing import Final
 
 from mycelium.__about__ import __version__
-from mycelium.build.cas import cas_get, cas_put
+from mycelium.build.cas import cas_get, cas_path, cas_put
 from mycelium.build.dag import (
     BuildEnv,
     decode_chunks_artifact,
     decode_parse_artifact,
     encode_chunks_artifact,
+    encode_document_artifact,
     encode_parse_artifact,
 )
 from mycelium.build.lock import DEFAULT_STALE_AFTER_S, BuildLock
@@ -66,6 +67,7 @@ from mycelium.build.publish import (
     swap_current,
     write_manifest,
 )
+from mycelium.build.snapshots import record_snapshot_state
 from mycelium.chunking import ChunkingPolicy, chunk_document
 from mycelium.config import MyceliumConfig, load_config
 from mycelium.markdown import Frontmatter, MarkdownDocument, parse_markdown
@@ -409,6 +411,45 @@ def _stage_chunk(
 
 
 # ---------------------------------------------------------------------------
+# Snapshot restorability (roadmap 3.2)
+# ---------------------------------------------------------------------------
+
+
+def _state_of(entry: "_Entry", env_digest: str) -> DocState:
+    """The index state one live document leaves behind — reused or rebuilt alike."""
+    return DocState(
+        doc_id=entry.doc_id,
+        path=entry.doc_path,
+        source_digest=entry.source_digest,
+        source_mtime=entry.mtime_key,
+        env_digest=env_digest,
+        document_digest=entry.document_digest,
+        chunks_digest=entry.chunks_digest,
+        warnings=entry.warnings,
+    )
+
+
+def _restorability(mycelium_dir: Path, states: tuple[DocState, ...]) -> tuple[bool, int]:
+    """Whether every live document's artifacts are still in the cache.
+
+    Two stats per document — cheap enough to run on every build, and the only
+    way to keep ``mycelium snapshots`` honest: a snapshot is recorded as
+    restorable when it *is*, not when it was expected to be. A reused document's
+    artifacts normally persist because garbage collection keeps whatever a
+    retained snapshot names; what this catches is a hand-deleted cache
+    (documented as safe, and it is — at the price of restorability until the
+    next clean build).
+    """
+    missing = sum(
+        1
+        for state in states
+        if not cas_path(mycelium_dir, state.document_digest).exists()
+        or not cas_path(mycelium_dir, state.chunks_digest).exists()
+    )
+    return missing == 0, missing
+
+
+# ---------------------------------------------------------------------------
 # The build
 # ---------------------------------------------------------------------------
 
@@ -652,7 +693,11 @@ def _build_locked(
             entry.document = document
             entry.chunks = chunks
             entry.warnings = warnings
-            entry.document_digest = digest_json(document.model_dump(mode="json"))
+            # Storing the record returns exactly the digest the manifest folds
+            # (canonical JSON, one address): the assemble stage is not *cached*,
+            # but its output is addressable so a snapshot can be restored from
+            # it without recompiling (ADR-0016).
+            entry.document_digest = cas_put(mycelium_dir, encode_document_artifact(document))
             entry.chunks_digest = chunks_digest
         timer.lap("compile")
 
@@ -667,6 +712,18 @@ def _build_locked(
         quarantined = sum(1 for e in entries if e.outcome is _Outcome.QUARANTINED)
         cache_stamp = datetime.now(tz=UTC).isoformat()
 
+        live_states = {entry.doc_path: _state_of(entry, env_digest) for entry in live}
+        restorable, unrestorable = _restorability(mycelium_dir, tuple(live_states.values()))
+        manifest_warnings = [w for entry in entries for w in entry.warnings]
+        if not restorable:
+            # Recorded as a warning rather than hidden: the snapshot publishes and
+            # serves normally, it just cannot be rolled back to (ADR-0016).
+            manifest_warnings.append(
+                f"snapshot not restorable: {unrestorable} document(s) have no cached "
+                "artifacts (the cache was cleared or collected); "
+                "run `mycelium build --clean` to make snapshots restorable again"
+            )
+
         with store.transaction():
             for doc_id in doomed:
                 store.delete_document(doc_id)
@@ -674,20 +731,11 @@ def _build_locked(
                 assert entry.document is not None  # rebuilt entries always carry one
                 store.put_document(entry.document)
                 store.put_chunks(entry.chunks)
-                store.put_doc_state(
-                    DocState(
-                        doc_id=entry.doc_id,
-                        path=entry.doc_path,
-                        source_digest=entry.source_digest,
-                        source_mtime=entry.mtime_key,
-                        env_digest=env_digest,
-                        document_digest=entry.document_digest,
-                        chunks_digest=entry.chunks_digest,
-                        warnings=entry.warnings,
-                    )
-                )
+                store.put_doc_state(live_states[entry.doc_path])
             for key, digest in cache_rows:
                 store.cache_put(key, digest, cache_stamp)
+            if restorable:
+                record_snapshot_state(mycelium_dir, store, snapshot_id, tuple(live_states.values()))
             counts = store.counts()
             timer.lap("store")
 
@@ -723,8 +771,8 @@ def _build_locked(
                     "chunks": digest_json([entry.chunks_digest for entry in live]),
                     "edges": digest_json([]),
                 },
-                degraded=(),
-                warnings=tuple(w for entry in entries for w in entry.warnings),
+                degraded=() if restorable else ("snapshot_state",),
+                warnings=tuple(manifest_warnings),
                 timings_ms=timings,
             )
             # The manifest file must exist before any pointer names it.

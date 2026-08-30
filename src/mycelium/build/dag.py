@@ -53,8 +53,10 @@ __all__ = [
     "BuildEnv",
     "build_key",
     "decode_chunks_artifact",
+    "decode_document_artifact",
     "decode_parse_artifact",
     "encode_chunks_artifact",
+    "encode_document_artifact",
     "encode_parse_artifact",
 ]
 
@@ -198,6 +200,23 @@ def decode_parse_artifact(text: str) -> MarkdownDocument:
         frontmatter=Frontmatter.model_validate(payload["frontmatter"]),
         warnings=tuple(payload["warnings"]),
     )
+
+
+def encode_document_artifact(document: Document) -> str:
+    """The assemble stage's output, stored for *restoration* rather than reuse.
+
+    The assemble stage is not cached (its mtime input changes alone too often),
+    but the record it produces is content-addressed all the same: its digest is
+    what the snapshot manifest folds, and holding the bytes at that address is
+    what lets ``mycelium rollback`` rebuild a published corpus without
+    recompiling it (ADR-0016). ``cas_put`` of this text returns exactly
+    ``digest_json(document.model_dump(mode="json"))`` — one address, two uses.
+    """
+    return canonical_json(document.model_dump(mode="json"))
+
+
+def decode_document_artifact(text: str) -> Document:
+    return Document.model_validate_json(text)
 
 
 def encode_chunks_artifact(chunks: tuple[Chunk, ...]) -> str:

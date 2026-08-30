@@ -39,9 +39,12 @@ The design of record is [RFC-0001](docs/rfc/0001-mycelium-os-v1.md); the specifi
 
 ```bash
 mycelium init              # scaffold knowledge/, mycelium.toml, the gitignore entry
-mycelium build             # compile every document into a published snapshot
+mycelium build             # compile what changed into a published snapshot
 mycelium search "retry policy"
 mycelium show "mycelium://<doc-id>#retries/0"
+mycelium snapshots         # what has been published, newest first
+mycelium rollback <id>     # serve an earlier snapshot again - nothing recompiles
+mycelium gc                # drop snapshots beyond retention and unreachable artifacts
 mycelium eval              # score a judged case set against the snapshot
 mycelium doctor            # store, snapshot pointer, and lock health
 mycelium serve             # read-only MCP server over stdio, for your agent
@@ -86,7 +89,7 @@ surviving ancestor, never silently wrong content.
 | **Rebuild cost** | Full re-index | Content-addressed and incremental — only what changed |
 | **Reproducibility** | Best-effort | Byte-identical rebuilds are a tested gate (G6) |
 | **Provenance** | Chunks, often unattributed | Every result carries a citation, trust class, and verification status |
-| **Publication** | Index mutated in place | Immutable snapshots; rollback is a pointer swap |
+| **Publication** | Index mutated in place | Immutable snapshots; an earlier one can be served again without recompiling |
 | **Quality** | Asserted | Measured against a judged case set, with the agent's own `grep` as the baseline to beat (D-010) |
 
 That last row is the honest one: the evaluation harness ships in Milestone 2, not as a

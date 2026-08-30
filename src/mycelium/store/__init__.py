@@ -11,7 +11,7 @@ cache of a deterministic function of the sources, and rebuilding is always a
 lawful repair.
 """
 
-from mycelium.store.base import DocState, Store
+from mycelium.store.base import CacheEntry, DocState, SnapshotState, Store
 from mycelium.store.schema import SCHEMA_VERSION
 from mycelium.store.sqlite import (
     STORE_DIRNAME,
@@ -28,9 +28,11 @@ __all__ = [
     "SCHEMA_VERSION",
     "STORE_DIRNAME",
     "STORE_FILENAME",
+    "CacheEntry",
     "DocState",
     "SearchFilters",
     "SearchHit",
+    "SnapshotState",
     "SqliteStore",
     "Store",
     "StoreError",

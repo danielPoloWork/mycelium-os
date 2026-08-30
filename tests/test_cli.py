@@ -190,6 +190,87 @@ def test_build_refuses_while_another_writer_holds_the_lock(tmp_path: Path) -> No
 
 
 # ---------------------------------------------------------------------------
+# snapshots / rollback / gc (roadmap 3.2)
+# ---------------------------------------------------------------------------
+
+
+def test_snapshots_lists_and_marks_the_served_one(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    first = run_build(tmp_path).manifest
+    (tmp_path / "knowledge" / "extra.md").write_text("# Extra\n\nMore.\n", encoding="utf-8")
+    second = run_build(tmp_path).manifest
+
+    result = invoke("snapshots", str(tmp_path))
+    assert result.exit_code == ExitCode.OK
+    assert f"* {second.snapshot_id}" in result.stdout
+    assert f"  {first.snapshot_id}" in result.stdout
+
+    payload = json.loads(invoke("snapshots", str(tmp_path), "--json").stdout)
+    assert payload["current"] == second.snapshot_id
+    assert [item["snapshot_id"] for item in payload["snapshots"]] == [
+        second.snapshot_id,
+        first.snapshot_id,
+    ]
+
+
+def test_snapshots_on_a_fresh_repository_says_so(tmp_path: Path) -> None:
+    result = invoke("snapshots", str(tmp_path))
+    assert result.exit_code == ExitCode.OK
+    assert "mycelium build" in result.stdout
+
+
+def test_rollback_restores_and_reports(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    first = run_build(tmp_path).manifest
+    (tmp_path / "knowledge" / "extra.md").write_text("# Extra\n\nMore.\n", encoding="utf-8")
+    run_build(tmp_path)
+
+    result = invoke("rollback", first.snapshot_id, "--path", str(tmp_path))
+    assert result.exit_code == ExitCode.OK
+    assert first.snapshot_id in result.stdout
+    payload = json.loads(
+        invoke("rollback", first.snapshot_id, "--path", str(tmp_path), "--json").stdout
+    )
+    assert payload["snapshot_id"] == first.snapshot_id
+
+
+def test_rollback_of_an_unknown_snapshot_fails_with_guidance(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    run_build(tmp_path)
+    result = invoke("rollback", "01ARZ3NDEKTSV4RRFFQ69G5FZZ", "--path", str(tmp_path))
+    assert result.exit_code == ExitCode.FAILED
+    assert "mycelium snapshots" in result.stderr
+    assert result.stdout == ""
+
+
+def test_gc_dry_run_reports_and_changes_nothing(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    for index in range(3):
+        (tmp_path / "knowledge" / "extra.md").write_text(f"# Extra {index}\n", encoding="utf-8")
+        run_build(tmp_path)
+
+    dry = json.loads(
+        invoke(
+            "gc", str(tmp_path), "--keep", "1", "--cache-max-age", "0", "--dry-run", "--json"
+        ).stdout
+    )
+    assert dry["dry_run"] is True
+    assert dry["removed_blobs"] > 0
+
+    applied = invoke("gc", str(tmp_path), "--keep", "1", "--cache-max-age", "0")
+    assert applied.exit_code == ExitCode.OK
+    assert "removed" in applied.stdout
+
+
+def test_gc_rejects_negative_retention_as_usage(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    run_build(tmp_path)
+    # Typer's own `min=0` catches it before the library does; either way the
+    # contract is exit 2, because nothing was attempted.
+    assert invoke("gc", str(tmp_path), "--keep", "-1").exit_code == ExitCode.USAGE
+
+
+# ---------------------------------------------------------------------------
 # search
 # ---------------------------------------------------------------------------
 
