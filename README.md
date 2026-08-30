@@ -130,14 +130,17 @@ setup.
 
 Pre-1.0 and milestone-driven. The walking skeleton is complete: Mycelium OS compiles and
 serves this repository's own documentation, rebuilds byte-identically under a CI gate, and
-reports its retrieval quality against a grep baseline. Milestone 3 makes the compiler
-incremental; the five stable contracts freeze at 1.0.
+reports its retrieval quality against a grep baseline. The compiler is now incremental —
+a single-document edit recompiles that document's chain, not the corpus, and the output is
+byte-equal to a clean build by tested construction (ADR-0015). The rest of Milestone 3
+adds snapshot management, the local embedder with hybrid retrieval, and watch mode; the
+five stable contracts freeze at 1.0.
 
 | # | Title | Status |
 |---|---|---|
 | 1 | Project bootstrap & CI | ✅ done |
 | 2 | Walking skeleton (spec Phase 0) | ✅ done |
-| 3 | v0.1 — The compiler (spec Phase 1) | ⏳ planned |
+| 3 | v0.1 — The compiler (spec Phase 1) | 🚧 in progress |
 | 4 | v0.2 — Ingestion (spec Phase 2) | ⏳ planned |
 | 5 | v0.3 — Structure (spec Phase 3) | ⏳ planned |
 | 6 | v1.0 — Stable (spec Phase 4) | ⏳ planned |

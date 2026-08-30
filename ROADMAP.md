@@ -6,7 +6,7 @@ its section with a fresh `<milestone>.<task>` number; never renumber.
 
 - **Versioning start:** pre-1.0 milestone-driven.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-30 — configuration loading](docs/journal/2026/08/2026-08-30-configuration-loading.md).
+  [2026-08-30 — the incremental compiler](docs/journal/2026/08/2026-08-30-incremental-dag.md).
 - **Traceability:** every item names the RFC it implements (RFC-0001 for the whole v1
   design of record — [`docs/rfc/0001-mycelium-os-v1.md`](docs/rfc/0001-mycelium-os-v1.md));
   milestone goals are the spec phases' exit gates (`.draft-specs/06`). Sizes are T-shirt
@@ -79,7 +79,7 @@ Mycelium OS builds and serves its own repository; TTFV < 10 min end-to-end via C
 
 Incremental single-doc rebuild < 2 s p95 equal to clean output; search p95 < 150 ms on the 10^5-chunk reference corpus; gates G1/G2/G6 green (lexical-only default is a legitimate G2 outcome)
 
-- [ ] 3.1 Content-addressed incremental DAG + build cache + dirty detection (D-008) (RFC-0001) — size: L · route: frontier-reasoning / high (sets-pattern: the product's technical differentiator)
+- [x] 3.1 Content-addressed incremental DAG + build cache + dirty detection (D-008) (RFC-0001) — size: L · route: frontier-reasoning / high (sets-pattern: the product's technical differentiator) — delivered by PR #31: the spec 02 §4 algorithm end to end — build keys over `(stage, impl version, input digests, config slice, schema)`, a two-level cache (`build_cache` rows indexing canonical-JSON CAS blobs that self-heal on corruption), digest-based dirty detection against the new `doc_state` table (store schema v1; a writer meeting a foreign store recreates it in place, D-016), and manifest corpus digests folded from per-document digests so publication is O(changed). Byte-equality with a clean build is enforced per mutation kind and property-tested over random edit sequences; `mycelium build --clean` is the escape hatch. Measured (200 docs): cold 12.9 s → single-edit 546 ms. ADR-0015; the every-build plan scan (~2 ms/doc, I/O-bound) is the term 3.5's watch mode removes
 - [ ] 3.2 Snapshot list/rollback + GC (mycelium snapshots, rollback, gc) (RFC-0001) — size: S · route: standard / medium
 - [ ] 3.3 Local ONNX embedder default (zero keys, offline) + vectors keyed (chunk_digest, model_id) + hybrid RRF (D-013/D-009) (RFC-0001) — size: M · route: standard / medium
 - [ ] 3.4 mycelium_neighbors on authored links + mycelium_explain (RFC-0001) — size: M · route: standard / medium
@@ -150,7 +150,7 @@ progress · ✅ done · ❎ N/A.
 | §1 | Objective & business context | 2.9, 2.11 | ⏳ |
 | §2 | Functional requirements | 2.2–2.11, 3.1–3.7, 4.1–4.7, 5.1–5.6 | 🚧 |
 | §3 | Non-functional requirements | 2.10, 3.7, 6.1, 6.3 | ⏳ |
-| §4 | Logical architecture | 2.7, 3.1 | ⏳ |
+| §4 | Logical architecture | 2.7, 3.1 | ✅ |
 | §5 | Public interface | 2.8, 2.9, 3.4, 6.1 | ⏳ |
 | §6 | Verification & test strategy | 2.10, 2.11, 3.7, 6.4 | ⏳ |
 

@@ -14,11 +14,36 @@ for this protocol, is what would make that phase a rewrite.
 
 from collections.abc import Iterable
 from contextlib import AbstractContextManager
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from mycelium.sdk.types import Chunk, Document
+from mycelium.sdk.types import Chunk, Document, Sha256Digest
 
-__all__ = ["Store"]
+__all__ = ["DocState", "Store"]
+
+
+@dataclass(frozen=True, slots=True)
+class DocState:
+    """What the store's index currently holds for one document (roadmap 3.1).
+
+    The incremental build's dirty detector compares a discovered file against
+    this row: same ``source_digest``, same ``source_mtime`` (mtime is an input —
+    it becomes ``created_at``, ADR-0009), same ``env_digest`` (stage versions,
+    schema versions, config slices, namespace) ⇒ the document needs no work.
+    ``document_digest``/``chunks_digest`` are the per-document artifact digests
+    the snapshot manifest's corpus digests are folded from, and ``warnings`` are
+    replayed into the manifest so a cached document warns exactly like a
+    recompiled one.
+    """
+
+    doc_id: str
+    path: str
+    source_digest: Sha256Digest
+    source_mtime: str
+    env_digest: Sha256Digest
+    document_digest: Sha256Digest
+    chunks_digest: Sha256Digest
+    warnings: tuple[str, ...]
 
 
 @runtime_checkable
@@ -41,6 +66,10 @@ class Store(Protocol):
 
     def set_meta(self, key: str, value: str) -> None: ...
 
+    def put_doc_state(self, state: DocState) -> None: ...
+
+    def cache_put(self, build_key: str, artifact_digest: str, created_at: str) -> None: ...
+
     # -- reads -------------------------------------------------------------
 
     def get_document(self, doc_id: str) -> Document | None: ...
@@ -56,3 +85,7 @@ class Store(Protocol):
     def get_meta(self, key: str) -> str | None: ...
 
     def counts(self) -> dict[str, int]: ...
+
+    def doc_states(self) -> tuple[DocState, ...]: ...
+
+    def cache_get(self, build_key: str) -> str | None: ...

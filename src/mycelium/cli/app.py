@@ -171,10 +171,18 @@ def init(
 def build(
     path: Annotated[Path, typer.Argument(help="Repository root.")] = Path(),
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+    clean: Annotated[
+        bool,
+        typer.Option(
+            "--clean",
+            help="Recompile everything, consulting no cache. Output is identical "
+            "either way; this is the escape hatch, not a stronger build.",
+        ),
+    ] = False,
 ) -> None:
-    """Compile the repository and publish a snapshot."""
+    """Compile the repository (incrementally) and publish a snapshot."""
     try:
-        result = run_build(path)
+        result = run_build(path, clean=clean)
     except ConfigError as error:
         # A stated intent that cannot be satisfied is a usage error, not a build
         # failure: nothing was attempted, and the fix is in the operator's file.
@@ -185,6 +193,7 @@ def build(
         raise fail(f"build failed: {error}") from error
 
     manifest = result.manifest
+    stats = result.stats
     pinned = [str(item.relative_to(path).as_posix()) for item in result.pinned]
 
     if as_json:
@@ -193,6 +202,14 @@ def build(
                 "snapshot_id": manifest.snapshot_id,
                 "parent_id": manifest.parent_id,
                 "counts": manifest.counts.model_dump(),
+                "incremental": {
+                    "reused": stats.reused,
+                    "rebuilt": stats.rebuilt,
+                    "removed": stats.removed,
+                    "parse_cache_hits": stats.parse_hits,
+                    "chunk_cache_hits": stats.chunk_hits,
+                    "clean": clean,
+                },
                 "timings_ms": manifest.timings_ms,
                 "warnings": list(manifest.warnings),
                 "pinned": pinned,
@@ -206,6 +223,11 @@ def build(
         f"  {counts.documents} documents, {counts.chunks} chunks"
         f"{f', {counts.quarantined} quarantined' if counts.quarantined else ''}"
         f" in {manifest.timings_ms['total']} ms"
+    )
+    detail(
+        f"  rebuilt {stats.rebuilt}, reused {stats.reused}"
+        f"{f', removed {stats.removed}' if stats.removed else ''}"
+        f"{' (clean build)' if clean else ''}"
     )
     for warning in manifest.warnings:
         warn(warning)
