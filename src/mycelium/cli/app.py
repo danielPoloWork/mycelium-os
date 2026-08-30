@@ -4,9 +4,10 @@
 
 v1 has exactly two public surfaces, CLI and MCP (D-011), so every flag here is a
 compatibility liability and the skeleton stays deliberately small: ``init``,
-``build``, ``search``, ``show``, ``doctor``, ``eval``, and ``serve``. The rest of the
-spec's table arrives with the features behind it — ``ingest`` with milestone 4, and
-``snapshots``/``rollback`` with 3.2.
+``build``, ``snapshots``, ``rollback``, ``gc``, ``search``, ``show``, ``doctor``,
+``eval``, and ``serve``. The rest of the spec's table arrives with the features
+behind it — ``ingest``, ``verify``, and ``promote`` with milestone 4,
+``neighbors`` with 3.4, ``export`` with 3.6.
 
 The CLI is a shell, not a layer: it parses arguments, calls one function, and
 renders. Nothing here decides anything the library does not already decide.
@@ -20,8 +21,14 @@ import typer
 
 from mycelium.__about__ import __version__
 from mycelium.build import build as run_build
-from mycelium.build import read_current
+from mycelium.build import collect_garbage, list_snapshots, read_current
+from mycelium.build import rollback as run_rollback
 from mycelium.build.lock import BuildLockedError
+from mycelium.build.snapshots import (
+    DEFAULT_CACHE_MAX_AGE_DAYS,
+    DEFAULT_KEEP,
+    SnapshotError,
+)
 from mycelium.cli.doctor import diagnose, worst_status
 from mycelium.cli.output import (
     ExitCode,
@@ -235,6 +242,115 @@ def build(
         typer.echo(f"Pinned mycelium_id into {len(pinned)} file(s) - commit them:")
         for item in pinned:
             detail(f"  {item}")
+
+
+# ---------------------------------------------------------------------------
+# snapshots / rollback / gc
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def snapshots(
+    path: Annotated[Path, typer.Argument(help="Repository root.")] = Path(),
+    as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+) -> None:
+    """List published snapshots, newest first."""
+    found = list_snapshots(path)
+    if as_json:
+        emit_json(
+            {
+                "current": read_current(path / STORE_DIRNAME),
+                "snapshots": [item.as_dict() for item in found],
+            }
+        )
+        return
+    if not found:
+        typer.echo("No snapshots yet. Run `mycelium build`.")
+        return
+    for item in found:
+        marker = "*" if item.is_current else " "
+        typer.echo(
+            f"{marker} {item.snapshot_id}  {item.created_at}  "
+            f"{item.documents} docs, {item.chunks} chunks"
+        )
+        notes = []
+        if item.quarantined:
+            notes.append(f"{item.quarantined} quarantined")
+        if item.warnings:
+            notes.append(f"{item.warnings} warning(s)")
+        if not item.restorable:
+            notes.append("not restorable")
+        if notes:
+            detail(f"    {', '.join(notes)}")
+    detail("  (* = CURRENT; `mycelium rollback <id>` restores another)")
+
+
+@app.command()
+def rollback(
+    snapshot_id: Annotated[str, typer.Argument(help="The snapshot to restore.")],
+    path: Annotated[Path, typer.Option("--path", help="Repository root.")] = Path(),
+    as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+) -> None:
+    """Restore a published snapshot and serve it — nothing is recompiled."""
+    try:
+        result = run_rollback(path, snapshot_id)
+    except SnapshotError as error:
+        raise fail(str(error)) from error
+    except BuildLockedError as error:
+        raise fail(str(error)) from error
+    except (StoreError, OSError) as error:
+        raise fail(f"rollback failed: {error}") from error
+
+    if as_json:
+        emit_json(result.as_dict())
+        return
+    success(f"rolled back to {result.snapshot_id}")
+    detail(f"  restored {result.documents} documents, {result.chunks} chunks")
+    if result.previous_id is not None:
+        detail(f"  was serving {result.previous_id}")
+
+
+@app.command()
+def gc(
+    path: Annotated[Path, typer.Argument(help="Repository root.")] = Path(),
+    keep: Annotated[
+        int, typer.Option("--keep", min=0, help="Snapshots to retain (CURRENT always kept).")
+    ] = DEFAULT_KEEP,
+    cache_max_age: Annotated[
+        int,
+        typer.Option(
+            "--cache-max-age",
+            min=0,
+            help="Retain cached artifacts written within this many days.",
+        ),
+    ] = DEFAULT_CACHE_MAX_AGE_DAYS,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Report what would be removed; change nothing.")
+    ] = False,
+    as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+) -> None:
+    """Remove snapshots beyond retention, aged cache entries, and orphaned blobs."""
+    try:
+        result = collect_garbage(path, keep=keep, cache_max_age_days=cache_max_age, dry_run=dry_run)
+    except SnapshotError as error:
+        raise fail(str(error), code=ExitCode.USAGE) from error
+    except BuildLockedError as error:
+        raise fail(str(error)) from error
+    except (StoreError, OSError) as error:
+        raise fail(f"gc failed: {error}") from error
+
+    if as_json:
+        emit_json(result.as_dict())
+        return
+    verb = "would remove" if result.dry_run else "removed"
+    success(
+        f"gc {verb}: {len(result.removed_snapshots)} snapshot(s), {result.removed_blobs} blob(s)"
+    )
+    detail(
+        f"  {result.removed_cache_entries} cache entries, {result.removed_debris} temp file(s), "
+        f"{result.reclaimed_bytes / 1024:.1f} KiB reclaimed"
+    )
+    detail(f"  kept {len(result.kept_snapshots)} snapshot(s)")
 
 
 # ---------------------------------------------------------------------------

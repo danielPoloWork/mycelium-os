@@ -8,6 +8,8 @@
   (spec 02 §4.1, ADR-0015).
 - :mod:`mycelium.build.cas` — the content-addressed artifact store under
   ``.mycelium/cas/``.
+- :mod:`mycelium.build.snapshots` — the snapshot lifecycle: list, rollback
+  (restore then repoint), and garbage collection (ADR-0016).
 - :mod:`mycelium.build.lock` — the ``.mycelium/lock`` advisory single-writer lock
   (pid + host + heartbeat mtime, stale takeover; spec 02 §7).
 - :mod:`mycelium.build.publish` — immutable manifests, the atomic ``CURRENT``
@@ -26,17 +28,33 @@ from mycelium.build.publish import (
     swap_current,
     write_manifest,
 )
+from mycelium.build.snapshots import (
+    GarbageCollection,
+    RollbackResult,
+    SnapshotError,
+    SnapshotInfo,
+    collect_garbage,
+    list_snapshots,
+    rollback,
+)
 
 __all__ = [
     "BuildLock",
     "BuildLockedError",
     "BuildResult",
     "BuildStats",
+    "GarbageCollection",
     "LockInfo",
+    "RollbackResult",
+    "SnapshotError",
+    "SnapshotInfo",
     "append_journal",
     "build",
+    "collect_garbage",
+    "list_snapshots",
     "read_current",
     "read_manifest",
+    "rollback",
     "swap_current",
     "write_manifest",
 ]

@@ -25,7 +25,7 @@ from typing import Any, Final, Self
 
 from mycelium.sdk.identity import canonical_json
 from mycelium.sdk.types import Chunk, ChunkKind, Document, TrustClass, VerificationStatus
-from mycelium.store.base import DocState
+from mycelium.store.base import CacheEntry, DocState, SnapshotState
 from mycelium.store.schema import (
     DDL,
     META_SCHEMA_VERSION,
@@ -405,6 +405,38 @@ class SqliteStore:
             ),
         )
 
+    def clear_documents(self) -> None:
+        """Remove every document, chunk, and index row. Call inside a :meth:`transaction`.
+
+        The wholesale form of :meth:`delete_document`, for the one caller that
+        genuinely replaces the entire corpus: restoring a snapshot (roadmap 3.2).
+        ``doc_state`` cascades; the FTS index has no foreign keys of its own, so
+        it is emptied explicitly.
+        """
+        self._connection.execute("DELETE FROM chunks_fts")
+        self._connection.execute("DELETE FROM documents")
+
+    def put_snapshot_state(self, state: SnapshotState) -> None:
+        """Record where a published snapshot can be restored from (roadmap 3.2)."""
+        self._connection.execute(
+            "INSERT INTO snapshot_state(snapshot_id, state_blob, created_at) VALUES(?,?,?) "
+            "ON CONFLICT(snapshot_id) DO UPDATE SET state_blob = excluded.state_blob, "
+            "created_at = excluded.created_at",
+            (state.snapshot_id, state.state_blob, state.created_at),
+        )
+
+    def delete_snapshot_state(self, snapshot_id: str) -> None:
+        """Forget a snapshot's restore pointer — garbage collection (roadmap 3.2)."""
+        self._connection.execute("DELETE FROM snapshot_state WHERE snapshot_id = ?", (snapshot_id,))
+
+    def delete_cache_entries(self, build_keys: Iterable[str]) -> int:
+        """Drop build-cache rows by key, returning how many went."""
+        deleted = 0
+        for key in build_keys:
+            cursor = self._connection.execute("DELETE FROM build_cache WHERE build_key = ?", (key,))
+            deleted += cursor.rowcount
+        return deleted
+
     def cache_put(self, build_key: str, artifact_digest: str, created_at: str) -> None:
         """Index one cached stage artifact (build key → CAS digest, spec 02 §4.2).
 
@@ -480,6 +512,34 @@ class SqliteStore:
             "SELECT artifact_digest FROM build_cache WHERE build_key = ?", (build_key,)
         ).fetchone()
         return None if row is None else str(row["artifact_digest"])
+
+    def cache_entries(self) -> tuple[CacheEntry, ...]:
+        """Every build-cache row — garbage collection's view of what is retained."""
+        rows = self._connection.execute(
+            "SELECT build_key, artifact_digest, created_at FROM build_cache ORDER BY build_key"
+        ).fetchall()
+        return tuple(
+            CacheEntry(
+                build_key=str(row["build_key"]),
+                artifact_digest=str(row["artifact_digest"]),
+                created_at=str(row["created_at"]),
+            )
+            for row in rows
+        )
+
+    def snapshot_states(self) -> tuple[SnapshotState, ...]:
+        """Every snapshot restore pointer, oldest first (ULIDs sort by mint time)."""
+        rows = self._connection.execute(
+            "SELECT snapshot_id, state_blob, created_at FROM snapshot_state ORDER BY snapshot_id"
+        ).fetchall()
+        return tuple(_snapshot_state_from_row(row) for row in rows)
+
+    def get_snapshot_state(self, snapshot_id: str) -> SnapshotState | None:
+        row = self._connection.execute(
+            "SELECT snapshot_id, state_blob, created_at FROM snapshot_state WHERE snapshot_id = ?",
+            (snapshot_id,),
+        ).fetchone()
+        return None if row is None else _snapshot_state_from_row(row)
 
     def counts(self) -> dict[str, int]:
         """Row counts per artifact class, for the snapshot manifest (spec 03 §7)."""
@@ -559,6 +619,14 @@ class SqliteStore:
 # ---------------------------------------------------------------------------
 # Row ↔ record mapping
 # ---------------------------------------------------------------------------
+
+
+def _snapshot_state_from_row(row: sqlite3.Row) -> SnapshotState:
+    return SnapshotState(
+        snapshot_id=str(row["snapshot_id"]),
+        state_blob=str(row["state_blob"]),
+        created_at=str(row["created_at"]),
+    )
 
 
 def _rfc3339(value: Any) -> str:
