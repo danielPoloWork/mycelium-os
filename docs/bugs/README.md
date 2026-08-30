@@ -23,3 +23,4 @@ a `fixed` record names its `fixed-in`) is enforced by the consistency lint's `bu
 | [BUG-0003](2026/08/BUG-0003-bootstrap-probe-too-coarse.md) | bootstrap guard probes only the build manifest, activating toolchain jobs too early | medium | fixed | 0.1.0 |
 | [BUG-0004](2026/08/BUG-0004-ulid-pattern-admits-overflow.md) | the Ulid record pattern admits 26-character strings that overflow 128 bits | medium | fixed | 0.2.0 |
 | [BUG-0005](2026/08/BUG-0005-fts-and-semantics-zeroes-queries.md) | one unmatched word returns no results, because FTS5 combines terms with implicit AND | high | fixed | 0.2.0 |
+| [BUG-0006](2026/08/BUG-0006-release-drafts-carry-no-artifacts.md) | the release workflow builds the distribution and drafts the release without attaching it | low | fixed | 0.3.0 |

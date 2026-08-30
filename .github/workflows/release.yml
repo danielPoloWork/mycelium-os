@@ -4,10 +4,22 @@ name: release
 # Fires on an annotated SemVer tag push and prepares a *draft* GitHub Release. Publishing is
 # the deliberate human checkpoint (AGENTS.md §11 / docs/workflow/release.md) — this workflow
 # never publishes, it only drafts so a maintainer can review and press "Publish".
+#
+# BUG-0006: the draft used to be created without the distribution attached — the build step
+# proved the tag compiled and then threw the wheel away, so every release shipped with zero
+# assets while docs/workflow/release.md promised "CI builds & attaches artifacts". The
+# `files:` input below is the attachment; the `workflow_dispatch` trigger is how an existing
+# tag gets re-drafted without moving it, which is what a tag pushed before this fix needs.
 
 on:
   push:
     tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to re-draft, e.g. v0.2.0 (runs from the default branch)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -15,18 +27,23 @@ permissions:
 # Serialize per-tag, but NEVER cancel an in-flight release — a half-run publish is worse
 # than a queued one.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
   draft-release:
-    name: draft GitHub Release for ${{ github.ref_name }}
+    name: draft GitHub Release for ${{ inputs.tag || github.ref_name }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      # On a tag push this is the tag that fired the run; on a manual dispatch it is the tag
+      # named in the input, so a re-draft never depends on which ref the workflow ran from.
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
       - name: Check out the tagged tree
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.tag || github.ref_name }}
           fetch-depth: 0
 
       - name: Set up Python
@@ -45,10 +62,32 @@ jobs:
         # or the tag build dies with `hatch: command not found` (BUG-0002).
         run: uv run hatch build
 
-      - name: Draft the release (a human publishes it)
+      - name: Verify the built version equals the tag
+        shell: bash
+        # The packaging invariant (docs/workflow/packaging.md): the distributed version
+        # equals the tag and the version constant. Checking it here means a tag pushed
+        # without a version bump fails loudly instead of drafting a release whose assets
+        # disagree with its name.
+        run: |
+          expected="${RELEASE_TAG#v}"
+          echo "tag says: $expected"
+          ls -1 dist/
+          for artifact in dist/*; do
+            case "$(basename "$artifact")" in
+              mycelium_os-"$expected"-*.whl|mycelium_os-"$expected".tar.gz) ;;
+              *)
+                echo "::error::$(basename "$artifact") does not carry version $expected"
+                exit 1
+                ;;
+            esac
+          done
+
+      - name: Draft the release with its artifacts (a human publishes it)
         uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3.0.2
         with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
           draft: true
           generate_release_notes: true
+          files: dist/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
