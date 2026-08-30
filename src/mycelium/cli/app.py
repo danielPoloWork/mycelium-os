@@ -4,8 +4,8 @@
 
 v1 has exactly two public surfaces, CLI and MCP (D-011), so every flag here is a
 compatibility liability and the skeleton stays deliberately small: ``init``,
-``build``, ``search``, ``show``, ``doctor``, and ``serve``. The rest of the spec's
-table arrives with the features behind it — ``ingest`` with milestone 4, and
+``build``, ``search``, ``show``, ``doctor``, ``eval``, and ``serve``. The rest of the
+spec's table arrives with the features behind it — ``ingest`` with milestone 4, and
 ``snapshots``/``rollback`` with 3.2.
 
 The CLI is a shell, not a layer: it parses arguments, calls one function, and
@@ -32,6 +32,7 @@ from mycelium.cli.output import (
     success,
     warn,
 )
+from mycelium.eval import EvaluationError, load_cases, run_evaluation, write_run
 from mycelium.mcp import serve_stdio
 from mycelium.sdk.identity import IdentityError, anchor, citation_uri, parse_anchor
 from mycelium.sdk.identity import parse_citation_uri as parse_uri
@@ -422,6 +423,70 @@ def doctor(
             else:
                 typer.echo(f"FAIL  {check.name}: {check.detail}", err=True)
     if overall == "fail":
+        raise typer.Exit(int(ExitCode.FAILED))
+
+
+# ---------------------------------------------------------------------------
+# eval
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def eval(  # noqa: A001 - the spec names this command `mycelium eval`
+    path: Annotated[Path, typer.Argument(help="Repository root.")] = Path(),
+    case_set: Annotated[Path, typer.Option("--set", help="Judged case set (JSONL).")] = Path(
+        "eval/cases.jsonl"
+    ),
+    retriever: Annotated[
+        str, typer.Option("--retriever", help="mycelium | grep (the D-010 baseline).")
+    ] = "mycelium",
+    gate: Annotated[
+        bool, typer.Option("--gate", help="Exit non-zero if a gate fails (CI mode).")
+    ] = False,
+    as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+) -> None:
+    """Score a judged case set against the published snapshot."""
+    resolved = case_set if case_set.is_absolute() else path / case_set
+    try:
+        cases = load_cases(resolved)
+    except (OSError, ValueError) as error:
+        raise fail(f"cannot read {resolved}: {error}") from error
+
+    try:
+        manifest = run_evaluation(path, cases, retriever_name=retriever, case_set=resolved.name)
+    except ValueError as error:  # unknown retriever
+        raise fail(str(error), code=ExitCode.USAGE) from error
+    except EvaluationError as error:
+        raise fail(str(error)) from error
+
+    written = write_run(path, manifest)
+    failed = [result for result in manifest.gates if not result.passed]
+
+    if as_json:
+        emit_json({**manifest.model_dump(mode="json"), "manifest_path": str(written)})
+    else:
+        overall = manifest.overall
+        success(f"{manifest.retriever}: {overall.cases} cases from {resolved.name}")
+        detail(
+            f"  nDCG@10 {overall.ndcg_at_10:.3f}  R@10 {overall.recall_at_10:.3f}  "
+            f"R@50 {overall.recall_at_50:.3f}  MRR {overall.mrr:.3f}"
+        )
+        detail(
+            f"  citations {overall.citation_coverage:.3f}  "
+            f"false answers {overall.false_answer_rate:.1%}  "
+            f"p95 {overall.latency_p95_ms} ms"
+        )
+        for name, summary in sorted(manifest.per_slice.items()):
+            detail(f"  {name:<14} nDCG@10 {summary.ndcg_at_10:.3f}  ({summary.cases} cases)")
+        for result in manifest.gates:
+            line = f"{'ok  ' if result.passed else 'FAIL'} {result.gate}: {result.detail}"
+            if result.passed:
+                success(line)
+            else:
+                typer.echo(line, err=True)
+        detail(f"  run manifest: {written}")
+
+    if gate and failed:
         raise typer.Exit(int(ExitCode.FAILED))
 
 

@@ -86,19 +86,27 @@ class SearchHit:
     verification_status: VerificationStatus
 
 
-def fts_query(text: str, *, prefix: bool = False) -> str:
+def fts_query(text: str, *, prefix: bool = False, match_all: bool = False) -> str:
     """Turn user text into a safe FTS5 MATCH expression.
 
     Query text is untrusted (D-017): every term is extracted and quoted rather
     than passed through, so FTS5 operators, unbalanced quotes, and column filters
     in a query are matched as words instead of executed as syntax. Returns an
     empty string when nothing searchable remains, which callers read as "no hits".
+
+    Terms are combined with ``OR``, because ranking is the whole point of BM25:
+    under FTS5's implicit ``AND`` a single unmatched word zeroes an entire query,
+    so "what license does the project use" returns nothing while "license"
+    returns five results (BUG-0005). ``match_all=True`` restores conjunction for
+    callers that genuinely want it — the query planner's precision routes
+    (spec 04 §2) will.
     """
     terms = _FTS_TERM.findall(text)
     if not terms:
         return ""
     suffix = "*" if prefix else ""
-    return " ".join(f'"{term}"{suffix}' for term in terms)
+    quoted = [f'"{term}"{suffix}' for term in terms]
+    return (" " if match_all else " OR ").join(quoted)
 
 
 class SqliteStore:

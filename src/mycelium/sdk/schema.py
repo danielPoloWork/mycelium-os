@@ -15,13 +15,15 @@ two exports of the same contracts are byte-identical on every platform.
 import json
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, Final
 
 from mycelium.sdk.types import (
     Chunk,
     Document,
     Edge,
     Entity,
+    EvalCase,
+    EvalRunManifest,
     KirDocument,
     Record,
     SnapshotManifest,
@@ -31,6 +33,7 @@ from mycelium.sdk.types import (
 __all__ = [
     "JSON_SCHEMA_DIALECT",
     "RECORD_MODELS",
+    "SNAPSHOT_ARTIFACT_CLASSES",
     "dump_json_schema",
     "export_json_schemas",
     "record_json_schema",
@@ -47,9 +50,21 @@ RECORD_MODELS: Mapping[str, type[Record]] = {
     "edge": Edge,
     "entity": Entity,
     "manifest": SnapshotManifest,
+    "eval-case": EvalCase,
+    "eval-run": EvalRunManifest,
 }
 """Exported record models, keyed by the names the snapshot manifest's
 ``schema_versions`` map uses (spec 03 §7)."""
+
+
+SNAPSHOT_ARTIFACT_CLASSES: Final = ("document", "chunk", "kir", "edge")
+"""The artifact classes a snapshot manifest reports versions for (spec 03 §7).
+
+Narrower than :data:`RECORD_MODELS` on purpose: a manifest describes what *this
+snapshot published*, not every contract the project exports. `symbol` and `entity`
+join it when their stages exist (roadmap 5.1, 5.4); evaluation records never do —
+an eval run is not a snapshot artifact.
+"""
 
 
 def record_schema_version(model: type[Record]) -> str:

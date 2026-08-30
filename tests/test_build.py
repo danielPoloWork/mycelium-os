@@ -188,8 +188,14 @@ def test_build_compiles_publishes_and_is_queryable(tmp_path: Path) -> None:
     assert manifest.embedding is None
     assert manifest.toolchain.mycelium == __version__
     assert set(manifest.artifact_digests) == {"documents", "chunks", "edges"}
-    assert manifest.schema_versions["document"] == "v0"
-    assert len(manifest.schema_versions) == 7
+    # The manifest reports the artifact classes this snapshot published, not every
+    # contract the project exports (spec 03 §7).
+    assert manifest.schema_versions == {
+        "document": "v0",
+        "chunk": "v0",
+        "kir": "v0",
+        "edge": "v0",
+    }
 
     mycelium_dir = root / ".mycelium"
     assert read_current(mycelium_dir) == manifest.snapshot_id

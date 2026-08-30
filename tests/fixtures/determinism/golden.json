@@ -422,10 +422,7 @@
     "chunk": "v0",
     "document": "v0",
     "edge": "v0",
-    "entity": "v0",
-    "kir": "v0",
-    "manifest": "v0",
-    "symbol": "v0"
+    "kir": "v0"
   },
   "warnings": []
 }

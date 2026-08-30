@@ -26,6 +26,10 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   with its named field owners, Mycelium Markdown Profile v1 (wikilinks, embeds, inline
   tags, callouts, GFM tables), and the markdown-it → KIR adapter (#17, ADR-0006).
 - Runtime dependencies `markdown-it-py >= 3.0` and `PyYAML >= 6.0` (#17, ADR-0006).
+- `mycelium.eval` — the evaluation harness (spec 04 §7): Recall@k / nDCG@10 / MRR /
+  citation coverage, per-slice reporting, run manifests under `.mycelium/eval/`, gates
+  G1 and G4, and the grep baseline D-010 requires. `mycelium eval` runs it; 20 judged
+  cases over this repository's own docs ship in `eval/cases.jsonl` (#24, ADR-0013).
 - `mycelium.determinism` — the observation behind gate G6 (spec 04 §7): what a
   byte-identical rebuild claims, and what it deliberately does not. Enforced in CI
   against a committed fixture corpus and a reviewable golden, with
@@ -66,6 +70,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- Search returned nothing whenever a query contained one word the corpus lacked: FTS5
+  combines quoted terms with an implicit `AND`, so every natural-language question was
+  emptied before it was ranked. Terms are now combined with `OR`
+  ([BUG-0005](docs/bugs/2026/08/BUG-0005-fts-and-semantics-zeroes-queries.md), #24).
+- The snapshot manifest reported a `schema_versions` entry for every exported contract
+  rather than for the artifact classes the snapshot actually published (#24).
 - The `Ulid` record contract accepted 26-character strings that overflow 128 bits and have
   no valid decoding; it now refuses exactly what `identity.decode_ulid` refuses
   ([BUG-0004](docs/bugs/2026/08/BUG-0004-ulid-pattern-admits-overflow.md), #16).

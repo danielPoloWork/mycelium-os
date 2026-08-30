@@ -372,10 +372,23 @@ def test_any_query_text_is_safe(tmp_path_factory: pytest.TempPathFactory, query:
 
 
 def test_fts_query_quotes_every_term() -> None:
-    assert fts_query("event bus") == '"event" "bus"'
-    assert fts_query("event bus", prefix=True) == '"event"* "bus"*'
+    assert fts_query("event bus") == '"event" OR "bus"'
+    assert fts_query("event bus", prefix=True) == '"event"* OR "bus"*'
+    assert fts_query("event bus", match_all=True) == '"event" "bus"'
     assert fts_query("  ") == ""
-    assert fts_query('"NEAR" OR *') == '"NEAR" "OR"'
+    assert fts_query('"NEAR" OR *') == '"NEAR" OR "OR"'
+
+
+def test_a_query_term_the_corpus_lacks_does_not_zero_the_query(store: SqliteStore) -> None:
+    """BUG-0005: under FTS5's implicit AND, one unmatched word returned nothing.
+
+    Ranking is the point of BM25 — a partial match is a result to be ranked, not a
+    reason to answer "nothing found" to a natural-language question.
+    """
+    seed(store, make_chunk("a.md#x/0", "the retry policy uses exponential backoff"))
+    assert store.search_chunks("retry policy") != ()
+    assert store.search_chunks("retry policy kubernetes") != ()
+    assert store.search_chunks("kubernetes helm istio") == ()  # nothing matches at all
 
 
 # ---------------------------------------------------------------------------
