@@ -19,6 +19,7 @@ _(newest first)_
 
 #### August
 
+- [2026-08-30 — docs i18n subsystem, structure only (roadmap 2.13)](2026/08/2026-08-30-docs-i18n-structure.md)
 - [2026-08-30 — brand assets and README redesign (roadmap 2.12)](2026/08/2026-08-30-brand-and-readme.md)
 - [2026-08-30 — evaluation harness (roadmap 2.11)](2026/08/2026-08-30-eval-harness.md)
 - [2026-08-30 — determinism gate G6 (roadmap 2.10)](2026/08/2026-08-30-determinism-gate.md)

@@ -9,7 +9,8 @@ is the source of truth.**
 - **Persona:** senior project architect with 20+ years of enterprise Python 3.12+
   experience. See `AGENTS.md` §1.
 - **Language:** every artifact (code, docs, commits, branches, PRs) is in **English**. User
-  conversation may be in another language; output that lands on disk stays English. §2.
+  conversation may be in another language; output that lands on disk stays English — with
+  one narrow exception, the derived translations under `docs/i18n/<code>/` (D-028). §2.
 - **Source layout:** Maven-style cross-language tree. All code under
   `src/mycelium/` (tests under `tests/`,
   benchmarks under `tests/bench/`; flat src-layout, ADR-0003). Namespace `mycelium`. See §5.

@@ -46,6 +46,15 @@ identifiers, comments, documentation, ADRs, commit messages, branch names, PR ti
 descriptions. The maintainer may converse in another language; conversational replies may
 match that language, but anything that lands on disk or in Git is English-only.
 
+**One exception, and it is narrow: `docs/i18n/`** (D-028). English is the *canonical*
+source and keeps its canonical paths; a translation is a derived copy under
+`docs/i18n/<code>/` mirroring the source path, tracked in
+[`docs/i18n/translation-status.md`](docs/i18n/translation-status.md) with the English
+source's commit SHA, and gated by the consistency lint's `i18n-freshness` check. Target
+languages are `it`, `zh-Hans`, `ja`; the tracked page set and the reasons for it are in
+[`docs/i18n/README.md`](docs/i18n/README.md). Nothing outside that directory is ever
+written in another language, and a translation never replaces or edits its English source.
+
 
 
 
