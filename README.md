@@ -128,14 +128,15 @@ setup.
 
 ## Status
 
-Pre-1.0 and milestone-driven: the walking skeleton compiles and serves this repository's own
-documentation today. Milestone 3 makes the compiler incremental; the five stable contracts
-freeze at 1.0.
+Pre-1.0 and milestone-driven. The walking skeleton is complete: Mycelium OS compiles and
+serves this repository's own documentation, rebuilds byte-identically under a CI gate, and
+reports its retrieval quality against a grep baseline. Milestone 3 makes the compiler
+incremental; the five stable contracts freeze at 1.0.
 
 | # | Title | Status |
 |---|---|---|
 | 1 | Project bootstrap & CI | ✅ done |
-| 2 | Walking skeleton (spec Phase 0) | 🚧 in progress |
+| 2 | Walking skeleton (spec Phase 0) | ✅ done |
 | 3 | v0.1 — The compiler (spec Phase 1) | ⏳ planned |
 | 4 | v0.2 — Ingestion (spec Phase 2) | ⏳ planned |
 | 5 | v0.3 — Structure (spec Phase 3) | ⏳ planned |

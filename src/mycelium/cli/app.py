@@ -32,6 +32,7 @@ from mycelium.cli.output import (
     success,
     warn,
 )
+from mycelium.config import ConfigError
 from mycelium.eval import EvaluationError, load_cases, run_evaluation, write_run
 from mycelium.mcp import serve_stdio
 from mycelium.sdk.identity import IdentityError, anchor, citation_uri, parse_anchor
@@ -60,27 +61,28 @@ _GITIGNORE_LINE: Final = f"{STORE_DIRNAME}/"
 
 _CONFIG_TEMPLATE: Final = """# Mycelium OS configuration (spec 05 §2).
 #
-# NOTE: nothing reads this file yet — configuration loading is roadmap item 2.14.
-# The keys below are the documented v1 surface, recorded now so `mycelium init`
-# scaffolds the file the specification promises; edits take effect once 2.14 lands.
+# These are the defaults, written out so they are visible and editable. Deleting
+# the file is equivalent to keeping it exactly as generated; deleting a single key
+# restores that key's default. `mycelium doctor` validates this file and reports
+# which settings are not honoured yet.
 
 [project]
 name = "{name}"
 namespace = "default"          # reserved for the team phase; single value in v1
-knowledge_dir = "knowledge"
-sources_dir = "sources"
+knowledge_dir = "knowledge"    # the authored tree; the whole repo is scanned if absent
+sources_dir = "sources"        # honoured from milestone 4 (ingestion)
 
 [chunking]
-target_tokens = 400
-max_tokens = 800
-atomic = ["table", "code"]
+max_tokens = 800               # hard ceiling: prose splits at the paragraph before it
+target_tokens = 400            # advisory today - the packer fills toward max_tokens
+atomic = ["table", "code"]     # tables and code blocks are never split
 
-[embedding]
+[embedding]                    # honoured from roadmap 3.3; recorded in the build now
 provider = "local-onnx"        # default: zero keys, offline
 model_id = "bge-small-en-v1.5"
 
 [modules]
-enabled = []
+enabled = []                   # the first module ships at roadmap 5.5
 """
 
 
@@ -173,6 +175,10 @@ def build(
     """Compile the repository and publish a snapshot."""
     try:
         result = run_build(path)
+    except ConfigError as error:
+        # A stated intent that cannot be satisfied is a usage error, not a build
+        # failure: nothing was attempted, and the fix is in the operator's file.
+        raise fail(str(error), code=ExitCode.USAGE) from error
     except BuildLockedError as error:
         raise fail(str(error)) from error
     except (StoreError, OSError) as error:

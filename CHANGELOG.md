@@ -51,6 +51,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 - `mycelium.store` — the derived store (spec 03 §8): SQLite DDL, WAL, a field-weighted
   FTS5 lexical index, meta-table schema versioning, read-only connections for concurrent
   agents, and a `Store` protocol that keeps the engine replaceable (#19, ADR-0008).
+- `mycelium.config` — `mycelium.toml` is read (spec 05 §2): `[project]` (name, namespace,
+  `knowledge_dir`), `[chunking]` (`max_tokens`), `[embedding]`, and `[modules]` are
+  validated and honoured; the remaining documented sections are accepted, digested, and
+  reported by `mycelium doctor` as not honoured yet. Invalid files are refused with the
+  file, key, and expectation named, and exit 2 (#27, ADR-0014).
+- `mycelium doctor` gains a `config` check (#27).
 - `mycelium.chunking` — the heading-bounded chunker (spec 03 §5): sections become chunks,
   tables and code blocks are atomic, oversize sections split at paragraph boundaries, and
   anchors are unique by construction. Token budgets use a dependency-free estimate behind
@@ -74,6 +80,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   [`docs/i18n/translation-status.md`](docs/i18n/translation-status.md) and gated by the
   consistency lint's `i18n-freshness` check. Every page is `pending` — no translations
   yet. `AGENTS.md` §2 gains the matching carve-out (#26).
+
+- A snapshot manifest's `config_digest` now digests the repository's effective
+  configuration instead of a placeholder. Chunk content is unaffected — the determinism
+  golden's diff is one line — but the digest value differs from snapshots built by earlier
+  revisions (#27, ADR-0014).
 
 ### Deprecated
 

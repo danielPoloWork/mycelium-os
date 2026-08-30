@@ -54,6 +54,7 @@ from mycelium.build.publish import (
     write_manifest,
 )
 from mycelium.chunking import ChunkingPolicy, chunk_document
+from mycelium.config import MyceliumConfig, load_config
 from mycelium.markdown import Frontmatter, parse_markdown
 from mycelium.markdown.frontmatter import DELIMITER, parse_frontmatter
 from mycelium.sdk.identity import digest_json, new_ulid
@@ -131,15 +132,16 @@ class _Timer:
 # ---------------------------------------------------------------------------
 
 
-def _discover(root: Path) -> list[Path]:
+def _discover(root: Path, knowledge_dir: str = "knowledge") -> list[Path]:
     """The documents a build compiles, in deterministic (sorted) order.
 
-    ``knowledge/`` is the authored tree when it exists (spec 02 §3); otherwise
-    the whole root is scanned so a plain docs repository gets value with zero
-    layout ceremony (TTFV, doc 01 §3). Dot-prefixed directories are never
-    entered — that one rule excludes ``.mycelium``, ``.git``, and editor litter.
+    The authored tree is `knowledge_dir` when it exists (spec 02 §3, configurable
+    via ``[project] knowledge_dir``); otherwise the whole root is scanned so a
+    plain docs repository gets value with zero layout ceremony (TTFV, doc 01 §3).
+    Dot-prefixed directories are never entered — that one rule excludes
+    ``.mycelium``, ``.git``, and editor litter.
     """
-    base = root / "knowledge"
+    base = root / knowledge_dir
     scope = base if base.is_dir() else root
     found = [
         path
@@ -219,13 +221,18 @@ def _verification_of(
 
 
 def _compile_document(
-    path: Path, relative: Path, text: str, doc_id: str, *, namespace: str, mtime: datetime
+    path: Path,
+    relative: Path,
+    text: str,
+    doc_id: str,
+    *,
+    namespace: str,
+    mtime: datetime,
+    policy: ChunkingPolicy,
 ) -> tuple[_Compiled, tuple[str, ...]]:
     doc_path = relative.as_posix()
     parsed = parse_markdown(text, doc_id=doc_id)
-    chunks = chunk_document(
-        parsed.kir, doc_path=doc_path, policy=ChunkingPolicy(), namespace=namespace
-    )
+    chunks = chunk_document(parsed.kir, doc_path=doc_path, policy=policy, namespace=namespace)
     frontmatter = parsed.frontmatter
     warnings = [f"{doc_path}: {warning}" for warning in parsed.warnings]
 
@@ -272,22 +279,37 @@ def _compile_document(
 def build(
     root: Path,
     *,
-    namespace: str = "default",
+    namespace: str | None = None,
+    config: MyceliumConfig | None = None,
     stale_after_s: float = DEFAULT_STALE_AFTER_S,
 ) -> BuildResult:
     """Compile the repository at `root` and publish one snapshot.
 
-    Raises :class:`~mycelium.build.lock.BuildLockedError` when a live build
+    `config` defaults to the repository's own `mycelium.toml` (or built-in
+    defaults when it has none); `namespace` overrides the configured one, which
+    is how a caller scopes a build without editing the file.
+
+    Raises :class:`~mycelium.config.ConfigError` when the file exists and is
+    invalid, and :class:`~mycelium.build.lock.BuildLockedError` when a live build
     holds the lock; store and filesystem failures propagate typed. Per-document
     failures never fail the build: the document is quarantined with a warning in
     the manifest (RFC-0001 failure taxonomy).
     """
+    settings = config if config is not None else load_config(root)
+    effective_namespace = namespace if namespace is not None else settings.project.namespace
     mycelium_dir = root / STORE_DIRNAME
     timer = _Timer()
     with BuildLock.acquire(mycelium_dir, stale_after_s=stale_after_s) as lock:
         append_journal(mycelium_dir, "build.started", root=str(root))
         try:
-            result = _build_locked(root, mycelium_dir, lock, timer, namespace=namespace)
+            result = _build_locked(
+                root,
+                mycelium_dir,
+                lock,
+                timer,
+                namespace=effective_namespace,
+                config=settings,
+            )
         except BaseException as error:
             append_journal(mycelium_dir, "build.failed", error=f"{type(error).__name__}: {error}")
             raise
@@ -304,11 +326,18 @@ def build(
 
 
 def _build_locked(
-    root: Path, mycelium_dir: Path, lock: BuildLock, timer: _Timer, *, namespace: str
+    root: Path,
+    mycelium_dir: Path,
+    lock: BuildLock,
+    timer: _Timer,
+    *,
+    namespace: str,
+    config: MyceliumConfig,
 ) -> BuildResult:
     snapshot_id = new_ulid()
     parent_id = read_current(mycelium_dir)
-    sources = _discover(root)
+    policy = config.chunking.to_policy()
+    sources = _discover(root, config.project.knowledge_dir)
     timer.lap("discover")
 
     compiled: list[_Compiled] = []
@@ -341,7 +370,7 @@ def _build_locked(
             seen_ids[doc_id] = doc_path
             mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
             unit, doc_warnings = _compile_document(
-                path, relative, raw, doc_id, namespace=namespace, mtime=mtime
+                path, relative, raw, doc_id, namespace=namespace, mtime=mtime, policy=policy
             )
         except Exception as error:  # noqa: BLE001 - quarantine is the failure taxonomy
             quarantined += 1
@@ -366,7 +395,11 @@ def _build_locked(
                 snapshot_id=snapshot_id,
                 parent_id=parent_id,
                 created_at=datetime.now(tz=UTC),
-                config_digest=digest_json({"namespace": namespace, "chunking": "defaults"}),
+                # The effective configuration, not the file's bytes: formatting and
+                # comments must not invalidate a build, but every setting that
+                # reaches the compiler must (spec 05 §2). `namespace` is digested
+                # separately because a caller may override it per build.
+                config_digest=digest_json({"config": config.digest(), "namespace": namespace}),
                 toolchain=Toolchain(mycelium=__version__, python=platform.python_version()),
                 schema_versions={
                     name: record_schema_version(RECORD_MODELS[name]).rsplit("/", 1)[-1]

@@ -21,6 +21,7 @@ from typing import Literal
 from mycelium.__about__ import __version__
 from mycelium.build.lock import DEFAULT_STALE_AFTER_S, LOCK_FILENAME, BuildLock
 from mycelium.build.publish import manifest_path, read_current
+from mycelium.config import CONFIG_FILENAME, ConfigError, load_config
 from mycelium.store import STORE_DIRNAME, STORE_FILENAME, SqliteStore, StoreError
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
 
@@ -107,6 +108,26 @@ def _check_snapshot(root: Path, mycelium_dir: Path, store: SqliteStore | None) -
     return checks
 
 
+def _check_config(root: Path) -> Check:
+    """Validate `mycelium.toml` and say what it does not yet control (spec 05 §2)."""
+    if not (root / CONFIG_FILENAME).exists():
+        return Check("config", "ok", f"no {CONFIG_FILENAME}; built-in defaults apply")
+    try:
+        config = load_config(root)
+    except ConfigError as error:
+        return Check("config", "fail", str(error).replace("\n", "; "))
+    detail = f"{CONFIG_FILENAME} valid; knowledge_dir={config.project.knowledge_dir}"
+    unhonoured = config.unhonoured_sections
+    if unhonoured:
+        # An operator who tuned a knob deserves to hear that it does nothing yet.
+        return Check(
+            "config",
+            "warn",
+            f"{detail}; section(s) not honoured yet: {', '.join(unhonoured)}",
+        )
+    return Check("config", "ok", detail)
+
+
 def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> list[Check]:
     """Run every diagnostic against the repository at `root`."""
     mycelium_dir = root / STORE_DIRNAME
@@ -115,7 +136,8 @@ def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> lis
             "toolchain",
             "ok",
             f"mycelium {__version__} on CPython {platform.python_version()}",
-        )
+        ),
+        _check_config(root),
     ]
 
     if not (mycelium_dir / STORE_FILENAME).exists():
