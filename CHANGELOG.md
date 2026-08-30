@@ -63,6 +63,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 - `KirNode` gains `lang`, `variant`, `title`, and `target`, and `SrcLocator` gains `lines`;
   each kind now declares which optional fields it may carry, and illegal combinations are
   rejected on construction (#17, ADR-0006).
+- The root `README.md` is rebuilt as the project's front door: brand banner, badges wired
+  to real CI/release/licence signals, how the compiler works, honest positioning against
+  retrieval-time RAG, and the Karpathy `llm-wiki` credit the project grew out of (#25).
+- Brand assets vendored to [`docs/assets/brand/`](docs/assets/brand/README.md) — banner,
+  icon, and logo, with the logo's superseded tagline documented as a use restriction (#25).
 
 ### Deprecated
 
