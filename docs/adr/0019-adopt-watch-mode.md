@@ -61,15 +61,22 @@ test:
   an infinite rebuild loop wearing a plausible disguise. Relevance uses the same
   dot-directory rule discovery uses (spec 02 §3), so watch mode and the compiler agree on
   what the corpus is.
-- **Only accept events that mean the content changed** — and Linux is why that sentence
-  exists. inotify reports *reads* as well as writes, so a build's own plan scan, which opens
-  every document, produces a burst of `opened` / `closed_no_write` events on the corpus it
-  just read. Accepting those means every build triggers the next one, forever. Windows and
-  macOS never emit them, so the platform that needs the filter is not the one this was
-  developed on: CI's Ubuntu cells failed while Windows and macOS passed, on the very test
-  written to catch an infinite rebuild loop. `closed` (inotify's `IN_CLOSE_WRITE`) *is*
-  accepted — a completed write is the most reliable "this file is fully saved" signal there
-  is.
+- **Prove the change is real before building.** This is the rule the three-OS matrix wrote,
+  one platform at a time. Linux inotify reports *reads*, so a build's plan scan — which
+  opens every document — produced a burst of `opened` / `closed_no_write` events on the
+  corpus it had just read; an event-type filter (`CHANGE_EVENT_TYPES`) drops those. macOS
+  FSEvents then failed the *same test* for a different reason: a read updates atime, which
+  arrives as inode-metadata modification and is **indistinguishable from a write**. No
+  event-type filter can fix that one.
+
+  So the loop asks the question the build asks, against the same `doc_state` truth: does
+  this file's content, or its mtime, differ from what is indexed? A read changes neither.
+  The check reads only the batch's own files, and is conservative in every direction — an
+  unreadable file, a missing store, a path with no row, anything unexpected means *build*.
+  It may only ever suppress a build it can prove would publish the same corpus.
+
+  mtime is part of the comparison because it becomes `created_at` (ADR-0009): a `touch`
+  changes what a manual build would publish, so the watcher must not decide otherwise.
 - **`mycelium.toml` counts as a change.** It feeds the config digest (ADR-0014), so editing
   it changes what a build produces exactly as editing a document does.
 - **A failed build never ends the session.** A document mid-edit is routinely unparseable, a
@@ -119,12 +126,16 @@ loop. Refusing beats redefining a convention or silently ignoring a flag.
 
 ## Consequences
 
-- **A watch session's snapshot history grows one entry per build**, because ADR-0009's
-  publication semantics are unchanged: even a no-op build publishes. Measured on a demo
-  session: an edit is one build (~110 ms), and a *newly added* document costs one extra
-  no-op build (~30 ms) because the first compilation pins its `mycelium_id` back into the
-  file — a real change, which the watcher rightly reports. The loop converges after that
-  one extra pass, and a test pins the convergence.
+- **A watch session's snapshot history grows one entry per *real* change.** ADR-0009's
+  publication semantics are unchanged — a build that runs still publishes — but the loop
+  no longer runs a build it can prove would change nothing. That also removes the extra
+  no-op build the first version had after identity pinning: `doc_state` records the
+  post-pin digest and mtime, so the loop recognises its own write. Measured on a demo
+  session, an edit is one build (~110 ms) and nothing else happens in between.
+- **Watch mode is therefore not simply "run `mycelium build` in a loop".** A manual build
+  in an unchanged repository publishes a new snapshot; a watch session does not. That is a
+  deliberate difference and the only one: what each build *produces* is identical, which is
+  what spec 02 §7's guarantee is about.
 - **`mycelium gc` is the counterpart**, and the session's closing line says so.
 - **Roadmap 3.1's journal note is corrected**: the plan scan is not removed by watch mode
   and was never going to be, because the specification asks for identical guarantees. The

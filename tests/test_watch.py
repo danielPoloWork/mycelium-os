@@ -21,6 +21,8 @@ where `watchdog` may not be installed. The watcher itself is one small adapter
 with its own test, skipped when the optional dependency is absent.
 """
 
+import itertools
+import os
 import queue
 import threading
 from pathlib import Path
@@ -34,6 +36,7 @@ from mycelium.watch import (
     STOP,
     WatchStats,
     collect_batch,
+    has_real_change,
     is_change_event,
     is_relevant,
     run_watch,
@@ -41,9 +44,8 @@ from mycelium.watch import (
 )
 
 # Pre-pinned, because the first build of an unpinned corpus writes `mycelium_id`
-# back into the sources — a real change event, and one that would confound tests
-# about which events the watcher reports. The convergence that pin-then-rebuild
-# causes has its own test below.
+# back into the sources — which would confound tests about which events matter.
+# That the loop recognises its own pin write has its own test below.
 CORPUS = {
     "knowledge/architecture.md": (
         "---\nmycelium_id: 01ARZ3NDEKTSV4RRFFQ69G5FG1\n---\n\n"
@@ -260,6 +262,109 @@ def test_changes_before_a_stop_are_still_built(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Proving a change is real before building
+# ---------------------------------------------------------------------------
+
+
+def test_a_read_is_not_a_change_on_any_platform(tmp_path: Path) -> None:
+    """The feedback loop every platform has, by a different route.
+
+    Linux inotify emits `opened`/`closed_no_write`, which the event-type filter
+    drops; macOS FSEvents reports a read's atime update as inode-metadata
+    modification, which arrives indistinguishable from a write. Both were caught
+    by CI on this very test's sibling. The guard is to ask the same question the
+    build asks — is the content, or the mtime, different from what is indexed?
+    """
+    root = repo(tmp_path)
+    build(root, config=LEXICAL)
+    document = root / "knowledge" / "retries.md"
+
+    document.read_text(encoding="utf-8")  # exactly what a build's plan scan does
+
+    assert has_real_change(root, [document]) is False
+
+
+def test_an_edit_is_a_change(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    build(root, config=LEXICAL)
+    document = root / "knowledge" / "retries.md"
+    document.write_text(CORPUS["knowledge/retries.md"] + "\nMore.\n", encoding="utf-8")
+
+    assert has_real_change(root, [document]) is True
+
+
+def test_a_touch_is_a_change_because_mtime_becomes_created_at(tmp_path: Path) -> None:
+    """Identical bytes, new mtime: a manual build would publish different records
+    (ADR-0009), so the watcher must not decide otherwise."""
+    root = repo(tmp_path)
+    build(root, config=LEXICAL)
+    document = root / "knowledge" / "retries.md"
+    later = int(document.stat().st_mtime) + 120
+    os.utime(document, (later, later))
+
+    assert has_real_change(root, [document]) is True
+
+
+def test_appearing_and_disappearing_are_changes(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    build(root, config=LEXICAL)
+
+    added = root / "knowledge" / "added.md"
+    added.write_text("# Added\n\nNew.\n", encoding="utf-8")
+    assert has_real_change(root, [added]) is True
+
+    removed = root / "knowledge" / "retries.md"
+    removed.unlink()
+    assert has_real_change(root, [removed]) is True
+
+
+def test_the_configuration_is_never_argued_with(tmp_path: Path) -> None:
+    """It reaches every stage, so proving it unchanged is not worth the code."""
+    root = repo(tmp_path)
+    build(root, config=LEXICAL)
+    assert has_real_change(root, [root / "mycelium.toml"]) is True
+
+
+def test_an_unbuilt_repository_always_builds(tmp_path: Path) -> None:
+    root = repo(tmp_path)
+    assert has_real_change(root, [root / "knowledge" / "retries.md"]) is True
+
+
+def test_the_guard_never_suppresses_a_build_it_cannot_prove(tmp_path: Path) -> None:
+    """Conservative in every direction: anything unexpected means build."""
+    root = repo(tmp_path)
+    build(root, config=LEXICAL)
+
+    assert has_real_change(root, [tmp_path / "outside.md"]) is True  # outside the repository
+    assert has_real_change(root, [root / "knowledge" / "never-seen.md"]) is True
+
+
+def test_a_read_event_does_not_produce_a_build(tmp_path: Path) -> None:
+    """The guard, seen through the loop: the infinite rebuild is closed."""
+    root = repo(tmp_path)
+    build(root, config=LEXICAL)
+    document = root / "knowledge" / "retries.md"
+
+    stats = run_watch(root, source(document), config=LEXICAL, debounce_s=0.05)
+
+    assert stats.changes == 1  # the event was seen
+    assert stats.builds == 0  # and proved to be nothing
+
+
+def test_pinning_no_longer_costs_an_extra_build(tmp_path: Path) -> None:
+    """A build writes `mycelium_id` back into unpinned sources (ADR-0009). The
+    guard recognises its own write — `doc_state` records the post-pin digest and
+    mtime — so the event it causes settles without a second publication."""
+    root = repo(tmp_path / "unpinned", {"knowledge/fresh.md": "# Fresh\n\nNo identity yet.\n"})
+    document = root / "knowledge" / "fresh.md"
+    assert build(root, config=LEXICAL).pinned  # the build wrote to the corpus
+
+    stats = run_watch(root, source(document), config=LEXICAL, debounce_s=0.05)
+
+    assert stats.builds == 0
+
+
+# ---------------------------------------------------------------------------
 # The loop
 # ---------------------------------------------------------------------------
 
@@ -340,12 +445,14 @@ def test_a_locked_repository_does_not_end_the_session(tmp_path: Path) -> None:
 
     root = repo(tmp_path)
     build(root, config=LEXICAL)
+    document = root / "knowledge" / "retries.md"
+    document.write_text(CORPUS["knowledge/retries.md"] + "\nEdited.\n", encoding="utf-8")
 
     failures: list[Exception] = []
     with BuildLock.acquire(root / ".mycelium"):
         stats = run_watch(
             root,
-            source(root / "knowledge" / "retries.md"),
+            source(document),
             config=LEXICAL,
             debounce_s=0.05,
             on_failure=failures.append,
@@ -359,16 +466,12 @@ def test_a_locked_repository_does_not_end_the_session(tmp_path: Path) -> None:
 def test_the_loop_reports_what_changed(tmp_path: Path) -> None:
     root = repo(tmp_path)
     build(root, config=LEXICAL)
+    document = root / "knowledge" / "retries.md"
+    document.write_text(CORPUS["knowledge/retries.md"] + "\nEdited.\n", encoding="utf-8")
 
     seen: list[set[Path]] = []
-    run_watch(
-        root,
-        source(root / "knowledge" / "retries.md"),
-        config=LEXICAL,
-        debounce_s=0.05,
-        on_change=seen.append,
-    )
-    assert seen == [{root / "knowledge" / "retries.md"}]
+    run_watch(root, source(document), config=LEXICAL, debounce_s=0.05, on_change=seen.append)
+    assert seen == [{document}]
 
 
 def test_several_batches_build_several_times(tmp_path: Path) -> None:
@@ -377,6 +480,19 @@ def test_several_batches_build_several_times(tmp_path: Path) -> None:
     build(root, config=LEXICAL)
     document = root / "knowledge" / "retries.md"
 
+    revisions = itertools.count(1)
+
+    def edit_again(_: object = None) -> None:
+        """Write the next revision, so the next batch is a real change.
+
+        Each batch has to name a document that genuinely differs, now that the
+        loop proves a change before building — which is the point of the guard.
+        """
+        document.write_text(
+            CORPUS["knowledge/retries.md"] + f"\nRevision {next(revisions)}.\n", encoding="utf-8"
+        )
+
+    edit_again()
     events = ScriptedSource(
         document,
         ScriptedSource.QUIET,
@@ -386,33 +502,10 @@ def test_several_batches_build_several_times(tmp_path: Path) -> None:
         ScriptedSource.QUIET,
         STOP,
     )
-    stats = run_watch(root, events, config=LEXICAL, debounce_s=0.05)
+    stats = run_watch(root, events, config=LEXICAL, debounce_s=0.05, on_result=edit_again)
 
     assert stats.builds == 3
     assert stats.failures == 0
-
-
-def test_the_first_build_pins_identities_and_the_loop_converges(tmp_path: Path) -> None:
-    """A build writes `mycelium_id` back into unpinned sources (ADR-0009), which
-    the watcher rightly sees as a change. The rebuild it triggers pins nothing,
-    so the loop settles instead of chasing its own tail."""
-    root = repo(tmp_path / "unpinned", {"knowledge/fresh.md": "# Fresh\n\nNo identity yet.\n"})
-    document = root / "knowledge" / "fresh.md"
-
-    first = build(root, config=LEXICAL)
-    assert first.pinned  # the build wrote to the corpus
-
-    results = []
-    run_watch(
-        root,
-        ScriptedSource(document, ScriptedSource.QUIET, STOP),
-        config=LEXICAL,
-        debounce_s=0.05,
-        on_result=results.append,
-    )
-
-    assert results[-1].pinned == ()  # nothing left to pin: the loop has settled
-    assert results[-1].stats.rebuilt == 0
 
 
 def test_an_unreadable_config_is_reported_without_ending_the_session(tmp_path: Path) -> None:

@@ -65,28 +65,48 @@ builds the same repository both ways. The other timed batch boundaries with `sle
 races the build; it now uses a `ScriptedSource` whose `QUIET` marker *declares* where one
 batch ends, so multi-batch behaviour is asserted without depending on how long a build takes.
 
-## The bug only Linux had
+## The bug the matrix found — twice, on two platforms, for two different reasons
 
-CI caught a third one, and it is the most interesting: **Ubuntu failed while Windows and
-macOS passed**, on `test_the_observer_ignores_the_derived_store` — the very test written to
-catch an infinite rebuild loop.
+CI caught the third bug, and it took **two rounds on two operating systems** to see what it
+actually was. Both rounds failed the same test:
+`test_the_observer_ignores_the_derived_store` — the one written to catch an infinite rebuild
+loop.
 
-inotify reports *reads* as well as writes. The build's plan scan opens every document
-(ADR-0015: it reads and digests everything, every build), which produces a burst of
-`opened` / `closed_no_write` events on the corpus it just read. The handler accepted any
-event type, so on Linux **every build would have triggered the next one, forever**. Windows
-(`ReadDirectoryChangesW`) and macOS (FSEvents) never emit read events, so the platform that
-needs the filter is exactly the one I was not developing on.
+**Round one: Ubuntu red, Windows and macOS green.** inotify reports *reads* as well as
+writes. The build's plan scan opens every document (ADR-0015 reads and digests everything,
+every build), producing a burst of `opened` / `closed_no_write` events on the corpus it had
+just read. The handler accepted any event type, so on Linux **every build would have
+triggered the next one, forever**. Fix: an event-type filter.
 
-The fix is an event-type filter, and the shape of the fix matters: it is a module-level
-predicate (`is_change_event`) rather than a condition buried in the watchdog adapter, so it
-can be asserted on every platform — including the ones where the bug cannot reproduce. A
-second test pins our accepted strings against watchdog's own `EVENT_TYPE_*` constants, so an
-upstream rename fails loudly instead of quietly reopening the loop.
+**Round two: Ubuntu and Windows green, macOS red — same test.** FSEvents does not report
+reads as reads: a read updates atime, atime is inode metadata, and watchdog surfaces that as
+a *modification*. **Indistinguishable from a write.** No event-type filter can fix it, and
+had I only run Linux I would have shipped believing the problem was solved.
 
-Two lessons worth carrying: a cross-platform matrix earns its cost on exactly this class of
-bug, and *the test was right* — it failed for the reason it was written, on the only
-platform where that reason exists.
+The real fix is one level up, and it is better than what I had: **the loop proves a change
+is real before building**, asking the question the build asks against the same `doc_state`
+truth — does this file's content, or its mtime, differ from what is indexed? A read changes
+neither, on any platform. It reads only the batch's own files, and it is conservative in
+every direction: unreadable file, missing store, unknown path, anything unexpected means
+*build*. It may only ever suppress a build it can prove would publish the same corpus.
+
+mtime is in the comparison deliberately — it becomes `created_at` (ADR-0009), so a `touch`
+does change what a manual build would publish, and the watcher must not decide otherwise.
+
+Three things fell out of this that I did not plan:
+
+1. The extra no-op build after identity pinning — which the first version documented as an
+   accepted cost — is **gone**. `doc_state` holds the post-pin digest and mtime, so the loop
+   recognises its own write.
+2. Four older tests started failing, correctly: they named a file without actually changing
+   it and had been relying on "any event means build". They are more honest now.
+3. Watch mode is no longer "run `mycelium build` in a loop": a manual build in an unchanged
+   repository publishes a snapshot, a watch session does not. That is the one deliberate
+   difference, and ADR-0019 states it.
+
+Lessons worth carrying: the three-OS matrix earned its entire cost here; *the test was
+right* both times, failing for exactly the reason it was written; and the first fix passing
+on two platforms is not evidence that the diagnosis was complete.
 
 ## What the real binary showed
 

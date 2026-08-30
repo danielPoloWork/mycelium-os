@@ -36,6 +36,7 @@ import queue
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Final
 
@@ -43,6 +44,7 @@ from mycelium.build import BuildResult
 from mycelium.build import build as run_build
 from mycelium.build.lock import BuildLockedError
 from mycelium.config import CONFIG_FILENAME, MyceliumConfig, load_config
+from mycelium.sdk.identity import digest_text
 from mycelium.store import STORE_DIRNAME
 
 __all__ = [
@@ -53,6 +55,7 @@ __all__ = [
     "WatchStats",
     "WatcherUnavailableError",
     "collect_batch",
+    "has_real_change",
     "is_change_event",
     "is_relevant",
     "run_watch",
@@ -138,6 +141,66 @@ def is_relevant(path: Path, root: Path, knowledge_dir: str = "knowledge") -> boo
     return True
 
 
+def has_real_change(root: Path, batch: Iterable[Path], knowledge_dir: str = "knowledge") -> bool:
+    """Whether anything in `batch` actually differs from what the store indexed.
+
+    **Every platform reports a build's own reads as events, by a different
+    route.** Linux inotify emits `opened`/`closed_no_write`, which an event-type
+    filter can drop; macOS FSEvents reports a read's atime update as inode
+    metadata modification, which arrives indistinguishable from a write. Without
+    a check, each build's plan scan would trigger the next build, forever, and
+    every one of them would publish a snapshot.
+
+    So the loop asks the same question the build asks, against the same
+    ``doc_state`` truth: is this file's content — and its mtime, which becomes
+    ``created_at`` (ADR-0009) — different from what is indexed? A read changes
+    neither. This reads only the batch's own files, so it costs one digest per
+    changed document rather than a scan.
+
+    Conservative in every direction: an unreadable file, a missing store, a path
+    with no row, or anything unexpected answers **yes, build**. The guard may
+    only ever suppress a build it can prove would publish the same corpus.
+    """
+    paths = list(batch)
+    if not paths:
+        return False
+
+    store_path = root / STORE_DIRNAME / "store.db"
+    if not store_path.exists():
+        return True  # nothing indexed yet: the first build decides everything
+
+    try:
+        from mycelium.store import SqliteStore
+
+        with SqliteStore.open(root, read_only=True) as store:
+            indexed = {state.path: state for state in store.doc_states()}
+    except Exception:  # noqa: BLE001 - an unreadable store is a reason to build, not to stop
+        return True
+
+    for path in paths:
+        try:
+            relative = path.resolve().relative_to(root.resolve()).as_posix()
+        except (ValueError, OSError):
+            return True
+        if relative == CONFIG_FILENAME:
+            return True  # the config reaches every stage; never worth proving otherwise
+
+        state = indexed.get(relative)
+        exists = path.is_file()
+        if state is None or not exists:
+            return True  # appeared, or disappeared
+
+        try:
+            raw = path.read_bytes().decode("utf-8")
+            mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC).isoformat()
+        except (OSError, UnicodeDecodeError):
+            return True
+        if digest_text(raw) != state.source_digest or mtime != state.source_mtime:
+            return True
+
+    return False
+
+
 def collect_batch(
     source: "queue.Queue[Any]",
     *,
@@ -186,8 +249,9 @@ def run_watch(
     on_result: Callable[[BuildResult], None] | None = None,
     on_failure: Callable[[Exception], None] | None = None,
     reload_config: bool = True,
+    knowledge_dir: str = "knowledge",
 ) -> WatchStats:
-    """Build whenever `source` reports changes, until it reports :data:`STOP`.
+    """Build whenever `source` reports a *real* change, until it reports :data:`STOP`.
 
     The build is the ordinary incremental one, so a watched repository publishes
     exactly what a hand-built one would (spec 02 §7's "identical guarantees").
@@ -209,6 +273,11 @@ def run_watch(
             return WatchStats(builds=builds, failures=failures, changes=changes)
 
         changes += len(batch)
+        # Prove something actually changed before building. Every platform
+        # reports a build's own reads as events by some route, so without this
+        # each build would trigger the next one and publish a snapshot for it.
+        if not has_real_change(root, batch, knowledge_dir):
+            continue
         if on_change is not None:
             on_change(batch)
 
@@ -279,6 +348,7 @@ def watch(
             on_change=on_change,
             on_result=on_result,
             on_failure=on_failure,
+            knowledge_dir=knowledge_dir,
         )
     except KeyboardInterrupt:
         return WatchStats(builds=0, failures=0, changes=0)
