@@ -12,12 +12,12 @@ nothing else changes. Anything that reaches for `SqliteStore` directly, rather t
 for this protocol, is what would make that phase a rewrite.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from mycelium.sdk.types import Chunk, Document, Sha256Digest
+from mycelium.sdk.types import Chunk, Document, Edge, EdgeType, Sha256Digest
 
 __all__ = ["CacheEntry", "DocState", "SnapshotState", "Store"]
 
@@ -58,6 +58,14 @@ class DocState:
     the snapshot manifest's corpus digests are folded from, and ``warnings`` are
     replayed into the manifest so a cached document warns exactly like a
     recompiled one.
+
+    The last three fields are the document's contribution to the link graph
+    (roadmap 3.4). They live here because edge *resolution* is global — what
+    `[[api]]` means depends on every other document's path, aliases, and headings
+    — while extraction is per-document and cached. Holding them lets a build
+    re-resolve the whole graph without re-parsing one unchanged document, which
+    is what keeps "add a file and every dangling link to it resolves" true
+    without giving up incrementality (ADR-0018).
     """
 
     doc_id: str
@@ -68,6 +76,12 @@ class DocState:
     document_digest: Sha256Digest
     chunks_digest: Sha256Digest
     warnings: tuple[str, ...]
+    links: tuple[Mapping[str, str], ...] = ()
+    """The authored references this document makes, as extracted from its KIR."""
+    aliases: tuple[str, ...] = ()
+    """Frontmatter aliases — what *other* documents may call this one."""
+    headings: tuple[str, ...] = ()
+    """This document's heading slugs, so `[[doc#Heading]]` can target a section."""
 
 
 @runtime_checkable
@@ -102,6 +116,10 @@ class Store(Protocol):
 
     def clear_documents(self) -> None: ...
 
+    def put_edges(self, edges: Iterable[Edge]) -> int: ...
+
+    def clear_edges(self) -> None: ...
+
     # -- reads -------------------------------------------------------------
 
     def get_document(self, doc_id: str) -> Document | None: ...
@@ -123,6 +141,10 @@ class Store(Protocol):
     def cache_get(self, build_key: str) -> str | None: ...
 
     def cache_entries(self) -> tuple[CacheEntry, ...]: ...
+
+    def edges_of(
+        self, ref: str, types: Sequence[EdgeType] | None = None
+    ) -> tuple[tuple[Edge, str], ...]: ...
 
     def snapshot_states(self) -> tuple[SnapshotState, ...]: ...
 

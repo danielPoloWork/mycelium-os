@@ -24,8 +24,17 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Final, Self
 
-from mycelium.sdk.identity import canonical_json
-from mycelium.sdk.types import Chunk, ChunkKind, Document, TrustClass, VerificationStatus
+from mycelium.sdk.identity import canonical_json, digest_json, edge_id
+from mycelium.sdk.types import (
+    Chunk,
+    ChunkKind,
+    Document,
+    Edge,
+    EdgeStatus,
+    EdgeType,
+    TrustClass,
+    VerificationStatus,
+)
 from mycelium.store.base import CacheEntry, DocState, SnapshotState
 from mycelium.store.schema import (
     DDL,
@@ -385,14 +394,15 @@ class SqliteStore:
             """
             INSERT INTO doc_state(
                 doc_id, path, source_digest, source_mtime, env_digest,
-                document_digest, chunks_digest, warnings_json)
-            VALUES(?,?,?,?,?,?,?,?)
+                document_digest, chunks_digest, warnings_json, graph_json)
+            VALUES(?,?,?,?,?,?,?,?,?)
             ON CONFLICT(doc_id) DO UPDATE SET
                 path = excluded.path, source_digest = excluded.source_digest,
                 source_mtime = excluded.source_mtime, env_digest = excluded.env_digest,
                 document_digest = excluded.document_digest,
                 chunks_digest = excluded.chunks_digest,
-                warnings_json = excluded.warnings_json
+                warnings_json = excluded.warnings_json,
+                graph_json = excluded.graph_json
             """,
             (
                 state.doc_id,
@@ -403,8 +413,91 @@ class SqliteStore:
                 state.document_digest,
                 state.chunks_digest,
                 canonical_json(list(state.warnings)),
+                canonical_json(
+                    {
+                        "links": [dict(item) for item in state.links],
+                        "aliases": list(state.aliases),
+                        "headings": list(state.headings),
+                    }
+                ),
             ),
         )
+
+    def put_edges(self, edges: Iterable[Edge]) -> int:
+        """Insert edges, keyed by their content-derived id. In a transaction.
+
+        The id is the digest of the assertion (spec 03 §2), so re-deriving the
+        same edge is idempotent — which is what makes a rebuild converge rather
+        than accumulate.
+        """
+        written = 0
+        for edge in edges:
+            provenance = edge.provenance.model_dump(mode="json")
+            self._connection.execute(
+                """
+                INSERT INTO edges(
+                    edge_id, from_id, to_id, type, status, weight, provenance_json, namespace)
+                VALUES(?,?,?,?,?,?,?,?)
+                ON CONFLICT(edge_id) DO UPDATE SET
+                    weight = excluded.weight, status = excluded.status,
+                    provenance_json = excluded.provenance_json,
+                    namespace = excluded.namespace
+                """,
+                (
+                    edge_id(edge.from_, edge.to, edge.type.value, digest_json(provenance)),
+                    edge.from_,
+                    edge.to,
+                    edge.type.value,
+                    edge.status.value,
+                    edge.weight,
+                    canonical_json(provenance),
+                    edge.namespace,
+                ),
+            )
+            written += 1
+        return written
+
+    def clear_edges(self) -> None:
+        """Empty the graph. Call inside a :meth:`transaction`.
+
+        Edges are republished wholesale rather than diffed: resolution is global
+        (a new document can change what an untouched document's link means), so
+        "which edges changed" is not a per-document question and pretending it is
+        would leave stale assertions behind (ADR-0018).
+        """
+        self._connection.execute("DELETE FROM edges")
+
+    def edges_of(
+        self, ref: str, types: Sequence[EdgeType] | None = None
+    ) -> tuple[tuple[Edge, str], ...]:
+        """Every edge incident to `ref`, paired with its direction from `ref`.
+
+        Ordered deterministically so a traversal of an unchanged graph always
+        walks it in the same order — the edge indexes make both directions cheap.
+        """
+        clause = ""
+        params: list[Any] = []
+        if types:
+            placeholders = ",".join("?" * len(types))
+            clause = f" AND type IN ({placeholders})"
+            params = [item.value for item in types]
+
+        outgoing = self._connection.execute(
+            f"SELECT * FROM edges WHERE from_id = ?{clause} ORDER BY to_id, type, edge_id",
+            [ref, *params],
+        ).fetchall()
+        incoming = self._connection.execute(
+            f"SELECT * FROM edges WHERE to_id = ?{clause} ORDER BY from_id, type, edge_id",
+            [ref, *params],
+        ).fetchall()
+        return (
+            *((_edge_from_row(row), "out") for row in outgoing),
+            *((_edge_from_row(row), "in") for row in incoming),
+        )
+
+    def edge_count(self) -> int:
+        row = self._connection.execute("SELECT count(*) AS n FROM edges").fetchone()
+        return int(row["n"])
 
     def put_vectors(self, model_id: str, vectors: Iterable[tuple[str, Sequence[float]]]) -> int:
         """Store ``(chunk_digest, vector)`` pairs for one model. In a transaction.
@@ -565,19 +658,7 @@ class SqliteStore:
     def doc_states(self) -> tuple[DocState, ...]:
         """Every document's index state, ordered by path — the dirty detector's input."""
         rows = self._connection.execute("SELECT * FROM doc_state ORDER BY path").fetchall()
-        return tuple(
-            DocState(
-                doc_id=str(row["doc_id"]),
-                path=str(row["path"]),
-                source_digest=str(row["source_digest"]),
-                source_mtime=str(row["source_mtime"]),
-                env_digest=str(row["env_digest"]),
-                document_digest=str(row["document_digest"]),
-                chunks_digest=str(row["chunks_digest"]),
-                warnings=tuple(json.loads(row["warnings_json"])),
-            )
-            for row in rows
-        )
+        return tuple(_doc_state_from_row(row) for row in rows)
 
     def cache_get(self, build_key: str) -> str | None:
         """The CAS digest cached under `build_key`, or ``None`` on a miss."""
@@ -830,6 +911,37 @@ def _cosine_scores(query: Sequence[float], rows: Sequence[sqlite3.Row]) -> list[
     if norm:
         vector = vector / norm
     return [float(value) for value in matrix @ vector]
+
+
+def _doc_state_from_row(row: sqlite3.Row) -> DocState:
+    graph = json.loads(row["graph_json"])
+    return DocState(
+        doc_id=str(row["doc_id"]),
+        path=str(row["path"]),
+        source_digest=str(row["source_digest"]),
+        source_mtime=str(row["source_mtime"]),
+        env_digest=str(row["env_digest"]),
+        document_digest=str(row["document_digest"]),
+        chunks_digest=str(row["chunks_digest"]),
+        warnings=tuple(json.loads(row["warnings_json"])),
+        links=tuple(graph.get("links", ())),
+        aliases=tuple(graph.get("aliases", ())),
+        headings=tuple(graph.get("headings", ())),
+    )
+
+
+def _edge_from_row(row: sqlite3.Row) -> Edge:
+    return Edge.model_validate(
+        {
+            "from": row["from_id"],
+            "to": row["to_id"],
+            "type": EdgeType(row["type"]),
+            "status": EdgeStatus(row["status"]),
+            "weight": float(row["weight"]),
+            "provenance": json.loads(row["provenance_json"]),
+            "namespace": row["namespace"],
+        }
+    )
 
 
 def _snapshot_state_from_row(row: sqlite3.Row) -> SnapshotState:

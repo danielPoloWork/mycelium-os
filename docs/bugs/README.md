@@ -26,3 +26,4 @@ a `fixed` record names its `fixed-in`) is enforced by the consistency lint's `bu
 | [BUG-0006](2026/08/BUG-0006-release-drafts-carry-no-artifacts.md) | the release workflow builds the distribution and drafts the release without attaching it | low | fixed | 0.3.0 |
 | [BUG-0007](2026/08/BUG-0007-eval-corpus-includes-test-fixtures.md) | the evaluation corpus includes test fixtures, so an unanswerable case is answered and G4 fails | medium | open | |
 | [BUG-0008](2026/08/BUG-0008-bom-hides-frontmatter.md) | a UTF-8 byte-order mark hides frontmatter, so identity and metadata compile as prose | medium | fixed | 0.3.0 |
+| [BUG-0009](2026/08/BUG-0009-mcp-stdio-uses-the-console-code-page.md) | the MCP server writes its protocol stream in the console code page, corrupting any non-ASCII response | high | fixed | 0.3.0 |

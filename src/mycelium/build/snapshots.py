@@ -44,6 +44,7 @@ from mycelium.build.publish import (
     read_manifest,
     swap_current,
 )
+from mycelium.graph import edges_digest, resolve_graph
 from mycelium.sdk.identity import canonical_json, digest_json
 from mycelium.sdk.types import Chunk, Document, Sha256Digest, SnapshotManifest
 from mycelium.store import STORE_DIRNAME, DocState, SnapshotState, SqliteStore
@@ -98,6 +99,12 @@ def encode_snapshot_state(states: tuple[DocState, ...]) -> str:
                 "document": state.document_digest,
                 "chunks": state.chunks_digest,
                 "warnings": list(state.warnings),
+                # The document's contribution to the link graph (roadmap 3.4).
+                # Restoring it is what lets a rollback rebuild the *same* graph
+                # by re-resolving, rather than inheriting the newer build's edges.
+                "links": [dict(link) for link in state.links],
+                "aliases": list(state.aliases),
+                "headings": list(state.headings),
             }
             for state in sorted(states, key=lambda state: state.path)
         ]
@@ -115,6 +122,9 @@ def decode_snapshot_state(text: str) -> tuple[DocState, ...]:
             document_digest=item["document"],
             chunks_digest=item["chunks"],
             warnings=tuple(item["warnings"]),
+            links=tuple(item.get("links", ())),
+            aliases=tuple(item.get("aliases", ())),
+            headings=tuple(item.get("headings", ())),
         )
         for item in json.loads(text)
     )
@@ -282,7 +292,9 @@ def _load_artifacts(
     return loaded
 
 
-def _verify_against_manifest(manifest: SnapshotManifest, states: tuple[DocState, ...]) -> None:
+def _verify_against_manifest(
+    manifest: SnapshotManifest, states: tuple[DocState, ...], namespace: str
+) -> None:
     """Fold the restored per-document digests and demand the manifest's numbers.
 
     The same construction publication uses (ADR-0015), so a successful restore
@@ -290,9 +302,14 @@ def _verify_against_manifest(manifest: SnapshotManifest, states: tuple[DocState,
     describes — not merely something plausible found in the cache.
     """
     ordered = sorted(states, key=lambda state: state.path)
+    edges, _ = resolve_graph(ordered, namespace)
     folded = {
         "documents": digest_json([state.document_digest for state in ordered]),
         "chunks": digest_json([state.chunks_digest for state in ordered]),
+        # Re-resolved rather than stored: the graph is a function of the corpus,
+        # so reproducing the published digest from the restored state is what
+        # proves the restore rebuilt the *same* graph (ADR-0018).
+        "edges": edges_digest(edges),
     }
     for artifact_class, digest in folded.items():
         expected = manifest.artifact_digests.get(artifact_class)
@@ -333,16 +350,23 @@ def rollback(
         try:
             with SqliteStore.open(root, create=False) as store:
                 states = _load_state(mycelium_dir, store, snapshot_id)
-                _verify_against_manifest(manifest, states)
                 loaded = _load_artifacts(mycelium_dir, states)
+                # The namespace comes from the restored records themselves: the
+                # manifest digests it rather than naming it, and the documents
+                # about to be written are the authority on what they belong to.
+                namespace = loaded[0][1].namespace if loaded else "default"
+                _verify_against_manifest(manifest, states, namespace)
+                edges, _ = resolve_graph(states, namespace)
 
                 chunk_count = 0
                 with store.transaction():
                     store.clear_documents()
+                    store.clear_edges()
                     for state, document, chunks in loaded:
                         store.put_document(document)
                         chunk_count += store.put_chunks(chunks)
                         store.put_doc_state(state)
+                    store.put_edges(edges)
                     store.set_meta(META_CURRENT_SNAPSHOT, snapshot_id)
                 swap_current(mycelium_dir, snapshot_id)
         except BaseException as error:

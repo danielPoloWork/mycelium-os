@@ -71,9 +71,17 @@ from mycelium.build.snapshots import record_snapshot_state
 from mycelium.chunking import ChunkingPolicy, chunk_document
 from mycelium.config import MyceliumConfig, load_config
 from mycelium.embedding import Embedder, EmbedderUnavailableError, build_embedder
+from mycelium.graph import (
+    LinkRef,
+    decode_links,
+    edges_digest,
+    encode_links,
+    extract_links,
+    resolve_graph,
+)
 from mycelium.markdown import Frontmatter, MarkdownDocument, parse_markdown
 from mycelium.markdown.frontmatter import DELIMITER, parse_frontmatter
-from mycelium.sdk.identity import digest_json, digest_text, new_ulid
+from mycelium.sdk.identity import digest_json, digest_text, heading_slug, new_ulid
 from mycelium.sdk.schema import (
     RECORD_MODELS,
     SNAPSHOT_ARTIFACT_CLASSES,
@@ -177,6 +185,10 @@ class _Entry:
     chunks: tuple[Chunk, ...] = ()
     document_digest: str = ""
     chunks_digest: str = ""
+    links: tuple[LinkRef, ...] = ()
+    """Authored references, extracted with the document and re-resolved globally."""
+    aliases: tuple[str, ...] = ()
+    headings: tuple[str, ...] = ()
 
 
 @dataclass
@@ -435,6 +447,9 @@ def _state_of(entry: "_Entry", env_digest: str) -> DocState:
         document_digest=entry.document_digest,
         chunks_digest=entry.chunks_digest,
         warnings=entry.warnings,
+        links=tuple(encode_links(entry.links)),
+        aliases=entry.aliases,
+        headings=entry.headings,
     )
 
 
@@ -751,6 +766,12 @@ def _build_locked(
                 entry.warnings = prev.warnings
                 entry.document_digest = prev.document_digest
                 entry.chunks_digest = prev.chunks_digest
+                # Its links come back too: resolution runs over the whole corpus
+                # every build, so an untouched document's references still take
+                # part in the graph (ADR-0018).
+                entry.links = decode_links(prev.links)
+                entry.aliases = prev.aliases
+                entry.headings = prev.headings
 
         # -- compile what is dirty, through the cache -------------------------
         parsed_count = parse_hits = chunked_count = chunk_hits = 0
@@ -804,6 +825,13 @@ def _build_locked(
             # it without recompiling (ADR-0016).
             entry.document_digest = cas_put(mycelium_dir, encode_document_artifact(document))
             entry.chunks_digest = chunks_digest
+            entry.links = extract_links(parsed.kir, chunks)
+            entry.aliases = parsed.frontmatter.aliases
+            entry.headings = tuple(
+                heading_slug(node.text)
+                for node in parsed.kir.nodes
+                if node.kind is NodeKind.HEADING and node.text
+            )
         timer.lap("compile")
 
         # -- diff against the previous build ----------------------------------
@@ -854,6 +882,16 @@ def _build_locked(
                 record_snapshot_state(mycelium_dir, store, snapshot_id, tuple(live_states.values()))
             timer.lap("store")
 
+            # The graph is resolved and republished whole, because resolution is
+            # global: adding one document can settle a dangling link in a
+            # document this build never touched (ADR-0018). Extraction stayed
+            # per-document and cached, so this is dictionary work, not parsing.
+            edges, link_warnings = resolve_graph(tuple(live_states.values()), namespace)
+            manifest_warnings.extend(link_warnings)
+            store.clear_edges()
+            store.put_edges(edges)
+            timer.lap("graph")
+
             embedded = 0
             if embedder is not None:
                 pending = {
@@ -895,7 +933,7 @@ def _build_locked(
                 artifact_digests={
                     "documents": digest_json([entry.document_digest for entry in live]),
                     "chunks": digest_json([entry.chunks_digest for entry in live]),
-                    "edges": digest_json([]),
+                    "edges": edges_digest(edges),
                 },
                 degraded=tuple(degraded) if restorable else (*degraded, "snapshot_state"),
                 warnings=tuple(manifest_warnings),

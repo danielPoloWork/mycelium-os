@@ -25,6 +25,7 @@ to, at 3.4. Until then both legs run for every query, which is the honest
 behaviour to measure hybrid against.
 """
 
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Final
@@ -81,12 +82,16 @@ class SearchOutcome:
     degraded: tuple[str, ...] = ()
     """Legs that were configured but could not run, with the reason attached."""
     notes: tuple[str, ...] = field(default=())
+    timings_ms: dict[str, int] = field(default_factory=dict)
+    """Per-stage wall time. `mycelium_explain` promises it (spec 05 §3.4), and a
+    leg that has quietly become the slow one should be visible without a profiler."""
 
     def explain(self) -> dict[str, object]:
         return {
             "legs": list(self.legs),
             "degraded": list(self.degraded),
             "notes": list(self.notes),
+            "timings_ms": dict(self.timings_ms),
         }
 
 
@@ -149,8 +154,11 @@ def search(
     """
     settings = config or RetrievalConfig()
     depth = max(limit, VECTOR_CANDIDATES)
+    timings: dict[str, int] = {}
 
+    started = time.perf_counter()
     lexical = store.search_chunks(query, limit=depth, filters=filters, prefix=prefix)
+    timings[_LEXICAL] = _elapsed_ms(started)
     lists: list[tuple[str, Sequence[SearchHit]]] = [(_LEXICAL, lexical)]
     degraded: list[str] = []
     notes: list[str] = []
@@ -164,7 +172,11 @@ def search(
                 "run `mycelium build` to embed it"
             )
         else:
+            started = time.perf_counter()
             vector = embedder.embed_query(query)
+            timings["embed_query"] = _elapsed_ms(started)
+
+            started = time.perf_counter()
             lists.append(
                 (
                     _VECTOR,
@@ -173,14 +185,24 @@ def search(
                     ),
                 )
             )
+            timings[_VECTOR] = _elapsed_ms(started)
             notes.append(f"vector leg: {embedder.model_id} via {embedder.provider}")
     else:
         notes.append("hybrid disabled by configuration")
 
+    started = time.perf_counter()
     fused = reciprocal_rank_fusion(lists, k=RRF_K, limit=limit)
+    timings["fusion"] = _elapsed_ms(started)
+    timings["total"] = sum(timings.values())
+
     return SearchOutcome(
         hits=fused,
         legs=tuple(leg for leg, _ in lists),
         degraded=tuple(degraded),
         notes=tuple(notes),
+        timings_ms=timings,
     )
+
+
+def _elapsed_ms(started: float) -> int:
+    return int((time.perf_counter() - started) * 1000)
