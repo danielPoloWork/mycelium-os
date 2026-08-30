@@ -52,6 +52,7 @@ __all__ = [
 ]
 
 DELIMITER: Final = "---"
+_BOM: Final = "﻿"
 
 _MAPPING_KEY: Final = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*\s*:(\s|$)")
 """What a frontmatter block's first line looks like: a plain YAML key."""
@@ -133,7 +134,15 @@ def split_frontmatter(text: str) -> tuple[str | None, str, int]:
     next ``---`` on its own line. Anything else — including a horizontal rule in
     the first line of prose — is body. Returns ``None`` for the block when the
     document has no frontmatter.
+
+    A leading byte-order mark is skipped before that test. Windows editors emit
+    UTF-8 with a BOM routinely, and without this the fence is not at position
+    zero, so the whole block — identity included — compiles as prose
+    ([BUG-0008](../../../docs/bugs/2026/08/BUG-0008-bom-hides-frontmatter.md)).
+    The BOM is not returned with the body: it carries no content and
+    `normalize_text` strips it from every digest anyway.
     """
+    text = text.removeprefix(_BOM)
     if not text.startswith(DELIMITER):
         return None, text, 0
     lines = text.split("\n")

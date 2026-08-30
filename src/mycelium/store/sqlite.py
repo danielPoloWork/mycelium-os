@@ -16,6 +16,7 @@ and snapshot publication (roadmap 2.7), and any ranking beyond BM25 (roadmap 3.3
 import json
 import re
 import sqlite3
+import struct
 from collections.abc import Iterable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -405,6 +406,66 @@ class SqliteStore:
             ),
         )
 
+    def put_vectors(self, model_id: str, vectors: Iterable[tuple[str, Sequence[float]]]) -> int:
+        """Store ``(chunk_digest, vector)`` pairs for one model. In a transaction.
+
+        Keyed ``(chunk_digest, model_id)`` per D-013, which is what makes the
+        embedding stage incremental *and* model-switching non-destructive:
+        identical text under the same model is already present, and a different
+        model adds rows beside the old ones instead of replacing them.
+
+        Vectors are stored as little-endian float32 — fixed width, so a row's
+        length is a checkable property rather than a hope, and readable by any
+        implementation of the store protocol without a Python pickle in sight.
+        """
+        written = 0
+        for chunk_digest, vector in vectors:
+            blob = struct.pack(f"<{len(vector)}f", *vector)
+            self._connection.execute(
+                "INSERT INTO vectors(chunk_digest, model_id, dim, vec) VALUES(?,?,?,?) "
+                "ON CONFLICT(chunk_digest, model_id) DO UPDATE SET "
+                "dim = excluded.dim, vec = excluded.vec",
+                (chunk_digest, model_id, len(vector), blob),
+            )
+            written += 1
+        return written
+
+    def digests_without_vectors(self, model_id: str) -> tuple[str, ...]:
+        """Chunk digests this model has not embedded yet — the stage's work list.
+
+        DISTINCT because two documents may hold byte-identical chunks; they share
+        one vector, and embedding it twice would be pure waste.
+        """
+        rows = self._connection.execute(
+            """
+            SELECT DISTINCT c.chunk_digest
+            FROM chunks c
+            LEFT JOIN vectors v ON v.chunk_digest = c.chunk_digest AND v.model_id = ?
+            WHERE v.chunk_digest IS NULL
+            ORDER BY c.chunk_digest
+            """,
+            (model_id,),
+        ).fetchall()
+        return tuple(str(row["chunk_digest"]) for row in rows)
+
+    def delete_orphan_vectors(self) -> int:
+        """Drop vectors whose chunk no longer exists in the published corpus.
+
+        Called at publication: without it the table grows monotonically with
+        every edit, since chunk digests change when text does.
+        """
+        cursor = self._connection.execute(
+            "DELETE FROM vectors WHERE chunk_digest NOT IN (SELECT chunk_digest FROM chunks)"
+        )
+        return int(cursor.rowcount)
+
+    def vector_counts(self) -> dict[str, int]:
+        """Vectors per model id — what `doctor` and the manifest report."""
+        rows = self._connection.execute(
+            "SELECT model_id, count(*) AS n FROM vectors GROUP BY model_id ORDER BY model_id"
+        ).fetchall()
+        return {str(row["model_id"]): int(row["n"]) for row in rows}
+
     def clear_documents(self) -> None:
         """Remove every document, chunk, and index row. Call inside a :meth:`transaction`.
 
@@ -483,6 +544,18 @@ class SqliteStore:
         ).fetchone()
         return None if row is None else _chunk_from_row(row)
 
+    def get_chunk_by_digest(self, chunk_digest: str) -> Chunk | None:
+        """Any chunk with this content digest — they are interchangeable by definition.
+
+        The embedding stage's lookup for text it did not recompile: identical
+        content has one vector, so which row supplies the text cannot matter.
+        """
+        row = self._connection.execute(
+            "SELECT * FROM chunks WHERE chunk_digest = ? ORDER BY anchor LIMIT 1",
+            (chunk_digest,),
+        ).fetchone()
+        return None if row is None else _chunk_from_row(row)
+
     def chunks_of(self, doc_id: str) -> tuple[Chunk, ...]:
         rows = self._connection.execute(
             "SELECT * FROM chunks WHERE doc_id = ? ORDER BY anchor", (doc_id,)
@@ -551,23 +624,105 @@ class SqliteStore:
             for table in tables
         }
 
-    def search_chunks(
+    def search_vectors(
         self,
-        query: str,
+        vector: Sequence[float],
+        model_id: str,
         *,
-        limit: int = 10,
+        limit: int = 50,
         filters: SearchFilters | None = None,
-        prefix: bool = False,
     ) -> tuple[SearchHit, ...]:
-        """Field-weighted BM25 search over the lexical index (spec 04 §3).
+        """Nearest chunks by cosine similarity, best first (spec 04 §3).
 
-        Scores are returned positive and descending — SQLite's ``bm25()`` is
-        negated so that "better" is larger, which is what every consumer expects.
+        A brute-force scan, and an honest one: it is exact, so there is no recall
+        cliff to tune, and it is **linear**, so it does not meet spec 04 §1's
+        60 ms candidate budget beyond a few thousand chunks — 94 ms over 10 000
+        (`tests/bench/test_retrieval_bench.py`). That is a limit rather than a
+        crisis today, because gate G2 left hybrid opt-in (ADR-0017), so nothing
+        in the shipped configuration pays it; making the vector leg fast enough
+        to be a default is roadmap 3.12.
+
+        sqlite-vec, which the spec names, is the eventual answer but not this
+        one: it is a *loadable* SQLite extension, and several stock Python builds
+        ship without ``enable_load_extension`` (macOS's system interpreter among
+        them), which would make the default retrieval path unavailable on a
+        platform this project supports.
+
+        Filters are applied in SQL, before scoring, because spec 04 §2 requires
+        every generator to pre-filter: post-filtering a top-k list silently
+        returns fewer results than asked for.
         """
-        match = fts_query(query, prefix=prefix)
-        if not match:
-            return ()
         filters = filters or SearchFilters()
+        clauses, params = self._filter_sql(filters)
+        where = "".join(f" AND {clause}" for clause in clauses)
+
+        # Two phases, and the split is the whole performance story. Scoring needs
+        # an anchor and 1 536 bytes of vector; a `SELECT c.*` would drag every
+        # chunk's full text and JSON columns into Python to rank them and then
+        # throw all but `limit` away — measured at 3.5x the cost of this at
+        # 10 000 chunks (`tests/bench/test_retrieval_bench.py`).
+        if clauses:
+            key_column = "anchor"
+            scored = self._connection.execute(
+                f"""
+                SELECT c.anchor AS key, v.vec AS vec, v.dim AS dim
+                FROM vectors v
+                JOIN chunks c ON c.chunk_digest = v.chunk_digest
+                JOIN documents d ON d.doc_id = c.doc_id
+                WHERE v.model_id = ?{where}
+                """,
+                [model_id, *params],
+            ).fetchall()
+        else:
+            # Unfiltered — the common case — reads the vectors table alone. The
+            # joins exist only to *filter*, and paying for them per candidate
+            # cost 113 ms against 94 ms over 10 000 chunks.
+            key_column = "chunk_digest"
+            scored = self._connection.execute(
+                "SELECT chunk_digest AS key, vec, dim FROM vectors WHERE model_id = ?",
+                (model_id,),
+            ).fetchall()
+        if not scored:
+            return ()
+
+        scores = _cosine_scores(vector, scored)
+        best = sorted(zip(scores, range(len(scored)), strict=True), key=lambda item: -item[0])[
+            :limit
+        ]
+        ranked = {str(scored[index]["key"]): score for score, index in best}
+
+        placeholders = ",".join("?" * len(ranked))
+        rows = self._connection.execute(
+            f"""
+            SELECT c.*, d.path AS doc_path, d.title AS doc_title,
+                   d.trust_class AS doc_trust, d.verification_status AS doc_status
+            FROM chunks c
+            JOIN documents d ON d.doc_id = c.doc_id
+            WHERE c.{key_column} IN ({placeholders})
+            """,
+            list(ranked),
+        ).fetchall()
+
+        hits = [
+            SearchHit(
+                chunk=_chunk_from_row(row),
+                score=ranked[str(row[key_column])],
+                path=str(row["doc_path"]),
+                title=str(row["doc_title"]),
+                trust_class=TrustClass(row["doc_trust"]),
+                verification_status=VerificationStatus(row["doc_status"]),
+            )
+            for row in rows
+        ]
+        # Re-impose the ranking the second query does not preserve; ties break on
+        # anchor so an identical corpus always answers in an identical order.
+        # The truncation matters on the unfiltered path: two chunks with the same
+        # text share one vector, so a digest can expand into several candidates.
+        hits.sort(key=lambda item: (-item.score, item.chunk.anchor))
+        return tuple(hits[:limit])
+
+    def _filter_sql(self, filters: SearchFilters) -> tuple[list[str], list[Any]]:
+        """The WHERE fragments shared by every candidate generator."""
         clauses: list[str] = []
         params: list[Any] = []
         if filters.namespace is not None:
@@ -585,6 +740,25 @@ class SqliteStore:
         if filters.path_prefix is not None:
             clauses.append("d.path LIKE ? ESCAPE '\\'")
             params.append(_like_prefix(filters.path_prefix))
+        return clauses, params
+
+    def search_chunks(
+        self,
+        query: str,
+        *,
+        limit: int = 10,
+        filters: SearchFilters | None = None,
+        prefix: bool = False,
+    ) -> tuple[SearchHit, ...]:
+        """Field-weighted BM25 search over the lexical index (spec 04 §3).
+
+        Scores are returned positive and descending — SQLite's ``bm25()`` is
+        negated so that "better" is larger, which is what every consumer expects.
+        """
+        match = fts_query(query, prefix=prefix)
+        if not match:
+            return ()
+        clauses, params = self._filter_sql(filters or SearchFilters())
         where = "".join(f" AND {clause}" for clause in clauses)
 
         rows = self._connection.execute(
@@ -619,6 +793,43 @@ class SqliteStore:
 # ---------------------------------------------------------------------------
 # Row ↔ record mapping
 # ---------------------------------------------------------------------------
+
+
+def _cosine_scores(query: Sequence[float], rows: Sequence[sqlite3.Row]) -> list[float]:
+    """Cosine similarity of `query` against each row's stored vector.
+
+    Stored vectors are unit-length by the embedder's contract, so a dot product
+    *is* the cosine — but the query is normalised here anyway, because a caller
+    supplying a raw vector deserves a meaningful ranking rather than a silently
+    scaled one.
+
+    NumPy is required at this point and nowhere else in the query path: it
+    arrives with the embeddings extra that produced the vectors in the first
+    place, so the only way to reach the failure is to uninstall it while keeping
+    the rows — which the message below names precisely.
+    """
+    try:
+        import numpy as np
+    except ImportError as error:  # pragma: no cover - requires a half-uninstalled env
+        msg = (
+            "this store holds vectors but numpy is not installed; reinstall "
+            "`mycelium-os[embeddings]`, or set `[retrieval] hybrid = false` to search "
+            "lexically only"
+        )
+        raise StoreError(msg) from error
+
+    dim = int(rows[0]["dim"])
+    if len(query) != dim:
+        msg = f"query vector has dim {len(query)}, but the store holds dim {dim}"
+        raise StoreError(msg)
+
+    flat = np.frombuffer(b"".join(bytes(row["vec"]) for row in rows), dtype="<f4")
+    matrix = flat.reshape(len(rows), dim)
+    vector = np.asarray(query, dtype="<f4")
+    norm = float(np.linalg.norm(vector))
+    if norm:
+        vector = vector / norm
+    return [float(value) for value in matrix @ vector]
 
 
 def _snapshot_state_from_row(row: sqlite3.Row) -> SnapshotState:

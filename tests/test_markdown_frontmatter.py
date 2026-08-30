@@ -102,11 +102,26 @@ def test_non_contract_keys_are_preserved_verbatim() -> None:
         ("intro\n\n---\n\nmore", 0, "intro\n\n---\n\nmore"),
         # An unterminated fence is body, not a parse error.
         ("---\na: 1\nbody", 0, "---\na: 1\nbody"),
+        # A byte-order mark does not move the fence (BUG-0008).
+        ("﻿---\na: 1\n---\nbody", 3, "body"),
+        ("﻿# Heading\n\nBody.", 0, "# Heading\n\nBody."),
     ],
 )
 def test_split_frontmatter_boundaries(text: str, offset: int, body: str) -> None:
     _, split_body, split_offset = split_frontmatter(text)
     assert (split_offset, split_body) == (offset, body)
+
+
+def test_a_byte_order_mark_does_not_hide_frontmatter() -> None:
+    """BUG-0008: Windows editors emit UTF-8 with a BOM routinely, and without
+    this the fence is not at position zero — so identity and metadata compiled as
+    prose, and the frontmatter block came back as a search result."""
+    parsed = parse_frontmatter("﻿---\ntitle: Bussola\ntags: [nav]\n---\n\n# Bussola\n")
+
+    assert parsed.frontmatter.title == "Bussola"
+    assert parsed.frontmatter.tags == ("nav",)
+    assert "mycelium_id" not in parsed.body
+    assert parsed.body.lstrip("\n").startswith("# Bussola")
 
 
 def test_body_line_offset_locates_the_first_body_line() -> None:

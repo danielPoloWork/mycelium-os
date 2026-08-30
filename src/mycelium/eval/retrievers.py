@@ -24,10 +24,15 @@ import re
 from dataclasses import dataclass
 from typing import Final, Protocol
 
+from mycelium.config import RetrievalConfig
+from mycelium.embedding import Embedder
+from mycelium.retrieval import RRF_K, VECTOR_CANDIDATES
+from mycelium.retrieval import search as run_search
 from mycelium.store import SqliteStore
 
 __all__ = [
     "GrepRetriever",
+    "HybridRetriever",
     "MyceliumRetriever",
     "Retriever",
     "build_retriever",
@@ -163,13 +168,64 @@ class GrepRetriever:
         ]
 
 
-def build_retriever(name: str, store: SqliteStore) -> Retriever:
+@dataclass(frozen=True, slots=True)
+class HybridRetriever:
+    """The product with its vector leg on: BM25 ∥ vector, fused by RRF (D-009).
+
+    Scored against :class:`MyceliumRetriever` rather than against grep, because
+    that is the comparison gate G2 asks for: hybrid must beat *lexical* by ≥ 5 %
+    nDCG@10 with no slice worse than −2 %, or the shipped default stays lexical
+    and the README says so (spec 04 §7.3).
+    """
+
+    store: SqliteStore
+    embedder: Embedder
+    name: str = "hybrid"
+
+    @property
+    def config(self) -> dict[str, str | int | float | bool]:
+        return {
+            "engine": "fts5-bm25 + vector",
+            "weights": "title=3.0,heading_path=2.0,body=1.0",
+            "hybrid": True,
+            "fusion": "rrf",
+            "rrf_k": RRF_K,
+            "vector_candidates": VECTOR_CANDIDATES,
+            "model_id": self.embedder.model_id,
+            "provider": self.embedder.provider,
+        }
+
+    def search(self, query: str, limit: int) -> list[str]:
+        # The raw query, not `terms_of`: an embedder is asked a question in the
+        # words it was trained on, and stripping stopwords from "what does the
+        # project use for X" throws away the grammar the model reads. The lexical
+        # leg inside `search` still tokenises as it always did.
+        outcome = run_search(
+            self.store,
+            query,
+            limit=limit,
+            config=RetrievalConfig(profile="hybrid"),
+            embedder=self.embedder,
+        )
+        return [fused.hit.chunk.anchor for fused in outcome.hits]
+
+
+def build_retriever(name: str, store: SqliteStore, embedder: Embedder | None = None) -> Retriever:
     """Resolve a retriever by name, refusing anything unknown."""
     if name == "mycelium":
         return MyceliumRetriever(store=store)
     if name == "grep":
         return GrepRetriever(store=store)
-    msg = f"unknown retriever {name!r}; expected 'mycelium' or 'grep'"
+    if name == "hybrid":
+        if embedder is None:
+            msg = (
+                "the 'hybrid' retriever needs an embedder: install "
+                "`mycelium-os[embeddings]`, make the model available, and build the "
+                "snapshot with vectors"
+            )
+            raise ValueError(msg)
+        return HybridRetriever(store=store, embedder=embedder)
+    msg = f"unknown retriever {name!r}; expected 'mycelium', 'grep', or 'hybrid'"
     raise ValueError(msg)
 
 

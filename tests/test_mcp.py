@@ -91,7 +91,11 @@ def test_search_returns_cited_passages_with_the_specified_shape(repo: Path) -> N
         "via",
     }
     assert result["uri"].startswith("mycelium://")
-    assert result["via"] == ["bm25"]  # honest: hybrid has not earned its gate yet
+    # `via` names the candidate generators that produced this hit. Without a
+    # model on this machine the vector leg cannot run, so lexical is the whole
+    # answer — and the response says so rather than implying a hybrid it did not
+    # perform (roadmap 3.3).
+    assert result["via"] == ["lexical"]
     assert result["trust_class"] == "authored"
 
 
@@ -149,7 +153,14 @@ def test_a_budget_too_small_for_one_result_is_a_typed_error(repo: Path) -> None:
 def test_explain_reports_the_plan_that_ran(repo: Path) -> None:
     assert "explain" not in search(repo)
     explained = search(repo, explain=True)["explain"]
+    # The configured profile and the legs that actually ran are reported
+    # separately, on purpose: "hybrid was asked for" and "hybrid happened" are
+    # different facts, and an agent auditing a result needs both. Here they
+    # agree, because the shipped default is lexical (ADR-0017).
     assert explained["plan"] == "lexical"
+    assert explained["stages"] == ["lexical"]
+    assert explained["degraded"] == []  # a deliberate choice is not a degradation
+    assert explained["fusion"] == {"method": "rrf", "k": 60}
     assert explained["field_weights"] == {"title": 3.0, "heading_path": 2.0, "body": 1.0}
 
 

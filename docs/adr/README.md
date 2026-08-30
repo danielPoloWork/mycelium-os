@@ -32,3 +32,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0014](0014-adopt-partial-strict-configuration.md) | Load `mycelium.toml` strictly, honour it partially, and say which is which | Accepted |
 | [0015](0015-adopt-content-addressed-incremental-builds.md) | Compile incrementally through a content-addressed stage cache | Accepted |
 | [0016](0016-make-snapshots-restorable.md) | Make snapshots restorable, and give garbage collection a defined live set | Accepted |
+| [0017](0017-adopt-the-local-embedder-and-hybrid-retrieval.md) | Ship a local embedder and hybrid retrieval, and let gate G2 choose the default | Accepted |

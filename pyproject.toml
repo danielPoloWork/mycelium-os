@@ -22,6 +22,17 @@ dependencies = [
     "typer>=0.15",
 ]
 
+# The local embedder (D-013) and the vector query path. Deliberately optional:
+# onnxruntime + tokenizers + numpy pull in twenty-odd packages, which is a large
+# price to charge someone who only wants lexical search — and a build without
+# them degrades to lexical rather than failing (ADR-0017).
+[project.optional-dependencies]
+embeddings = [
+    "numpy>=1.26",
+    "onnxruntime>=1.20",
+    "tokenizers>=0.20",
+]
+
 [project.scripts]
 mycelium = "mycelium.cli:main"
 
@@ -44,6 +55,12 @@ dev = [
     "mcp>=2.1",
     "anyio>=4",
     "jsonschema>=4",
+    # The embeddings extra is a dev dependency too, so CI type-checks and
+    # exercises the vector path on every platform. Tests that need the *model*
+    # files skip themselves when those are absent — CI does not download 133 MB.
+    "numpy>=1.26",
+    "onnxruntime>=1.20",
+    "tokenizers>=0.20",
 ]
 
 [tool.hatch.version]
@@ -57,6 +74,7 @@ addopts = "-p no:cacheprovider"
 testpaths = ["tests"]
 markers = [
     "determinism: gate G6 — byte-identical rebuild against the committed golden corpus",
+    "embeddings: needs the local model files; skipped when they are not on this machine",
 ]
 
 [tool.ruff]
@@ -82,3 +100,9 @@ select = [
 strict = true
 python_version = "3.12"
 files = ["src"]
+
+# onnxruntime and tokenizers ship no stubs; they are optional dependencies loaded
+# behind a runtime guard, so their surface is narrow and checked by tests instead.
+[[tool.mypy.overrides]]
+module = ["onnxruntime.*", "tokenizers.*"]
+ignore_missing_imports = true
