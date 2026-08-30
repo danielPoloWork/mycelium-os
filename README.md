@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/Status-v0.1.0-blue)
+![Status](https://img.shields.io/badge/Status-v0.2.0-blue)
 [![CI](https://github.com/danielPoloWork/mycelium-os/actions/workflows/ci.yml/badge.svg)](https://github.com/danielPoloWork/mycelium-os/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/danielPoloWork/mycelium-os?include_prereleases)](https://github.com/danielPoloWork/mycelium-os/releases)
 [![License](https://img.shields.io/github/license/danielPoloWork/mycelium-os)](LICENSE)
