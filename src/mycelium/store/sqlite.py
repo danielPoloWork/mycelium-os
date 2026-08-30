@@ -495,6 +495,16 @@ class SqliteStore:
             *((_edge_from_row(row), "in") for row in incoming),
         )
 
+    def all_edges(self) -> tuple[Edge, ...]:
+        """The whole graph, ordered deterministically — what `mycelium export` writes.
+
+        Ordered by identity rather than by insertion, so a bundle's `edges.jsonl`
+        is a function of the snapshot and not of the order the resolver happened
+        to emit assertions in (ADR-0020).
+        """
+        rows = self._connection.execute("SELECT * FROM edges ORDER BY edge_id").fetchall()
+        return tuple(_edge_from_row(row) for row in rows)
+
     def edge_count(self) -> int:
         row = self._connection.execute("SELECT count(*) AS n FROM edges").fetchone()
         return int(row["n"])

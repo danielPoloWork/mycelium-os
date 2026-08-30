@@ -12,6 +12,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- `mycelium export [--out DIR] [--with-markdown]` writes the published snapshot as the
+  JSONL interchange bundle spec 03 §9 draws — `manifest.json` verbatim, one record per
+  line under `records/`, an optional verbatim copy of the compiled Markdown. The bundle
+  is built to be *checked* by whoever receives it: it refuses to be assembled while the
+  store and `CURRENT` disagree about which snapshot it names, its bytes are a function of
+  that snapshot (declared record order, canonical JSON, LF endings — two exports are
+  byte-identical), and `--with-markdown` refuses rather than shipping records from one
+  build beside sources from another (ADR-0020).
+- `mycelium init` gitignores `export/` alongside `.mycelium/`, which is D-006's "not
+  committed by default" made true, and now appends gitignore entries individually — a
+  repository scaffolded earlier gains the new entry on its next `init`.
 - `mycelium build --watch`: rebuild whenever a document or `mycelium.toml` changes, until
   Ctrl-C. A save burst is debounced into one build, the derived store is never watched
   (that loop is infinite), and a build that fails — an unparseable document, an invalid

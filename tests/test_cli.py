@@ -134,8 +134,24 @@ def test_init_appends_to_an_existing_gitignore_without_clobbering(tmp_path: Path
     text = (tmp_path / ".gitignore").read_text(encoding="utf-8")
     assert "*.pyc" in text
     assert ".mycelium/" in text
+    assert "export/" in text  # D-006: bundles are regenerable, not committed by default
     invoke("init", str(tmp_path))
+    again = (tmp_path / ".gitignore").read_text(encoding="utf-8")
+    assert again == text
+    assert again.count(".mycelium/") == 1
+    assert again.count("export/") == 1
+
+
+def test_init_adds_an_entry_a_repository_predates(tmp_path: Path) -> None:
+    """Idempotent per entry, not all-or-nothing: a repository initialised before
+    `export/` existed must gain it rather than be judged already complete."""
+    (tmp_path / ".gitignore").write_text(".mycelium/\n", encoding="utf-8")
+
+    invoke("init", str(tmp_path))
+
+    text = (tmp_path / ".gitignore").read_text(encoding="utf-8")
     assert text.count(".mycelium/") == 1
+    assert "export/" in text
 
 
 def test_init_does_not_overwrite_an_edited_config(tmp_path: Path) -> None:
@@ -529,3 +545,52 @@ def test_doctor_reports_lock_state(tmp_path: Path) -> None:
         stale = next(check for check in diagnose(tmp_path) if check.name == "lock")
         assert stale.status == "warn"
         assert "stale lock" in stale.detail
+
+
+# ---------------------------------------------------------------------------
+# export (roadmap 3.6)
+# ---------------------------------------------------------------------------
+
+
+def test_export_writes_a_bundle_and_reports_it(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    run_build(tmp_path)
+
+    result = invoke("export", str(tmp_path))
+    assert result.exit_code == ExitCode.OK
+
+    payload = json.loads(invoke("export", str(tmp_path), "--json").stdout)
+    bundle = Path(str(payload["bundle"]))
+    assert bundle.is_dir()
+    assert bundle.parent == tmp_path / "export"
+    assert bundle.name == payload["snapshot_id"]
+    assert payload["records"]["documents"] == 1
+    assert payload["markdown_files"] == 0
+
+
+def test_export_honours_an_explicit_out_directory(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    run_build(tmp_path)
+    elsewhere = tmp_path / "bundles"
+
+    payload = json.loads(invoke("export", str(tmp_path), "--out", str(elsewhere), "--json").stdout)
+
+    assert Path(str(payload["bundle"])).parent == elsewhere
+
+
+def test_export_with_markdown_reports_the_copies(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    run_build(tmp_path)
+
+    payload = json.loads(invoke("export", str(tmp_path), "--with-markdown", "--json").stdout)
+
+    assert payload["markdown_files"] == 1
+    copied = Path(str(payload["bundle"])) / "markdown" / "knowledge/verified/retries.md"
+    assert copied.is_file()
+
+
+def test_export_before_a_build_fails_with_guidance(tmp_path: Path) -> None:
+    result = invoke("export", str(tmp_path))
+    assert result.exit_code == ExitCode.FAILED
+    assert "mycelium build" in result.stderr
+    assert result.stdout == ""  # a failure is commentary, not an answer
