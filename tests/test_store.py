@@ -118,12 +118,28 @@ def test_reopening_is_idempotent(tmp_path: Path) -> None:
         assert store.get_chunk("a.md#x/0") is not None
 
 
-def test_a_foreign_schema_version_is_refused_not_reinterpreted(tmp_path: Path) -> None:
-    """D-016: rebuild is the migration; silent reinterpretation never is."""
-    with SqliteStore.open(tmp_path) as store, store.transaction():
-        store.set_meta(META_SCHEMA_VERSION, "mycelium/store/v99")
+def test_a_foreign_schema_version_is_never_reinterpreted(tmp_path: Path) -> None:
+    """D-016: rebuild is the migration; silent reinterpretation never is.
+
+    The two open modes split the policy (ADR-0015): a reader refuses and points
+    at `mycelium build`; a writer *is* `mycelium build`, so it recreates the file
+    — which must discard the foreign rows, not carry them over.
+    """
+    with SqliteStore.open(tmp_path) as store:
+        seed(store, make_chunk("a.md#x/0", "rows written under the foreign version"))
+        with store.transaction():
+            store.set_meta(META_SCHEMA_VERSION, "mycelium/store/v99")
+
     with pytest.raises(StoreVersionError, match="mycelium build"):
-        SqliteStore.open(tmp_path)
+        SqliteStore.open(tmp_path, read_only=True)
+
+    with SqliteStore.open(tmp_path) as writer:
+        assert writer.recreated
+        assert writer.get_meta(META_SCHEMA_VERSION) == SCHEMA_VERSION
+        assert writer.get_chunk("a.md#x/0") is None  # discarded, not reinterpreted
+
+    with SqliteStore.open(tmp_path) as again:
+        assert not again.recreated  # recreation is an event, not a habit
 
 
 def test_read_only_open_requires_an_existing_store(tmp_path: Path) -> None:

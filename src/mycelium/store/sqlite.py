@@ -25,6 +25,7 @@ from typing import Any, Final, Self
 
 from mycelium.sdk.identity import canonical_json
 from mycelium.sdk.types import Chunk, ChunkKind, Document, TrustClass, VerificationStatus
+from mycelium.store.base import DocState
 from mycelium.store.schema import (
     DDL,
     META_SCHEMA_VERSION,
@@ -57,9 +58,12 @@ class StoreError(RuntimeError):
 class StoreVersionError(StoreError):
     """The store on disk was written by a different schema version.
 
-    v1's migration policy is rebuild (D-016): a Mycelium that meets a store it does
-    not understand says so and points at ``mycelium build`` rather than
-    reinterpreting the bytes.
+    v1's migration policy is rebuild (D-016), and the two open modes divide it:
+    a *reader* raises this — it says so and points at ``mycelium build`` rather
+    than reinterpreting the bytes — while a *writer* acts on it, recreating the
+    file and rebuilding from source (the store is derived data, D-005; the old
+    refusal message named `mycelium build` as the fix, so `mycelium build` must
+    actually be one — ADR-0015).
     """
 
 
@@ -116,6 +120,8 @@ class SqliteStore:
         self._connection = connection
         self._connection.row_factory = sqlite3.Row
         self._read_only = read_only
+        self.recreated = False
+        """True when opening discarded a foreign-version store (D-016 rebuild)."""
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -125,6 +131,10 @@ class SqliteStore:
 
         `read_only` opens a reader that cannot write and never creates the file —
         what an agent's query path uses while a build is in flight (spec 02 §7).
+        A reader that meets a foreign schema version raises
+        :class:`StoreVersionError`; a writer recreates the file instead — the
+        rebuild migration policy (D-016), possible only because every row is
+        derived from source (D-005). Check :attr:`recreated` to report it.
         """
         path = root / STORE_DIRNAME / STORE_FILENAME
         if read_only:
@@ -133,19 +143,45 @@ class SqliteStore:
                 raise StoreError(msg)
             uri = f"file:{path.as_posix()}?mode=ro"
             connection = sqlite3.connect(uri, uri=True, isolation_level=None)
-        else:
-            if not path.exists() and not create:
-                msg = f"no store at {path}; run `mycelium build` first"
-                raise StoreError(msg)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            connection = sqlite3.connect(path, isolation_level=None)
+            store = cls(connection, read_only=True)
+            store._configure()
+            store._check_version()
+            return store
 
-        store = cls(connection, read_only=read_only)
+        if not path.exists() and not create:
+            msg = f"no store at {path}; run `mycelium build` first"
+            raise StoreError(msg)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        store = cls(sqlite3.connect(path, isolation_level=None), read_only=False)
         store._configure()
-        if not read_only:
-            store._migrate()
-        store._check_version()
+        store._migrate()
+        try:
+            store._check_version()
+        except StoreVersionError:
+            store._recreate()
+            store._check_version()
         return store
+
+    def _recreate(self) -> None:
+        """Discard a foreign-version store and lay the current schema down fresh.
+
+        In place — dropping every object rather than deleting the file — because
+        Windows refuses to unlink a database any concurrent reader still holds
+        open, and readers are exactly what a build must coexist with (D-015).
+        """
+        rows = self._connection.execute(
+            "SELECT name, type FROM sqlite_master "
+            "WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%' "
+            "AND name NOT LIKE 'chunks_fts_%'"  # FTS5 shadow tables go with their parent
+        ).fetchall()
+        self._connection.execute("PRAGMA foreign_keys=OFF")
+        try:
+            for row in rows:
+                self._connection.execute(f'DROP {row["type"]} IF EXISTS "{row["name"]}"')
+        finally:
+            self._connection.execute("PRAGMA foreign_keys=ON")
+        self.recreated = True
+        self._migrate()
 
     def _configure(self) -> None:
         for pragma in PRAGMAS:
@@ -323,13 +359,65 @@ class SqliteStore:
         return written
 
     def delete_document(self, doc_id: str) -> None:
-        """Remove a document and everything derived from it."""
+        """Remove a document and everything derived from it.
+
+        Chunks and the document's ``doc_state`` row go with it (``ON DELETE
+        CASCADE``); the lexical index is cleaned here because FTS5 tables know
+        nothing of foreign keys.
+        """
         anchors = self._connection.execute(
             "SELECT anchor FROM chunks WHERE doc_id = ?", (doc_id,)
         ).fetchall()
         for row in anchors:
             self._connection.execute("DELETE FROM chunks_fts WHERE anchor = ?", (row["anchor"],))
         self._connection.execute("DELETE FROM documents WHERE doc_id = ?", (doc_id,))
+
+    def put_doc_state(self, state: DocState) -> None:
+        """Record what the index now holds for one document (roadmap 3.1).
+
+        Call inside a :meth:`transaction`, after :meth:`put_document` (the row
+        references the document) and after any conflicting old rows — same path
+        under another id — were deleted; the orchestrator deletes before it
+        inserts precisely so the two UNIQUE constraints here never fire.
+        """
+        self._connection.execute(
+            """
+            INSERT INTO doc_state(
+                doc_id, path, source_digest, source_mtime, env_digest,
+                document_digest, chunks_digest, warnings_json)
+            VALUES(?,?,?,?,?,?,?,?)
+            ON CONFLICT(doc_id) DO UPDATE SET
+                path = excluded.path, source_digest = excluded.source_digest,
+                source_mtime = excluded.source_mtime, env_digest = excluded.env_digest,
+                document_digest = excluded.document_digest,
+                chunks_digest = excluded.chunks_digest,
+                warnings_json = excluded.warnings_json
+            """,
+            (
+                state.doc_id,
+                state.path,
+                state.source_digest,
+                state.source_mtime,
+                state.env_digest,
+                state.document_digest,
+                state.chunks_digest,
+                canonical_json(list(state.warnings)),
+            ),
+        )
+
+    def cache_put(self, build_key: str, artifact_digest: str, created_at: str) -> None:
+        """Index one cached stage artifact (build key → CAS digest, spec 02 §4.2).
+
+        Call inside a :meth:`transaction`. `created_at` is wall-clock provenance
+        for the retention window snapshot GC applies at roadmap 3.2 — it never
+        participates in cache identity.
+        """
+        self._connection.execute(
+            "INSERT INTO build_cache(build_key, artifact_digest, created_at) VALUES(?,?,?) "
+            "ON CONFLICT(build_key) DO UPDATE SET artifact_digest = excluded.artifact_digest, "
+            "created_at = excluded.created_at",
+            (build_key, artifact_digest, created_at),
+        )
 
     def _document_title(self, doc_id: str) -> str:
         row = self._connection.execute(
@@ -368,6 +456,30 @@ class SqliteStore:
             "SELECT * FROM chunks WHERE doc_id = ? ORDER BY anchor", (doc_id,)
         ).fetchall()
         return tuple(_chunk_from_row(row) for row in rows)
+
+    def doc_states(self) -> tuple[DocState, ...]:
+        """Every document's index state, ordered by path — the dirty detector's input."""
+        rows = self._connection.execute("SELECT * FROM doc_state ORDER BY path").fetchall()
+        return tuple(
+            DocState(
+                doc_id=str(row["doc_id"]),
+                path=str(row["path"]),
+                source_digest=str(row["source_digest"]),
+                source_mtime=str(row["source_mtime"]),
+                env_digest=str(row["env_digest"]),
+                document_digest=str(row["document_digest"]),
+                chunks_digest=str(row["chunks_digest"]),
+                warnings=tuple(json.loads(row["warnings_json"])),
+            )
+            for row in rows
+        )
+
+    def cache_get(self, build_key: str) -> str | None:
+        """The CAS digest cached under `build_key`, or ``None`` on a miss."""
+        row = self._connection.execute(
+            "SELECT artifact_digest FROM build_cache WHERE build_key = ?", (build_key,)
+        ).fetchone()
+        return None if row is None else str(row["artifact_digest"])
 
     def counts(self) -> dict[str, int]:
         """Row counts per artifact class, for the snapshot manifest (spec 03 §7)."""

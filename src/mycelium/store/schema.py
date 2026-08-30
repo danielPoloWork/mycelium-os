@@ -16,8 +16,11 @@ two stores built from the same sources hold byte-identical column values.
 
 from typing import Final
 
-SCHEMA_VERSION: Final = "mycelium/store/v0"
-"""Bumped whenever the DDL below changes. v1 migration policy is rebuild (D-016)."""
+SCHEMA_VERSION: Final = "mycelium/store/v1"
+"""Bumped whenever the DDL below changes. v1 migration policy is rebuild (D-016):
+a *writer* that meets a foreign version recreates the file (the store is derived
+data, D-005 — ADR-0015); a *reader* refuses and points at `mycelium build`.
+History: v0 → v1 added `doc_state` (roadmap 3.1, incremental builds)."""
 
 META_SCHEMA_VERSION: Final = "schema_version"
 META_CURRENT_SNAPSHOT: Final = "current_snapshot"
@@ -125,6 +128,21 @@ CREATE TABLE IF NOT EXISTS build_cache (
     build_key       TEXT PRIMARY KEY,
     artifact_digest TEXT NOT NULL,
     created_at      TEXT NOT NULL
+);
+
+-- What the index currently holds per document, in build-key terms: the dirty
+-- detector's ground truth (roadmap 3.1, ADR-0015). One row per *indexed*
+-- document — quarantined documents have no row and are re-attempted every
+-- build. Deleting the document cascades the row, so the two can never disagree.
+CREATE TABLE IF NOT EXISTS doc_state (
+    doc_id          TEXT PRIMARY KEY REFERENCES documents(doc_id) ON DELETE CASCADE,
+    path            TEXT NOT NULL UNIQUE,
+    source_digest   TEXT NOT NULL,
+    source_mtime    TEXT NOT NULL,
+    env_digest      TEXT NOT NULL,
+    document_digest TEXT NOT NULL,
+    chunks_digest   TEXT NOT NULL,
+    warnings_json   TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS meta (
