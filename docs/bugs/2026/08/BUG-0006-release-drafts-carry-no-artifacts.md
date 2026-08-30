@@ -79,7 +79,7 @@ tag, which is how v0.2.0's draft was completed.
 
 ## References
 
-- Fixing PR: #29
+- Fixing PR: #30
 - `CHANGELOG` entry: `[Unreleased]` → Fixed
 - Related: [`docs/workflow/release.md`](../../../workflow/release.md) (the promise),
   [`docs/workflow/packaging.md`](../../../workflow/packaging.md) (the version invariant),

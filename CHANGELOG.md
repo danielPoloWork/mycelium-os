@@ -25,7 +25,7 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   artifacts while `docs/workflow/release.md` promised CI would attach them. The draft now
   carries `dist/*`, the artifact version is checked against the tag, and an existing tag
   can be re-drafted with `gh workflow run release.yml --ref main -f tag=v<X.Y.Z>`
-  ([BUG-0006](docs/bugs/2026/08/BUG-0006-release-drafts-carry-no-artifacts.md), #29).
+  ([BUG-0006](docs/bugs/2026/08/BUG-0006-release-drafts-carry-no-artifacts.md), #30).
 
 ### Security
 
