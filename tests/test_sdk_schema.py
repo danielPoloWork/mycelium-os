@@ -24,6 +24,8 @@ EXPECTED_FILES = {
     "edge.v0.schema.json",
     "entity.v0.schema.json",
     "manifest.v0.schema.json",
+    "eval-case.v0.schema.json",
+    "eval-run.v0.schema.json",
 }
 
 
@@ -46,8 +48,7 @@ def test_every_schema_is_self_describing_2020_12(tmp_path: Path) -> None:
 def test_schema_version_tags_match_record_names() -> None:
     for name, model in RECORD_MODELS.items():
         version = record_schema_version(model)
-        expected = "manifest" if name == "manifest" else name
-        assert version == f"mycelium/{expected}/v0"
+        assert version == f"mycelium/{name}/v0"
         assert version.rsplit("/", 1)[-1] == "v0"
 
 

@@ -28,3 +28,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0010](0010-adopt-cli-output-conventions.md) | CLI output conventions — one JSON document on stdout, ASCII chrome, UTF-8 content | Accepted |
 | [0011](0011-implement-mcp-stdio-in-repo.md) | Implement the MCP stdio server in-repo, and prove conformance with the reference client | Accepted |
 | [0012](0012-adopt-the-g6-determinism-gate.md) | State what determinism claims, and gate it with a reviewable golden | Accepted |
+| [0013](0013-adopt-the-evaluation-harness.md) | Evaluate against the grep incumbent, and publish the harness's limits with its numbers | Accepted |

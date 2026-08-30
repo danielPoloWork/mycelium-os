@@ -57,7 +57,11 @@ from mycelium.chunking import ChunkingPolicy, chunk_document
 from mycelium.markdown import Frontmatter, parse_markdown
 from mycelium.markdown.frontmatter import DELIMITER, parse_frontmatter
 from mycelium.sdk.identity import digest_json, new_ulid
-from mycelium.sdk.schema import RECORD_MODELS, record_schema_version
+from mycelium.sdk.schema import (
+    RECORD_MODELS,
+    SNAPSHOT_ARTIFACT_CLASSES,
+    record_schema_version,
+)
 from mycelium.sdk.types import (
     Chunk,
     Document,
@@ -365,8 +369,8 @@ def _build_locked(
                 config_digest=digest_json({"namespace": namespace, "chunking": "defaults"}),
                 toolchain=Toolchain(mycelium=__version__, python=platform.python_version()),
                 schema_versions={
-                    name: record_schema_version(model).rsplit("/", 1)[-1]
-                    for name, model in RECORD_MODELS.items()
+                    name: record_schema_version(RECORD_MODELS[name]).rsplit("/", 1)[-1]
+                    for name in SNAPSHOT_ARTIFACT_CLASSES
                 },
                 embedding=None,  # no vector stage in v0 (arrives at 3.3)
                 counts=SnapshotCounts(

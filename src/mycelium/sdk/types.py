@@ -44,10 +44,17 @@ __all__ = [
     "ChunkKind",
     "Document",
     "DocumentStats",
+    "CaseResult",
     "Edge",
     "EdgeProvenance",
     "EdgeStatus",
     "EdgeType",
+    "EvalCase",
+    "EvalRunManifest",
+    "EvalSlice",
+    "GateResult",
+    "MetricSummary",
+    "RelevantAnchor",
     "EmbeddingInfo",
     "Entity",
     "KirDocument",
@@ -223,6 +230,23 @@ class EdgeType(StrEnum):
     DERIVED_FROM = "derived_from"
     CITES = "cites"
     MENTIONS = "mentions"
+
+
+class EvalSlice(StrEnum):
+    """Evaluation slices v1 (spec 04 §7.1).
+
+    Metrics are always reported per slice: an overall win never excuses a
+    protected-slice loss.
+    """
+
+    EXACT = "exact"
+    SYMBOL = "symbol"
+    FACT = "fact"
+    CONCEPTUAL = "conceptual"
+    RELATIONSHIP = "relationship"
+    UNANSWERABLE = "unanswerable"
+    INJECTION = "injection"
+    SYNTHESIZED = "synthesized"
 
 
 class EdgeStatus(StrEnum):
@@ -602,3 +626,103 @@ class SnapshotManifest(Record):
     degraded: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     timings_ms: dict[str, NonNegativeInt]
+
+
+# ---------------------------------------------------------------------------
+# Evaluation records (spec 03 §10, spec 04 §7)
+# ---------------------------------------------------------------------------
+
+
+class RelevantAnchor(Record):
+    """One judged passage: where the answer lives, and how good it is.
+
+    Grades are the usual graded-relevance scale — 3 answers the query outright,
+    2 is strongly supporting, 1 is related context. 0 is not recorded: an
+    unjudged anchor is simply absent.
+    """
+
+    anchor: Anchor
+    grade: int = Field(ge=1, le=3)
+
+
+class EvalCase(Record):
+    """One judged query (spec 03 §10)."""
+
+    schema_version: Literal["mycelium/eval-case/v0"] = "mycelium/eval-case/v0"
+    case_id: NonEmptyStr
+    query: NonEmptyStr
+    slices: tuple[EvalSlice, ...] = ()
+    relevant: tuple[RelevantAnchor, ...] = ()
+    answerable: bool = True
+    note: str | None = Field(
+        default=None, description="Why this case exists, for whoever re-judges it."
+    )
+
+    @model_validator(mode="after")
+    def _judgments_match_answerability(self) -> Self:
+        if self.answerable and not self.relevant:
+            msg = f"{self.case_id}: an answerable case needs at least one relevant anchor"
+            raise ValueError(msg)
+        if not self.answerable and self.relevant:
+            msg = f"{self.case_id}: an unanswerable case must have no relevant anchors"
+            raise ValueError(msg)
+        return self
+
+
+class CaseResult(Record):
+    """What one retriever did with one case."""
+
+    case_id: NonEmptyStr
+    retrieved: tuple[Anchor, ...] = ()
+    ndcg_at_10: float = Field(ge=0.0, le=1.0)
+    recall_at_10: float = Field(ge=0.0, le=1.0)
+    recall_at_50: float = Field(ge=0.0, le=1.0)
+    reciprocal_rank: float = Field(ge=0.0, le=1.0)
+    citation_coverage: float = Field(ge=0.0, le=1.0)
+    abstained: bool = False
+    latency_ms: NonNegativeInt = 0
+
+
+class MetricSummary(Record):
+    """Averaged metrics over a set of cases (spec 04 §7.2)."""
+
+    cases: NonNegativeInt
+    ndcg_at_10: float = Field(ge=0.0, le=1.0)
+    recall_at_10: float = Field(ge=0.0, le=1.0)
+    recall_at_50: float = Field(ge=0.0, le=1.0)
+    mrr: float = Field(ge=0.0, le=1.0)
+    citation_coverage: float = Field(ge=0.0, le=1.0)
+    false_answer_rate: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Unanswerable cases that returned results."
+    )
+    latency_p50_ms: NonNegativeInt = 0
+    latency_p95_ms: NonNegativeInt = 0
+
+
+class GateResult(Record):
+    """One CI-enforced gate's verdict (spec 04 §7.3)."""
+
+    gate: NonEmptyStr
+    passed: bool
+    detail: NonEmptyStr
+
+
+class EvalRunManifest(Record):
+    """An evaluation run, reproducible from what it records (spec 04 §7.5).
+
+    A report without a manifest is exploratory and cannot satisfy a gate.
+    """
+
+    schema_version: Literal["mycelium/eval-run/v0"] = "mycelium/eval-run/v0"
+    run_id: Ulid
+    snapshot_id: Ulid
+    created_at: UtcDatetime
+    config_digest: Sha256Digest
+    case_set: NonEmptyStr
+    retriever: NonEmptyStr
+    retriever_config: dict[str, JsonValue] = Field(default_factory=dict)
+    toolchain: Toolchain
+    overall: MetricSummary
+    per_slice: dict[str, MetricSummary] = Field(default_factory=dict)
+    results: tuple[CaseResult, ...] = ()
+    gates: tuple[GateResult, ...] = ()
