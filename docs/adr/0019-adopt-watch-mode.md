@@ -61,6 +61,15 @@ test:
   an infinite rebuild loop wearing a plausible disguise. Relevance uses the same
   dot-directory rule discovery uses (spec 02 §3), so watch mode and the compiler agree on
   what the corpus is.
+- **Only accept events that mean the content changed** — and Linux is why that sentence
+  exists. inotify reports *reads* as well as writes, so a build's own plan scan, which opens
+  every document, produces a burst of `opened` / `closed_no_write` events on the corpus it
+  just read. Accepting those means every build triggers the next one, forever. Windows and
+  macOS never emit them, so the platform that needs the filter is not the one this was
+  developed on: CI's Ubuntu cells failed while Windows and macOS passed, on the very test
+  written to catch an infinite rebuild loop. `closed` (inotify's `IN_CLOSE_WRITE`) *is*
+  accepted — a completed write is the most reliable "this file is fully saved" signal there
+  is.
 - **`mycelium.toml` counts as a change.** It feeds the config digest (ADR-0014), so editing
   it changes what a build produces exactly as editing a document does.
 - **A failed build never ends the session.** A document mid-edit is routinely unparseable, a
@@ -125,6 +134,11 @@ loop. Refusing beats redefining a convention or silently ignoring a flag.
 - Testing shape worth reusing: the loop's event source is a queue, and a `ScriptedSource`
   declares batch boundaries instead of timing them — so multi-batch behaviour is asserted
   without sleeps and without depending on how long a build takes.
+- **The event-type filter is a module-level predicate, not a detail inside the adapter**,
+  precisely because the bug it prevents only reproduces on one platform. `is_change_event`
+  is asserted directly on every OS, and a second test pins our strings against watchdog's
+  own `EVENT_TYPE_*` constants so an upstream rename fails loudly rather than silently
+  reopening the loop.
 
 ## References
 

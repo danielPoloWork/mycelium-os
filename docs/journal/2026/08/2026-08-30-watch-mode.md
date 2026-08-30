@@ -46,7 +46,7 @@ is a test:
 - **A failed build never ends the session** — a document mid-edit is routinely unparseable.
 - **Build once before waiting**, because a watcher started after an edit hears nothing.
 
-## Two bugs my own tests caught
+## Three bugs the tests caught — two before CI, one only on Linux
 
 **The swallowed sentinel.** `collect_batch` returned the pending batch when a stop arrived
 mid-drain — and consumed the sentinel doing it. The next call blocked forever on an empty
@@ -64,6 +64,29 @@ which differ on file mtimes alone, since mtime becomes `created_at` (ADR-0009); 
 builds the same repository both ways. The other timed batch boundaries with `sleep`, which
 races the build; it now uses a `ScriptedSource` whose `QUIET` marker *declares* where one
 batch ends, so multi-batch behaviour is asserted without depending on how long a build takes.
+
+## The bug only Linux had
+
+CI caught a third one, and it is the most interesting: **Ubuntu failed while Windows and
+macOS passed**, on `test_the_observer_ignores_the_derived_store` — the very test written to
+catch an infinite rebuild loop.
+
+inotify reports *reads* as well as writes. The build's plan scan opens every document
+(ADR-0015: it reads and digests everything, every build), which produces a burst of
+`opened` / `closed_no_write` events on the corpus it just read. The handler accepted any
+event type, so on Linux **every build would have triggered the next one, forever**. Windows
+(`ReadDirectoryChangesW`) and macOS (FSEvents) never emit read events, so the platform that
+needs the filter is exactly the one I was not developing on.
+
+The fix is an event-type filter, and the shape of the fix matters: it is a module-level
+predicate (`is_change_event`) rather than a condition buried in the watchdog adapter, so it
+can be asserted on every platform — including the ones where the bug cannot reproduce. A
+second test pins our accepted strings against watchdog's own `EVENT_TYPE_*` constants, so an
+upstream rename fails loudly instead of quietly reopening the loop.
+
+Two lessons worth carrying: a cross-platform matrix earns its cost on exactly this class of
+bug, and *the test was right* — it failed for the reason it was written, on the only
+platform where that reason exists.
 
 ## What the real binary showed
 

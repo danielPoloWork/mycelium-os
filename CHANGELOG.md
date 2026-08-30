@@ -18,6 +18,8 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   config, another process holding the writer lock — is reported without ending the session.
   Each rebuild is the ordinary incremental build, so a watched repository publishes exactly
   what a hand-run `mycelium build` would (spec 02 §7's "identical guarantees", ADR-0019).
+  Only events that mean the content changed are accepted: on Linux, inotify also reports
+  reads, so a build's own plan scan would otherwise trigger the next build forever.
   Install the watcher with `pip install mycelium-os[watch]`.
 - The authored link graph, and the two MCP tools that were waiting for it (D-014).
   `mycelium build` now derives `links_to` edges from wikilinks, embeds, and Markdown links

@@ -46,15 +46,18 @@ from mycelium.config import CONFIG_FILENAME, MyceliumConfig, load_config
 from mycelium.store import STORE_DIRNAME
 
 __all__ = [
+    "CHANGE_EVENT_TYPES",
     "DEFAULT_DEBOUNCE_S",
     "STOP",
     "WATCH_EXTRA",
     "WatchStats",
     "WatcherUnavailableError",
     "collect_batch",
+    "is_change_event",
     "is_relevant",
     "run_watch",
     "watch",
+    "watched_paths",
 ]
 
 DEFAULT_DEBOUNCE_S: Final = 0.3
@@ -70,6 +73,26 @@ WATCH_EXTRA: Final = "watch"
 STOP: Final = object()
 """Sentinel that ends the loop. The observer pushes it on shutdown; tests use it
 to run a bounded session without a test-only parameter in the production loop."""
+
+CHANGE_EVENT_TYPES: Final = frozenset({"created", "deleted", "modified", "moved", "closed"})
+"""Event types that mean the content changed — and **Linux is why this exists**.
+
+inotify reports reads as well as writes, so a build's own plan scan (which opens
+every document) produces a burst of `opened` / `closed_no_write` events on the
+corpus it just read. A watcher that accepted those would rebuild forever *on
+Linux only*: Windows and macOS never emit them, so the platform that needs the
+filter is not the one a developer is likely to be testing on.
+
+`closed` is kept because inotify's ``IN_CLOSE_WRITE`` is a *completed write* —
+the most reliable "this file is now fully saved" signal there is. The values are
+watchdog's own ``EVENT_TYPE_*`` strings; a test pins them against the library so
+a rename upstream fails loudly instead of silently reopening the loop.
+"""
+
+
+def is_change_event(event_type: str) -> bool:
+    """Whether a filesystem event type means content changed rather than was read."""
+    return event_type in CHANGE_EVENT_TYPES
 
 
 class WatcherUnavailableError(RuntimeError):
@@ -283,7 +306,7 @@ def _start_observer(root: Path, events: "queue.Queue[Any]", knowledge_dir: str) 
 
     class _Handler(FileSystemEventHandler):
         def on_any_event(self, event: FileSystemEvent) -> None:
-            if event.is_directory:
+            if event.is_directory or not is_change_event(event.event_type):
                 return
             # A rename reports both ends; both matter, because a document can
             # arrive or leave by being moved.

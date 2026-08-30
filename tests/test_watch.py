@@ -30,9 +30,11 @@ import pytest
 from mycelium.build import build
 from mycelium.config import EmbeddingConfig, MyceliumConfig
 from mycelium.watch import (
+    CHANGE_EVENT_TYPES,
     STOP,
     WatchStats,
     collect_batch,
+    is_change_event,
     is_relevant,
     run_watch,
     watched_paths,
@@ -115,6 +117,39 @@ def test_the_derived_store_is_never_watched(tmp_path: Path) -> None:
         root / ".mycelium" / "cas" / "ab" / "cdef",
     ):
         assert is_relevant(written, root) is False
+
+
+def test_reading_a_file_is_not_a_change(tmp_path: Path) -> None:
+    """The Linux-only infinite loop this filter exists for.
+
+    inotify reports reads as well as writes, so a build's own plan scan — which
+    opens every document — produces `opened`/`closed_no_write` events on the
+    corpus it just read. Accepting those means every build triggers the next one,
+    forever, *on Linux only*: Windows and macOS never emit them, so the platform
+    that needs the filter is not the one this was written on.
+    """
+    assert is_change_event("opened") is False
+    assert is_change_event("closed_no_write") is False
+
+    for event_type in ("created", "modified", "deleted", "moved", "closed"):
+        assert is_change_event(event_type) is True
+
+
+def test_the_event_vocabulary_matches_the_watcher_library() -> None:
+    """Pin our strings against watchdog's constants, so a rename upstream fails
+    loudly here instead of silently reopening the rebuild loop."""
+    events = pytest.importorskip("watchdog.events")
+
+    from_library = {
+        events.EVENT_TYPE_CREATED,
+        events.EVENT_TYPE_DELETED,
+        events.EVENT_TYPE_MODIFIED,
+        events.EVENT_TYPE_MOVED,
+        events.EVENT_TYPE_CLOSED,
+    }
+    assert from_library == CHANGE_EVENT_TYPES
+    assert events.EVENT_TYPE_OPENED not in CHANGE_EVENT_TYPES
+    assert events.EVENT_TYPE_CLOSED_NO_WRITE not in CHANGE_EVENT_TYPES
 
 
 def test_documents_in_the_knowledge_tree_count(tmp_path: Path) -> None:
