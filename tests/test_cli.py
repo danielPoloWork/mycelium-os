@@ -339,6 +339,7 @@ def test_doctor_is_clean_after_a_build(tmp_path: Path) -> None:
     assert payload["status"] == "ok"
     assert {check["name"] for check in payload["checks"]} == {
         "toolchain",
+        "config",
         "store",
         "snapshot",
         "manifest",
