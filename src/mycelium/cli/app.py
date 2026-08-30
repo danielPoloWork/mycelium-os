@@ -20,8 +20,8 @@ from typing import Annotated, Final
 import typer
 
 from mycelium.__about__ import __version__
+from mycelium.build import BuildResult, collect_garbage, list_snapshots, read_current
 from mycelium.build import build as run_build
-from mycelium.build import collect_garbage, list_snapshots, read_current
 from mycelium.build import rollback as run_rollback
 from mycelium.build.lock import BuildLockedError
 from mycelium.build.snapshots import (
@@ -55,6 +55,8 @@ from mycelium.store import (
     SqliteStore,
     StoreError,
 )
+from mycelium.watch import WatcherUnavailableError, watched_paths
+from mycelium.watch import watch as run_watch_session
 
 __all__ = ["app", "main"]
 
@@ -205,8 +207,25 @@ def build(
             help="Fail instead of publishing a snapshot without vectors.",
         ),
     ] = False,
+    watch_mode: Annotated[
+        bool,
+        typer.Option("--watch", help="Rebuild whenever a document changes, until Ctrl-C."),
+    ] = False,
 ) -> None:
     """Compile the repository (incrementally) and publish a snapshot."""
+    if watch_mode:
+        if as_json:
+            # `--json` promises exactly one document on stdout (spec 05 §1) and a
+            # watch session is a stream of them. Refusing beats redefining the
+            # convention for one flag.
+            raise fail(
+                "--watch and --json cannot be combined: --json emits one document "
+                "and a watch session emits one per build",
+                code=ExitCode.USAGE,
+            )
+        _watch(path, clean=clean, require_vectors=require_vectors)
+        return
+
     try:
         result = run_build(path, clean=clean, require_vectors=require_vectors)
     except EmbeddingError as error:
@@ -249,6 +268,16 @@ def build(
         )
         return
 
+    _report_build(result, clean=clean)
+    if pinned:
+        typer.echo(f"Pinned mycelium_id into {len(pinned)} file(s) - commit them:")
+        for item in pinned:
+            detail(f"  {item}")
+
+
+def _report_build(result: BuildResult, *, clean: bool = False) -> None:
+    """Render one build's outcome — shared by a single build and a watch loop."""
+    manifest, stats = result.manifest, result.stats
     counts = manifest.counts
     success(f"published snapshot {manifest.snapshot_id}")
     detail(
@@ -266,10 +295,44 @@ def build(
         warn(warning)
     for reason in result.degraded_reasons:
         warn(reason)
-    if pinned:
-        typer.echo(f"Pinned mycelium_id into {len(pinned)} file(s) - commit them:")
-        for item in pinned:
-            detail(f"  {item}")
+
+
+def _watch(path: Path, *, clean: bool, require_vectors: bool) -> None:
+    """Run a watch session, reporting each build as an ordinary one."""
+    if clean or require_vectors:
+        # Both are single-shot intents: `--clean` says "distrust the cache once",
+        # `--require-vectors` says "fail this build". Neither has a meaning that
+        # survives an unattended loop, and silently ignoring them would be worse.
+        raise fail(
+            "--watch cannot be combined with --clean or --require-vectors; "
+            "run those as a one-off build first",
+            code=ExitCode.USAGE,
+        )
+
+    watched = list(watched_paths(path))
+    success(f"watching {path} for changes ({len(watched)} document(s)); Ctrl-C to stop")
+    try:
+        stats = run_watch_session(
+            path,
+            on_change=lambda paths: detail(
+                f"  changed: {', '.join(sorted(p.name for p in paths)[:4])}"
+                f"{' ...' if len(paths) > 4 else ''}"
+            ),
+            on_result=_report_build,
+            on_failure=lambda error: warn(f"build failed: {error}"),
+        )
+    except WatcherUnavailableError as error:
+        raise fail(str(error), code=ExitCode.USAGE) from error
+    except KeyboardInterrupt:  # pragma: no cover - the documented way to stop
+        stats = None
+
+    if stats is not None:
+        detail(f"  {stats.builds} build(s), {stats.failures} failure(s)")
+        if stats.builds > 1:
+            # Every build publishes a snapshot (ADR-0009's always-publish
+            # semantics), so a long session leaves a long history. Say so rather
+            # than deleting anything: what to retain is the operator's call.
+            detail(f"  {stats.builds} snapshots published; `mycelium gc` prunes the history")
 
 
 # ---------------------------------------------------------------------------

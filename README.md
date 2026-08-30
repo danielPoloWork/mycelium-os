@@ -40,6 +40,7 @@ The design of record is [RFC-0001](docs/rfc/0001-mycelium-os-v1.md); the specifi
 ```bash
 mycelium init              # scaffold knowledge/, mycelium.toml, the gitignore entry
 mycelium build             # compile what changed into a published snapshot
+mycelium build --watch     # ...and keep doing it as you edit (needs the `watch` extra)
 mycelium search "retry policy"          # add --hybrid for the vector leg, --explain for why
 mycelium show "mycelium://<doc-id>#retries/0"
 mycelium neighbors doc.md  # what this links to, and what links to it
