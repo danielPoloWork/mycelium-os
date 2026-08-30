@@ -32,6 +32,9 @@ embeddings = [
     "onnxruntime>=1.20",
     "tokenizers>=0.20",
 ]
+# Watch mode (roadmap 3.5). A development convenience, so the filesystem watcher
+# is opt-in too: an agent querying a published snapshot never needs it.
+watch = ["watchdog>=4.0"]
 
 [project.scripts]
 mycelium = "mycelium.cli:main"
@@ -61,6 +64,7 @@ dev = [
     "numpy>=1.26",
     "onnxruntime>=1.20",
     "tokenizers>=0.20",
+    "watchdog>=4.0",
 ]
 
 [tool.hatch.version]
@@ -104,5 +108,5 @@ files = ["src"]
 # onnxruntime and tokenizers ship no stubs; they are optional dependencies loaded
 # behind a runtime guard, so their surface is narrow and checked by tests instead.
 [[tool.mypy.overrides]]
-module = ["onnxruntime.*", "tokenizers.*"]
+module = ["onnxruntime.*", "tokenizers.*", "watchdog.*"]
 ignore_missing_imports = true

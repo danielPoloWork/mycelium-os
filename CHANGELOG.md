@@ -12,6 +12,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- `mycelium build --watch`: rebuild whenever a document or `mycelium.toml` changes, until
+  Ctrl-C. A save burst is debounced into one build, the derived store is never watched
+  (that loop is infinite), and a build that fails — an unparseable document, an invalid
+  config, another process holding the writer lock — is reported without ending the session.
+  Each rebuild is the ordinary incremental build, so a watched repository publishes exactly
+  what a hand-run `mycelium build` would (spec 02 §7's "identical guarantees", ADR-0019).
+  Install the watcher with `pip install mycelium-os[watch]`.
 - The authored link graph, and the two MCP tools that were waiting for it (D-014).
   `mycelium build` now derives `links_to` edges from wikilinks, embeds, and Markdown links
   between documents — everything `authored`, nothing mined — resolving them by basename,
