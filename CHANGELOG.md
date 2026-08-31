@@ -12,6 +12,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Hybrid retrieval abstains.** Lexical evidence is now the vector leg's precondition:
+  when the lexical leg finds nothing, the vector leg is withheld and hybrid returns an
+  empty result with a note saying why, instead of serving the 50 nearest neighbours of a
+  question the corpus cannot answer (ADR-0017 measured hybrid answering all four judged
+  unanswerable cases; it now abstains on all four, with every answerable metric
+  byte-identical). The guarantee is abstention parity with the G4-gated lexical baseline —
+  by construction, on any corpus, with no constant to calibrate. Every similarity floor
+  and score-gap rule was measured again and refused: eight near-domain unanswerable probes
+  score inside the answerable band, so a floor separates "alien" from "everything else",
+  not "unanswerable" from "answerable" (ADR-0025). Two side effects ship with it: the
+  empty query no longer returns results under hybrid, and an abstained query pays no
+  embedding latency.
+
 - **`[retrieval] include_candidate = false` is honoured**: a deployment can serve
   `verified` and `evidence` documents and withhold `candidate` ones. It was refused by
   name until now, because the store's filter held one value per vocabulary and this needs

@@ -331,3 +331,56 @@ def test_the_default_configuration_serves_every_status(tmp_path: Path) -> None:
     statuses = {item.hit.verification_status for item in outcome.hits}
     assert VerificationStatus.CANDIDATE in statuses
     assert not any("include_candidate" in note for note in outcome.notes)
+
+
+# ---------------------------------------------------------------------------
+# Abstention: lexical evidence is the vector leg's precondition (3.11, ADR-0025)
+# ---------------------------------------------------------------------------
+
+
+def test_hybrid_abstains_when_the_corpus_holds_no_lexical_evidence(tmp_path: Path) -> None:
+    """Cosine similarity ranks every chunk against every query, so a vector leg
+    asked for 50 candidates always returns 50 — hybrid answered every
+    unanswerable query (ADR-0017). With no lexical evidence at all, hybrid now
+    abstains instead of serving nearest neighbours."""
+    embedder = FakeEmbedder()
+    root = built(tmp_path, embedder)
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, config=HYBRID, query="sourdough levain autolyse", embedder=embedder)
+
+    assert outcome.hits == ()
+    assert outcome.legs == ("lexical",)
+    assert any("abstains" in note for note in outcome.notes)
+    assert "embed_query" not in outcome.timings_ms  # the leg never ran: no latency paid
+
+
+def test_one_matched_word_is_lexical_evidence_and_the_legs_fuse(tmp_path: Path) -> None:
+    embedder = FakeEmbedder()
+    root = built(tmp_path, embedder)
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, config=HYBRID, query="sourdough delivery levain", embedder=embedder)
+
+    assert outcome.legs == ("lexical", "vector")
+    assert outcome.hits
+    assert not any("abstains" in note for note in outcome.notes)
+
+
+def test_an_empty_query_abstains_under_hybrid(tmp_path: Path) -> None:
+    """Before the precondition, hybrid answered the empty query with the 50
+    nearest neighbours of an all-zero embedding."""
+    embedder = FakeEmbedder()
+    root = built(tmp_path, embedder)
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, config=HYBRID, query="", embedder=embedder)
+
+    assert outcome.hits == ()
+    assert "embed_query" not in outcome.timings_ms
+
+
+def test_lexical_profile_needs_no_precondition_and_gains_no_note(tmp_path: Path) -> None:
+    root = built(tmp_path)
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, "sourdough levain autolyse")
+
+    assert outcome.hits == ()
+    assert not any("abstains" in note for note in outcome.notes)
