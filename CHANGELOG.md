@@ -12,6 +12,28 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The evaluation gates run in CI** (`eval / gates G1-G6`). Every gate spec 04 §7.3
+  names is now accounted for: G1 and G4 as before, G3 against a baseline committed to the
+  repository (`mycelium eval --bless` writes it), G5 against the 150 ms query budget with
+  the corpus size it was measured on stated beside it, G6 delegated to the compiler gate
+  that owns it, and G7 explained. A gate table with silent omissions reads as though the
+  missing gates passed (ADR-0021).
+- `mycelium eval --tasks`: the agent-task suite D-010 asks for — 22 judged tasks run
+  through the product and through the grep loop an agent would otherwise use, scoring what
+  each puts in front of a model and what it costs. On this repository: evidence found on
+  64 % of tasks against grep's 27 %, at half the context and a tenth of the latency. It
+  reports rather than gates, and ADR-0022 states plainly what a measurement without a
+  model in the loop cannot tell you.
+- `[project] exclude` — glob patterns naming the Markdown in a tree that is not
+  documentation (test fixtures, vendored samples, generated reports). Patterns match a
+  document's path, any ancestor directory, or its file name; `*` stays within one segment
+  and `**` spans them. `.mycelium/` and `export/` need no pattern: the compiler never
+  reads what it writes.
+- Injection resistance is now a tested property against a corpus that carries attacks
+  (spec 04 §6): adversarial text comes back verbatim, inside the typed `text` field,
+  labelled with its trust class, and never lifted into a field a client could read as
+  protocol.
+
 - `mycelium export [--out DIR] [--with-markdown]` writes the published snapshot as the
   JSONL interchange bundle spec 03 §9 draws — `manifest.json` verbatim, one record per
   line under `records/`, an optional verbatim copy of the compiled Markdown. The bundle
@@ -113,6 +135,27 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 ### Removed
 
 ### Fixed
+
+- The evaluation corpus included this repository's own test fixtures, so an `unanswerable`
+  case was answered by a fixture and gate G4 reported 25 % where the product retriever
+  now reports 0 %. The judged case was not touched — the corpus was wrong, not the case
+  ([BUG-0007](docs/bugs/2026/08/BUG-0007-eval-corpus-includes-test-fixtures.md), #37).
+- A build indexed the export bundle it had just written, so every build after
+  `mycelium export --with-markdown` quarantined the copies as duplicate identities and
+  reported a warning for a file nobody wrote
+  ([BUG-0010](docs/bugs/2026/08/BUG-0010-build-indexes-its-own-export.md), #37).
+- A quoted YAML key — the form PyYAML emits for `on`, `off`, `yes`, and `no` — made a
+  frontmatter block parse as prose, losing the document's title, tags, and collection
+  ([BUG-0011](docs/bugs/2026/08/BUG-0011-quoted-yaml-key-hides-frontmatter.md), #37).
+- **A date in a non-contract frontmatter property quarantined the whole document.** YAML
+  reads an unquoted `2026-08-29` as a date, which the record contract rejects, so a
+  property as ordinary as Obsidian's `created:` removed its document from the index. This
+  project's entire bug ledger was missing from its own corpus
+  ([BUG-0012](docs/bugs/2026/08/BUG-0012-a-date-property-quarantines-the-document.md), #37).
+- Links to files that exist but are not documents — `LICENSE`, a path under an excluded
+  directory — were reported as unresolved, burying this repository's builds under ~150
+  warnings and training the reader to skip them. Now only genuinely missing targets warn
+  ([BUG-0013](docs/bugs/2026/08/BUG-0013-links-to-existing-files-warn-as-unresolved.md), #37).
 
 - The MCP server's bare-interpreter entry point (`python -m mycelium.mcp`) wrote its
   JSON-RPC stream without configuring the encoding, so on Windows it used the console code

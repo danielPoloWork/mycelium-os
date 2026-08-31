@@ -79,6 +79,32 @@ class ProjectConfig(_Section):
     )
     knowledge_dir: str = "knowledge"
     sources_dir: str = "sources"
+    exclude: tuple[str, ...] = ()
+    """Paths that are not documentation, however Markdown they look.
+
+    A repository's tree carries more than its knowledge: test fixtures,
+    vendored samples, generated reports. Indexing those is not a cosmetic
+    problem — this project's own eval corpus scored an `unanswerable` case
+    against a test fixture and reported gate G4 red for it (BUG-0007).
+
+    A pattern matches a document's repository-relative POSIX path, any of its
+    ancestor directories, or its file name. `*` stays within one segment,
+    `**` spans segments, `?` is one character. So `tests` drops a tree,
+    `docs/journal` drops a subtree, `**/fixtures` drops it wherever it sits,
+    and `*.draft.md` drops by name. `.mycelium/` and `export/` need no pattern:
+    the compiler never reads what it writes (ADR-0021).
+    """
+
+    @model_validator(mode="after")
+    def _exclusions_are_relative(self) -> Self:
+        for pattern in self.exclude:
+            if not pattern.strip():
+                msg = "[project] exclude must not contain empty patterns"
+                raise ValueError(msg)
+            if pattern.startswith("/") or PureWindowsPath(pattern).is_absolute():
+                msg = f"[project] exclude pattern {pattern!r} must be relative to the repository"
+                raise ValueError(msg)
+        return self
 
     @model_validator(mode="after")
     def _directories_are_relative(self) -> Self:

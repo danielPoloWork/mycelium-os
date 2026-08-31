@@ -27,6 +27,7 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from mycelium.build import build  # noqa: E402
 from mycelium.eval.cases import write_cases  # noqa: E402
+from mycelium.eval.retrievers import build_retriever  # noqa: E402
 from mycelium.sdk.types import EvalCase, EvalSlice, RelevantAnchor  # noqa: E402
 from mycelium.store import SqliteStore  # noqa: E402
 
@@ -113,7 +114,7 @@ JUDGMENTS: tuple[tuple[str, str, tuple[EvalSlice, ...], tuple[tuple[str, int], .
         "which Python version does the project require",
         (EvalSlice.FACT,),
         (
-            ("README.md#build-test-run/0", 3),
+            ("README.md#build-test-run/1", 3),
             ("docs/adr/0003-adopt-flat-python-src-layout.md#context/0", 1),
         ),
         "The answer is in the README, with supporting context in an ADR.",
@@ -164,7 +165,7 @@ JUDGMENTS: tuple[tuple[str, str, tuple[EvalSlice, ...], tuple[tuple[str, int], .
         "why does the build write mycelium_id into frontmatter",
         (EvalSlice.CONCEPTUAL,),
         (
-            ("docs/adr/0009-adopt-build-publication-semantics.md#decision/0", 3),
+            ("docs/adr/0009-adopt-build-publication-semantics.md#decision/2", 3),
             ("docs/adr/0009-adopt-build-publication-semantics.md#alternatives-considered/0", 2),
         ),
         "The spec contradicts itself here; the ADR is the only place the answer exists.",
@@ -174,7 +175,7 @@ JUDGMENTS: tuple[tuple[str, str, tuple[EvalSlice, ...], tuple[tuple[str, int], .
         "which ADR supersedes the cross-language source layout",
         (EvalSlice.RELATIONSHIP,),
         (
-            ("docs/adr/0003-adopt-flat-python-src-layout.md#decision/0", 3),
+            ("docs/adr/0003-adopt-flat-python-src-layout.md#/0", 3),
             ("docs/adr/0002-adopt-cross-language-source-layout.md#decision/0", 2),
             ("docs/adr/README.md#index/0", 2),
         ),
@@ -204,28 +205,28 @@ JUDGMENTS: tuple[tuple[str, str, tuple[EvalSlice, ...], tuple[tuple[str, int], .
     ),
     (
         "q-0017",
-        "kubernetes helm istio deployment",
+        "sourdough levain autolyse fermentation",
         (EvalSlice.UNANSWERABLE,),
         (),
         "Vocabulary the corpus does not contain at all; must return nothing.",
     ),
     (
         "q-0018",
-        "graphql resolver subscriptions",
+        "peregrine falcon stoop velocity",
         (EvalSlice.UNANSWERABLE,),
         (),
         "As q-0017, in a different domain.",
     ),
     (
         "q-0019",
-        "kafka zookeeper broker rebalance",
+        "counterpoint fugue stretto cadenza",
         (EvalSlice.UNANSWERABLE,),
         (),
         "As q-0017, in a different domain.",
     ),
     (
         "q-0020",
-        "terraform ansible provisioning playbook",
+        "tidal estuary sediment deposition",
         (EvalSlice.UNANSWERABLE,),
         (),
         "As q-0017, in a different domain.",
@@ -273,12 +274,60 @@ def main() -> int:
                 for relevant in case.relevant
                 if store.get_chunk(relevant.anchor) is None
             ]
+            # An `unanswerable` case is a claim about the corpus, and the corpus
+            # keeps changing — including because we *document the case itself*.
+            # That is not hypothetical: writing BUG-0007 up put an unanswerable
+            # query's own words into the corpus, and gate G4 went red for a
+            # document about the eval set (roadmap 3.7). Checking it here makes
+            # the rule mechanical instead of a convention nobody can enforce.
+            retrievers = [
+                ("mycelium", build_retriever("mycelium", store)),
+                # grep matches word *prefixes*, so a term that merely starts a
+                # corpus word ("bulk" inside "Bulkhead") answers the query for
+                # the baseline and not for us. A case that separates the two is
+                # measuring tokenisation, not abstention.
+                ("grep", build_retriever("grep", store)),
+            ]
+            # A heading-stub chunk cited as *the* evidence is a skim-judgment:
+            # it reads as the right section and carries none of the answer. One
+            # cost this project 22 task judgments and a case (roadmap 3.7).
+            stubs = [
+                (case.case_id, relevant.anchor, chunk.tokens)
+                for case in cases
+                for relevant in case.relevant
+                if relevant.grade == 3
+                and (chunk := store.get_chunk(relevant.anchor)) is not None
+                and chunk.tokens < 30
+            ]
+            answered = [
+                (f"{case.case_id} ({name})", found)
+                for case in cases
+                if not case.answerable
+                for name, retriever in retrievers
+                if (found := retriever.search(case.query, 3))
+            ]
+
+    if stubs:
+        print("These grade-3 anchors are heading stubs - check they carry the answer:")
+        for case_id, anchor, tokens in stubs:
+            print(f"  {case_id}: {anchor} ({tokens} tokens)")
 
     if missing:
         print("These judged anchors do not exist in the corpus:")
         for case_id, anchor in missing:
             print(f"  {case_id}: {anchor}")
         print("\nA heading probably moved. Re-judge the case against the current text.")
+        return 1
+
+    if answered:
+        print("These `unanswerable` cases are answerable against the current corpus:")
+        for case_id, found in answered:
+            print(f"  {case_id} -> {found[0]}")
+        print(
+            "The corpus grew into the query's vocabulary. Re-draw the query from a "
+            "domain this project will never document - and never quote an unanswerable "
+            "query verbatim in prose, or documenting it will answer it."
+        )
         return 1
 
     destination = ROOT / "eval" / "cases.jsonl"

@@ -7,24 +7,31 @@ evaluates the gates that are meaningful at this stage, and writes a run manifest
 because "a report without a manifest is exploratory and cannot satisfy a gate"
 (§7.5).
 
-Which gates v0 can honestly evaluate:
+Every gate spec 04 §7.3 names is accounted for here — enforced, delegated, or
+explained. A gate table with silent omissions reads as though the missing ones
+were satisfied:
 
 ======  ==========================================================================
 G1      **Enforced.** Citation coverage must be 1.00 — every returned anchor
-        resolves in the snapshot. Nothing else about the corpus is needed to
-        check it, and it is the failure this product cannot tolerate.
-G4      **Enforced.** False-answer rate on `unanswerable` cases ≤ 5 %: a query
-        whose vocabulary the corpus does not contain must return nothing rather
-        than confident noise.
+        resolves in the snapshot. It is the failure this product cannot tolerate.
 G2      **Enforced when the hybrid retriever runs** (roadmap 3.3). Hybrid must
         beat the lexical baseline by ≥ 5 % nDCG@10 with no slice worse than
         −2 %, on the same cases and the same snapshot; otherwise the shipped
         default is lexical-only and says so.
-G3      Not applicable: no previous release on a frozen set to regress against.
-        It becomes meaningful once a release set is frozen (3.7).
-G5      Measured, not gated: latency percentiles are recorded, but the budget is
-        defined against the 10⁵-chunk reference profile (3.7), not this corpus.
-G6      Elsewhere: the determinism gate is a compiler gate (roadmap 2.10).
+G3      **Enforced against a committed baseline** (roadmap 3.7). No slice may
+        regress more than 2 % against `eval/baselines/<set>.json`. Without one
+        the gate says so rather than passing silently; `--bless` writes it.
+G4      **Enforced.** False-answer rate on `unanswerable` cases ≤ 5 %: a query
+        whose vocabulary the corpus does not contain must return nothing rather
+        than confident noise.
+G5      **Enforced, with its limit stated.** Query p95 ≤ 150 ms (spec 04 §1),
+        measured on the corpus at hand and reported with its chunk count — the
+        budget is defined at the 10⁵-chunk reference profile, so passing here is
+        a floor rather than the measurement the spec asks for.
+G6      **Delegated.** Determinism is a compiler gate with its own CI job and
+        its own golden (ADR-0012); reported so the table is complete.
+G7      Not applicable: grounding gates a *synthesized document's* promotion, and
+        the synthesis lane arrives at roadmap 4.4.
 ======  ==========================================================================
 
 Absolute quality targets are deliberately absent. Pre-GA the spec enforces
@@ -36,6 +43,7 @@ import json
 import platform
 import time
 from collections.abc import Sequence
+from contextlib import suppress
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
@@ -63,7 +71,12 @@ from mycelium.sdk.types import (
 from mycelium.store import STORE_DIRNAME, SqliteStore
 
 __all__ = [
+    "BASELINES_DIRNAME",
     "EVAL_DIRNAME",
+    "QUERY_BUDGET_P95_MS",
+    "baseline_path",
+    "read_baseline",
+    "write_baseline",
     "write_run",
     "MAX_FALSE_ANSWER_RATE",
     "RETRIEVAL_LIMIT",
@@ -77,6 +90,12 @@ RETRIEVAL_LIMIT: Final = 50
 
 MAX_FALSE_ANSWER_RATE: Final = 0.05
 """Gate G4 for v1; tightens at 1.0."""
+
+QUERY_BUDGET_P95_MS: Final = 150
+"""Gate G5: the end-to-end query budget spec 04 §1 sets."""
+
+BASELINES_DIRNAME: Final = "baselines"
+"""Committed per-slice scores a release is measured against (gate G3)."""
 
 
 class EvaluationError(RuntimeError):
@@ -179,6 +198,79 @@ def _relative(after: float, before: float) -> float:
     return (after - before) / before
 
 
+def _gate_g3(per_slice: dict[str, MetricSummary], baseline: dict[str, float] | None) -> GateResult:
+    """Gate G3 — no release may regress a protected slice by more than 2 % (spec 04 §7.3).
+
+    The baseline is a committed file, not the previous run in `.mycelium/`: a
+    gate that compares against whatever happens to be on this machine compares
+    against nothing in CI, where every run starts empty. Establishing it is a
+    deliberate act (`mycelium eval --bless`), so a regression can never be
+    absorbed by quietly moving the line.
+    """
+    if not baseline:
+        return GateResult(
+            gate="G3 No regression",
+            passed=True,
+            detail=(
+                "no committed baseline for this set; run `mycelium eval --bless` to "
+                "establish one - until then there is nothing to regress against"
+            ),
+        )
+    regressions = []
+    for name, summary in sorted(per_slice.items()):
+        before = baseline.get(name)
+        if before is None:
+            continue
+        delta = _relative(summary.ndcg_at_10, before)
+        if delta < -0.02:
+            regressions.append(f"{name} {before:.4f} -> {summary.ndcg_at_10:.4f} ({delta:+.1%})")
+    fresh = sorted(set(per_slice) - set(baseline))
+    detail = f"{len(baseline)} slice(s) compared"
+    if fresh:
+        detail += f"; new since the baseline: {', '.join(fresh)}"
+    if regressions:
+        detail += f"; regressions beyond -2%: {'; '.join(regressions)}"
+    return GateResult(gate="G3 No regression", passed=not regressions, detail=detail)
+
+
+def _gate_g5(overall: MetricSummary, chunks: int) -> GateResult:
+    """Gate G5 — the query budget from spec 04 §1: p95 ≤ 150 ms end to end.
+
+    Enforced on whatever corpus was run, and *reported with its size*, because
+    the budget is defined against the 10⁵-chunk reference profile. Passing here
+    is necessary and not sufficient: a small corpus that misses the budget is
+    certainly broken, while one that meets it has proved only that it meets it
+    at this size (ADR-0022).
+    """
+    within = overall.latency_p95_ms <= QUERY_BUDGET_P95_MS
+    return GateResult(
+        gate="G5 Performance",
+        passed=within,
+        detail=(
+            f"query p95 {overall.latency_p95_ms} ms against a {QUERY_BUDGET_P95_MS} ms budget, "
+            f"on {chunks} chunks (the budget is stated for the 10^5-chunk reference profile, "
+            f"so this is a floor, not the measurement spec 04 §1 asks for)"
+        ),
+    )
+
+
+def _gate_g6() -> GateResult:
+    """Gate G6 — determinism, which is a *compiler* gate with its own CI job.
+
+    Reported here rather than re-run: spec 04 §7.3 lists it among the gates and
+    says it "runs with eval in CI", so a gate table that silently omitted it
+    would read as though determinism were unguarded.
+    """
+    return GateResult(
+        gate="G6 Determinism",
+        passed=True,
+        detail=(
+            "enforced elsewhere: byte-identical rebuild against the committed golden "
+            "(`pytest -m determinism`, its own CI job, ADR-0012)"
+        ),
+    )
+
+
 def _gates(overall: MetricSummary, unanswerable_cases: int) -> tuple[GateResult, ...]:
     coverage_ok = overall.citation_coverage == 1.0
     gates = [
@@ -232,6 +324,56 @@ def _score(
     return results, _summarise(cases, results), per_slice
 
 
+def baseline_path(root: Path, case_set: str) -> Path:
+    """Where a set's committed baseline lives: `eval/baselines/<set>.json`."""
+    return root / EVAL_DIRNAME / BASELINES_DIRNAME / f"{Path(case_set).stem}.json"
+
+
+def read_baseline(root: Path, case_set: str, retriever: str) -> dict[str, float] | None:
+    """The per-slice scores a release is measured against, if one is committed."""
+    path = baseline_path(root, case_set)
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    entry = data.get(retriever)
+    if not isinstance(entry, dict):
+        return None
+    slices = entry.get("per_slice")
+    return slices if isinstance(slices, dict) else None
+
+
+def write_baseline(root: Path, manifest: EvalRunManifest) -> Path:
+    """Freeze this run's per-slice scores as the baseline gate G3 compares against.
+
+    Committed to the repository rather than left in `.mycelium/`, because a
+    baseline nobody can see is a baseline nobody can challenge — and because CI
+    starts from an empty derived store every time (spec 04 §7.5).
+    """
+    path = baseline_path(root, manifest.case_set)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data: dict[str, object] = {}
+    if path.is_file():
+        with suppress(OSError, ValueError):
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                data = loaded
+    data[manifest.retriever] = {
+        "blessed_from_snapshot": manifest.snapshot_id,
+        "toolchain": manifest.toolchain.model_dump(mode="json"),
+        "overall_ndcg_at_10": round(manifest.overall.ndcg_at_10, 6),
+        "per_slice": {
+            name: round(summary.ndcg_at_10, 6)
+            for name, summary in sorted(manifest.per_slice.items())
+        },
+    }
+    text = json.dumps(data, indent=2, sort_keys=True) + "\n"
+    path.write_text(text, encoding="utf-8", newline="\n")
+    return path
+
+
 def run_evaluation(
     root: Path,
     cases: Sequence[EvalCase],
@@ -266,7 +408,11 @@ def run_evaluation(
         results, overall, per_slice = _score(cases, retriever, resolvable)
         retriever_config = dict(retriever.config)
 
+        chunks = store.counts()["chunks"]
         gates = list(_gates(overall, sum(1 for case in cases if not case.answerable)))
+        gates.append(_gate_g3(per_slice, read_baseline(root, case_set, retriever_name)))
+        gates.append(_gate_g5(overall, chunks))
+        gates.append(_gate_g6())
         if retriever_name == "hybrid":
             _, lexical, lexical_slices = _score(
                 cases, build_retriever("mycelium", store), resolvable

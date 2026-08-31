@@ -41,7 +41,15 @@ from mycelium.cli.output import (
 )
 from mycelium.config import ConfigError, MyceliumConfig, RetrievalConfig, load_config
 from mycelium.embedding import Embedder, EmbeddingError, build_embedder
-from mycelium.eval import EvaluationError, load_cases, run_evaluation, write_run
+from mycelium.eval import (
+    EvaluationError,
+    load_cases,
+    load_tasks,
+    run_evaluation,
+    run_task_suite,
+    write_baseline,
+    write_run,
+)
 from mycelium.export import DEFAULT_EXPORT_DIRNAME, ExportError, export_bundle
 from mycelium.graph import MAX_DEPTH
 from mycelium.graph import neighbours as graph_neighbours
@@ -798,6 +806,40 @@ def doctor(
 # ---------------------------------------------------------------------------
 
 
+def _run_task_suite(path: Path, *, as_json: bool) -> None:
+    """Run the agent-task suite: what each strategy puts in front of a model, and its cost."""
+    suite = path / "eval" / "tasks.jsonl"
+    try:
+        loaded = load_tasks(suite)
+    except (OSError, ValueError) as error:
+        raise fail(f"cannot read {suite}: {error}") from error
+
+    try:
+        report = run_task_suite(path, loaded)
+    except StoreError as error:
+        raise fail(str(error)) from error
+
+    if as_json:
+        emit_json(report.as_dict())
+        return
+
+    success(f"{report.tasks} agent tasks, two strategies")
+    for name in ("mycelium", "grep"):
+        summary = report.summary(name)
+        if not summary:
+            continue
+        detail(
+            f"  {name:<9} evidence found {summary['success_rate']:.0%}  "
+            f"mean {summary['mean_tokens']:.0f} tokens  "
+            f"{summary['mean_documents_read']:.1f} documents  "
+            f"p95 {summary['p95_latency_ms']:.0f} ms"
+        )
+    mycelium_tokens = report.summary("mycelium").get("total_tokens", 0.0)
+    grep_tokens = report.summary("grep").get("total_tokens", 0.0)
+    if mycelium_tokens:
+        detail(f"  grep spends {grep_tokens / mycelium_tokens:.1f}x the context to answer")
+
+
 @app.command()
 def eval(  # noqa: A001 - the spec names this command `mycelium eval`
     path: Annotated[Path, typer.Argument(help="Repository root.")] = Path(),
@@ -807,12 +849,27 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
     retriever: Annotated[
         str, typer.Option("--retriever", help="mycelium | grep (the D-010 baseline).")
     ] = "mycelium",
+    tasks: Annotated[
+        bool,
+        typer.Option("--tasks", help="Run the agent-task suite against the grep loop."),
+    ] = False,
+    bless: Annotated[
+        bool,
+        typer.Option(
+            "--bless",
+            help="Freeze this run as the baseline gate G3 compares against.",
+        ),
+    ] = False,
     gate: Annotated[
         bool, typer.Option("--gate", help="Exit non-zero if a gate fails (CI mode).")
     ] = False,
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
     """Score a judged case set against the published snapshot."""
+    if tasks:
+        _run_task_suite(path, as_json=as_json)
+        return
+
     resolved = case_set if case_set.is_absolute() else path / case_set
     try:
         cases = load_cases(resolved)
@@ -852,6 +909,10 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
             else:
                 typer.echo(line, err=True)
         detail(f"  run manifest: {written}")
+
+    if bless:
+        frozen = write_baseline(path, manifest)
+        detail(f"  baseline: {frozen}")
 
     if gate and failed:
         raise typer.Exit(int(ExitCode.FAILED))

@@ -538,11 +538,12 @@ watchdog = pytest.importorskip("watchdog", reason="the `watch` extra is not inst
 
 def test_the_observer_reports_a_real_edit(tmp_path: Path) -> None:
     """One end-to-end check that the adapter is wired to the real filesystem."""
+    from mycelium.corpus import CorpusScope
     from mycelium.watch import _start_observer
 
     root = repo(tmp_path)
     events: queue.Queue[object] = queue.Queue()
-    observer = _start_observer(root, events, "knowledge")
+    observer = _start_observer(root, events, CorpusScope())
     try:
         target = root / "knowledge" / "retries.md"
         target.write_text("# Retries\n\nEdited on disk.\n", encoding="utf-8")
@@ -557,11 +558,12 @@ def test_the_observer_reports_a_real_edit(tmp_path: Path) -> None:
 
 def test_the_observer_ignores_the_derived_store(tmp_path: Path) -> None:
     """The infinite-loop guard, over a real watcher this time."""
+    from mycelium.corpus import CorpusScope
     from mycelium.watch import _start_observer
 
     root = repo(tmp_path)
     events: queue.Queue[object] = queue.Queue()
-    observer = _start_observer(root, events, "knowledge")
+    observer = _start_observer(root, events, CorpusScope())
     try:
         # The corpus is pre-pinned, so this build writes only into `.mycelium/`:
         # a store, a manifest, CURRENT, CAS blobs. None of it may come back as a

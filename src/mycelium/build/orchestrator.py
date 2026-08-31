@@ -70,6 +70,7 @@ from mycelium.build.publish import (
 from mycelium.build.snapshots import record_snapshot_state
 from mycelium.chunking import ChunkingPolicy, chunk_document
 from mycelium.config import MyceliumConfig, load_config
+from mycelium.corpus import CorpusScope, discover
 from mycelium.embedding import Embedder, EmbedderUnavailableError, build_embedder
 from mycelium.graph import (
     LinkRef,
@@ -213,23 +214,14 @@ class _Timer:
 # ---------------------------------------------------------------------------
 
 
-def _discover(root: Path, knowledge_dir: str = "knowledge") -> list[Path]:
+def _discover(root: Path, scope: CorpusScope) -> list[Path]:
     """The documents a build compiles, in deterministic (sorted) order.
 
-    The authored tree is `knowledge_dir` when it exists (spec 02 §3, configurable
-    via ``[project] knowledge_dir``); otherwise the whole root is scanned so a
-    plain docs repository gets value with zero layout ceremony (TTFV, doc 01 §3).
-    Dot-prefixed directories are never entered — that one rule excludes
-    ``.mycelium``, ``.git``, and editor litter.
+    Delegated to :mod:`mycelium.corpus`, which watch mode reads too: the two
+    must agree on what the corpus is, and agreeing by having the same rule
+    written twice is agreeing by coincidence (ADR-0021).
     """
-    base = root / knowledge_dir
-    scope = base if base.is_dir() else root
-    found = [
-        path
-        for path in scope.rglob("*.md")
-        if not any(part.startswith(".") for part in path.relative_to(root).parts)
-    ]
-    return sorted(found, key=lambda path: path.relative_to(root).as_posix())
+    return discover(root, scope)
 
 
 # ---------------------------------------------------------------------------
@@ -730,7 +722,7 @@ def _build_locked(
     embedder, embed_reason = _resolve_embedder(config, require_vectors=require_vectors)
     env = BuildEnv.compute(namespace=namespace, policy=policy)
     env_digest = env.digest
-    sources = _discover(root, config.project.knowledge_dir)
+    sources = _discover(root, CorpusScope.of(config.project))
     timer.lap("discover")
 
     store = SqliteStore.open(root)
@@ -886,7 +878,7 @@ def _build_locked(
             # global: adding one document can settle a dangling link in a
             # document this build never touched (ADR-0018). Extraction stayed
             # per-document and cached, so this is dictionary work, not parsing.
-            edges, link_warnings = resolve_graph(tuple(live_states.values()), namespace)
+            edges, link_warnings = resolve_graph(tuple(live_states.values()), namespace, root=root)
             manifest_warnings.extend(link_warnings)
             store.clear_edges()
             store.put_edges(edges)

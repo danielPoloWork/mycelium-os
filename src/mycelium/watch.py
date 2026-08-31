@@ -37,13 +37,14 @@ import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
 from mycelium.build import BuildResult
 from mycelium.build import build as run_build
 from mycelium.build.lock import BuildLockedError
 from mycelium.config import CONFIG_FILENAME, MyceliumConfig, load_config
+from mycelium.corpus import CorpusScope
 from mycelium.sdk.identity import digest_text
 from mycelium.store import STORE_DIRNAME
 
@@ -111,37 +112,34 @@ class WatchStats:
     changes: int
 
 
-def is_relevant(path: Path, root: Path, knowledge_dir: str = "knowledge") -> bool:
+def is_relevant(path: Path, root: Path, scope: CorpusScope | None = None) -> bool:
     """Whether a changed path could change what the next build produces.
 
-    Three rules, and the first is the one that matters: **never the derived
-    store**. A build writes into `.mycelium/`, so treating those writes as
-    changes is an infinite loop. The dot-directory rule that excludes it is the
-    same one discovery uses, so watch mode and the compiler agree on what the
-    corpus is (spec 02 §3).
+    The corpus rule is not restated here — it is read from
+    :mod:`mycelium.corpus`, the same object discovery uses, so watch mode and the
+    compiler cannot drift apart about what a document is (ADR-0021). That matters
+    twice over: a watcher firing for a file the compiler ignores rebuilds nothing
+    forever, and the derived store is excluded by the same rule that keeps a
+    build's own writes from triggering the next build.
 
     `mycelium.toml` counts too: it feeds the config digest, so editing it changes
     what a build produces exactly as editing a document does (ADR-0014).
     """
+    settings = scope or CorpusScope()
     try:
         relative = path.resolve().relative_to(root.resolve())
     except (ValueError, OSError):
         return False  # outside the repository, or gone before we could look
 
-    parts = relative.parts
-    if not parts or any(part.startswith(".") for part in parts):
-        return False
-    if relative.as_posix() == CONFIG_FILENAME:
+    posix = PurePosixPath(relative.as_posix())
+    if posix.as_posix() == CONFIG_FILENAME:
         return True
     if path.suffix.lower() != ".md":
         return False
-    base = root / knowledge_dir
-    if base.is_dir():
-        return parts[0] == knowledge_dir
-    return True
+    return settings.contains(posix, authored_tree=settings.has_authored_tree(root))
 
 
-def has_real_change(root: Path, batch: Iterable[Path], knowledge_dir: str = "knowledge") -> bool:
+def has_real_change(root: Path, batch: Iterable[Path], scope: CorpusScope | None = None) -> bool:
     """Whether anything in `batch` actually differs from what the store indexed.
 
     **Every platform reports a build's own reads as events, by a different
@@ -249,7 +247,7 @@ def run_watch(
     on_result: Callable[[BuildResult], None] | None = None,
     on_failure: Callable[[Exception], None] | None = None,
     reload_config: bool = True,
-    knowledge_dir: str = "knowledge",
+    scope: CorpusScope | None = None,
 ) -> WatchStats:
     """Build whenever `source` reports a *real* change, until it reports :data:`STOP`.
 
@@ -276,7 +274,7 @@ def run_watch(
         # Prove something actually changed before building. Every platform
         # reports a build's own reads as events by some route, so without this
         # each build would trigger the next one and publish a snapshot for it.
-        if not has_real_change(root, batch, knowledge_dir):
+        if not has_real_change(root, batch, scope):
             continue
         if on_change is not None:
             on_change(batch)
@@ -325,7 +323,7 @@ def watch(
     begin by serving a stale snapshot and look like it was working.
     """
     settings = config if config is not None else load_config(root)
-    knowledge_dir = settings.project.knowledge_dir
+    scope = CorpusScope.of(settings.project)
 
     if build_first:
         try:
@@ -338,7 +336,7 @@ def watch(
                 on_result(result)
 
     events: queue.Queue[Any] = queue.Queue()
-    observer = _start_observer(root, events, knowledge_dir)
+    observer = _start_observer(root, events, scope)
     try:
         return run_watch(
             root,
@@ -348,7 +346,7 @@ def watch(
             on_change=on_change,
             on_result=on_result,
             on_failure=on_failure,
-            knowledge_dir=knowledge_dir,
+            scope=scope,
         )
     except KeyboardInterrupt:
         return WatchStats(builds=0, failures=0, changes=0)
@@ -357,7 +355,7 @@ def watch(
         observer.join(timeout=5.0)
 
 
-def _start_observer(root: Path, events: "queue.Queue[Any]", knowledge_dir: str) -> Any:
+def _start_observer(root: Path, events: "queue.Queue[Any]", scope: CorpusScope) -> Any:
     """Start a filesystem observer that pushes relevant paths onto `events`.
 
     Imported here rather than at module import, so `mycelium.watch` stays
@@ -384,13 +382,13 @@ def _start_observer(root: Path, events: "queue.Queue[Any]", knowledge_dir: str) 
                 if not raw:
                     continue
                 path = Path(raw if isinstance(raw, str) else raw.decode())
-                if is_relevant(path, root, knowledge_dir):
+                if is_relevant(path, root, scope):
                     events.put(path)
 
     observer = Observer()
-    scope = root / knowledge_dir if (root / knowledge_dir).is_dir() else root
-    observer.schedule(_Handler(), str(scope), recursive=True)
-    if scope != root and (root / CONFIG_FILENAME).exists():
+    watched = scope.scope_of(root)
+    observer.schedule(_Handler(), str(watched), recursive=True)
+    if watched != root and (root / CONFIG_FILENAME).exists():
         # The configuration lives outside the knowledge tree but changes what a
         # build produces, so it gets its own non-recursive watch.
         observer.schedule(_Handler(), str(root), recursive=False)
@@ -398,12 +396,11 @@ def _start_observer(root: Path, events: "queue.Queue[Any]", knowledge_dir: str) 
     return observer
 
 
-def watched_paths(root: Path, knowledge_dir: str = "knowledge") -> Iterable[Path]:
+def watched_paths(root: Path, scope: CorpusScope | None = None) -> Iterable[Path]:
     """The corpus a watch session covers — what `--watch` reports on startup."""
-    base = root / knowledge_dir
-    scope = base if base.is_dir() else root
+    settings = scope or CorpusScope()
     return (
         path
-        for path in sorted(scope.rglob("*.md"))
-        if is_relevant(path, root, knowledge_dir) and STORE_DIRNAME not in path.parts
+        for path in sorted(settings.scope_of(root).rglob("*.md"))
+        if is_relevant(path, root, settings) and STORE_DIRNAME not in path.parts
     )

@@ -170,7 +170,13 @@ def test_a_run_reports_metrics_gates_and_a_manifest(corpus: Path) -> None:
     assert manifest.overall.cases == 20
     assert 0.0 <= manifest.overall.ndcg_at_10 <= 1.0
     assert len(manifest.results) == 20
-    assert {gate.gate for gate in manifest.gates} == {"G1 Citations", "G4 Abstention"}
+    assert {gate.gate for gate in manifest.gates} == {
+        "G1 Citations",
+        "G3 No regression",
+        "G4 Abstention",
+        "G5 Performance",
+        "G6 Determinism",
+    }  # G2 only when hybrid runs; G7 needs the synthesis lane (4.4)
     assert all(gate.passed for gate in manifest.gates)
     # Reproducible from what it records (spec 04 §7.5).
     assert manifest.retriever_config["engine"] == "fts5-bm25"
@@ -297,3 +303,90 @@ def test_slices_do_not_dilute_ranking_metrics(corpus: Path) -> None:
     full = run_evaluation(corpus, cases).overall
     only_answerable = run_evaluation(corpus, answerable).overall
     assert full.ndcg_at_10 == pytest.approx(only_answerable.ndcg_at_10)
+
+
+# ---------------------------------------------------------------------------
+# The gate table is complete (roadmap 3.7)
+# ---------------------------------------------------------------------------
+
+
+def gates_of(manifest) -> dict:  # type: ignore[no-untyped-def]
+    return {result.gate.split()[0]: result for result in manifest.gates}
+
+
+def test_every_gate_the_spec_names_is_accounted_for(corpus: Path) -> None:
+    """A gate table with silent omissions reads as though the missing ones passed."""
+    manifest = run_evaluation(corpus, load_cases(CASES))
+    gates = gates_of(manifest)
+
+    assert {"G1", "G3", "G4", "G5", "G6"} <= set(gates)
+    assert all(result.detail for result in manifest.gates)
+
+
+def test_g3_says_so_when_no_baseline_is_committed(tmp_path: Path, corpus: Path) -> None:
+    """An absent baseline must not read as a pass; it must read as an absence."""
+    manifest = run_evaluation(corpus, load_cases(CASES))
+    g3 = gates_of(manifest)["G3"]
+    assert "--bless" in g3.detail
+
+
+def test_g3_catches_a_slice_regression(tmp_path: Path, corpus: Path) -> None:
+    from mycelium.eval.harness import _gate_g3
+    from mycelium.sdk.types import MetricSummary
+
+    def summary(score: float) -> MetricSummary:
+        return MetricSummary(
+            cases=1,
+            ndcg_at_10=score,
+            recall_at_10=1.0,
+            recall_at_50=1.0,
+            mrr=1.0,
+            citation_coverage=1.0,
+            false_answer_rate=0.0,
+            latency_p50_ms=1,
+            latency_p95_ms=1,
+        )
+
+    steady = _gate_g3({"fact": summary(0.80)}, {"fact": 0.80})
+    assert steady.passed
+    # Within the 2 % tolerance the spec allows.
+    tolerated = _gate_g3({"fact": summary(0.79)}, {"fact": 0.80})
+    assert tolerated.passed
+    regressed = _gate_g3({"fact": summary(0.60)}, {"fact": 0.80})
+    assert not regressed.passed
+    assert "fact" in regressed.detail
+
+
+def test_g5_reports_the_corpus_it_measured(corpus: Path) -> None:
+    """Passing on a small corpus is a floor, and the detail has to say so."""
+    g5 = gates_of(run_evaluation(corpus, load_cases(CASES)))["G5"]
+    assert g5.passed
+    assert "150 ms budget" in g5.detail
+    assert "reference profile" in g5.detail
+
+
+def test_g6_is_delegated_not_silently_dropped(corpus: Path) -> None:
+    g6 = gates_of(run_evaluation(corpus, load_cases(CASES)))["G6"]
+    assert "determinism" in g6.detail.lower() or "golden" in g6.detail
+
+
+def test_blessing_writes_a_baseline_that_g3_then_reads(tmp_path: Path, corpus: Path) -> None:
+    from mycelium.eval.harness import read_baseline, write_baseline
+
+    manifest = run_evaluation(corpus, load_cases(CASES), case_set="cases.jsonl")
+    written = write_baseline(tmp_path, manifest)
+
+    assert written.is_file()
+    baseline = read_baseline(tmp_path, "cases.jsonl", "mycelium")
+    assert baseline is not None
+    assert set(baseline) == set(manifest.per_slice)
+
+
+def test_the_committed_baseline_covers_the_shipped_case_set() -> None:
+    """A gate whose baseline is missing from the repository gates nothing in CI."""
+    from mycelium.eval.harness import read_baseline
+
+    baseline = read_baseline(Path("."), "cases.jsonl", "mycelium")
+    assert baseline is not None
+    slices = {slice_.value for case in load_cases(CASES) for slice_ in case.slices}
+    assert set(baseline) >= slices - {"unanswerable"}
