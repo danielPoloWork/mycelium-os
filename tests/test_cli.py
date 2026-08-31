@@ -480,12 +480,40 @@ def test_doctor_is_clean_after_a_build(tmp_path: Path) -> None:
     assert {check["name"] for check in payload["checks"]} == {
         "toolchain",
         "config",
+        "parsers",
         "store",
         "snapshot",
         "manifest",
         "pointer",
         "lock",
     }
+
+
+def test_doctor_fails_when_a_pinned_parser_is_not_installed(tmp_path: Path) -> None:
+    """The point of the check (roadmap 4.1).
+
+    Resolution refuses an unavailable plugin rather than falling through to the
+    next one, so without this an operator meets that refusal in the middle of a
+    build. `doctor` asks the same question first, and prints the remedy.
+    """
+    seeded(tmp_path)
+    (tmp_path / "mycelium.toml").write_text(
+        '[ingest]\nparsers = ["markdown", "nonexistent-parser"]\n', encoding="utf-8"
+    )
+    result = invoke("doctor", str(tmp_path), "--json")
+    payload = json.loads(result.stdout)
+    parsers = next(check for check in payload["checks"] if check["name"] == "parsers")
+    assert parsers["status"] == "fail"
+    assert "nonexistent-parser" in parsers["detail"]
+
+
+def test_doctor_lists_the_pinned_parsers_when_they_all_resolve(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    result = invoke("doctor", str(tmp_path), "--json")
+    payload = json.loads(result.stdout)
+    parsers = next(check for check in payload["checks"] if check["name"] == "parsers")
+    assert parsers["status"] == "ok"
+    assert "markdown" in parsers["detail"]
 
 
 def test_doctor_warns_but_succeeds_on_a_fresh_repository(tmp_path: Path) -> None:

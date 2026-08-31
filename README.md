@@ -118,6 +118,36 @@ Embeddings are an optional install — `pip install mycelium-os[embeddings]` —
 without them publishes normally, marked `degraded: ["vectors"]`, with lexical search intact.
 Nothing is ever downloaded unless `[embedding] allow_download` says so.
 
+### Ingestion picks its parser, and you pick which one
+
+Non-Markdown sources are compiled by adapters over engines that already exist — Mycelium OS
+owns the representation, not the parsing research (D-007). Four ship: `markdown`
+(markdown-it), `docling` (DOCX and HTML through docling's declarative backends), `pandoc`
+(DOCX, HTML, ODT, EPUB, reStructuredText and LaTeX, through one sandboxed binary), and `pdf`
+(the text layer, via PDFium). The proof that the boundary is real: one document rendered
+into DOCX, HTML and reStructuredText reaches four different engines and comes back with the
+*same* citable anchors as its Markdown original.
+
+Which one runs is **pinned, in order**, and never guessed:
+
+```toml
+[ingest]
+parsers = ["docling", "pandoc", "pdf"]   # first one declaring a format wins
+```
+
+An entry that cannot be resolved is an error naming what to install — not a quiet fall-back
+to whatever else is installed, because a build has to be explainable from its manifest alone
+(spec 05 §4.2). `mycelium doctor` tells you before a build does. The engines are an optional
+install (`pip install mycelium-os[ingest]`, plus [pandoc](https://pandoc.org/installing.html)
+for that one), and the default `parsers = ["markdown"]` needs none of them.
+
+What an engine emits that KIR cannot model becomes an `opaque` node carrying the construct's
+name — visible loss, never silent loss. What v1 does *not* do is read PDF structure: that
+needs docling's ML pipeline, which wants `torch` and downloads model weights on first use,
+against this project's offline default and its cross-platform determinism gate. The reasons,
+measured, are in [ADR-0032](docs/adr/0032-adapt-four-engines-and-pin-which-one-runs.md); the
+work is roadmap 4.9.
+
 ## Inspiration & Origins
 
 This project was directly inspired by [Andrej Karpathy](https://github.com/karpathy)'s
@@ -164,14 +194,15 @@ with a frozen dev/release split gating CI. The five stable contracts freeze at 1
 The honest part of that paragraph is what is missing from it: on the second corpus a plain
 `grep` loop still ranks better than we do, which is measured, diagnosed, and open as roadmap
 4.8 — carried into the next milestone rather than closed to make this one look finished.
-Milestone 4 brings ingestion.
+Milestone 4 brings ingestion, and has started: the connector and parser contracts are in
+place with four engines behind them.
 
 | # | Title | Status |
 |---|---|---|
 | 1 | Project bootstrap & CI | ✅ done |
 | 2 | Walking skeleton (spec Phase 0) | ✅ done |
 | 3 | v0.1 — The compiler (spec Phase 1) | ✅ done |
-| 4 | v0.2 — Ingestion (spec Phase 2) | ⏳ planned |
+| 4 | v0.2 — Ingestion (spec Phase 2) | 🚧 in progress |
 | 5 | v0.3 — Structure (spec Phase 3) | ⏳ planned |
 | 6 | v1.0 — Stable (spec Phase 4) | ⏳ planned |
 | 7 | v2.x — Team & platform (spec Phase 5; separate RFC cycle) | ⏳ planned |

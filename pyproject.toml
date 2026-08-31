@@ -35,6 +35,20 @@ embeddings = [
 # Watch mode (roadmap 3.5). A development convenience, so the filesystem watcher
 # is opt-in too: an agent querying a published snapshot never needs it.
 watch = ["watchdog>=4.0"]
+# Ingestion of non-Markdown sources (roadmap 4.1, ADR-0032). Optional because the
+# authored lane needs none of it, and *slim* because the full `docling` package
+# pulls torch, torchvision, transformers, opencv and scipy — sixty-odd packages —
+# and downgrades our own typer pin. The extras named here are the declarative
+# backends plus PDFium: no ML weights, no HuggingFace download, no network, and
+# deterministic on every platform in the CI matrix. pypdfium2 is listed in its own
+# right because `mycelium.ingest.parsers.pdf` imports it directly.
+#
+# The pandoc fallback is deliberately absent: it is one external binary, installed
+# by the operating system's package manager, not a Python dependency.
+ingest = [
+    "docling-slim[convert-core,format-docx,format-html,format-latex,format-pdf]>=2.124",
+    "pypdfium2>=4.30",
+]
 
 [project.scripts]
 mycelium = "mycelium.cli:main"
@@ -65,6 +79,12 @@ dev = [
     "onnxruntime>=1.20",
     "tokenizers>=0.20",
     "watchdog>=4.0",
+    # The ingest extra is a dev dependency for the same reason the embeddings one
+    # is: CI type-checks and exercises the adapters on every platform. The pandoc
+    # binary is installed by the workflow, and the tests that need it skip when it
+    # is absent — a contributor without pandoc still runs everything else.
+    "docling-slim[convert-core,format-docx,format-html,format-latex,format-pdf]>=2.124",
+    "pypdfium2>=4.30",
 ]
 
 [tool.hatch.version]
@@ -79,6 +99,7 @@ testpaths = ["tests"]
 markers = [
     "determinism: gate G6 — byte-identical rebuild against the committed golden corpus",
     "embeddings: needs the local model files; skipped when they are not on this machine",
+    "pandoc: needs the pandoc binary on PATH; skipped when it is not installed",
 ]
 
 [tool.ruff]
@@ -88,6 +109,12 @@ src = ["src", "tests"]
 
 [tool.ruff.format]
 # Black-compatible (AGENTS.md §10); default quote/indent style already matches.
+#
+# Fixture Markdown is excluded because it is *input bytes*, not source: `ruff format`
+# reformats Python inside Markdown code fences, so without this it would rewrite a
+# committed fixture and move the digests the ingestion tests assert — a formatter
+# breaking a test by doing its job. The generator that writes them stays formatted.
+exclude = ["tests/fixtures/**/*.md"]
 
 [tool.ruff.lint]
 select = [
@@ -108,5 +135,5 @@ files = ["src"]
 # onnxruntime and tokenizers ship no stubs; they are optional dependencies loaded
 # behind a runtime guard, so their surface is narrow and checked by tests instead.
 [[tool.mypy.overrides]]
-module = ["onnxruntime.*", "tokenizers.*", "watchdog.*"]
+module = ["onnxruntime.*", "tokenizers.*", "watchdog.*", "docling.*", "pypdfium2.*"]
 ignore_missing_imports = true

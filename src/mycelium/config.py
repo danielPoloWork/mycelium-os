@@ -37,6 +37,7 @@ __all__ = [
     "ChunkingConfig",
     "ConfigError",
     "EmbeddingConfig",
+    "IngestConfig",
     "ModulesConfig",
     "MyceliumConfig",
     "ProjectConfig",
@@ -47,14 +48,16 @@ __all__ = [
 
 CONFIG_FILENAME: Final = "mycelium.toml"
 
-UNHONOURED_SECTIONS: Final = frozenset({"ingest", "synthesis", "verification", "sources", "eval"})
+UNHONOURED_SECTIONS: Final = frozenset({"synthesis", "verification", "sources", "eval"})
 """Sections spec 05 §2 documents whose features this milestone has not built.
 
 They are accepted so a spec-valid file is not rejected, and digested so a build
 remains reproducible from its config, but nothing reads their values yet:
-`ingest` (roadmap 4.1), `synthesis` (4.4), `verification` (4.5), `sources` (4.1),
-`eval` (the harness takes its case set on the command line). `retrieval` left this
-set at roadmap 3.3, when hybrid search gave it something to control.
+`synthesis` (roadmap 4.4), `verification` (4.5), `sources` (4.5 — trust per
+origin is a verification input), `eval` (the harness takes its case set on the
+command line). `retrieval` left this set at roadmap 3.3, when hybrid search gave
+it something to control; `ingest` left it at 4.1, and is the first section
+honoured *in part* — see :class:`IngestConfig`.
 """
 
 _SUPPORTED_ATOMIC: Final = ("code", "table")
@@ -181,6 +184,77 @@ class ChunkingConfig(_Section):
         )
 
 
+class IngestConfig(_Section):
+    """`[ingest]` — which plugins compile a source, and two knobs that do not yet.
+
+    The first section honoured *by key rather than as a whole*, which ADR-0014's
+    section-level scheme did not have a shape for. The reason is that ingestion
+    arrives in four roadmap items: 4.1 pins the plugins, 4.3 spends the loss
+    budget, 4.6 scans for secrets. Marking the whole section unhonoured would lie
+    about `parsers`; marking it honoured would lie about the other two. So the
+    keys are declared here, digested like everything else, and
+    :attr:`unhonoured_keys` names the ones an operator has set that still do
+    nothing — the same promise ADR-0014 makes, one level finer.
+
+    `parsers` is *ordered* and *pinned*. The order is the dispatch policy —
+    `["docling", "pandoc"]` is architecture §5's "docling first, pandoc
+    fallback", stated rather than inferred from what happens to be installed —
+    and every name in it must resolve or the command fails saying what to install
+    (spec 05 §4.2). That is why the default is the one parser with no optional
+    runtime: a fresh checkout compiles its Markdown, and ingesting anything else
+    is a deliberate edit.
+    """
+
+    parsers: tuple[str, ...] = ("markdown",)
+    connectors: tuple[str, ...] = ("file",)
+
+    redact_secrets: bool = True
+    """Accepted, digested, not honoured yet — the secret scan lands at roadmap 4.6."""
+
+    max_failed_elements: float = Field(default=0.05, ge=0.0, le=1.0)
+    """Accepted, digested, not honoured yet — the loss budget lands at roadmap 4.3."""
+
+    @model_validator(mode="after")
+    def _lists_are_not_empty(self) -> Self:
+        for field in ("parsers", "connectors"):
+            names = getattr(self, field)
+            if not names:
+                msg = f"[ingest] {field} must name at least one plugin"
+                raise ValueError(msg)
+            if any(not name.strip() for name in names):
+                msg = f"[ingest] {field} must not contain empty names"
+                raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _connectors_are_not_parsers(self) -> Self:
+        """Catch spec 05 §2's single `connectors` list and name its replacement.
+
+        The spec's example is `connectors = ["markdown", "html", "pdf"]` — parser
+        ids under a connector key, because §2 predates §4.1's split of the two
+        Protocols. This project honours the split (ADR-0032), so the old shape is
+        refused *by name* rather than accepted into a resolution failure three
+        commands later.
+        """
+        from mycelium.ingest.registry import BUILTIN_PARSERS
+
+        confused = sorted(set(self.connectors) & set(BUILTIN_PARSERS))
+        if confused:
+            msg = (
+                f"[ingest] connectors names parser(s) {confused}; parsers are pinned by "
+                "[ingest] parsers, and connectors names how a source is acquired "
+                '(v1: ["file"]) - see ADR-0032'
+            )
+            raise ValueError(msg)
+        return self
+
+    @property
+    def unhonoured_keys(self) -> tuple[str, ...]:
+        """The keys this file *sets* that nothing reads yet, in file order."""
+        pending = ("redact_secrets", "max_failed_elements")
+        return tuple(name for name in pending if name in self.model_fields_set)
+
+
 class EmbeddingConfig(_Section):
     """`[embedding]` — which vectors a build produces, and where the model comes from.
 
@@ -291,6 +365,7 @@ class MyceliumConfig(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     project: ProjectConfig = ProjectConfig()
+    ingest: IngestConfig = IngestConfig()
     chunking: ChunkingConfig = ChunkingConfig()
     embedding: EmbeddingConfig = EmbeddingConfig()
     retrieval: RetrievalConfig = RetrievalConfig()
@@ -308,6 +383,17 @@ class MyceliumConfig(BaseModel):
         """Sections present in the file that nothing reads yet."""
         return tuple(sorted(self.future))
 
+    @property
+    def unhonoured_keys(self) -> tuple[str, ...]:
+        """Individual keys the file sets that nothing reads yet, `section.key` form.
+
+        Separate from :attr:`unhonoured_sections` because they need different
+        sentences: an unhonoured *section* is a feature that does not exist, an
+        unhonoured *key* sits beside keys that do, which is the more surprising
+        of the two and therefore the one worth naming exactly.
+        """
+        return tuple(f"ingest.{name}" for name in self.ingest.unhonoured_keys)
+
     def digest(self) -> Sha256Digest:
         """Digest the effective configuration for the snapshot manifest.
 
@@ -321,6 +407,7 @@ class MyceliumConfig(BaseModel):
         return digest_json(
             {
                 "project": self.project.model_dump(mode="json"),
+                "ingest": self.ingest.model_dump(mode="json"),
                 "chunking": self.chunking.model_dump(mode="json"),
                 "embedding": self.embedding.model_dump(mode="json"),
                 "retrieval": self.retrieval.model_dump(mode="json"),
@@ -360,7 +447,7 @@ def load_config(root: Path) -> MyceliumConfig:
         msg = f"{path}: cannot be read - {exc}"
         raise ConfigError(msg) from exc
 
-    honoured = {"project", "chunking", "embedding", "retrieval", "modules"}
+    honoured = {"project", "ingest", "chunking", "embedding", "retrieval", "modules"}
     unknown = sorted(set(raw) - honoured - UNHONOURED_SECTIONS)
     if unknown:
         known = ", ".join(sorted(honoured | UNHONOURED_SECTIONS))

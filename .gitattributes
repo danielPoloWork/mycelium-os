@@ -7,3 +7,13 @@
 # pinned to LF here rather than left to each contributor's git configuration.
 tests/fixtures/determinism/**/*.md text eol=lf
 tests/fixtures/determinism/golden.json text eol=lf
+
+# Ingestion fixtures. The text ones are inputs to parsers that report line and
+# byte positions, so their endings are pinned for the same reason the determinism
+# corpus's are; the binary ones must never be touched by a line-ending filter at
+# all, or the digest a test asserts changes on checkout rather than on edit.
+tests/fixtures/ingest/*.md text eol=lf
+tests/fixtures/ingest/*.html text eol=lf
+tests/fixtures/ingest/*.rst text eol=lf
+tests/fixtures/ingest/*.docx binary
+tests/fixtures/ingest/*.pdf binary

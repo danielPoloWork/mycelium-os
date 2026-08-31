@@ -22,6 +22,7 @@ from mycelium.__about__ import __version__
 from mycelium.build.lock import DEFAULT_STALE_AFTER_S, LOCK_FILENAME, BuildLock
 from mycelium.build.publish import manifest_path, read_current
 from mycelium.config import CONFIG_FILENAME, ConfigError, load_config
+from mycelium.ingest import probe
 from mycelium.store import STORE_DIRNAME, STORE_FILENAME, SqliteStore, StoreError
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
 
@@ -117,15 +118,42 @@ def _check_config(root: Path) -> Check:
     except ConfigError as error:
         return Check("config", "fail", str(error).replace("\n", "; "))
     detail = f"{CONFIG_FILENAME} valid; knowledge_dir={config.project.knowledge_dir}"
-    unhonoured = config.unhonoured_sections
-    if unhonoured:
+    pending = [*config.unhonoured_sections, *config.unhonoured_keys]
+    if pending:
         # An operator who tuned a knob deserves to hear that it does nothing yet.
         return Check(
             "config",
             "warn",
-            f"{detail}; section(s) not honoured yet: {', '.join(unhonoured)}",
+            f"{detail}; not honoured yet: {', '.join(pending)}",
         )
     return Check("config", "ok", detail)
+
+
+def _check_parsers(root: Path) -> Check:
+    """Report whether every pinned ingestion plugin can actually run here.
+
+    Resolution refuses an unavailable plugin (spec 05 §4.2), so without this check
+    an operator meets that refusal for the first time in the middle of a build.
+    `probe` asks the same factories the registry asks and reports instead of
+    raising, which is the whole reason `doctor` exists.
+    """
+    try:
+        config = load_config(root)
+    except ConfigError:
+        return Check("parsers", "warn", "not checked: the configuration is invalid")
+    statuses = probe(config.ingest.parsers)
+    missing = [status for status in statuses if not status.available]
+    if missing:
+        return Check(
+            "parsers",
+            "fail",
+            "; ".join(f"{status.id}: {status.detail}" for status in missing),
+        )
+    return Check(
+        "parsers",
+        "ok",
+        "pinned: " + ", ".join(f"{status.id} ({status.detail})" for status in statuses),
+    )
 
 
 def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> list[Check]:
@@ -138,6 +166,7 @@ def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> lis
             f"mycelium {__version__} on CPython {platform.python_version()}",
         ),
         _check_config(root),
+        _check_parsers(root),
     ]
 
     if not (mycelium_dir / STORE_FILENAME).exists():

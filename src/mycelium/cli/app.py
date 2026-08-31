@@ -101,6 +101,14 @@ namespace = "default"          # reserved for the team phase; single value in v1
 knowledge_dir = "knowledge"    # the authored tree; the whole repo is scanned if absent
 sources_dir = "sources"        # honoured from milestone 4 (ingestion)
 
+[ingest]                       # which plugins compile a source, in priority order
+parsers = ["markdown"]         # add "docling", "pandoc", "pdf" to ingest those formats;
+                               # every name must resolve or the command says what to
+                               # install - there is no "best available" (spec 05 §4.2)
+connectors = ["file"]          # v1 acquires from the local tree only
+# redact_secrets = true       # not honoured yet (roadmap 4.6)
+# max_failed_elements = 0.05  # not honoured yet (roadmap 4.3)
+
 [chunking]
 max_tokens = 800               # hard ceiling: prose splits at the paragraph before it
 # target_tokens = 400         # aim smaller than the ceiling; measure before you do
