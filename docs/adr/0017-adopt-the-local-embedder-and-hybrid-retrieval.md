@@ -127,7 +127,9 @@ similarity to every query, so a vector leg asked for 50 candidates always return
 swept a minimum-similarity floor from 0.50 to 0.75 and **no value separates the two
 populations** — unanswerable queries scored 0.6364–0.6677 while answerable ones scored
 0.6427–0.8362, overlapping. No floor is shipped, because shipping one would look like a fix
-and be a coin toss. Filed as roadmap 3.11.
+and be a coin toss. Filed as roadmap 3.11. *Settled by
+[ADR-0025](0025-make-lexical-evidence-the-vector-legs-precondition.md): lexical evidence is
+now the vector leg's precondition, and every floor was measured again and refused.*
 
 **Therefore `[retrieval] profile` defaults to `lexical`**, hybrid is one setting away, and
 the README says so — which is precisely the outcome spec 04 §7.3 wrote down, and which the

@@ -172,10 +172,14 @@ def search(
 
     Lexical always runs: it needs no model, no optional dependency, and no
     network, so it is the floor below which retrieval cannot fall. The vector
-    leg joins when `config.hybrid` is on, an `embedder` is supplied, and the
-    store actually holds vectors for that model — and when any of those is
-    missing, the search *degrades to lexical and says so* rather than failing.
-    A snapshot built before the embedder existed must still be searchable.
+    leg joins when `config.hybrid` is on, an `embedder` is supplied, the store
+    actually holds vectors for that model — and the lexical leg found at least
+    one hit, because lexical evidence is the vector leg's precondition
+    (ADR-0025): hybrid abstains wherever lexical abstains, instead of serving
+    the nearest neighbours of a question the corpus cannot answer. When the
+    embedder or the vectors are missing, the search *degrades to lexical and
+    says so* rather than failing. A snapshot built before the embedder existed
+    must still be searchable.
 
     Both legs are generated `vector_candidates` deep regardless of `limit`,
     because fusion needs depth to work with: fusing two top-10 lists throws away
@@ -199,7 +203,21 @@ def search(
     notes: list[str] = [policy_note] if policy_note else []
 
     if settings.hybrid:
-        if embedder is None:
+        if not lexical:
+            # Lexical evidence is the vector leg's precondition (ADR-0025). A
+            # vector leg asked for 50 candidates returns 50 for *any* query —
+            # cosine similarity always produces a ranking — so without this,
+            # hybrid answers questions the corpus cannot answer (ADR-0017 measured
+            # 4 of 4). When not one query term occurs in the corpus, hybrid
+            # abstains exactly where lexical abstains, by construction rather
+            # than by a calibrated constant; the leg is *withheld*, so no
+            # embedding latency is paid for a query that gets no answer.
+            notes.append(
+                "vector leg withheld: no lexical evidence for this query in the "
+                "corpus, so hybrid abstains rather than serving nearest "
+                "neighbours (ADR-0025)"
+            )
+        elif embedder is None:
             degraded.append(f"{_VECTOR}: no embedder configured")
         elif not store.vector_counts().get(embedder.model_id):
             degraded.append(
