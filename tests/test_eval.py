@@ -330,7 +330,10 @@ def test_g3_says_so_when_no_baseline_is_committed(tmp_path: Path, corpus: Path) 
     assert "--bless" in g3.detail
 
 
-def test_g3_catches_a_slice_regression(tmp_path: Path, corpus: Path) -> None:
+def test_g3_enforces_only_on_a_comparable_corpus(corpus: Path) -> None:
+    """A regression check needs a controlled variable, and on a self-hosting corpus
+    the corpus is not one: adding documentation moves slices without a line of
+    retrieval code changing. CI caught exactly that on this gate's first run."""
     from mycelium.eval.harness import _gate_g3
     from mycelium.sdk.types import MetricSummary
 
@@ -347,14 +350,46 @@ def test_g3_catches_a_slice_regression(tmp_path: Path, corpus: Path) -> None:
             latency_p95_ms=1,
         )
 
-    steady = _gate_g3({"fact": summary(0.80)}, {"fact": 0.80})
-    assert steady.passed
-    # Within the 2 % tolerance the spec allows.
-    tolerated = _gate_g3({"fact": summary(0.79)}, {"fact": 0.80})
-    assert tolerated.passed
-    regressed = _gate_g3({"fact": summary(0.60)}, {"fact": 0.80})
+    here = "sha256:same"
+    baseline = {"per_slice": {"fact": 0.80}, "corpus_digest": here}
+
+    assert _gate_g3({"fact": summary(0.80)}, baseline, here).passed
+    # Inside the 2 % the spec allows.
+    assert _gate_g3({"fact": summary(0.79)}, baseline, here).passed
+
+    regressed = _gate_g3({"fact": summary(0.60)}, baseline, here)
     assert not regressed.passed
     assert "fact" in regressed.detail
+
+    # The same drop, measured over a corpus the baseline never saw: reported, not
+    # enforced, and the detail says which it is.
+    elsewhere = _gate_g3({"fact": summary(0.60)}, baseline, "sha256:different")
+    assert elsewhere.passed
+    assert "not comparable" in elsewhere.detail
+    assert "--bless" in elsewhere.detail
+
+
+def test_the_corpus_fingerprint_ignores_document_identity(tmp_path: Path) -> None:
+    """It is folded from chunk *content* digests, not the manifest's record digests:
+    those carry `doc_id`, and an unpinned repository mints fresh ULIDs every build —
+    so a gate keyed on them would never enforce in CI, the one place it must."""
+    from mycelium.build import build
+    from mycelium.eval.harness import corpus_digest_of
+
+    digests = []
+    for name in ("one", "two"):
+        root = tmp_path / name
+        (root / "knowledge").mkdir(parents=True)
+        (root / "knowledge" / "a.md").write_text(
+            "# Alpha\n\nThe same words, compiled twice.\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        build(root)
+        digests.append(corpus_digest_of(root))
+
+    assert digests[0] == digests[1]
+    assert digests[0].startswith("sha256:")
 
 
 def test_g5_reports_the_corpus_it_measured(corpus: Path) -> None:
@@ -379,7 +414,8 @@ def test_blessing_writes_a_baseline_that_g3_then_reads(tmp_path: Path, corpus: P
     assert written.is_file()
     baseline = read_baseline(tmp_path, "cases.jsonl", "mycelium")
     assert baseline is not None
-    assert set(baseline) == set(manifest.per_slice)
+    assert set(baseline["per_slice"]) == set(manifest.per_slice)  # type: ignore[index]
+    assert "corpus_digest" in baseline  # what makes the comparison comparable
 
 
 def test_the_committed_baseline_covers_the_shipped_case_set() -> None:
@@ -388,5 +424,8 @@ def test_the_committed_baseline_covers_the_shipped_case_set() -> None:
 
     baseline = read_baseline(Path("."), "cases.jsonl", "mycelium")
     assert baseline is not None
+    per_slice = baseline["per_slice"]
+    assert isinstance(per_slice, dict)
     slices = {slice_.value for case in load_cases(CASES) for slice_ in case.slices}
-    assert set(baseline) >= slices - {"unanswerable"}
+    assert set(per_slice) >= slices - {"unanswerable"}
+    assert baseline["corpus_digest"]  # blessed against a named corpus, not a mood

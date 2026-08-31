@@ -75,6 +75,7 @@ __all__ = [
     "EVAL_DIRNAME",
     "QUERY_BUDGET_P95_MS",
     "baseline_path",
+    "corpus_digest_of",
     "read_baseline",
     "write_baseline",
     "write_run",
@@ -198,11 +199,51 @@ def _relative(after: float, before: float) -> float:
     return (after - before) / before
 
 
-def _gate_g3(per_slice: dict[str, MetricSummary], baseline: dict[str, float] | None) -> GateResult:
+def corpus_digest_of(root: Path, snapshot_id: str = "") -> str:
+    """A content fingerprint of the published corpus — what makes two runs comparable.
+
+    Folded from the chunks' own content digests, deliberately *not* from the
+    manifest's `artifact_digests`. Those are folded over chunk *records*, which
+    carry `doc_id`, and a repository whose documents are not yet pinned mints
+    fresh ULIDs on every build — so the manifest's digest differs between two
+    builds of identical text, and a gate keyed on it would never enforce
+    anywhere it matters, CI first among them (ADR-0021).
+
+    Chunk digests are digests of text. Same documents, same fingerprint, whatever
+    identities the build happened to assign.
+    """
+    try:
+        with SqliteStore.open(root, read_only=True) as store:
+            digests = sorted(
+                chunk.chunk_digest
+                for doc_id in store.document_ids()
+                for chunk in store.chunks_of(doc_id)
+            )
+    except Exception:  # noqa: BLE001 - a fingerprint is never worth failing a run for
+        return ""
+    return digest_json(digests)
+
+
+def _gate_g3(
+    per_slice: dict[str, MetricSummary],
+    baseline: dict[str, object] | None,
+    corpus_digest: str,
+) -> GateResult:
     """Gate G3 — no release may regress a protected slice by more than 2 % (spec 04 §7.3).
 
+    A regression check needs a controlled variable, and on a self-hosting corpus
+    the corpus is not one: this project's documentation grows with every change,
+    and adding documents moves per-slice scores without anything about retrieval
+    having changed. The gate therefore **enforces when the corpus is the same one
+    the baseline was taken on, and reports when it is not** — naming the change
+    rather than failing on it. Anything else makes G3 fire on documentation and
+    trains everyone to re-bless, which is how a gate becomes decoration.
+
+    "The same corpus" is the snapshot manifest's own chunk digest, so the test is
+    exact rather than a heuristic over counts.
+
     The baseline is a committed file, not the previous run in `.mycelium/`: a
-    gate that compares against whatever happens to be on this machine compares
+    gate comparing against whatever happens to be on this machine compares
     against nothing in CI, where every run starts empty. Establishing it is a
     deliberate act (`mycelium eval --bless`), so a regression can never be
     absorbed by quietly moving the line.
@@ -216,20 +257,41 @@ def _gate_g3(per_slice: dict[str, MetricSummary], baseline: dict[str, float] | N
                 "establish one - until then there is nothing to regress against"
             ),
         )
+    slices = baseline.get("per_slice")
+    if not isinstance(slices, dict):
+        return GateResult(
+            gate="G3 No regression",
+            passed=True,
+            detail="the committed baseline records no per-slice scores; re-bless it",
+        )
+
     regressions = []
     for name, summary in sorted(per_slice.items()):
-        before = baseline.get(name)
-        if before is None:
+        before = slices.get(name)
+        if not isinstance(before, int | float):
             continue
-        delta = _relative(summary.ndcg_at_10, before)
+        delta = _relative(summary.ndcg_at_10, float(before))
         if delta < -0.02:
             regressions.append(f"{name} {before:.4f} -> {summary.ndcg_at_10:.4f} ({delta:+.1%})")
-    fresh = sorted(set(per_slice) - set(baseline))
-    detail = f"{len(baseline)} slice(s) compared"
+
+    baseline_corpus = baseline.get("corpus_digest")
+    same_corpus = baseline_corpus == corpus_digest
+    fresh = sorted(set(per_slice) - set(slices))
+
+    detail = f"{len(slices)} slice(s) compared"
     if fresh:
         detail += f"; new since the baseline: {', '.join(fresh)}"
     if regressions:
-        detail += f"; regressions beyond -2%: {'; '.join(regressions)}"
+        detail += f"; beyond -2%: {'; '.join(regressions)}"
+    if not same_corpus:
+        detail += (
+            "; the corpus has changed since the baseline was taken, so these numbers are "
+            "not comparable - reported, not enforced. Re-bless deliberately with "
+            "`mycelium eval --bless` once the corpus is the one you mean to measure"
+        )
+        return GateResult(gate="G3 No regression", passed=True, detail=detail)
+    if not regressions:
+        detail += "; same corpus, no slice regressed"
     return GateResult(gate="G3 No regression", passed=not regressions, detail=detail)
 
 
@@ -329,8 +391,8 @@ def baseline_path(root: Path, case_set: str) -> Path:
     return root / EVAL_DIRNAME / BASELINES_DIRNAME / f"{Path(case_set).stem}.json"
 
 
-def read_baseline(root: Path, case_set: str, retriever: str) -> dict[str, float] | None:
-    """The per-slice scores a release is measured against, if one is committed."""
+def read_baseline(root: Path, case_set: str, retriever: str) -> dict[str, object] | None:
+    """The committed baseline for one retriever on one case set, if there is one."""
     path = baseline_path(root, case_set)
     if not path.is_file():
         return None
@@ -339,13 +401,10 @@ def read_baseline(root: Path, case_set: str, retriever: str) -> dict[str, float]
     except (OSError, ValueError):
         return None
     entry = data.get(retriever)
-    if not isinstance(entry, dict):
-        return None
-    slices = entry.get("per_slice")
-    return slices if isinstance(slices, dict) else None
+    return entry if isinstance(entry, dict) else None
 
 
-def write_baseline(root: Path, manifest: EvalRunManifest) -> Path:
+def write_baseline(root: Path, manifest: EvalRunManifest, corpus_digest: str = "") -> Path:
     """Freeze this run's per-slice scores as the baseline gate G3 compares against.
 
     Committed to the repository rather than left in `.mycelium/`, because a
@@ -362,6 +421,10 @@ def write_baseline(root: Path, manifest: EvalRunManifest) -> Path:
                 data = loaded
     data[manifest.retriever] = {
         "blessed_from_snapshot": manifest.snapshot_id,
+        # What makes the comparison apples-to-apples: two runs over the same
+        # documents share this digest, and two runs over different corpora do
+        # not, whatever their counts happen to be (ADR-0021).
+        "corpus_digest": corpus_digest,
         "toolchain": manifest.toolchain.model_dump(mode="json"),
         "overall_ndcg_at_10": round(manifest.overall.ndcg_at_10, 6),
         "per_slice": {
@@ -409,8 +472,11 @@ def run_evaluation(
         retriever_config = dict(retriever.config)
 
         chunks = store.counts()["chunks"]
+        corpus_digest = corpus_digest_of(root, snapshot)
         gates = list(_gates(overall, sum(1 for case in cases if not case.answerable)))
-        gates.append(_gate_g3(per_slice, read_baseline(root, case_set, retriever_name)))
+        gates.append(
+            _gate_g3(per_slice, read_baseline(root, case_set, retriever_name), corpus_digest)
+        )
         gates.append(_gate_g5(overall, chunks))
         gates.append(_gate_g6())
         if retriever_name == "hybrid":

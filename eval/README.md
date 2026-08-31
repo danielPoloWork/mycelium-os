@@ -91,7 +91,7 @@ though the missing gates passed.
 |---|---|
 | G1 Citations | **Enforced** — every returned anchor must resolve; must be 1.00 |
 | G2 Earn hybrid | **Enforced when `--retriever hybrid` runs** — it scores the lexical baseline on the same cases and compares (ADR-0017) |
-| G3 No regression | **Enforced against `baselines/<set>.json`** — no slice may fall more than 2 %. Without a committed baseline the gate says so instead of passing quietly; `--bless` writes one |
+| G3 No regression | **Enforced against `baselines/<set>.json`** when the corpus is the one the baseline was taken on — no slice may fall more than 2 %. When the corpus has changed the numbers are not comparable, so the gate *reports* the deltas instead of failing on them: this repository's documentation grows with every PR, and a gate that fails on that teaches everyone to re-bless on red. `--bless` writes a baseline, and records the corpus fingerprint it was measured on |
 | G4 Abstention | **Enforced** — false-answer rate on `unanswerable` ≤ 5 % |
 | G5 Performance | **Enforced, with its limit stated** — query p95 ≤ 150 ms, reported with the corpus size it was measured on. The budget is defined at the 10⁵-chunk reference profile, so passing here is a floor rather than the measurement spec 04 §1 asks for |
 | G6 Determinism | **Delegated** — a compiler gate with its own golden and its own CI job (ADR-0012) |
