@@ -136,6 +136,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- Gate G3 compared a run against a baseline taken on a *different* corpus, so any PR
+  that added documentation failed the no-regression gate without touching a retriever.
+  The baseline now records a content fingerprint of the corpus it measured; G3 enforces
+  when the fingerprint matches and reports — naming the deltas, and saying they are not
+  comparable — when it does not
+  ([BUG-0014](docs/bugs/2026/08/BUG-0014-g3-compares-incomparable-corpora.md), #38).
+
 - The evaluation corpus included this repository's own test fixtures, so an `unanswerable`
   case was answered by a fixture and gate G4 reported 25 % where the product retriever
   now reports 0 %. The judged case was not touched — the corpus was wrong, not the case

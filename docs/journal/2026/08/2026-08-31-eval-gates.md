@@ -84,6 +84,26 @@ in tokens is the point — a grep hit is a line number, so the loop reads whole 
 What it cannot say is whether the model then answers correctly, and ADR-0022 says so in
 those words rather than letting 64 % be quoted as a task-success rate.
 
+## The gate's first CI run failed, correctly
+
+G3 went red on the pull request, and it was right to: this item adds two ADRs, four bug
+records and a journal entry, the corpus grew 568 → 623 chunks, and three slices moved by
+more than 2 % without a line of retrieval code changing.
+
+That is a design fault in what I had built, not a fluke. A regression check needs a
+controlled variable, and on a self-hosting corpus the corpus is not one. So the baseline now
+records a **content fingerprint** of the corpus it was taken on, and G3 enforces when the
+fingerprint matches and reports when it does not. Failing on documentation growth would have
+made re-blessing the routine response to red, which is precisely how a gate stops meaning
+anything.
+
+The fingerprint had a trap of its own: the obvious candidate, the manifest's
+`artifact_digests["chunks"]`, is folded over chunk *records*, which carry `doc_id` — and an
+unpinned checkout mints fresh ULIDs every build, so it differs between two builds of
+identical text. A gate keyed on it would never enforce in CI, the one place it must. It is
+folded from chunk *content* digests instead, and a test pins that two fresh builds of the
+same tree agree.
+
 ## Numbers, and what they are not
 
 With the corpus finally scoped, gate G4 went 25 % → 0 % and overall nDCG@10 moved

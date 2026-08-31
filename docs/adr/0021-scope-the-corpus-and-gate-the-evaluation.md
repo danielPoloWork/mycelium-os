@@ -63,6 +63,21 @@ compares against nothing exactly where it matters. `mycelium eval --bless` write
 `eval/baselines/<set>.json`, so moving the line is a commit someone can see and challenge
 rather than a side effect of running the tool.
 
+**And G3 enforces only when the corpus is comparable.** A regression check needs a
+controlled variable, and on a self-hosting corpus the corpus is not one — this very item
+added two ADRs, four bug records and a journal entry, which moved three slices by more than
+2 % without a line of retrieval code changing. CI caught exactly that on the gate's first
+run, which is the gate working: the numbers had moved, and they were not comparable. So the
+baseline records a **content fingerprint** of the corpus it was taken on, and G3 enforces
+when the fingerprint matches and *reports* when it does not, naming the difference. The
+alternative — failing on documentation growth — teaches everyone to re-bless on red, which
+is how a gate becomes decoration.
+
+The fingerprint is folded from the chunks' own content digests, deliberately not from the
+manifest's `artifact_digests`: those are folded over chunk *records*, which carry `doc_id`,
+and an unpinned repository mints fresh ULIDs on every build. A gate keyed on that would
+never enforce in CI, which is the one place it must.
+
 **G5 is enforced with its limit stated.** The p95 budget is 150 ms (spec 04 §1), but it is
 *defined* at the 10⁵-chunk reference profile and our corpus is 568 chunks. The gate enforces
 the budget on the corpus at hand and reports that corpus's size in the same sentence:
