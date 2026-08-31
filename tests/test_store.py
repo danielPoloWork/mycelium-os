@@ -4,6 +4,7 @@
 lexical index ranks by the spec's field weights, and a store from another schema
 version is refused rather than reinterpreted."""
 
+import random
 import sqlite3
 from collections.abc import Iterator
 from datetime import UTC, datetime
@@ -63,6 +64,10 @@ def make_document(
     }
     fields.update(overrides)
     return Document.model_validate(fields)
+
+
+MODEL = "test-model"
+"""The model id the packed-matrix tests store vectors under."""
 
 
 def make_chunk(anchor: str, text: str, doc_id: str = DOC_ID, **overrides: object) -> Chunk:
@@ -505,3 +510,97 @@ def test_the_store_file_is_a_plain_sqlite_database(tmp_path: Path) -> None:
             row[0] for row in raw.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
     assert {"documents", "chunks", "vectors", "symbols", "edges", "build_cache", "meta"} <= tables
+
+
+# ---------------------------------------------------------------------------
+# The packed vector matrix (roadmap 3.12, ADR-0026)
+# ---------------------------------------------------------------------------
+
+
+def _seed_vectors(store: SqliteStore, count: int = 40, dim: int = 8) -> list[str]:
+    """A store holding `count` chunks with one unit vector each."""
+    rng = random.Random(20260831)
+    digests = []
+    chunks = []
+    for index in range(count):
+        digest = f"sha256:{index:064d}"
+        digests.append(digest)
+        chunks.append(make_chunk(f"a.md#s/{index}", f"passage {index}", chunk_digest=digest))
+    with store.transaction():
+        store.put_document(make_document())
+        store.put_chunks(chunks)
+        vectors = []
+        for digest in digests:
+            raw = [rng.gauss(0.0, 1.0) for _ in range(dim)]
+            norm = sum(value * value for value in raw) ** 0.5
+            vectors.append((digest, tuple(value / norm for value in raw)))
+        store.put_vectors(MODEL, vectors)
+    return digests
+
+
+def _packs_of(store: SqliteStore) -> list[Path]:
+    assert store._db_path is not None
+    return sorted(store._db_path.parent.glob("vectors-*.pack"))
+
+
+def test_a_write_transaction_that_touches_vectors_leaves_a_pack(store: SqliteStore) -> None:
+    _seed_vectors(store)
+    assert len(_packs_of(store)) == 1
+    assert store._pack_for(MODEL) is not None
+
+
+def test_the_pack_and_the_sql_scan_answer_identically(store: SqliteStore) -> None:
+    """The property that makes the pack safe to be absent: it is a cache, and the
+    scan it replaces is the definition of the answer (ADR-0026)."""
+    _seed_vectors(store)
+    rng = random.Random(11)
+    for _ in range(8):
+        query = tuple(rng.gauss(0.0, 1.0) for _ in range(8))
+        packed = store.search_vectors(query, MODEL, limit=10)
+        store.release_packs()  # Windows will not unlink a mapped file
+        for path in _packs_of(store):
+            path.unlink()
+        scanned = store.search_vectors(query, MODEL, limit=10)
+        store.repack_vectors()
+
+        assert [hit.chunk.anchor for hit in packed] == [hit.chunk.anchor for hit in scanned]
+        assert [round(hit.score, 6) for hit in packed] == [round(hit.score, 6) for hit in scanned]
+
+
+def test_a_filtered_query_agrees_with_the_scan_too(store: SqliteStore) -> None:
+    _seed_vectors(store)
+    query = tuple(random.Random(3).gauss(0.0, 1.0) for _ in range(8))
+    filters = SearchFilters(verification_statuses=frozenset({VerificationStatus.VERIFIED}))
+
+    packed = store.search_vectors(query, MODEL, limit=5, filters=filters)
+    store.release_packs()
+    for path in _packs_of(store):
+        path.unlink()
+    scanned = store.search_vectors(query, MODEL, limit=5, filters=filters)
+
+    assert packed
+    assert [hit.chunk.anchor for hit in packed] == [hit.chunk.anchor for hit in scanned]
+
+
+def test_changing_the_vectors_retires_the_old_pack(store: SqliteStore) -> None:
+    """Staleness is made impossible rather than detected: the generation names
+    the file, so a pack whose vectors moved is a file nobody opens."""
+    _seed_vectors(store)
+    first = store._vectors_generation()
+
+    with store.transaction():
+        store.put_vectors(MODEL, [("sha256:" + "7" * 64, (1.0,) + (0.0,) * 7)])
+
+    assert store._vectors_generation() > first
+    assert len(_packs_of(store)) == 1  # the previous generation was pruned
+    assert str(first) not in _packs_of(store)[0].name
+
+
+def test_a_truncated_pack_is_ignored_rather_than_trusted(store: SqliteStore) -> None:
+    _seed_vectors(store)
+    pack = _packs_of(store)[0]
+    store.release_packs()
+    pack.write_bytes(pack.read_bytes()[:-64])
+
+    assert store._pack_for(MODEL) is None
+    assert store.search_vectors((1.0,) + (0.0,) * 7, MODEL, limit=3)  # the scan still answers

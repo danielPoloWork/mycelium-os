@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The vector leg meets its candidate-generation budget.** Vectors are packed into one
+  memory-mapped matrix per model, so a query multiplies instead of reading 10 000 rows out
+  of SQLite: `search_vectors` goes from **92.97 ms to 2.88 ms** over 10 000 chunks, and a
+  fresh process — open the store, ask one question, which is what a CLI invocation does —
+  from **108 ms to 23 ms**, against spec 04 §1's 60 ms budget. The `vectors` table is still
+  the source of truth: the pack is a cache, and a query that cannot use it (missing,
+  truncated, packed by another version) falls back to the SQL scan and answers identically,
+  which is asserted rather than assumed. Nothing to configure and nothing to migrate —
+  `mycelium build` writes the pack, and deleting it costs only speed. At the top of the
+  supported corpus range the first query in a fresh process is still ~70 ms; ADR-0026
+  records that limit and roadmap 3.14 owns it.
+
 - **Hybrid retrieval abstains.** Lexical evidence is now the vector leg's precondition:
   when the lexical leg finds nothing, the vector leg is withheld and hybrid returns an
   empty result with a note saying why, instead of serving the 50 nearest neighbours of a

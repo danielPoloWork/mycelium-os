@@ -8,9 +8,19 @@ the v1 corpus envelope (10²–10⁵ chunks, D-002), brute-force cosine meets sp
 unavailable in stock Python builds on a supported platform — is not worth its
 portability cost yet.
 
+That claim was **false when ADR-0017 made it** and is true now. The scan cost
+92 ms over 10 000 chunks against the 60 ms budget, and ADR-0026 found the cost
+was never the arithmetic: 79 of those milliseconds were reading vectors out of
+SQLite row by row and joining their blobs, and 10 more were ranking the scores in
+Python. Against the packed matrix the same query is **2.9 ms**, and a fresh
+process — what a CLI invocation is — pays 23 ms including opening the store,
+against 108 ms before.
+
 The committed size is 10 000 chunks, which keeps the benchmark job quick. The
-scan is linear in the corpus, so the reference profile is a multiplication; the
-100 000-chunk measurement behind ADR-0017 was taken by hand with the same code.
+scan is linear in the corpus, so the reference profile is a multiplication: the
+packed matrix at 100 000 chunks measures ~70 ms for the first query in a fresh
+process and ~1 ms for every query after it, which is the honest limit ADR-0026
+records rather than a budget it claims to meet.
 
 Fusion is measured separately because it is pure arithmetic over rank lists: if
 it ever shows up next to the scan, something has gone wrong with it.
@@ -18,6 +28,7 @@ it ever shows up next to the scan, something has gone wrong with it.
 
 import random
 import struct
+import time
 from datetime import UTC, datetime
 
 import pytest
@@ -39,6 +50,8 @@ DIM = 384
 CHUNKS = 10_000
 PER_DOC = 100
 MODEL_ID = "bench-model"
+CANDIDATE_BUDGET_MS = 60
+"""Spec 04 §1's candidate-generation budget."""
 
 
 def _unit(rng: random.Random) -> tuple[float, ...]:
@@ -101,6 +114,26 @@ def test_vector_scan_over_10k_chunks(
     query = _unit(random.Random(1))
     vector_store.search_vectors(query, MODEL_ID, limit=VECTOR_CANDIDATES)  # warm the cache
     benchmark(vector_store.search_vectors, query, MODEL_ID, limit=VECTOR_CANDIDATES)
+
+
+def test_the_packed_matrix_is_the_one_being_measured(vector_store: SqliteStore) -> None:
+    """Not a benchmark: without this, a silent fallback to the SQL scan would
+    show up as a slow machine rather than as a broken pack (ADR-0026)."""
+    assert vector_store._pack_for(MODEL_ID) is not None
+
+
+def test_the_vector_scan_meets_the_candidate_budget(vector_store: SqliteStore) -> None:
+    """The budget spec 04 §1 sets, asserted rather than described.
+
+    Deliberately generous against the measured 2.9 ms: this guards the
+    *representation* — a regression to row-by-row reading costs 30x and would
+    blow through it — not the machine it runs on.
+    """
+    query = _unit(random.Random(2))
+    vector_store.search_vectors(query, MODEL_ID, limit=VECTOR_CANDIDATES)  # map the pack
+    started = time.perf_counter()
+    vector_store.search_vectors(query, MODEL_ID, limit=VECTOR_CANDIDATES)
+    assert (time.perf_counter() - started) * 1000 < CANDIDATE_BUDGET_MS
 
 
 def test_lexical_search_over_10k_chunks(

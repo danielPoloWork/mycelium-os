@@ -25,6 +25,8 @@ v1 → v2 added `snapshot_state` (roadmap 3.2, restorable snapshots);
 v2 → v3 added `doc_state.graph_json` (roadmap 3.4, the authored link graph)."""
 
 META_SCHEMA_VERSION: Final = "schema_version"
+META_VECTORS_GENERATION: Final = "vectors_generation"
+"""Bumped by every write to `vectors`; names the packed matrix (ADR-0026)."""
 META_CURRENT_SNAPSHOT: Final = "current_snapshot"
 
 PRAGMAS: Final = (
