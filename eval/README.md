@@ -76,6 +76,24 @@ fixture* and gate G4 read 25 %
 `unanswerable`. Metrics are always reported per slice — an overall win never excuses a
 protected-slice loss.
 
+## Chunk or section: the judging rule
+
+A judgment may name a chunk (`docs/a.md#setup/2`) or a section (`docs/a.md#setup/`, with the
+trailing slash). A section is satisfied by any chunk under it and **credited once** (ADR-0029).
+Which to write is a judgment about the document:
+
+> **Name the section when a reader needs more than one chunk to have the answer** — a
+> procedure with the example that shows it, prose plus the table that lists it, a search order
+> stated across paragraphs. **Name the chunk when the answer is confined to it** — a literal
+> term, one stated fact, a paragraph that stands alone.
+>
+> When it is genuinely unclear, name the chunk. That is the reading that cannot flatter us.
+
+The rule exists because judging a chunk of a twelve-chunk section measures where the *chunker*
+splits, which has nothing to do with retrieval — and because a chunk anchor carries an ordinal,
+so [ADR-0023](../docs/adr/0023-make-the-chunk-target-steer-size.md)'s chunking knob invalidates
+one and leaves the other standing.
+
 ## What this set is not
 
 - **The judgments are still not independent, and only half the problem moved.** Nobody here

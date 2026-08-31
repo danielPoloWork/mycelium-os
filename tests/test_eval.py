@@ -155,13 +155,13 @@ def test_every_judged_anchor_exists_in_the_corpus(corpus: Path) -> None:
     If it fails, a heading was renamed: re-judge the case and regenerate with
     `python tools/build_eval_cases.py`.
     """
+    from mycelium.eval.cases import validate_judged_set
+
     with SqliteStore.open(corpus, read_only=True) as store:
-        missing = [
-            (case.case_id, relevant.anchor)
-            for case in load_cases(CASES)
-            for relevant in case.relevant
-            if store.get_chunk(relevant.anchor) is None
-        ]
+        # Through the shared validator, so chunk *and* section judgments resolve
+        # the way the builders check them (ADR-0029).
+        errors, _ = validate_judged_set(load_cases(CASES), store)
+        missing = [error for error in errors if "is not in the corpus" in error]
     assert missing == []
 
 
@@ -536,10 +536,22 @@ def test_a_judged_anchor_may_not_be_ambiguous() -> None:
         RelevantAnchor(anchor="a.md#2024", grade=3)
 
 
-def test_the_committed_sets_still_judge_chunks() -> None:
-    """This item shipped the *notation*; re-judging the sets under it is a
-    separate, deliberate act (roadmap 3.17), so nothing here has moved yet."""
-    for path in (CASES, RELEASE):
-        for case in load_cases(path):
-            for relevant in case.relevant:
-                assert not relevant.anchor.endswith("/"), f"{case.case_id} already section-scoped"
+def test_the_sets_use_both_notations_deliberately() -> None:
+    """Roadmap 3.17 re-judged where the document says the answer spans a section,
+    and left the rest alone. Both forms in use is the evidence that it was a
+    judgment per case rather than a sweep (ADR-0029)."""
+    anchors = [
+        relevant.anchor
+        for path in (
+            CASES,
+            RELEASE,
+            UV_CORPUS / "eval" / "dev.jsonl",
+            UV_CORPUS / "eval" / "release.jsonl",
+        )
+        for case in load_cases(path)
+        for relevant in case.relevant
+    ]
+    sections = [anchor for anchor in anchors if anchor.endswith("/")]
+    chunks = [anchor for anchor in anchors if not anchor.endswith("/")]
+    assert sections, "no section judgments: 3.17 did not happen"
+    assert chunks, "every judgment is section-scoped: that is a sweep, not a judgment"
