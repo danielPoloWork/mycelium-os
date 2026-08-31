@@ -12,6 +12,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`[retrieval] include_candidate = false` is honoured**: a deployment can serve
+  `verified` and `evidence` documents and withhold `candidate` ones. It was refused by
+  name until now, because the store's filter held one value per vocabulary and this needs
+  the complement of one. Both vocabulary filters are now sets applied in SQL before
+  ranking, the policy is enforced at the single seam the CLI, the MCP server and the
+  evaluation harness share, and every query answered under it carries a note saying so —
+  a smaller answer than the corpus could give should say why. Asking for exactly what the
+  policy refuses returns an empty result with that note rather than an error. The default
+  is unchanged: a candidate is labelled, not hidden (D-021, ADR-0024).
+
 - **`[chunking] target_tokens` steers chunk size.** The packer closes a prose run at the
   first paragraph boundary after the run reaches the target, and still never crosses
   `max_tokens`; until now it filled toward the ceiling and the target did nothing at all
@@ -147,6 +157,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 ### Removed
 
 ### Fixed
+
+- The MCP `search` tool applied a multi-valued `trust` filter *after* ranking, over-fetching
+  `4 x k` candidates to make the loss less likely — which spec 04 §2 forbids, because
+  post-filtering a top-k list returns fewer results than were asked for and "fewer" reads
+  as "there are no more". It is now one `IN (…)` clause in SQL. No bug ledger entry: the
+  under-return needs a corpus holding several trust classes, and every document this
+  compiler builds is `authored` until ingestion lands at milestone 4 — the defect was
+  latent, never observed (ADR-0024).
 
 - Gate G3 compared a run against a baseline taken on a *different* corpus, so any PR
   that added documentation failed the no-regression gate without touching a retriever.

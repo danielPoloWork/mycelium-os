@@ -312,8 +312,8 @@ def test_search_respects_the_limit_and_finds_nothing_gracefully(store: SqliteSto
     [
         SearchFilters(namespace="other"),
         SearchFilters(collection="other"),
-        SearchFilters(trust_class=TrustClass.EXTERNAL),
-        SearchFilters(verification_status=VerificationStatus.CANDIDATE),
+        SearchFilters(trust_classes=frozenset({TrustClass.EXTERNAL})),
+        SearchFilters(verification_statuses=frozenset({VerificationStatus.CANDIDATE})),
         SearchFilters(path_prefix="sources/"),
     ],
 )
@@ -336,11 +336,41 @@ def test_matching_filters_keep_the_hit(store: SqliteStore) -> None:
     filters = SearchFilters(
         namespace="default",
         collection="core-docs",
-        trust_class=TrustClass.AUTHORED,
-        verification_status=VerificationStatus.VERIFIED,
+        trust_classes=frozenset({TrustClass.AUTHORED}),
+        verification_statuses=frozenset({VerificationStatus.VERIFIED}),
         path_prefix="knowledge/verified/",
     )
     assert len(store.search_chunks("filtered", filters=filters)) == 1
+
+
+def test_a_set_filter_admits_every_member(store: SqliteStore) -> None:
+    """The filter the item exists for: several admissible values, one SQL pass."""
+    seed(store, make_chunk("a.md#x/0", "filtered content"))
+    served = frozenset({VerificationStatus.VERIFIED, VerificationStatus.EVIDENCE})
+    assert (
+        len(store.search_chunks("filtered", filters=SearchFilters(verification_statuses=served)))
+        == 1
+    )
+    assert (
+        store.search_chunks(
+            "filtered",
+            filters=SearchFilters(
+                verification_statuses=frozenset(
+                    {VerificationStatus.CANDIDATE, VerificationStatus.EVIDENCE}
+                )
+            ),
+        )
+        == ()
+    )
+
+
+def test_an_empty_filter_set_is_refused(store: SqliteStore) -> None:
+    """`None` means unrestricted; a set that admits nothing is a mistake, and
+    these filters decide what a server will serve."""
+    with pytest.raises(ValueError, match="pass None"):
+        SearchFilters(trust_classes=frozenset())
+    with pytest.raises(ValueError, match="pass None"):
+        SearchFilters(verification_statuses=frozenset())
 
 
 def test_path_prefix_wildcards_are_matched_literally(store: SqliteStore) -> None:

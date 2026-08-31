@@ -57,9 +57,11 @@ def repo(tmp_path: Path, files: dict[str, str] | None = None) -> Path:
     return root
 
 
-def built(tmp_path: Path, embedder: FakeEmbedder | None = None) -> Path:
+def built(
+    tmp_path: Path, embedder: FakeEmbedder | None = None, files: dict[str, str] | None = None
+) -> Path:
     """A repository whose snapshot carries vectors from `embedder`, if given."""
-    root = repo(tmp_path)
+    root = repo(tmp_path, files)
     build(root)
     if embedder is not None:
         with SqliteStore.open(root) as store, store.transaction():
@@ -265,3 +267,67 @@ def test_vectors_of_another_model_are_never_mixed_in(tmp_path: Path) -> None:
         outcome = search(store, config=HYBRID, query="bus", embedder=second)
     assert outcome.legs == ("lexical",)
     assert any("fake-hash-v2" in note for note in outcome.degraded)
+
+
+# ---------------------------------------------------------------------------
+# The serving policy (roadmap 3.9, ADR-0024)
+# ---------------------------------------------------------------------------
+
+STRICT = RetrievalConfig(include_candidate=False)
+
+MIXED = {
+    "knowledge/bus.md": "# Event Bus\n\nThe bus routes messages between agents.\n",
+    "knowledge/candidate/draft.md": "# Draft Bus Notes\n\nThe bus routes messages, we think.\n",
+}
+
+
+def test_candidates_are_not_served_when_the_configuration_says_so(tmp_path: Path) -> None:
+    root = built(tmp_path, files=MIXED)
+    with SqliteStore.open(root, read_only=True) as store:
+        served = search(store, "bus routes messages", config=STRICT)
+        everything = search(store, "bus routes messages")
+
+    assert {item.hit.path for item in everything.hits} == set(MIXED)
+    assert {item.hit.path for item in served.hits} == {"knowledge/bus.md"}
+    assert any("include_candidate" in note for note in served.notes)
+
+
+def test_the_policy_narrows_a_query_filter_and_never_widens_it(tmp_path: Path) -> None:
+    from mycelium.store import SearchFilters
+
+    root = built(tmp_path, files=MIXED)
+    asked = SearchFilters(
+        verification_statuses=frozenset({VerificationStatus.VERIFIED, VerificationStatus.CANDIDATE})
+    )
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, "bus routes messages", config=STRICT, filters=asked)
+
+    assert {item.hit.path for item in outcome.hits} == {"knowledge/bus.md"}
+
+
+def test_asking_for_exactly_what_the_policy_refuses_answers_nothing_and_says_why(
+    tmp_path: Path,
+) -> None:
+    """A well-formed question whose answer is "nothing": a note, not an exception —
+    or the CLI and the MCP server would each render the failure differently."""
+    from mycelium.store import SearchFilters
+
+    root = built(tmp_path, files=MIXED)
+    only_candidates = SearchFilters(verification_statuses=frozenset({VerificationStatus.CANDIDATE}))
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, "bus routes messages", config=STRICT, filters=only_candidates)
+
+    assert outcome.hits == ()
+    assert outcome.legs == ()
+    assert any("include_candidate" in note for note in outcome.notes)
+
+
+def test_the_default_configuration_serves_every_status(tmp_path: Path) -> None:
+    """A candidate is labelled, not hidden: the default is to serve it."""
+    root = built(tmp_path, files=MIXED)
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, "bus routes messages")
+
+    statuses = {item.hit.verification_status for item in outcome.hits}
+    assert VerificationStatus.CANDIDATE in statuses
+    assert not any("include_candidate" in note for note in outcome.notes)

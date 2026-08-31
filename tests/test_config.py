@@ -15,6 +15,7 @@ from mycelium.config import (
     MyceliumConfig,
     load_config,
 )
+from mycelium.sdk.types import VerificationStatus
 
 # spec 05 §2, verbatim except for the commented-out alternatives.
 SPEC_FILE = """
@@ -312,3 +313,17 @@ def test_an_invalid_config_stops_the_build_before_it_starts(tmp_path: Path) -> N
         build(tmp_path)
     # Nothing was published: the store was never touched.
     assert not (tmp_path / ".mycelium" / "CURRENT").exists()
+
+
+def test_include_candidate_false_narrows_what_is_served(tmp_path: Path) -> None:
+    """Roadmap 3.9: the setting was refused by name until the store could express
+    "not candidate" as a filter (ADR-0024)."""
+    config = load_config(write(tmp_path, "[retrieval]\ninclude_candidate = false\n"))
+    assert config.retrieval.served_statuses == frozenset(
+        {VerificationStatus.VERIFIED, VerificationStatus.EVIDENCE}
+    )
+
+
+def test_the_default_serves_every_status() -> None:
+    """A candidate is labelled, not hidden (D-021)."""
+    assert MyceliumConfig().retrieval.served_statuses is None

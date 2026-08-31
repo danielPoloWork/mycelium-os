@@ -529,8 +529,8 @@ def search(
             limit=limit,
             filters=SearchFilters(
                 collection=collection,
-                trust_class=trust,
-                verification_status=status,
+                trust_classes=frozenset({trust}) if trust else None,
+                verification_statuses=frozenset({status}) if status else None,
                 path_prefix=path_prefix,
             ),
             config=retrieval,
