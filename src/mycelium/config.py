@@ -30,7 +30,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, m
 
 from mycelium.chunking import ChunkingPolicy
 from mycelium.sdk.identity import digest_json
-from mycelium.sdk.types import Sha256Digest
+from mycelium.sdk.types import Sha256Digest, VerificationStatus
 
 __all__ = [
     "CONFIG_FILENAME",
@@ -231,6 +231,8 @@ class RetrievalConfig(_Section):
     k: int = Field(default=10, gt=0, description="Default result count for a query.")
     budget_tokens: int = Field(default=4000, gt=0, description="Default packing budget.")
     include_candidate: bool = True
+    """Whether `candidate` documents are served at all; see `served_statuses`."""
+
     graph_expansion: bool = False
 
     @property
@@ -238,17 +240,23 @@ class RetrievalConfig(_Section):
         """Whether the vector leg participates in candidate generation."""
         return self.profile == "hybrid"
 
+    @property
+    def served_statuses(self) -> frozenset[VerificationStatus] | None:
+        """The verification statuses this configuration is willing to serve.
+
+        ``None`` when every status is served, which is the default: a candidate
+        is *labelled*, not hidden, and a reader who can see the label can judge
+        it. ``include_candidate = false`` is the deployment that would rather not
+        make that judgement available at all — a compliance posture more than a
+        retrieval one — and it removes candidates from every query the process
+        answers, rather than trusting each caller to remember (ADR-0024).
+        """
+        if self.include_candidate:
+            return None
+        return frozenset({VerificationStatus.VERIFIED, VerificationStatus.EVIDENCE})
+
     @model_validator(mode="after")
     def _only_what_exists(self) -> Self:
-        if not self.include_candidate:
-            # Serving verified+evidence only needs a "status is not candidate"
-            # filter, which the store's single-value filter cannot express yet.
-            msg = (
-                "[retrieval] include_candidate = false is not supported yet (roadmap 3.9); "
-                "candidates are served with explicit labels, and `trust: verified` on a "
-                "single query already excludes them"
-            )
-            raise ValueError(msg)
         if self.graph_expansion:
             msg = (
                 "[retrieval] graph_expansion = true is not supported yet: there are no "

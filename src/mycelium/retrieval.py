@@ -27,7 +27,7 @@ behaviour to measure hybrid against.
 
 import time
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Final
 
 from mycelium.config import RetrievalConfig
@@ -129,6 +129,35 @@ def reciprocal_rank_fusion(
     )
 
 
+def _serve_only(
+    filters: SearchFilters | None, settings: RetrievalConfig
+) -> tuple[SearchFilters | None, str | None]:
+    """Narrow a caller's filters to what the configuration is willing to serve.
+
+    The policy is applied *here*, at the one seam the CLI, the MCP server and the
+    evaluation harness all pass through, rather than at each of them: a serving
+    rule enforced by three callers is a rule enforced by whichever of them was
+    updated last. It narrows and never widens, so a query that already asked for
+    `verified` keeps asking for exactly that.
+
+    Returns ``(None, note)`` when the caller asked for precisely what the policy
+    refuses. That is not an error — the question is well formed and the answer is
+    "nothing, and here is why" — so the note travels with an empty result rather
+    than becoming an exception the CLI and the MCP server would each render
+    differently (ADR-0024).
+    """
+    allowed = settings.served_statuses
+    if allowed is None:
+        return filters, None
+
+    note = "candidate documents are not served (`[retrieval] include_candidate = false`)"
+    asked = (filters.verification_statuses if filters else None) or allowed
+    admissible = frozenset(asked) & allowed
+    if not admissible:
+        return None, note
+    return replace(filters or SearchFilters(), verification_statuses=admissible), note
+
+
 def search(
     store: SqliteStore,
     query: str,
@@ -153,6 +182,12 @@ def search(
     precisely the agreement that makes RRF worth doing.
     """
     settings = config or RetrievalConfig()
+    filters, policy_note = _serve_only(filters, settings)
+    if filters is None and policy_note is not None:
+        return SearchOutcome(
+            hits=(), legs=(), degraded=(), notes=(policy_note,), timings_ms={"total": 0}
+        )
+
     depth = max(limit, VECTOR_CANDIDATES)
     timings: dict[str, int] = {}
 
@@ -161,7 +196,7 @@ def search(
     timings[_LEXICAL] = _elapsed_ms(started)
     lists: list[tuple[str, Sequence[SearchHit]]] = [(_LEXICAL, lexical)]
     degraded: list[str] = []
-    notes: list[str] = []
+    notes: list[str] = [policy_note] if policy_note else []
 
     if settings.hybrid:
         if embedder is None:

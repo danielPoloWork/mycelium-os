@@ -288,10 +288,10 @@ def _query_embedder(settings: MyceliumConfig) -> Embedder | None:
         return None
 
 
-def _filters(raw: Any) -> tuple[SearchFilters, list[TrustClass]]:
+def _filters(raw: Any) -> SearchFilters:
     """Translate the tool's filter object, rejecting anything unrecognised."""
     if raw is None:
-        return SearchFilters(), []
+        return SearchFilters()
     if not isinstance(raw, dict):
         raise McpToolError(ErrorCode.INVALID_ARGUMENT, "'filters' must be an object")
 
@@ -320,15 +320,11 @@ def _filters(raw: Any) -> tuple[SearchFilters, list[TrustClass]]:
                 ErrorCode.INVALID_ARGUMENT, f"unknown verification status {status_value!r}"
             ) from error
 
-    return (
-        SearchFilters(
-            collection=raw.get("collection"),
-            # The store filters on one trust class; several are applied after
-            # ranking so the tool contract can accept the list the spec shows.
-            verification_status=status,
-            path_prefix=raw.get("path_prefix"),
-        ),
-        trust,
+    return SearchFilters(
+        collection=raw.get("collection"),
+        trust_classes=frozenset(trust) if trust else None,
+        verification_statuses=frozenset({status}) if status else None,
+        path_prefix=raw.get("path_prefix"),
     )
 
 
@@ -345,24 +341,20 @@ def handle_search(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
     ):
         raise McpToolError(ErrorCode.INVALID_ARGUMENT, "'budget_tokens' must be a positive integer")
 
-    filters, trust_classes = _filters(arguments.get("filters"))
+    filters = _filters(arguments.get("filters"))
     snapshot = _snapshot_id(root)
     settings = _config(root)
     store = _open_store(root)
     try:
-        # Over-fetch when trust filtering happens after ranking, so a filtered
-        # query still returns k results when the corpus has them.
         outcome = run_search(
             store,
             query,
-            limit=limit if not trust_classes else min(_MAX_K, limit * 4),
+            limit=limit,
             filters=filters,
             config=settings.retrieval,
             embedder=_query_embedder(settings),
         )
         fused = outcome.hits
-        if trust_classes:
-            fused = tuple(item for item in fused if item.hit.trust_class in trust_classes)[:limit]
     finally:
         store.close()
 

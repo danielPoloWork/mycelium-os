@@ -182,6 +182,8 @@ milestone goal already anticipated ("lexical-only default is a legitimate G2 out
 - **`[retrieval]` leaves the unhonoured set** and is validated strictly, with the two values
   that cannot be satisfied refused by name (`include_candidate = false` → roadmap 3.9,
   `graph_expansion = true` → roadmap 5.2/5.3) rather than silently ignored (ADR-0014).
+  *`include_candidate = false` is honoured since [ADR-0024](0024-serve-what-the-configuration-admits.md);
+  `graph_expansion` is still refused.*
 - **Tests never depend on a developer's downloaded model.** The suite runs against an empty
   model cache by default, so local runs and CI see the same behaviour; the tests that need
   the real model are marked `embeddings` and skip when it is absent, which is always in CI.

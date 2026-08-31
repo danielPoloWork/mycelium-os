@@ -79,13 +79,33 @@ class StoreVersionError(StoreError):
 
 @dataclass(frozen=True, slots=True)
 class SearchFilters:
-    """Restrictions applied before ranking (spec 05 §4 `filters`)."""
+    """Restrictions applied before ranking (spec 05 §4 `filters`).
+
+    The two vocabulary filters take a *set* of admissible values, because the
+    questions callers actually ask are set-shaped: spec 05 §4's `trust` is a list,
+    and "serve verified and evidence, not candidates" (`include_candidate = false`)
+    is the complement of one value rather than the choice of one. A single-value
+    filter forced both to be applied after ranking, which spec 04 §2 forbids —
+    post-filtering a top-k list silently returns fewer results than were asked for
+    (ADR-0024, BUG-0015).
+
+    `None` means unrestricted. An *empty* set is refused rather than read as
+    either: a filter that admits nothing is always a construction mistake, and
+    these decide what a server is willing to serve.
+    """
 
     namespace: str | None = None
     collection: str | None = None
-    trust_class: TrustClass | None = None
-    verification_status: VerificationStatus | None = None
+    trust_classes: frozenset[TrustClass] | None = None
+    verification_statuses: frozenset[VerificationStatus] | None = None
     path_prefix: str | None = None
+
+    def __post_init__(self) -> None:
+        for name in ("trust_classes", "verification_statuses"):
+            value = getattr(self, name)
+            if value is not None and not value:
+                msg = f"{name} is empty: pass None for 'no restriction'"
+                raise ValueError(msg)
 
 
 @dataclass(frozen=True, slots=True)
@@ -822,12 +842,18 @@ class SqliteStore:
         if filters.collection is not None:
             clauses.append("d.collection = ?")
             params.append(filters.collection)
-        if filters.trust_class is not None:
-            clauses.append("d.trust_class = ?")
-            params.append(filters.trust_class.value)
-        if filters.verification_status is not None:
-            clauses.append("d.verification_status = ?")
-            params.append(filters.verification_status.value)
+        for column, admissible in (
+            ("d.trust_class", filters.trust_classes),
+            ("d.verification_status", filters.verification_statuses),
+        ):
+            if admissible is None:
+                continue
+            # Sorted so the SQL text — and therefore SQLite's statement cache
+            # entry — is a function of the set, not of iteration order.
+            values = sorted(member.value for member in admissible)
+            placeholders = ", ".join("?" for _ in values)
+            clauses.append(f"{column} IN ({placeholders})")
+            params.extend(values)
         if filters.path_prefix is not None:
             clauses.append("d.path LIKE ? ESCAPE '\\'")
             params.append(_like_prefix(filters.path_prefix))
