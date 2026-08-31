@@ -177,6 +177,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **Thirteen judged cases now name a section rather than a chunk**, applying ADR-0029's
+  notation where the document says the answer spans one — a procedure with its example, prose
+  with the table that lists it. Every one decided by reading the document, never a ranking, and
+  the rule is written down in `eval/README.md` (when unclear, name the chunk: the reading that
+  cannot flatter us). Measured on one build, judgments the only variable: our release set 0.453
+  → 0.457, the second corpus's 0.249 → 0.280. Comparisons with numbers published before this
+  are invalid; the baselines are re-blessed.
+
 - **The vector scan stays exact, and that is now a decision rather than a default.** Four
   ways of not reading every vector were measured against real embeddings and all four
   failed: coarse quantisation is fast enough only where it returns a third to three quarters

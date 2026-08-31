@@ -49,7 +49,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.EXACT,),
         (
             ("README.md#license/0", 3),
-            ("CONTRIBUTING.md#developer-certificate-of-origin-dco/0", 1),
+            ("CONTRIBUTING.md#developer-certificate-of-origin-dco/", 1),
         ),
         "A literal term that appears in few places; exact retrieval should be trivial.",
     ),
@@ -171,7 +171,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.RELATIONSHIP,),
         (
             ("docs/adr/0003-adopt-flat-python-src-layout.md#/0", 3),
-            ("docs/adr/0002-adopt-cross-language-source-layout.md#decision/0", 2),
+            ("docs/adr/0002-adopt-cross-language-source-layout.md#decision/", 2),
             ("docs/adr/README.md#index/0", 2),
         ),
         "Needs the relation between two documents, not the content of either alone.",
@@ -183,7 +183,7 @@ DEV: tuple[Judgment, ...] = (
         (
             ("docs/adr/0012-adopt-the-g6-determinism-gate.md#decision/0", 3),
             ("docs/adr/0012-adopt-the-g6-determinism-gate.md#context/0", 2),
-            ("docs/adr/0009-adopt-build-publication-semantics.md#decision/0", 1),
+            ("docs/adr/0009-adopt-build-publication-semantics.md#decision/", 1),
         ),
         "The dependency (mtime as an input) is stated in one ADR and caused by another.",
     ),
@@ -241,7 +241,7 @@ RELEASE: tuple[Judgment, ...] = (
         "r-0002",
         "which versions still receive security fixes",
         (EvalSlice.FACT,),
-        (("SECURITY.md#supported-versions/0", 3),),
+        (("SECURITY.md#supported-versions/", 3),),
         "A policy fact stated once.",
     ),
     (
@@ -249,7 +249,7 @@ RELEASE: tuple[Judgment, ...] = (
         "Conventional Commits",
         (EvalSlice.EXACT,),
         (
-            ("docs/workflow/git-workflow.md#3-commit-messages-conventional-commits/0", 3),
+            ("docs/workflow/git-workflow.md#3-commit-messages-conventional-commits/", 3),
             ("CONTRIBUTING.md#making-a-change/0", 1),
         ),
         "A literal term naming a section; the easiest lexical case, kept as a floor.",
@@ -314,7 +314,7 @@ RELEASE: tuple[Judgment, ...] = (
         "who signs off that a contribution may be contributed",
         (EvalSlice.RELATIONSHIP,),
         (
-            ("CONTRIBUTING.md#developer-certificate-of-origin-dco/2", 3),
+            ("CONTRIBUTING.md#developer-certificate-of-origin-dco/", 3),
             ("CONTRIBUTING.md#before-you-start/0", 1),
         ),
         "Relates a legal mechanism to the contribution flow; the query uses neither's noun.",

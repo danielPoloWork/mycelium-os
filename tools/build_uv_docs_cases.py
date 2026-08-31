@@ -117,14 +117,14 @@ DEV: tuple[Judgment, ...] = (
         "u-0011",
         "how do I run a script that declares its own dependencies",
         (EvalSlice.CONCEPTUAL,),
-        (("docs/guides/scripts.md#/0", 2),),
+        (("docs/guides/scripts.md#/", 2),),
         "A guide-shaped question; the opening frames it and later sections answer in detail.",
     ),
     (
         "u-0012",
         "where does uv look for a configuration file",
         (EvalSlice.FACT,),
-        (("docs/concepts/configuration-files.md#/0", 3),),
+        (("docs/concepts/configuration-files.md#/", 3),),
         "A search-order fact stated in the document's first section.",
     ),
 )
@@ -135,7 +135,7 @@ RELEASE: tuple[Judgment, ...] = (
         "how do I add a package index other than PyPI",
         (EvalSlice.FACT,),
         (
-            ("docs/concepts/indexes.md#defining-an-index/0", 3),
+            ("docs/concepts/indexes.md#defining-an-index/", 3),
             ("docs/concepts/indexes.md#/0", 2),
         ),
         "The answer is a configuration table shown in a named section.",
@@ -158,7 +158,7 @@ RELEASE: tuple[Judgment, ...] = (
         "u-1004",
         "how do I pin one package to a specific index",
         (EvalSlice.FACT,),
-        (("docs/concepts/indexes.md#pinning-a-package-to-an-index/0", 3),),
+        (("docs/concepts/indexes.md#pinning-a-package-to-an-index/", 3),),
         "A task with its own section; the question avoids the section's wording.",
     ),
     (
@@ -172,7 +172,7 @@ RELEASE: tuple[Judgment, ...] = (
         "u-1006",
         "which Python version formats can I request",
         (EvalSlice.FACT,),
-        (("docs/concepts/python-versions.md#requesting-a-version/0", 3),),
+        (("docs/concepts/python-versions.md#requesting-a-version/", 3),),
         "A list of accepted formats, asked without the document's noun.",
     ),
     (
@@ -186,11 +186,10 @@ RELEASE: tuple[Judgment, ...] = (
         "u-1008",
         "how do I add a dependency to my project",
         (EvalSlice.FACT,),
-        (
-            ("docs/concepts/projects/dependencies.md#adding-dependencies/4", 3),
-            ("docs/concepts/projects/dependencies.md#adding-dependencies/0", 1),
-        ),
-        "The commonest task in the corpus, phrased as a newcomer would.",
+        (("docs/concepts/projects/dependencies.md#adding-dependencies/", 3),),
+        "The commonest task in the corpus. The answer is the section - the command, the "
+        "entry it writes, the flags that vary it - so judging one paragraph of it was "
+        "judging where the chunker splits (ADR-0029).",
     ),
     (
         "u-1009",
@@ -230,7 +229,7 @@ RELEASE: tuple[Judgment, ...] = (
         "u-1013",
         "how do I stop uv from using the network at all",
         (EvalSlice.FACT,),
-        (("docs/concepts/cache.md#cache-directory/0", 1),),
+        (("docs/concepts/cache.md#cache-directory/", 1),),
         "A question the corpus answers only partially — a weak-evidence case on purpose.",
     ),
     (

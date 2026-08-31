@@ -67,7 +67,9 @@ def validate_judged_set(
     it catches (ADR-0021, ADR-0027):
 
     **A judged anchor must exist.** A case citing an anchor the corpus does not
-    contain is broken, and headings move.
+    contain is broken, and headings move. A *section* judgment (ADR-0029) resolves
+    against the set of heading paths rather than against a chunk, since not
+    depending on the chunk count is the whole point of writing one.
 
     **An `unanswerable` case must be unanswerable by *every* retriever.** The
     corpus keeps growing, including into a query's vocabulary — writing up a bug
@@ -82,12 +84,29 @@ def validate_judged_set(
     complete answer to "what licence is this". A rule that cannot tell those apart
     is a reviewer's prompt, not a gate (ADR-0027).
     """
+    from mycelium.eval.metrics import SECTION_MARKER, section_of
     from mycelium.eval.retrievers import build_retriever
+
+    sections = {
+        section_of(chunk.anchor)
+        for doc_id in store.document_ids()
+        for chunk in store.chunks_of(doc_id)
+    }
 
     errors: list[str] = []
     warnings: list[str] = []
     for case in cases:
         for relevant in case.relevant:
+            if relevant.anchor.endswith(SECTION_MARKER):
+                # A section judgment resolves when the corpus holds a section by
+                # that heading path; how many chunks it was split into is exactly
+                # what the judgment declined to depend on (ADR-0029).
+                if relevant.anchor not in sections:
+                    errors.append(
+                        f"{case.case_id}: judged section {relevant.anchor} is not in the "
+                        "corpus - a heading probably moved; re-judge against the current text"
+                    )
+                continue
             chunk = store.get_chunk(relevant.anchor)
             if chunk is None:
                 errors.append(
