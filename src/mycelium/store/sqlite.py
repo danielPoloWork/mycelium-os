@@ -839,10 +839,12 @@ class SqliteStore:
 
         A brute-force scan, and an honest one: it is **exact**, so there is no
         recall cliff to tune, and it is **linear**. Against the packed matrix
-        (ADR-0026) a query costs 2.9 ms over 10 000 chunks — comfortably inside
-        spec 04 §1's 60 ms candidate budget — and the linearity only bites at the
-        top of the v1 envelope, where the *first* query in a fresh process costs
-        about 78 ms over 10^5 chunks and every query after it about 1 ms.
+        (ADR-0026) a query costs 2.9 ms over 10 000 chunks, and about **31 ms**
+        over 10^5 — the top of the v1 envelope — from a fresh process, against
+        spec 04 §1's 60 ms candidate budget. A process that holds the mapping,
+        which is every process that asks twice, pays about 1 ms. Both patterns are
+        inside the budget; an earlier note here said otherwise, and ADR-0030 has
+        the correction and the benchmark defect behind it.
 
         It stays exact on purpose. Four ways of not reading every vector were
         measured and every one of them failed (ADR-0028): coarse quantisation is

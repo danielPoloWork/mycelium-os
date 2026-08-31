@@ -21,6 +21,7 @@ The table this prints is the one in ADR-0028. If it ever stops agreeing with tha
 ADR, one of the two is wrong and the ADR is the one that cannot be re-run.
 """
 
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -155,13 +156,25 @@ def report_recall(root: Path) -> None:
         print(f"  {label:<44} {25.0:6.1f}% {recall_of(matrix, queries, select):10.3f}")
 
 
-def timed(label: str, run, rounds: int = 9) -> float:
-    run()  # warm the page cache: this measures a cold *process*, not a cold disk
+def timed(label: str, mode: str, scratch: Path, rounds: int = 5) -> float:
+    """Time one query per *process*, which is the only honest way to measure this.
+
+    Timing repeated calls inside one process measures something no code path does.
+    A store maps its packed matrix once per handle (ADR-0026), so a long-lived
+    server re-uses that mapping and a CLI invocation makes exactly one. Re-mapping
+    the same 154 MB file in a loop is neither: it costs about 71 ms a call against
+    31 ms for the first, and reporting that as "cold" is what ADR-0030 had to
+    correct in two earlier ADRs.
+    """
     samples = []
     for _ in range(rounds):
-        started = time.perf_counter()
-        run()
-        samples.append((time.perf_counter() - started) * 1000)
+        result = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve()), "--child", mode, str(scratch)],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        samples.append(float(result.stdout.strip()))
     samples.sort()
     median = samples[len(samples) // 2]
     verdict = "within" if median <= BUDGET_MS else "OVER"
@@ -169,8 +182,8 @@ def timed(label: str, run, rounds: int = 9) -> float:
     return median
 
 
-def report_latency(scratch: Path) -> None:
-    """Time a cold-process query at the reference profile. Geometry-free by design."""
+def reference_paths(scratch: Path) -> tuple[Path, Path, int]:
+    """The synthetic reference matrix, written once."""
     dim = 384
     matrix_path = scratch / f"reference-{REFERENCE_N}.f32"
     quantised_path = scratch / f"reference-{REFERENCE_N}.i8"
@@ -183,47 +196,57 @@ def report_latency(scratch: Path) -> None:
         quantised_path.write_bytes(
             np.clip(np.round(matrix / scale * 127), -127, 127).astype(np.int8).tobytes()
         )
+    return matrix_path, quantised_path, dim
 
+
+def child(mode: str, scratch: Path) -> None:
+    """One query, then exit - the whole point of being a separate process."""
+    matrix_path, quantised_path, dim = reference_paths(scratch)
     query = np.random.default_rng(7).standard_normal(dim).astype("<f4")
     query /= np.linalg.norm(query)
-    size = matrix_path.stat().st_size / 1e6
-    print(f"\nLATENCY, cold process, {REFERENCE_N:,} vectors ({size:.0f} MB float32)")
 
-    def exact() -> np.ndarray:
+    started = time.perf_counter()
+    if mode == "exact":
         packed = np.memmap(matrix_path, dtype="<f4", mode="r", shape=(REFERENCE_N, dim))
         scores = packed @ query
-        best = np.argpartition(-scores, TOP_K)[:TOP_K]
-        return best[np.argsort(-scores[best])]
-
-    def partial(fraction: float, runs: int = 16):
-        """What an IVF probe costs: `fraction` of the rows as contiguous runs."""
-
-        def run() -> np.ndarray:
-            packed = np.memmap(matrix_path, dtype="<f4", mode="r", shape=(REFERENCE_N, dim))
-            rows = int(REFERENCE_N * fraction / runs)
-            starts = np.linspace(0, REFERENCE_N - rows - 1, runs).astype(int)
-            scores = np.concatenate([np.asarray(packed[s : s + rows]) @ query for s in starts])
-            best = np.argpartition(-scores, TOP_K)[:TOP_K]
-            return best[np.argsort(-scores[best])]
-
-        return run
-
-    def two_pass() -> np.ndarray:
+    elif mode.startswith("partial"):
+        fraction, runs = float(mode.split(":")[1]), 16
+        packed = np.memmap(matrix_path, dtype="<f4", mode="r", shape=(REFERENCE_N, dim))
+        rows = int(REFERENCE_N * fraction / runs)
+        starts = np.linspace(0, REFERENCE_N - rows - 1, runs).astype(int)
+        scores = np.concatenate([np.asarray(packed[s : s + rows]) @ query for s in starts])
+    else:
         coarse = np.memmap(quantised_path, dtype=np.int8, mode="r", shape=(REFERENCE_N, dim))
         approx = coarse.astype(np.float32) @ query
         picked = np.argpartition(-approx, 99)[:100]
         packed = np.memmap(matrix_path, dtype="<f4", mode="r", shape=(REFERENCE_N, dim))
         scores = np.asarray(packed[picked]) @ query
-        best = np.argpartition(-scores, TOP_K - 1)[:TOP_K]
-        return picked[best[np.argsort(-scores[best])]]
+    best = np.argpartition(-scores, min(TOP_K, len(scores) - 1))[:TOP_K]
+    best[np.argsort(-scores[best])]
+    print((time.perf_counter() - started) * 1000)
 
-    timed("exact scan, every vector (ADR-0026)", exact)
+
+def report_latency(scratch: Path) -> None:
+    """Time a query at the reference profile. Geometry-free, so synthetic is honest."""
+    matrix_path, _, _ = reference_paths(scratch)
+    size = matrix_path.stat().st_size / 1e6
+    print(f"one query per fresh process, {REFERENCE_N:,} vectors ({size:.0f} MB) - LATENCY")
+    timed("exact scan, every vector (ADR-0026)", "exact", scratch)
     for fraction in (0.0625, 0.25, 0.58):
-        timed(f"partial scan, {fraction * 100:.0f}% of rows (an IVF probe)", partial(fraction))
-    timed("int8 first pass + exact rescore of 100", two_pass)
+        timed(
+            f"partial scan, {fraction * 100:.0f}% of rows (an IVF probe)",
+            f"partial:{fraction}",
+            scratch,
+        )
+    timed("int8 first pass + exact rescore of 100", "int8", scratch)
 
 
 def main() -> int:
+    if "--child" in sys.argv:
+        index = sys.argv.index("--child")
+        child(sys.argv[index + 1], Path(sys.argv[index + 2]))
+        return 0
+
     args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
     root = Path(args[0]) if args else ROOT / "eval" / "corpora" / "uv-docs"
     report_recall(root)
