@@ -74,29 +74,37 @@ def estimate_tokens(text: str) -> int:
 class ChunkingPolicy:
     """Chunking knobs (spec 03 §5 defaults; `mycelium.toml` overrides them later).
 
-    `target_max_tokens` is a real ceiling — prose fills toward it and splits at the
-    paragraph before it would be breached. `target_min_tokens` is the declared
-    lower target, and the packer deliberately does *not* enforce it: the only
-    chunks that fall below it are a section's remainder, a heading with no content,
-    and atomic tables and code blocks. Lifting any of them to the minimum would
-    mean merging across a heading boundary, which is precisely what
-    heading-bounded chunking exists to avoid (ADR-0007).
+    `target_tokens` is the size prose aims at: a run closes at the first paragraph
+    boundary *after* it reaches the target, so chunks land just above it rather
+    than filling the ceiling. `max_tokens` is the ceiling that can never be
+    breached by packing — a run also closes when the next block would cross it.
+    Setting `target_tokens = max_tokens` therefore reproduces fill-to-the-ceiling
+    exactly, which is the property that makes the target a *steering* knob rather
+    than a second ceiling (ADR-0023).
+
+    The shipped default is `target_tokens == max_tokens`, because on the only
+    corpus this project can measure a smaller target bought nothing: from 500 up
+    every slice scores identically, and below it the sole difference is a *loss*
+    (ADR-0023). The knob is there for a corpus owner whose measurements differ.
+
+    Neither number is a minimum, and the packer still refuses to reach one: the
+    chunks below the target are a section's remainder, a heading with no content,
+    and atomic tables and code blocks. Lifting any of them would mean merging
+    across a heading boundary, which is what heading-bounded chunking exists to
+    avoid (ADR-0007).
     """
 
-    target_min_tokens: int = 200
-    target_max_tokens: int = 800
+    target_tokens: int = 800
+    max_tokens: int = 800
     overlap_tokens: int = 0
     count_tokens: TokenCounter = estimate_tokens
 
     def __post_init__(self) -> None:
-        if self.target_min_tokens < 0 or self.target_max_tokens <= 0:
+        if self.target_tokens <= 0 or self.max_tokens <= 0:
             msg = "token targets must be positive"
             raise ValueError(msg)
-        if self.target_min_tokens > self.target_max_tokens:
-            msg = (
-                f"target_min_tokens {self.target_min_tokens} exceeds "
-                f"target_max_tokens {self.target_max_tokens}"
-            )
+        if self.target_tokens > self.max_tokens:
+            msg = f"target_tokens {self.target_tokens} exceeds max_tokens {self.max_tokens}"
             raise ValueError(msg)
         if self.overlap_tokens != 0:
             # Structure replaces overlap (spec 03 §5). The knob exists so the
@@ -263,10 +271,17 @@ def _sections(kir: KirDocument) -> list[_Section]:
 def _pack(section: _Section, policy: ChunkingPolicy) -> list[tuple[list[_Unit], ChunkKind]]:
     """Group a section's units into chunk-sized runs.
 
-    Prose accumulates until the next block would breach the token ceiling; tables
-    and code blocks are atomic and never share a chunk. A single block larger than
-    the ceiling stays whole — the policy forbids mid-sentence splits, and a
-    paragraph is the smallest boundary there is.
+    Prose accumulates until it has reached `target_tokens`, or until the next
+    block would breach `max_tokens`, whichever comes first; tables and code blocks
+    are atomic and never share a chunk. A single block larger than the ceiling
+    stays whole — the policy forbids mid-sentence splits, and a paragraph is the
+    smallest boundary there is.
+
+    Both tests read the run *already accumulated*, never the run it would become,
+    so a chunk closes on a paragraph boundary and its size is a consequence of
+    where the author put one. With `target_tokens == max_tokens` the first test
+    can only fire where the second already would, which is why that setting packs
+    exactly as the ceiling-only rule did (ADR-0023).
     """
     packed: list[tuple[list[_Unit], ChunkKind]] = []
     pending: list[_Unit] = []
@@ -280,7 +295,9 @@ def _pack(section: _Section, policy: ChunkingPolicy) -> list[tuple[list[_Unit], 
             packed.append(([unit], unit.kind))
             continue
         tokens = policy.count_tokens(unit.text)
-        if pending and pending_tokens + tokens > policy.target_max_tokens:
+        reached_target = pending_tokens >= policy.target_tokens
+        would_breach_ceiling = pending_tokens + tokens > policy.max_tokens
+        if pending and (reached_target or would_breach_ceiling):
             packed.append((pending, ChunkKind.PROSE))
             pending, pending_tokens = [], 0
         pending.append(unit)

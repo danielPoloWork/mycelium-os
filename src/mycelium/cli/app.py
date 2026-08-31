@@ -103,7 +103,7 @@ sources_dir = "sources"        # honoured from milestone 4 (ingestion)
 
 [chunking]
 max_tokens = 800               # hard ceiling: prose splits at the paragraph before it
-target_tokens = 400            # advisory today - the packer fills toward max_tokens
+# target_tokens = 400         # aim smaller than the ceiling; measure before you do
 atomic = ["table", "code"]     # tables and code blocks are never split
 
 [embedding]                    # the vector stage; "none" switches it off entirely

@@ -77,7 +77,8 @@ Parse (markdown-it → KIR, the expensive stage) keys on the source digest and t
 id; chunk keys on the parse artifact's digest, the path (anchors embed it), and its
 config slice — `max_tokens` and the token counter's qualified name, deliberately
 excluding advisory `target_tokens` (ADR-0014; 3.8 bumps the stage version when it becomes
-real). Assemble is recomputed for every dirty document: it is arithmetic over cached
+real). *Since [ADR-0023](0023-make-the-chunk-target-steer-size.md) it has: the slice carries `target_tokens` too, and
+`CHUNK_STAGE_VERSION` is 2.* Assemble is recomputed for every dirty document: it is arithmetic over cached
 inputs, and its mtime input is the one that most often changes alone. The release version
 participates in **no** key — bumping `__version__` must not cold-start every cache — so a
 behavior change without its stage-version bump is the failure mode this design accepts,

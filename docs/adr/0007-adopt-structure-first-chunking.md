@@ -1,6 +1,6 @@
 # ADR-0007: Chunk on document structure, with a dependency-free token estimate
 
-- **Status:** Accepted
+- **Status:** Accepted — the `target_min_tokens` clause is amended by [ADR-0023](0023-make-the-chunk-target-steer-size.md), which makes the knob steer size and renames it
 - **Date:** 2026-08-29
 - **Deciders:** tech-lead (EADOS delivery agent), per RFC-0001 / spec 03 §5
 - **Related:** [ADR-0005](0005-adopt-in-repo-identity-library.md) (which deferred sibling

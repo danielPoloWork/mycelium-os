@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`[chunking] target_tokens` steers chunk size.** The packer closes a prose run at the
+  first paragraph boundary after the run reaches the target, and still never crosses
+  `max_tokens`; until now it filled toward the ceiling and the target did nothing at all
+  (ADR-0014 said so in as many words). Editing either number now recompiles every
+  document, because the chunk build key carries both. **The default is unchanged**: an
+  unset target means the ceiling, so an existing repository compiles byte-identical output
+  — the determinism golden re-blessed with a one-field diff. The evaluation is why:
+  sweeping the target from 150 to 800 leaves every slice identical from 500 up, and below
+  it the only slice that moves is `relationship`, down 6.1 %. A target of 300 does buy
+  11 % fewer tokens per agent-task answer at an unchanged success rate, which ADR-0023
+  records as an open trade rather than a default.
+
 - **The evaluation gates run in CI** (`eval / gates G1-G6`). Every gate spec 04 §7.3
   names is now accounted for: G1 and G4 as before, G3 against a baseline committed to the
   repository (`mycelium eval --bless` writes it), G5 against the 150 ms query budget with
