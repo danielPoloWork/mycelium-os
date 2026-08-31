@@ -1,7 +1,7 @@
 {
   "grep": {
-    "blessed_from_snapshot": "01M1BEE4CEF16AJZ03E4WY1BRQ",
-    "corpus_digest": "sha256:60b9aa8397802e95f84837103d6bc0e3347830927a8a6a9f786a6ca08bd2e445",
+    "blessed_from_snapshot": "01M1BG29JJGT73X8TSV4S2X9V8",
+    "corpus_digest": "sha256:7cd871566c13a6a9b7ea3dc0cf6fc5b93b9f0509d06610d2bfaa1afb86d9ad21",
     "overall_ndcg_at_10": 0.477217,
     "per_slice": {
       "conceptual": 0.514174,
