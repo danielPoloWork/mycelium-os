@@ -39,9 +39,11 @@ from mycelium.store.base import CacheEntry, DocState, SnapshotState
 from mycelium.store.schema import (
     DDL,
     META_SCHEMA_VERSION,
+    META_VECTORS_GENERATION,
     PRAGMAS,
     SCHEMA_VERSION,
 )
+from mycelium.store.vectorpack import VectorPack, prune_packs, write_pack
 
 __all__ = [
     "STORE_FILENAME",
@@ -152,6 +154,10 @@ class SqliteStore:
         self._read_only = read_only
         self.recreated = False
         """True when opening discarded a foreign-version store (D-016 rebuild)."""
+        self._db_path: Path | None = None
+        self._packs: dict[str, VectorPack | None] = {}
+        """Memory-mapped packed matrices, per model, for the life of this handle."""
+        self._vectors_touched = False
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -174,6 +180,7 @@ class SqliteStore:
             uri = f"file:{path.as_posix()}?mode=ro"
             connection = sqlite3.connect(uri, uri=True, isolation_level=None)
             store = cls(connection, read_only=True)
+            store._db_path = path
             store._configure()
             store._check_version()
             return store
@@ -183,6 +190,7 @@ class SqliteStore:
             raise StoreError(msg)
         path.parent.mkdir(parents=True, exist_ok=True)
         store = cls(sqlite3.connect(path, isolation_level=None), read_only=False)
+        store._db_path = path
         store._configure()
         store._migrate()
         try:
@@ -212,6 +220,11 @@ class SqliteStore:
             self._connection.execute("PRAGMA foreign_keys=ON")
         self.recreated = True
         self._migrate()
+        if self._db_path is not None:
+            # The counter died with the schema, so generation 0 would re-open a
+            # pack from a store that no longer exists.
+            prune_packs(self._db_path)
+            self._packs = {}
 
     def _configure(self) -> None:
         for pragma in PRAGMAS:
@@ -245,7 +258,18 @@ class SqliteStore:
             raise StoreVersionError(msg)
 
     def close(self) -> None:
+        self.release_packs()
         self._connection.close()
+
+    def release_packs(self) -> None:
+        """Unmap the packed matrices this handle holds open.
+
+        Windows refuses to unlink a file another process still has mapped, so a
+        long-lived reader would otherwise pin every generation it has ever read.
+        `prune_packs` already tolerates the refusal — this is what makes the
+        refusal rare.
+        """
+        self._packs = {}
 
     def __enter__(self) -> Self:
         return self
@@ -273,8 +297,71 @@ class SqliteStore:
             yield
         except BaseException:
             self._connection.execute("ROLLBACK")
+            self._vectors_touched = False
             raise
         self._connection.execute("COMMIT")
+        if self._vectors_touched:
+            # After the commit, never inside it: the pack is derived from what the
+            # transaction published, and a pack written from uncommitted rows
+            # would outlive a rollback.
+            self._vectors_touched = False
+            self.repack_vectors()
+
+    # -- the packed vector matrix (ADR-0026) --------------------------------
+
+    def _vectors_generation(self) -> int:
+        """How many times this store's vectors have changed.
+
+        The pack file's name carries the generation it was packed at, so a pack
+        whose vectors have since moved is a file nobody opens — staleness is made
+        impossible rather than detected.
+        """
+        raw = self._meta_get(META_VECTORS_GENERATION)
+        return int(raw) if raw is not None and raw.isdigit() else 0
+
+    def _bump_vectors_generation(self) -> None:
+        self._meta_set(META_VECTORS_GENERATION, str(self._vectors_generation() + 1))
+        self._vectors_touched = True
+
+    def _pack_for(self, model_id: str) -> VectorPack | None:
+        """The mapped pack for `model_id`, or ``None`` to use the SQL scan."""
+        if self._db_path is None:
+            return None
+        key = f"{model_id}@{self._vectors_generation()}"
+        if key not in self._packs:
+            self._packs = {  # one generation at a time; older maps are dead weight
+                key: VectorPack.open(self._db_path, model_id, self._vectors_generation())
+            }
+        return self._packs[key]
+
+    def repack_vectors(self) -> None:
+        """Rebuild the packed matrix for every model this store holds vectors for.
+
+        Called once when a write transaction that touched vectors commits, so the
+        pack is written by the process that already holds the write lock and has
+        just paid for the rows anyway.
+        """
+        if self._db_path is None or self._read_only:
+            return
+        generation = self._vectors_generation()
+        written: list[Path] = []
+        for row in self._connection.execute(
+            "SELECT model_id, dim, count(*) AS n FROM vectors GROUP BY model_id, dim"
+        ).fetchall():
+            rows = self._connection.execute(
+                "SELECT chunk_digest, vec FROM vectors WHERE model_id = ?", (str(row["model_id"]),)
+            ).fetchall()
+            path = write_pack(
+                self._db_path,
+                str(row["model_id"]),
+                dim=int(row["dim"]),
+                generation=generation,
+                rows=[(str(item["chunk_digest"]), bytes(item["vec"])) for item in rows],
+            )
+            if path is not None:
+                written.append(path)
+        prune_packs(self._db_path, keep=written)
+        self._packs = {}
 
     # -- meta --------------------------------------------------------------
 
@@ -551,6 +638,8 @@ class SqliteStore:
                 (chunk_digest, model_id, len(vector), blob),
             )
             written += 1
+        if written:
+            self._bump_vectors_generation()
         return written
 
     def digests_without_vectors(self, model_id: str) -> tuple[str, ...]:
@@ -580,7 +669,10 @@ class SqliteStore:
         cursor = self._connection.execute(
             "DELETE FROM vectors WHERE chunk_digest NOT IN (SELECT chunk_digest FROM chunks)"
         )
-        return int(cursor.rowcount)
+        deleted = int(cursor.rowcount)
+        if deleted:
+            self._bump_vectors_generation()
+        return deleted
 
     def vector_counts(self) -> dict[str, int]:
         """Vectors per model id — what `doctor` and the manifest report."""
@@ -767,6 +859,12 @@ class SqliteStore:
         clauses, params = self._filter_sql(filters)
         where = "".join(f" AND {clause}" for clause in clauses)
 
+        packed = self._pack_for(model_id)
+        if packed is not None:
+            ranked = self._scan_packed(packed, vector, model_id, limit, clauses, params)
+            if ranked is not None:
+                return self._hydrate(ranked, "chunk_digest", limit)
+
         # Two phases, and the split is the whole performance story. Scoring needs
         # an anchor and 1 536 bytes of vector; a `SELECT c.*` would drag every
         # chunk's full text and JSON columns into Python to rank them and then
@@ -801,7 +899,67 @@ class SqliteStore:
             :limit
         ]
         ranked = {str(scored[index]["key"]): score for score, index in best}
+        return self._hydrate(ranked, key_column, limit)
 
+    def _scan_packed(
+        self,
+        packed: VectorPack,
+        vector: Sequence[float],
+        model_id: str,
+        limit: int,
+        clauses: list[str],
+        params: list[Any],
+    ) -> dict[str, float] | None:
+        """Score `vector` against the packed matrix (ADR-0026).
+
+        Returns ``None`` when the pack cannot answer this query — a dimension it
+        does not hold, or a filter whose admissible digests it does not contain —
+        and the caller falls back to the SQL scan, which is slower and exactly as
+        correct.
+        """
+        import numpy as np
+
+        if len(vector) != packed.dim:
+            msg = f"query vector has dim {len(vector)}, but the store holds dim {packed.dim}"
+            raise StoreError(msg)
+        query = np.asarray(vector, dtype="<f4")
+        norm = float(np.linalg.norm(query))
+        if norm:
+            query = query / norm
+
+        if not clauses:
+            return dict(packed.best(query, limit))
+
+        # Pre-filter in SQL as spec 04 §2 requires, but read *digests* rather than
+        # blobs: the filter decides which rows may be scored, and the pack holds
+        # the rows.
+        where = "".join(f" AND {clause}" for clause in clauses)
+        admissible = [
+            str(row["chunk_digest"])
+            for row in self._connection.execute(
+                f"""
+                SELECT DISTINCT c.chunk_digest AS chunk_digest
+                FROM chunks c
+                JOIN documents d ON d.doc_id = c.doc_id
+                JOIN vectors v ON v.chunk_digest = c.chunk_digest
+                WHERE v.model_id = ?{where}
+                """,
+                [model_id, *params],
+            ).fetchall()
+        ]
+        if not admissible:
+            return {}
+        rows = packed.rows_of(admissible)
+        if len(rows) != len(admissible):
+            return None  # the pack does not hold every admissible vector
+        return dict(packed.best_of_rows(query, rows, limit))
+
+    def _hydrate(
+        self, ranked: dict[str, float], key_column: str, limit: int
+    ) -> tuple[SearchHit, ...]:
+        """Turn ``{key: score}`` into ranked hits with their document context."""
+        if not ranked:
+            return ()
         placeholders = ",".join("?" * len(ranked))
         rows = self._connection.execute(
             f"""
