@@ -1,6 +1,6 @@
 # ADR-0026: Pack the vectors into a memory-mapped matrix, and keep the SQL scan as the definition
 
-- **Status:** Accepted
+- **Status:** Accepted — the 10^5 figures are corrected by [ADR-0030](0030-correct-the-vector-scan-cost-model.md): the gap this ADR filed as 3.14 was a benchmark artifact and does not exist
 - **Date:** 2026-08-31
 - **Deciders:** tech-lead (EADOS delivery agent), per RFC-0001 / spec 04 §1, §3
 - **Related:** [ADR-0017](0017-adopt-the-local-embedder-and-hybrid-retrieval.md) (whose

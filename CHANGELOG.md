@@ -212,6 +212,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **The vector benchmark was measuring a pattern no code path has**, and its numbers had
+  reached two ADRs and a docstring. It timed repeated queries inside one process, each
+  re-mapping the same 154 MB file — about 71 ms a call, against about **31 ms** for a process
+  that maps once, which is what a CLI invocation does and what a server does before re-using
+  the mapping. The correction matters because it retracts a claim rather than a behaviour: the
+  candidate-generation budget **is met** across the supported corpus range, and the gap
+  recorded against it did not exist
+  ([BUG-0015](docs/bugs/2026/08/BUG-0015-benchmark-times-a-pattern-no-code-has.md), ADR-0030).
+
 - `search_vectors` documented "94 ms over 10 000 chunks" and pointed at roadmap 3.12 long
   after 3.12 had made it 2.9 ms. The docstring now carries the measured numbers, the limit
   that remains at the top of the supported corpus range, and why the scan stays exact

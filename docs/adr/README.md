@@ -45,3 +45,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0027](0027-split-dev-from-release-and-judge-a-corpus-we-did-not-write.md) | Split dev from release, and judge a corpus we did not write | Accepted |
 | [0028](0028-keep-the-vector-scan-exact.md) | Keep the vector scan exact, because every way of shortening it costs more than it saves | Accepted |
 | [0029](0029-let-a-judgment-name-a-section.md) | Let a judgment name a section, and credit it once | Accepted |
+| [0030](0030-correct-the-vector-scan-cost-model.md) | Correct the vector scan's cost model — the budget was met, and the benchmark was wrong | Accepted |

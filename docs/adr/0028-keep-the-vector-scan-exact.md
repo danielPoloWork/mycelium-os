@@ -1,6 +1,6 @@
 # ADR-0028: Keep the vector scan exact, because every way of shortening it costs more than it saves
 
-- **Status:** Accepted
+- **Status:** Accepted — the latency table's premise is corrected by [ADR-0030](0030-correct-the-vector-scan-cost-model.md) — the exact scan is ~31 ms, not 78; the refusal below is unchanged and stronger for it
 - **Date:** 2026-08-31
 - **Deciders:** tech-lead (EADOS delivery agent), per RFC-0001 / spec 04 §1, §3
 - **Related:** [ADR-0026](0026-pack-the-vectors-into-a-memory-mapped-matrix.md) (which filed
