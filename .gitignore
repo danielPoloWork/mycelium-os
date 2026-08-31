@@ -81,3 +81,7 @@ htmlcov/
 # Project-local (mycelium-os)
 /.mycelium-os-legacy/
 /.mycelium/
+# The second judged corpus is source; the snapshot compiled from it is not
+# (ADR-0027). The rooted rule above does not reach a nested store.
+eval/corpora/*/.mycelium/
+eval/corpora/*/export/

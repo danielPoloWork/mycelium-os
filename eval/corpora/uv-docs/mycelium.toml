@@ -1,0 +1,10 @@
+# The second judged corpus (spec 04 §7.6): documentation this project did not
+# write. `knowledge_dir` scopes the corpus to the vendored tree, so this file,
+# the provenance README and the upstream LICENSE stay out of it.
+
+[project]
+name = "uv-docs"
+knowledge_dir = "docs"
+
+[retrieval]
+profile = "lexical"            # the shipped default; the corpus is here to measure it

@@ -72,9 +72,7 @@ def exists(rel):
 
 def git(*args):
     try:
-        out = subprocess.run(
-            ["git", "-C", ROOT, *args], capture_output=True, text=True, check=True
-        )
+        out = subprocess.run(["git", "-C", ROOT, *args], capture_output=True, text=True, check=True)
         return out.stdout.strip()
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
@@ -246,8 +244,11 @@ def check_milestones():
             roadmap_complete[num] = all(c.lower() == "x" for c in items)
     for num, complete in readme_status.items():
         if complete and num in roadmap_complete and not roadmap_complete[num]:
-            fail(name, f"README marks Milestone {num} complete, but ROADMAP has "
-                       "unchecked item(s) in that milestone")
+            fail(
+                name,
+                f"README marks Milestone {num} complete, but ROADMAP has "
+                "unchecked item(s) in that milestone",
+            )
     for ln in roadmap.splitlines():
         if re.match(r"^- \[", ln) and not re.match(r"^- \[[ xX]\]\s", ln):
             fail(name, f"malformed ROADMAP checkbox: {ln.strip()[:60]}")
@@ -256,8 +257,15 @@ def check_milestones():
 # ---------------------------------------------------------------------------
 # 6. Bug ledger integrity
 # ---------------------------------------------------------------------------
-BUG_STATUSES = {"open", "confirmed", "fixed", "wontfix", "rejected", "duplicate",
-                "cannot-reproduce"}   # `rejected`: an unsubstantiated report (ledger README, #242)
+BUG_STATUSES = {
+    "open",
+    "confirmed",
+    "fixed",
+    "wontfix",
+    "rejected",
+    "duplicate",
+    "cannot-reproduce",
+}  # `rejected`: an unsubstantiated report (ledger README, #242)
 BUG_SEVERITIES = {"low", "medium", "high", "critical"}
 BUG_REPORTERS = {"internal", "third-party"}
 BUG_REQUIRED = ("id", "title", "status", "severity", "reporter", "discovered")
@@ -360,8 +368,11 @@ def check_i18n_freshness():
         if newer is None:
             fail(name, f"git unavailable or commit {sha.group(1)} not in history for {rel}")
         elif newer:
-            fail(name, f"i18n translation of {rel} is STALE ({len(newer.splitlines())} "
-                       "commit(s) after the recorded source commit)")
+            fail(
+                name,
+                f"i18n translation of {rel} is STALE ({len(newer.splitlines())} "
+                "commit(s) after the recorded source commit)",
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -380,11 +391,17 @@ def check_posture():
     declared = _ENTERPRISE_MARKER in agents
     register = exists("docs/compliance/README.md")
     if declared and not register:
-        fail(name, "AGENTS.md declares the enterprise governance posture but "
-                   "docs/compliance/README.md (the control register) is missing")
+        fail(
+            name,
+            "AGENTS.md declares the enterprise governance posture but "
+            "docs/compliance/README.md (the control register) is missing",
+        )
     if register and not declared:
-        fail(name, "docs/compliance/README.md exists but AGENTS.md does not declare the "
-                   "enterprise governance posture — the register has no posture to serve")
+        fail(
+            name,
+            "docs/compliance/README.md exists but AGENTS.md does not declare the "
+            "enterprise governance posture — the register has no posture to serve",
+        )
 
 
 CHECKS = [

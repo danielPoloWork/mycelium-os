@@ -169,6 +169,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0  # the frozen-set check diffs against the base branch
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
@@ -177,12 +179,24 @@ jobs:
         uses: astral-sh/setup-uv@v7
       - name: Sync dependencies
         run: uv sync --all-extras --dev
+      - name: A change may tune retrieval or re-judge the release set, not both
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          git fetch --no-tags origin "${{ github.event.pull_request.base.sha }}"
+          uv run python tools/check_frozen_release_sets.py "${{ github.event.pull_request.base.sha }}"
       - name: Compile this repository's own documentation
         shell: bash
         run: uv run mycelium build .
-      - name: Gates G1-G6 on the judged case set
+      - name: Compile the second corpus (documentation we did not write)
+        shell: bash
+        run: uv run mycelium build eval/corpora/uv-docs
+      - name: Gates G1-G6 on the frozen release set — this corpus
         shell: bash
         run: uv run mycelium eval . --gate
+      - name: Gates G1-G6 on the frozen release set — the second corpus
+        shell: bash
+        run: uv run mycelium eval eval/corpora/uv-docs --set eval/release.jsonl --gate
       - name: The grep baseline, for the record (D-010)
         shell: bash
         # Reported, never gated: the incumbent's numbers are evidence about the

@@ -26,28 +26,23 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from mycelium.build import build  # noqa: E402
-from mycelium.eval.cases import write_cases  # noqa: E402
-from mycelium.eval.retrievers import build_retriever  # noqa: E402
+from mycelium.eval.cases import validate_judged_set, write_cases  # noqa: E402
 from mycelium.sdk.types import EvalCase, EvalSlice, RelevantAnchor  # noqa: E402
 from mycelium.store import SqliteStore  # noqa: E402
 
-CORPUS_PATHS = (
-    "README.md",
-    "ROADMAP.md",
-    "AGENTS.md",
-    "CHANGELOG.md",
-    "CONTRIBUTING.md",
-    "SECURITY.md",
-    "CODE_OF_CONDUCT.md",
-    "docs/adr",
-    "docs/patterns",
-    "docs/workflow",
-)
-"""What the self-evaluation corpus contains. `docs/journal/` is excluded: it grows
-every session, so including it would churn judgments for no evaluative gain."""
+SKIP_TOP = frozenset({".git", ".mycelium", "export", ".venv"})
+"""Never staged: version control, derived state, and the virtualenv. Everything
+else is copied, and `mycelium.toml`'s own `exclude` decides what is *corpus* —
+the same rule the gates run under.
+
+Staging a hand-written list of paths instead was a quiet flaw: the judged set was
+validated against a smaller corpus than the one it is scored on, so an
+`unanswerable` case could pass here and be answerable in CI (ADR-0027)."""
 
 # (case_id, query, slices, [(anchor, grade)], note)
-JUDGMENTS: tuple[tuple[str, str, tuple[EvalSlice, ...], tuple[tuple[str, int], ...], str], ...] = (
+Judgment = tuple[str, str, tuple[EvalSlice, ...], tuple[tuple[str, int], ...], str]
+
+DEV: tuple[Judgment, ...] = (
     (
         "q-0001",
         "Apache-2.0 license",
@@ -234,22 +229,137 @@ JUDGMENTS: tuple[tuple[str, str, tuple[EvalSlice, ...], tuple[tuple[str, int], .
 )
 
 
+RELEASE: tuple[Judgment, ...] = (
+    (
+        "r-0001",
+        "how do I report a security vulnerability",
+        (EvalSlice.FACT,),
+        (("SECURITY.md#reporting-a-vulnerability/0", 3),),
+        "A procedure with its own section, asked in a reader's words.",
+    ),
+    (
+        "r-0002",
+        "which versions still receive security fixes",
+        (EvalSlice.FACT,),
+        (("SECURITY.md#supported-versions/0", 3),),
+        "A policy fact stated once.",
+    ),
+    (
+        "r-0003",
+        "Conventional Commits",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/workflow/git-workflow.md#3-commit-messages-conventional-commits/0", 3),
+            ("CONTRIBUTING.md#making-a-change/0", 1),
+        ),
+        "A literal term naming a section; the easiest lexical case, kept as a floor.",
+    ),
+    (
+        "r-0004",
+        "may an agent merge its own pull request",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/workflow/git-workflow.md#1-boundary-between-agent-and-human/0", 3),),
+        "A yes/no question whose answer is a boundary the workflow defines.",
+    ),
+    (
+        "r-0005",
+        "what exactly does the determinism gate claim",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/adr/0012-adopt-the-g6-determinism-gate.md#decision/0", 3),),
+        "The claim is stated deliberately narrowly; the question asks for the boundary.",
+    ),
+    (
+        "r-0006",
+        "why does a rollback rewrite data instead of just moving a pointer",
+        (EvalSlice.CONCEPTUAL, EvalSlice.RELATIONSHIP),
+        (
+            ("docs/adr/0016-make-snapshots-restorable.md#decision/0", 3),
+            ("docs/adr/0016-make-snapshots-restorable.md#context/0", 2),
+        ),
+        "A why-question whose answer is a design constraint, phrased without the ADR's words.",
+    ),
+    (
+        "r-0007",
+        "when does the export refuse to produce a bundle",
+        (EvalSlice.FACT,),
+        (("docs/adr/0020-adopt-the-jsonl-interchange-bundle.md#decision/0", 3),),
+        "A refusal condition buried inside a long decision section.",
+    ),
+    (
+        "r-0008",
+        "which documents must a pull request keep in sync",
+        (EvalSlice.FACT,),
+        (
+            ("docs/workflow/documentation.md#artifacts-and-when-to-touch-them/0", 3),
+            ("docs/workflow/documentation.md#same-pr-discipline/0", 2),
+        ),
+        "A checklist-shaped answer split across two sections of one document.",
+    ),
+    (
+        "r-0009",
+        "what has to be true before a design pattern is added to the catalogue",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/patterns/README.md#how-to-use-this-catalogue/0", 3),),
+        "A rule stated in a catalogue's own instructions.",
+    ),
+    (
+        "r-0010",
+        "how should a branch be named",
+        (EvalSlice.FACT,),
+        (("docs/workflow/git-workflow.md#2-branch-naming/0", 3),),
+        "A convention with a short, specific answer.",
+    ),
+    (
+        "r-0011",
+        "who signs off that a contribution may be contributed",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("CONTRIBUTING.md#developer-certificate-of-origin-dco/2", 3),
+            ("CONTRIBUTING.md#before-you-start/0", 1),
+        ),
+        "Relates a legal mechanism to the contribution flow; the query uses neither's noun.",
+    ),
+    (
+        "r-0012",
+        "what does a pull request have to carry besides a title",
+        (EvalSlice.FACT,),
+        (("docs/workflow/git-workflow.md#4-pull-requests/4-2-metadata-every-pr/0", 3),),
+        "A metadata checklist under a nested heading.",
+    ),
+    (
+        "r-0013",
+        "dressage piaffe pirouette",
+        (EvalSlice.UNANSWERABLE,),
+        (),
+        "A domain this project will never document; every term verified clean here.",
+    ),
+    (
+        "r-0014",
+        "escapement tourbillon mainspring",
+        (EvalSlice.UNANSWERABLE,),
+        (),
+        "As r-0013, in a different domain.",
+    ),
+)
+
+
 def stage_corpus(destination: Path) -> None:
-    """Copy the corpus into `destination` — the committed repo is never built."""
-    for relative in CORPUS_PATHS:
-        source = ROOT / relative
-        if not source.exists():
+    """Copy the repository into `destination` — the committed tree is never built.
+
+    Everything but version control and derived state, so `mycelium.toml` decides
+    the corpus here exactly as it does in CI.
+    """
+    for source in sorted(ROOT.rglob("*")):
+        relative = source.relative_to(ROOT)
+        if not source.is_file() or relative.parts[0] in SKIP_TOP or ".git" in relative.parts:
             continue
         target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        if source.is_dir():
-            shutil.copytree(source, target, dirs_exist_ok=True)
-        else:
-            shutil.copy2(source, target)
+        shutil.copy2(source, target)
 
 
-def main() -> int:
-    cases = tuple(
+def cases_of(judgments: tuple[Judgment, ...]) -> tuple[EvalCase, ...]:
+    return tuple(
         EvalCase(
             case_id=case_id,
             query=query,
@@ -260,80 +370,34 @@ def main() -> int:
             answerable=bool(relevant),
             note=note,
         )
-        for case_id, query, slices, relevant, note in JUDGMENTS
+        for case_id, query, slices, relevant, note in judgments
     )
+
+
+def main() -> int:
+    dev, release = cases_of(DEV), cases_of(RELEASE)
 
     with tempfile.TemporaryDirectory() as scratch:
         workspace = Path(scratch) / "corpus"
         stage_corpus(workspace)
         build(workspace)
         with SqliteStore.open(workspace, read_only=True) as store:
-            missing = [
-                (case.case_id, relevant.anchor)
-                for case in cases
-                for relevant in case.relevant
-                if store.get_chunk(relevant.anchor) is None
-            ]
-            # An `unanswerable` case is a claim about the corpus, and the corpus
-            # keeps changing — including because we *document the case itself*.
-            # That is not hypothetical: writing BUG-0007 up put an unanswerable
-            # query's own words into the corpus, and gate G4 went red for a
-            # document about the eval set (roadmap 3.7). Checking it here makes
-            # the rule mechanical instead of a convention nobody can enforce.
-            retrievers = [
-                ("mycelium", build_retriever("mycelium", store)),
-                # grep matches word *prefixes*, so a term that merely starts a
-                # corpus word ("bulk" inside "Bulkhead") answers the query for
-                # the baseline and not for us. A case that separates the two is
-                # measuring tokenisation, not abstention.
-                ("grep", build_retriever("grep", store)),
-            ]
-            # A heading-stub chunk cited as *the* evidence is a skim-judgment:
-            # it reads as the right section and carries none of the answer. One
-            # cost this project 22 task judgments and a case (roadmap 3.7).
-            stubs = [
-                (case.case_id, relevant.anchor, chunk.tokens)
-                for case in cases
-                for relevant in case.relevant
-                if relevant.grade == 3
-                and (chunk := store.get_chunk(relevant.anchor)) is not None
-                and chunk.tokens < 30
-            ]
-            answered = [
-                (f"{case.case_id} ({name})", found)
-                for case in cases
-                if not case.answerable
-                for name, retriever in retrievers
-                if (found := retriever.search(case.query, 3))
-            ]
+            errors, warnings = validate_judged_set(dev + release, store)
 
-    if stubs:
-        print("These grade-3 anchors are heading stubs - check they carry the answer:")
-        for case_id, anchor, tokens in stubs:
-            print(f"  {case_id}: {anchor} ({tokens} tokens)")
+    for warning in warnings:
+        print(f"  warning: {warning}")
 
-    if missing:
-        print("These judged anchors do not exist in the corpus:")
-        for case_id, anchor in missing:
-            print(f"  {case_id}: {anchor}")
-        print("\nA heading probably moved. Re-judge the case against the current text.")
+    if errors:
+        print("The judged set does not hold against the corpus:")
+        for error in errors:
+            print(f"  {error}")
         return 1
 
-    if answered:
-        print("These `unanswerable` cases are answerable against the current corpus:")
-        for case_id, found in answered:
-            print(f"  {case_id} -> {found[0]}")
-        print(
-            "The corpus grew into the query's vocabulary. Re-draw the query from a "
-            "domain this project will never document - and never quote an unanswerable "
-            "query verbatim in prose, or documenting it will answer it."
-        )
-        return 1
-
-    destination = ROOT / "eval" / "cases.jsonl"
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    write_cases(destination, cases)
-    print(f"wrote {len(cases)} cases to {destination.relative_to(ROOT)}")
+    destination = ROOT / "eval"
+    destination.mkdir(parents=True, exist_ok=True)
+    write_cases(destination / "dev.jsonl", dev)
+    write_cases(destination / "release.jsonl", release)
+    print(f"wrote {len(dev)} dev and {len(release)} release cases to {destination.name}/")
     return 0
 
 

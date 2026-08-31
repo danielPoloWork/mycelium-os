@@ -12,6 +12,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The evaluation has a dev/release split and a second corpus.** Every corpus carries a
+  `dev.jsonl` and a `release.jsonl`; CI gates the release sets and reports the gap to the
+  dev set beside them, ungated. The second corpus is `uv`'s documentation — MIT, vendored
+  and pinned to one commit, 81 files — so ≥ 60 judged cases now span two corpora, one of
+  which nobody here wrote (spec 04 §7.6). Freezing is enforced as a conjunction: one change
+  may tune retrieval or re-judge a release set, never both.
+
+  The first run is the reason it exists. Retrieval scores **0.453 on the release set against
+  0.569 on dev** here, and **0.249 against 0.403** on the second corpus — about a quarter
+  worse on cases it was never tuned against, with gate G3 green throughout, because G3 had
+  been comparing the tuned set to itself. Any retrieval number this project published before
+  today was measured on the set it was tuned against (ADR-0027).
+
 - **The vector leg meets its candidate-generation budget.** Vectors are packed into one
   memory-mapped matrix per model, so a query multiplies instead of reading 10 000 rows out
   of SQLite: `search_vectors` goes from **92.97 ms to 2.88 ms** over 10 000 chunks, and a
@@ -182,6 +195,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 ### Removed
 
 ### Fixed
+
+- The judged-case builder staged a hand-written list of paths, so judgments were validated
+  against a **smaller corpus than the gates score them on** — an `unanswerable` case could
+  pass the builder and be answerable in CI. It now stages the repository and lets
+  `mycelium.toml` decide what is corpus, which is the rule the gates run under (ADR-0027).
 
 - The MCP `search` tool applied a multi-valued `trust` filter *after* ranking, over-fetching
   `4 x k` candidates to make the loss less likely — which spec 04 §2 forbids, because

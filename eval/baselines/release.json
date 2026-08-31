@@ -1,0 +1,34 @@
+{
+  "grep": {
+    "blessed_from_snapshot": "01M1BXEW178S1WNZH0N00066MP",
+    "corpus_digest": "sha256:7a6fa998cbe14561ba6e39c33be40b4d54eb358c1cb5d854c1683e66d1668013",
+    "overall_ndcg_at_10": 0.268436,
+    "per_slice": {
+      "conceptual": 0.053211,
+      "exact": 0.377451,
+      "fact": 0.438488,
+      "relationship": 0.106423,
+      "unanswerable": 0.0
+    },
+    "toolchain": {
+      "mycelium": "0.2.0",
+      "python": "3.12.10"
+    }
+  },
+  "mycelium": {
+    "blessed_from_snapshot": "01M1BXEW178S1WNZH0N00066MP",
+    "corpus_digest": "sha256:7a6fa998cbe14561ba6e39c33be40b4d54eb358c1cb5d854c1683e66d1668013",
+    "overall_ndcg_at_10": 0.453321,
+    "per_slice": {
+      "conceptual": 0.378469,
+      "exact": 0.95866,
+      "fact": 0.435408,
+      "relationship": 0.283856,
+      "unanswerable": 0.0
+    },
+    "toolchain": {
+      "mycelium": "0.2.0",
+      "python": "3.12.10"
+    }
+  }
+}
