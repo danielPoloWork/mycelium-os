@@ -38,7 +38,7 @@ The design of record is [RFC-0001](docs/rfc/0001-mycelium-os-v1.md); the specifi
 ## Try it
 
 ```bash
-mycelium init              # scaffold knowledge/, mycelium.toml, the gitignore entry
+mycelium init              # scaffold knowledge/, mycelium.toml, the gitignore entries
 mycelium build             # compile what changed into a published snapshot
 mycelium build --watch     # ...and keep doing it as you edit (needs the `watch` extra)
 mycelium search "retry policy"          # add --hybrid for the vector leg, --explain for why
@@ -47,6 +47,7 @@ mycelium neighbors doc.md  # what this links to, and what links to it
 mycelium snapshots         # what has been published, newest first
 mycelium rollback <id>     # serve an earlier snapshot again - nothing recompiles
 mycelium gc                # drop snapshots beyond retention and unreachable artifacts
+mycelium export            # the snapshot as a JSONL bundle another tool can read
 mycelium eval              # score a judged case set against the snapshot
 mycelium doctor            # store, snapshot pointer, and lock health
 mycelium serve             # read-only MCP server over stdio, for your agent

@@ -5,9 +5,9 @@
 v1 has exactly two public surfaces, CLI and MCP (D-011), so every flag here is a
 compatibility liability and the skeleton stays deliberately small: ``init``,
 ``build``, ``snapshots``, ``rollback``, ``gc``, ``search``, ``show``,
-``neighbors``, ``doctor``, ``eval``, and ``serve``. The rest of the spec's table
-arrives with the features behind it — ``ingest``, ``verify``, and ``promote``
-with milestone 4, ``export`` with 3.6.
+``neighbors``, ``export``, ``doctor``, ``eval``, and ``serve``. The rest of the
+spec's table arrives with the features behind it — ``ingest``, ``verify``, and
+``promote`` with milestone 4.
 
 The CLI is a shell, not a layer: it parses arguments, calls one function, and
 renders. Nothing here decides anything the library does not already decide.
@@ -42,6 +42,7 @@ from mycelium.cli.output import (
 from mycelium.config import ConfigError, MyceliumConfig, RetrievalConfig, load_config
 from mycelium.embedding import Embedder, EmbeddingError, build_embedder
 from mycelium.eval import EvaluationError, load_cases, run_evaluation, write_run
+from mycelium.export import DEFAULT_EXPORT_DIRNAME, ExportError, export_bundle
 from mycelium.graph import MAX_DEPTH
 from mycelium.graph import neighbours as graph_neighbours
 from mycelium.mcp import serve_stdio
@@ -70,7 +71,13 @@ app = typer.Typer(
 
 _CONFIG_FILENAME: Final = "mycelium.toml"
 _KNOWLEDGE_LANES: Final = ("verified", "candidate", "evidence")
-_GITIGNORE_LINE: Final = f"{STORE_DIRNAME}/"
+_GITIGNORE_ENTRIES: Final = (
+    (f"{STORE_DIRNAME}/", "derived store - always ignored"),
+    (
+        f"{DEFAULT_EXPORT_DIRNAME}/",
+        "interchange bundles - regenerable, never committed by default (D-006)",
+    ),
+)
 
 _CONFIG_TEMPLATE: Final = """# Mycelium OS configuration (spec 05 §2).
 #
@@ -160,13 +167,19 @@ def init(
 
     gitignore = path / ".gitignore"
     lines = gitignore.read_text(encoding="utf-8").splitlines() if gitignore.exists() else []
-    if _GITIGNORE_LINE in {line.strip() for line in lines}:
+    present = {line.strip() for line in lines}
+    # Entry by entry rather than all-or-nothing: a repository initialised before
+    # an entry existed gains it on the next `init`, which is what makes this
+    # command idempotent rather than merely re-runnable.
+    wanted = [(entry, note) for entry, note in _GITIGNORE_ENTRIES if entry not in present]
+    if not wanted:
         existing.append(".gitignore")
     else:
         with gitignore.open("a", encoding="utf-8", newline="\n") as handle:
             if lines and lines[-1].strip():
                 handle.write("\n")
-            handle.write(f"# Mycelium OS derived store - always ignored\n{_GITIGNORE_LINE}\n")
+            for entry, note in wanted:
+                handle.write(f"# Mycelium OS {note}\n{entry}\n")
         created.append(".gitignore")
 
     if as_json:
@@ -842,6 +855,41 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
 
     if gate and failed:
         raise typer.Exit(int(ExitCode.FAILED))
+
+
+# ---------------------------------------------------------------------------
+# export
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def export(
+    path: Annotated[Path, typer.Argument(help="Repository root.")] = Path(),
+    out: Annotated[
+        Path | None, typer.Option("--out", help="Where bundles go (default: <root>/export).")
+    ] = None,
+    with_markdown: Annotated[
+        bool, typer.Option("--with-markdown", help="Copy the compiled sources into the bundle.")
+    ] = False,
+    as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+) -> None:
+    """Write the published snapshot as a JSONL interchange bundle."""
+    try:
+        result = export_bundle(path, out=out, with_markdown=with_markdown)
+    except ExportError as error:
+        raise fail(str(error)) from error
+    except (StoreError, OSError) as error:
+        raise fail(f"export failed: {error}") from error
+
+    if as_json:
+        emit_json(result.as_dict())
+        return
+    success(f"exported snapshot {result.snapshot_id}")
+    detail(f"  {result.bundle}")
+    counts = ", ".join(f"{count} {name}" for name, count in sorted(result.counts.items()))
+    detail(f"  {counts}")
+    if with_markdown:
+        detail(f"  {result.markdown_files} markdown file(s)")
 
 
 # ---------------------------------------------------------------------------
