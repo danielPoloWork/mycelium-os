@@ -726,3 +726,14 @@ class EvalRunManifest(Record):
     per_slice: dict[str, MetricSummary] = Field(default_factory=dict)
     results: tuple[CaseResult, ...] = ()
     gates: tuple[GateResult, ...] = ()
+    companion_set: str | None = Field(
+        default=None,
+        description="The dev set scored beside this run, when this is a release run.",
+    )
+    companion_overall: MetricSummary | None = Field(
+        default=None,
+        description=(
+            "The companion set's metrics. The gap between it and `overall` is the "
+            "overfitting signal spec 04 §7.1's dev/release split exists to expose."
+        ),
+    )

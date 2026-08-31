@@ -845,7 +845,7 @@ def _run_task_suite(path: Path, *, as_json: bool) -> None:
 def eval(  # noqa: A001 - the spec names this command `mycelium eval`
     path: Annotated[Path, typer.Argument(help="Repository root.")] = Path(),
     case_set: Annotated[Path, typer.Option("--set", help="Judged case set (JSONL).")] = Path(
-        "eval/cases.jsonl"
+        "eval/release.jsonl"
     ),
     retriever: Annotated[
         str, typer.Option("--retriever", help="mycelium | grep (the D-010 baseline).")
@@ -877,8 +877,26 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
     except (OSError, ValueError) as error:
         raise fail(f"cannot read {resolved}: {error}") from error
 
+    # The dev set is scored beside the release set and reported, never gated: the
+    # gap between them is the overfitting signal the split exists to expose
+    # (spec 04 §7.1, ADR-0027).
+    companion_path = resolved.with_name("dev.jsonl")
+    companion = None
+    if resolved.stem == "release" and companion_path.is_file():
+        try:
+            companion = load_cases(companion_path)
+        except (OSError, ValueError):
+            companion = None
+
     try:
-        manifest = run_evaluation(path, cases, retriever_name=retriever, case_set=resolved.name)
+        manifest = run_evaluation(
+            path,
+            cases,
+            retriever_name=retriever,
+            case_set=resolved.name,
+            companion=companion,
+            companion_set=companion_path.name if companion else None,
+        )
     except ValueError as error:  # unknown retriever
         raise fail(str(error), code=ExitCode.USAGE) from error
     except EvaluationError as error:
@@ -903,6 +921,14 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
         )
         for name, summary in sorted(manifest.per_slice.items()):
             detail(f"  {name:<14} nDCG@10 {summary.ndcg_at_10:.3f}  ({summary.cases} cases)")
+        if manifest.companion_overall is not None:
+            beside = manifest.companion_overall
+            gap = beside.ndcg_at_10 - overall.ndcg_at_10
+            detail(
+                f"  {manifest.companion_set}: nDCG@10 {beside.ndcg_at_10:.3f} on "
+                f"{beside.cases} cases, gap {gap:+.3f} - the dev set is what tuning "
+                "sees, so a gap that grows is a change fitting it (spec 04 7.1)"
+            )
         for result in manifest.gates:
             line = f"{'ok  ' if result.passed else 'FAIL'} {result.gate}: {result.detail}"
             if result.passed:

@@ -42,3 +42,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0024](0024-serve-what-the-configuration-admits.md) | Make the vocabulary filters set-valued, and enforce the serving policy at one seam | Accepted |
 | [0025](0025-make-lexical-evidence-the-vector-legs-precondition.md) | Make lexical evidence the vector leg's precondition, and refuse every similarity floor | Accepted |
 | [0026](0026-pack-the-vectors-into-a-memory-mapped-matrix.md) | Pack the vectors into a memory-mapped matrix, and keep the SQL scan as the definition | Accepted |
+| [0027](0027-split-dev-from-release-and-judge-a-corpus-we-did-not-write.md) | Split dev from release, and judge a corpus we did not write | Accepted |

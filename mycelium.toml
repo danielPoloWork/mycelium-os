@@ -10,6 +10,9 @@ exclude = [
                                # fixture and reports gate G4 red for it (BUG-0007)
     "docs/journal",            # grows every session; churns judgments for no gain
     ".mycelium-os-legacy",     # the superseded implementation, kept for salvage only
+    "eval/corpora",            # the second judged corpus is documentation we did NOT
+                               # write (ADR-0027); indexing it here would mix the two
+                               # corpora the dev/release split exists to keep apart
 ]
 
 [retrieval]

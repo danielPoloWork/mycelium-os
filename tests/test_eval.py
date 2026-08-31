@@ -33,9 +33,12 @@ from mycelium.sdk.types import EvalCase, EvalSlice, RelevantAnchor
 from mycelium.store import SqliteStore
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
-from build_eval_cases import CORPUS_PATHS, stage_corpus  # noqa: E402
+from build_eval_cases import SKIP_TOP, stage_corpus  # noqa: E402
 
-CASES = Path(__file__).parent.parent / "eval" / "cases.jsonl"
+EVAL = Path(__file__).parent.parent / "eval"
+CASES = EVAL / "dev.jsonl"
+RELEASE = EVAL / "release.jsonl"
+UV_CORPUS = EVAL / "corpora" / "uv-docs"
 
 
 @pytest.fixture(scope="module")
@@ -265,13 +268,26 @@ def test_evaluation_requires_a_snapshot_and_cases(tmp_path: Path) -> None:
         run_evaluation(tmp_path, load_cases(CASES))
 
 
-def test_the_corpus_definition_is_this_repository(corpus: Path) -> None:
-    """The eval corpus is the project's own documentation, per the roadmap item."""
-    assert "README.md" in CORPUS_PATHS
-    assert "docs/adr" in CORPUS_PATHS
-    assert "docs/journal" not in CORPUS_PATHS  # churns every session; excluded on purpose
+def test_the_judged_corpus_is_the_one_the_gates_run_on(corpus: Path) -> None:
+    """Staging copies the repository and lets `mycelium.toml` decide the corpus.
+
+    It used to stage a hand-written list of paths, which meant judgments were
+    validated against a *smaller* corpus than the gates score them on — an
+    `unanswerable` case could pass the builder and be answerable in CI (ADR-0027).
+    """
+    assert ".git" in SKIP_TOP  # version control is not corpus
+    assert "export" in SKIP_TOP  # nor is anything the compiler wrote
     with SqliteStore.open(corpus, read_only=True) as store:
-        assert store.counts()["documents"] > 15
+        documents = {
+            chunk.anchor.split("#")[0]
+            for doc in store.document_ids()
+            for chunk in store.chunks_of(doc)
+        }
+    assert "README.md" in documents
+    assert any(path.startswith("docs/adr/") for path in documents)
+    # `mycelium.toml` excludes it, so staging the whole tree still leaves it out.
+    assert not any(path.startswith("docs/journal/") for path in documents)
+    assert not any(path.startswith("eval/corpora/") for path in documents)
 
 
 def test_staging_never_touches_the_repository(tmp_path: Path) -> None:
@@ -418,14 +434,39 @@ def test_blessing_writes_a_baseline_that_g3_then_reads(tmp_path: Path, corpus: P
     assert "corpus_digest" in baseline  # what makes the comparison comparable
 
 
-def test_the_committed_baseline_covers_the_shipped_case_set() -> None:
-    """A gate whose baseline is missing from the repository gates nothing in CI."""
+def test_the_committed_baseline_covers_the_gated_case_set() -> None:
+    """A gate whose baseline is missing from the repository gates nothing in CI.
+
+    The *release* set is what CI gates, so it is the one that must be blessed —
+    the dev set is scored beside it and reported, never gated (ADR-0027).
+    """
     from mycelium.eval.harness import read_baseline
 
-    baseline = read_baseline(Path("."), "cases.jsonl", "mycelium")
+    baseline = read_baseline(Path("."), "release.jsonl", "mycelium")
     assert baseline is not None
     per_slice = baseline["per_slice"]
     assert isinstance(per_slice, dict)
-    slices = {slice_.value for case in load_cases(CASES) for slice_ in case.slices}
+    slices = {slice_.value for case in load_cases(RELEASE) for slice_ in case.slices}
     assert set(per_slice) >= slices - {"unanswerable"}
     assert baseline["corpus_digest"]  # blessed against a named corpus, not a mood
+
+
+def test_both_corpora_carry_a_dev_and_a_release_set() -> None:
+    """Spec 04 §7.6 asks for >= 60 judged cases across two corpora; §7.1 asks for
+    the dev/release split. This is the assertion that says we have both."""
+    sets = {
+        "mycelium/dev": load_cases(CASES),
+        "mycelium/release": load_cases(RELEASE),
+        "uv-docs/dev": load_cases(UV_CORPUS / "eval" / "dev.jsonl"),
+        "uv-docs/release": load_cases(UV_CORPUS / "eval" / "release.jsonl"),
+    }
+    assert sum(len(cases) for cases in sets.values()) >= 60
+    # Disjoint by construction: a case that sits in both sets makes the split a
+    # label rather than a separation.
+    dev_ids = {case.case_id for name, cases in sets.items() if "/dev" in name for case in cases}
+    release_ids = {
+        case.case_id for name, cases in sets.items() if "/release" in name for case in cases
+    }
+    assert not dev_ids & release_ids
+    for name, cases in sets.items():
+        assert any(not case.answerable for case in cases), f"{name} has no unanswerable case"

@@ -443,6 +443,8 @@ def run_evaluation(
     *,
     retriever_name: str = "mycelium",
     case_set: str = "cases.jsonl",
+    companion: Sequence[EvalCase] | None = None,
+    companion_set: str | None = None,
 ) -> EvalRunManifest:
     """Score `cases` against the published snapshot at `root`.
 
@@ -451,6 +453,13 @@ def run_evaluation(
     one number, and taking the baseline from a previous run would compare across
     snapshots. Both retrievers see the same cases, the same snapshot, and the
     same anchor space.
+
+    `companion` is scored beside `cases` and reported, never gated. It is how the
+    dev/release split earns its keep: G3 asks "did this change make the release
+    set worse", and the *gap* between the two sets asks the question G3 cannot —
+    "did this change make the set we tuned against better than the one we did
+    not" (spec 04 §7.1, ADR-0027). No threshold ships, because nobody has the
+    evidence to set one; the number is put where a reviewer sees it.
     """
     if not cases:
         msg = "no evaluation cases to run"
@@ -485,6 +494,10 @@ def run_evaluation(
             )
             gates.append(_gate_g2(overall, lexical, per_slice, lexical_slices))
 
+        companion_overall = None
+        if companion:
+            _, companion_overall, _ = _score(companion, retriever, resolvable)
+
     return EvalRunManifest(
         run_id=new_ulid(),
         snapshot_id=snapshot,
@@ -500,6 +513,8 @@ def run_evaluation(
         per_slice=per_slice,
         results=tuple(results),
         gates=tuple(gates),
+        companion_set=companion_set if companion_overall is not None else None,
+        companion_overall=companion_overall,
     )
 
 

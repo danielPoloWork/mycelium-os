@@ -15,35 +15,62 @@ mycelium eval --json               # the run manifest, machine-readable
 Runs are written to `.mycelium/eval/<run-id>.json`. A report without a manifest is
 exploratory and cannot satisfy a gate (spec 04 §7.5).
 
-## The case set
+## The case sets
 
-[`cases.jsonl`](cases.jsonl) — 20 judged cases over this repository's own documentation,
-one record per line (`mycelium/eval-case/v0`). Regenerate with:
+Four of them: a **dev** and a **release** set per corpus (spec 04 §7.1, ADR-0027).
+
+| set | cases | corpus |
+|---|---:|---|
+| [`dev.jsonl`](dev.jsonl) | 20 | this repository's documentation |
+| [`release.jsonl`](release.jsonl) | 14 | this repository's documentation |
+| [`corpora/uv-docs/eval/dev.jsonl`](corpora/uv-docs/eval/dev.jsonl) | 12 | [`uv`'s documentation](corpora/uv-docs/README.md) |
+| [`corpora/uv-docs/eval/release.jsonl`](corpora/uv-docs/eval/release.jsonl) | 16 | the same |
+
+**The release set is what CI gates. The dev set is what tuning may look at.** A release run
+scores the dev set beside it and prints the gap — reported, never gated, because nobody has
+the evidence to set a threshold and a constant chosen to look rigorous is worse than a number
+a reviewer reads. The gap is the overfitting signal G3 cannot give: G3 compares a run to a
+baseline over the *same* cases, so a change that fits those cases better passes it by
+construction.
+
+The existing twenty cases became the **dev** set rather than the release set, because four
+ADRs' worth of tuning already read them. Relabelling them would have frozen the set the
+product was fitted to and called it independent.
+
+Regenerate either corpus's sets with:
 
 ```bash
-python tools/build_eval_cases.py
+python tools/build_eval_cases.py       # this repository's documentation
+python tools/build_uv_docs_cases.py    # the second corpus
 ```
 
-The judgments live in that script as data, so every anchor is validated against a real
-build before the set is written: a case citing an anchor the corpus does not contain
-cannot be committed.
+The judgments live in those scripts as data, so every anchor is validated against a real
+build before a set is written.
+
+**Freezing is a conjunction, not an immutability.** Sets have to grow, so
+`tools/check_frozen_release_sets.py` refuses a change that edits a release set *and* touches
+retrieval, chunking, the store or the metrics. One change may move the retriever, or move
+the judgments, and not both — which is the failure that actually happens: a run comes back
+worse, a judgment looks wrong in hindsight, and the set quietly becomes the thing that fits.
 
 **Corpus:** this repository's own documentation, as `mycelium.toml` defines it —
 `[project] exclude` drops `tests` (fixtures are test data, not knowledge), `docs/journal`
-(it grows every session and would churn judgments for no gain), and the legacy tree. That
-line is not housekeeping: before it existed, a query about message brokers was answered by
-a *test fixture* and gate G4 read 25 %
+(it grows every session and would churn judgments for no gain), `eval/corpora` (the second
+corpus is measured separately, not mixed in), and the legacy tree. That line is not
+housekeeping: before it existed, a query about message brokers was answered by a *test
+fixture* and gate G4 read 25 %
 ([BUG-0007](../docs/bugs/2026/08/BUG-0007-eval-corpus-includes-test-fixtures.md)).
 
-**Two guards keep it honest**, because the same trap is easy to walk back into:
+**Three guards keep the sets honest**, because each trap is easy to walk back into:
 
-- The builder refuses to write a set in which an `unanswerable` case is answerable — by
-  *either* retriever, since grep matches word prefixes and would otherwise diverge from us
-  for reasons that have nothing to do with abstention. It caught a replacement query that
-  this repository's documentation had grown into, on its first run.
-- Both builders warn when a grade-3 anchor is a heading stub: fourteen tokens that read
-  like the right section and carry none of the answer. That lint found four mis-judgments
-  the moment it existed, one of them in the existing case set.
+- A judged anchor must exist in the corpus. Headings move.
+- An `unanswerable` case must be unanswerable by *either* retriever — grep matches word
+  prefixes, so a case that separates the two is measuring tokenisation, not abstention. It
+  caught a replacement query this repository's documentation had grown into, and caught
+  three more on the second corpus on their first run (`ratio` matches `rationale`).
+- A grade-3 anchor that is a heading stub **warns**. It found four mis-judgments the moment
+  it existed — and it stays a warning because short is only a proxy for empty: `## License`
+  followed by one line naming the licence is 24 tokens and is a complete answer.
 
 **Slices covered:** `exact`, `symbol`, `fact`, `conceptual`, `relationship`, `injection`,
 `unanswerable`. Metrics are always reported per slice — an overall win never excuses a
@@ -51,13 +78,20 @@ protected-slice loss.
 
 ## What this set is not
 
-- **The judgments are not independent.** They were assigned by the same agent that wrote
-  most of the documents being judged. That makes the set useful for regression detection
-  and for the grep comparison, and *not* an independent benchmark. Independent judgments
-  and a second, public corpus arrive at 3.7.
-- **Twenty cases is a seed, not a benchmark.** The spec's Phase 0–1 target is ≥ 60 judged
-  cases across two corpora; 1.0 wants ≥ 1 000. Small sets move a lot on single-case
-  changes, so read differences of a few points as noise.
+- **The judgments are still not independent, and only half the problem moved.** Nobody here
+  wrote `uv`'s documentation, so a query over that corpus has to be guessed the way any
+  reader would guess it. But the same agent that builds the retriever still assigns the
+  grades on both corpora. Removing that needs judgments from someone else, which is what
+  1.0's published guidelines and redistributable subset are for (spec 04 §7.6).
+- **Relevance is chunk-exact, and that is measuring something narrower than it looks.** A
+  case naming one anchor for a section the chunker split into twelve scores 0 even when the
+  retriever returns five chunks of that very section — which is what happened on the second
+  corpus, where the judgments were not written by someone who knew where chunk boundaries
+  fall. The cases are left as authored and the question is filed as roadmap 3.15: re-judging
+  after seeing a ranking cannot be told apart from fitting the set to the result.
+- **62 cases is the floor the spec asks for at this phase, not a benchmark.** 1.0 wants
+  ≥ 1 000. Small sets move a lot on single-case changes, so read differences of a few points
+  as noise.
 - **Absolute numbers are not targets.** Pre-GA the discipline is relative (spec 04 §7.3):
   compare against the previous run and against grep, not against an invented threshold.
 
