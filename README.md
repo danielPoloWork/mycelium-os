@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/Status-v0.2.0-blue)
+![Status](https://img.shields.io/badge/Status-v0.3.0-blue)
 [![CI](https://github.com/danielPoloWork/mycelium-os/actions/workflows/ci.yml/badge.svg)](https://github.com/danielPoloWork/mycelium-os/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/danielPoloWork/mycelium-os?include_prereleases)](https://github.com/danielPoloWork/mycelium-os/releases)
 [![License](https://img.shields.io/github/license/danielPoloWork/mycelium-os)](LICENSE)
@@ -153,19 +153,24 @@ setup.
 
 ## Status
 
-Pre-1.0 and milestone-driven. The walking skeleton is complete: Mycelium OS compiles and
-serves this repository's own documentation, rebuilds byte-identically under a CI gate, and
-reports its retrieval quality against a grep baseline. The compiler is now incremental —
+Pre-1.0 and milestone-driven. **Milestone 3 is complete**: the compiler is incremental —
 a single-document edit recompiles that document's chain, not the corpus, and the output is
-byte-equal to a clean build by tested construction (ADR-0015). The rest of Milestone 3
-adds snapshot management, the local embedder with hybrid retrieval, and watch mode; the
-five stable contracts freeze at 1.0.
+byte-equal to a clean build by tested construction (ADR-0015) — snapshots are restorable,
+watch mode rebuilds on save with a manual build's guarantees, and a local embedder ships
+with hybrid retrieval *switched off*, because gate G2 said it had not earned the default.
+The evaluation now spans two corpora, one of them documentation this project did not write,
+with a frozen dev/release split gating CI. The five stable contracts freeze at 1.0.
+
+The honest part of that paragraph is what is missing from it: on the second corpus a plain
+`grep` loop still ranks better than we do, which is measured, diagnosed, and open as roadmap
+4.8 — carried into the next milestone rather than closed to make this one look finished.
+Milestone 4 brings ingestion.
 
 | # | Title | Status |
 |---|---|---|
 | 1 | Project bootstrap & CI | ✅ done |
 | 2 | Walking skeleton (spec Phase 0) | ✅ done |
-| 3 | v0.1 — The compiler (spec Phase 1) | 🚧 in progress |
+| 3 | v0.1 — The compiler (spec Phase 1) | ✅ done |
 | 4 | v0.2 — Ingestion (spec Phase 2) | ⏳ planned |
 | 5 | v0.3 — Structure (spec Phase 3) | ⏳ planned |
 | 6 | v1.0 — Stable (spec Phase 4) | ⏳ planned |
