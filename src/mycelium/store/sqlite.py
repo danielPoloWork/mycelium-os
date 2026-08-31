@@ -837,13 +837,20 @@ class SqliteStore:
     ) -> tuple[SearchHit, ...]:
         """Nearest chunks by cosine similarity, best first (spec 04 §3).
 
-        A brute-force scan, and an honest one: it is exact, so there is no recall
-        cliff to tune, and it is **linear**, so it does not meet spec 04 §1's
-        60 ms candidate budget beyond a few thousand chunks — 94 ms over 10 000
-        (`tests/bench/test_retrieval_bench.py`). That is a limit rather than a
-        crisis today, because gate G2 left hybrid opt-in (ADR-0017), so nothing
-        in the shipped configuration pays it; making the vector leg fast enough
-        to be a default is roadmap 3.12.
+        A brute-force scan, and an honest one: it is **exact**, so there is no
+        recall cliff to tune, and it is **linear**. Against the packed matrix
+        (ADR-0026) a query costs 2.9 ms over 10 000 chunks — comfortably inside
+        spec 04 §1's 60 ms candidate budget — and the linearity only bites at the
+        top of the v1 envelope, where the *first* query in a fresh process costs
+        about 78 ms over 10^5 chunks and every query after it about 1 ms.
+
+        It stays exact on purpose. Four ways of not reading every vector were
+        measured and every one of them failed (ADR-0028): coarse quantisation is
+        fast enough but returns between a third and three quarters of the true
+        top-50 on real embeddings, and the one mechanism that keeps all of it —
+        an int8 first pass with an exact rescore — is *slower*, because numpy
+        cannot multiply int8 without materialising a widened copy of the matrix.
+        Re-run that evidence with `tools/measure_vector_index.py`.
 
         sqlite-vec, which the spec names, is the eventual answer but not this
         one: it is a *loadable* SQLite extension, and several stock Python builds

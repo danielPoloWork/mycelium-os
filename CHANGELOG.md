@@ -169,6 +169,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The vector scan stays exact, and that is now a decision rather than a default.** Four
+  ways of not reading every vector were measured against real embeddings and all four
+  failed: coarse quantisation is fast enough only where it returns a third to three quarters
+  of the true top-50, and the one mechanism that keeps all of it is slower than the scan it
+  replaces. Nothing changes in the query path; what changes is that the limit at the top of
+  the supported corpus range is measured, stated in the code, and re-runnable from
+  `tools/measure_vector_index.py` (ADR-0028).
+
 - Store schema is `mycelium/store/v3` (`doc_state.graph_json` at 3.4). A build that meets an
   older store recreates it in place and recompiles, as before.
 - The snapshot manifest's `edges` digest is now real rather than the digest of an empty
@@ -195,6 +203,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 ### Removed
 
 ### Fixed
+
+- `search_vectors` documented "94 ms over 10 000 chunks" and pointed at roadmap 3.12 long
+  after 3.12 had made it 2.9 ms. The docstring now carries the measured numbers, the limit
+  that remains at the top of the supported corpus range, and why the scan stays exact
+  (ADR-0028).
 
 - The judged-case builder staged a hand-written list of paths, so judgments were validated
   against a **smaller corpus than the gates score them on** — an `unanswerable` case could
