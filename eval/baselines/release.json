@@ -1,7 +1,7 @@
 {
   "grep": {
-    "blessed_from_snapshot": "01M1BXEW178S1WNZH0N00066MP",
-    "corpus_digest": "sha256:7a6fa998cbe14561ba6e39c33be40b4d54eb358c1cb5d854c1683e66d1668013",
+    "blessed_from_snapshot": "01M1C2546KM87J3NRGW3JA73K2",
+    "corpus_digest": "sha256:76f427f3b51ab3baff65c30ca0cc1c359575629a91fb915bf2b503fd568e51ff",
     "overall_ndcg_at_10": 0.268436,
     "per_slice": {
       "conceptual": 0.053211,
@@ -16,8 +16,8 @@
     }
   },
   "mycelium": {
-    "blessed_from_snapshot": "01M1BXEW178S1WNZH0N00066MP",
-    "corpus_digest": "sha256:7a6fa998cbe14561ba6e39c33be40b4d54eb358c1cb5d854c1683e66d1668013",
+    "blessed_from_snapshot": "01M1C2546KM87J3NRGW3JA73K2",
+    "corpus_digest": "sha256:76f427f3b51ab3baff65c30ca0cc1c359575629a91fb915bf2b503fd568e51ff",
     "overall_ndcg_at_10": 0.453321,
     "per_slice": {
       "conceptual": 0.378469,
