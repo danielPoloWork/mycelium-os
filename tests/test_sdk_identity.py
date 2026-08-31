@@ -286,7 +286,13 @@ def test_anchor_matches_the_spec_example() -> None:
 
 
 @given(
-    doc_path=st.text(alphabet=st.characters(blacklist_characters="#"), min_size=1, max_size=40),
+    # `codec="utf-8"` excludes lone surrogates: they are not characters a real
+    # path can hold, and pydantic's Rust validator cannot encode them at all.
+    doc_path=st.text(
+        alphabet=st.characters(blacklist_characters="#", codec="utf-8"),
+        min_size=1,
+        max_size=40,
+    ),
     slugs=st.lists(slug_strategy, max_size=4),
     ordinal=ordinal_strategy,
 )

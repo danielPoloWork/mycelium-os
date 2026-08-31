@@ -36,3 +36,5 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0018](0018-build-the-graph-from-authored-links.md) | Build the graph from authored links, and resolve it globally on every build | Accepted |
 | [0019](0019-adopt-watch-mode.md) | Let filesystem events decide *when* to build, never *what* to build | Accepted |
 | [0020](0020-adopt-the-jsonl-interchange-bundle.md) | Make the export bundle a verifiable claim, not a directory of files | Accepted |
+| [0021](0021-scope-the-corpus-and-gate-the-evaluation.md) | Scope the corpus, then let the gates run in CI | Accepted |
+| [0022](0022-measure-the-agent-loop-without-an-agent.md) | Measure the agent loop without an agent, and say what that leaves out | Accepted |

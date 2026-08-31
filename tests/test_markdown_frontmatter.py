@@ -112,6 +112,29 @@ def test_split_frontmatter_boundaries(text: str, offset: int, body: str) -> None
     assert (split_offset, split_body) == (offset, body)
 
 
+def test_a_quoted_yaml_key_is_still_frontmatter() -> None:
+    """BUG-0011: YAML 1.1 reads `on`/`off`/`yes`/`no` as booleans, so PyYAML emits
+    such keys quoted — and requiring a bare identifier read the whole block as a
+    thematic break, indexing a document's metadata as prose."""
+    parsed = parse_frontmatter(
+        "---"
+        + chr(10)
+        + "'off': idle"
+        + chr(10)
+        + "title: Bussola"
+        + chr(10)
+        + "---"
+        + chr(10)
+        + chr(10)
+        + "# Bussola"
+        + chr(10)
+    )
+
+    assert parsed.body_line_offset > 0  # recognised as frontmatter at all
+    assert parsed.frontmatter.title == "Bussola"
+    assert parsed.frontmatter.properties == {"off": "idle"}
+
+
 def test_a_byte_order_mark_does_not_hide_frontmatter() -> None:
     """BUG-0008: Windows editors emit UTF-8 with a BOM routinely, and without
     this the fence is not at position zero — so identity and metadata compiled as
@@ -222,7 +245,12 @@ def test_contract_fields_cannot_hide_in_properties() -> None:
 # the library's, not the contract's — the same YAML 1.1 heritage ADR-0006 records for
 # unquoted booleans — so the property states what is actually guaranteed rather than
 # failing on a character no vault contains.
-_yaml_safe_text = st.text(alphabet=st.characters(blacklist_characters="\x85"), max_size=20)
+_yaml_safe_text = st.text(
+    # `codec="utf-8"` excludes lone surrogates: not text a YAML file can carry.
+    # U+0085 stays excluded: PyYAML's dump/load turns NEL into a space (found at 2.4).
+    alphabet=st.characters(blacklist_characters=chr(0x85), codec="utf-8"),
+    max_size=20,
+)
 
 
 @given(

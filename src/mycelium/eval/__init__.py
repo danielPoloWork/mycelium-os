@@ -15,11 +15,14 @@ against yourself measures nothing.
 
 from mycelium.eval.cases import load_cases, write_cases
 from mycelium.eval.harness import (
+    BASELINES_DIRNAME,
     EVAL_DIRNAME,
     MAX_FALSE_ANSWER_RATE,
+    QUERY_BUDGET_P95_MS,
     RETRIEVAL_LIMIT,
     EvaluationError,
     run_evaluation,
+    write_baseline,
     write_run,
 )
 from mycelium.eval.metrics import (
@@ -34,9 +37,17 @@ from mycelium.eval.retrievers import (
     Retriever,
     build_retriever,
 )
+from mycelium.eval.tasks import AgentTask, TaskSuiteReport, load_tasks, run_task_suite
 
 __all__ = [
+    "BASELINES_DIRNAME",
     "EVAL_DIRNAME",
+    "QUERY_BUDGET_P95_MS",
+    "AgentTask",
+    "TaskSuiteReport",
+    "load_tasks",
+    "run_task_suite",
+    "write_baseline",
     "MAX_FALSE_ANSWER_RATE",
     "RETRIEVAL_LIMIT",
     "EvaluationError",

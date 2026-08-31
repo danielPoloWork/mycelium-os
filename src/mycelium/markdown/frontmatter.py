@@ -32,7 +32,8 @@ break is not frontmatter at all: see :func:`_opens_a_mapping`.
 """
 
 import re
-from datetime import date
+from datetime import date, datetime, time
+from math import isfinite
 from typing import Final, Self
 
 import yaml
@@ -54,8 +55,15 @@ __all__ = [
 DELIMITER: Final = "---"
 _BOM: Final = "﻿"
 
-_MAPPING_KEY: Final = re.compile(r"^[A-Za-z_][A-Za-z0-9_.-]*\s*:(\s|$)")
-"""What a frontmatter block's first line looks like: a plain YAML key."""
+_MAPPING_KEY: Final = re.compile(r"(?:'[^']+'|\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_.-]*)\s*:(\s|$)")
+"""What a frontmatter block's first line looks like: a YAML key, quoted or not.
+
+The quoted form is not exotic — YAML 1.1 reads `on`, `off`, `yes`, and `no` as
+booleans, so PyYAML *emits* them quoted, and an Obsidian vault with an `off:`
+property round-trips through a quoted key. Requiring a bare identifier read
+that document's frontmatter as a thematic break and indexed its metadata as
+prose (BUG-0011).
+"""
 
 FIELD_OWNERS: Final[dict[str, str]] = {
     "mycelium_id": "mycelium build",
@@ -275,6 +283,43 @@ def _as_mycelium_id(value: object, *, present: bool) -> str | None:
     return candidate
 
 
+_UNREPRESENTABLE: Final = object()
+"""Sentinel for a property value no JSON document could carry."""
+
+
+def _as_json_value(value: object) -> object:
+    """Coerce a YAML value into something a JSON record can hold.
+
+    Dates are the case that matters. YAML reads an unquoted `2026-08-29` as a
+    `datetime.date`, and pydantic's `JsonValue` rejects it — so a property as
+    ordinary as Obsidian's `created:` raised a validation error, the build
+    quarantined the whole document, and its content left the index entirely.
+    This project's own bug ledger disappeared from its own corpus that way
+    (BUG-0012).
+
+    Dates, times, and timestamps become their ISO 8601 spelling, which is what
+    the author wrote before YAML typed it. Anything else with no JSON form is
+    dropped with a warning, because D-022 promises to *preserve* a vault's
+    properties, not to interpret them — and preserving nothing is still better
+    than losing the document that carried them.
+    """
+    if value is None or isinstance(value, str | bool | int):
+        return value
+    if isinstance(value, float):
+        return value if isfinite(value) else _UNREPRESENTABLE
+    if isinstance(value, datetime | date | time):
+        return value.isoformat()
+    if isinstance(value, list | tuple):
+        items = [_as_json_value(item) for item in value]
+        return _UNREPRESENTABLE if any(item is _UNREPRESENTABLE for item in items) else items
+    if isinstance(value, dict):
+        pairs = {str(key): _as_json_value(item) for key, item in value.items()}
+        return (
+            _UNREPRESENTABLE if any(item is _UNREPRESENTABLE for item in pairs.values()) else pairs
+        )
+    return _UNREPRESENTABLE
+
+
 def parse_frontmatter(text: str) -> FrontmatterResult:
     """Parse a document's frontmatter block and return it with the remaining body."""
     block, body, offset = split_frontmatter(text)
@@ -300,11 +345,15 @@ def parse_frontmatter(text: str) -> FrontmatterResult:
 
     fields: dict[str, object] = {str(key): value for key, value in loaded.items()}
     warnings: list[str] = []
-    properties: dict[str, JsonValue] = {
-        key: value  # type: ignore[misc]
-        for key, value in fields.items()
-        if key not in FIELD_OWNERS
-    }
+    properties: dict[str, JsonValue] = {}
+    for key, value in fields.items():
+        if key in FIELD_OWNERS:
+            continue
+        coerced = _as_json_value(value)
+        if coerced is _UNREPRESENTABLE:
+            warnings.append(f"{key}: dropped, the value has no JSON representation")
+            continue
+        properties[key] = coerced  # type: ignore[assignment]
 
     frontmatter = Frontmatter(
         mycelium_id=_as_mycelium_id(fields.get("mycelium_id"), present="mycelium_id" in fields),

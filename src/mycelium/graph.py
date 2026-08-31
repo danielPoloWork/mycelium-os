@@ -29,7 +29,7 @@ manifest, not an error** — a vault mid-refactor still compiles.
 from collections import deque
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import PurePosixPath
+from pathlib import Path, PurePosixPath
 from typing import Final, Protocol, runtime_checkable
 
 from mycelium.sdk.identity import digest_json, doc_ref, edge_id, heading_slug
@@ -282,11 +282,36 @@ def _resolve_target(index: CorpusIndex, source_path: str, link: LinkRef) -> tupl
     return None, "no document matches"
 
 
+def links_to_a_non_document(root: Path | None, source_path: str, target: str) -> bool:
+    """Whether an unresolved link points at something that exists but is not indexed.
+
+    `[LICENSE](LICENSE)`, `[the template](.github/PULL_REQUEST_TEMPLATE.md)`, and a
+    link into a directory the corpus excludes are not broken links: the file is
+    right there, it simply is not part of the graph, so no edge can exist and the
+    author did nothing wrong. Warning about them buried this repository's own
+    builds under ~150 lines of noise and taught the reader to skip warnings —
+    which is the real cost, because the genuinely *unresolvable* ones matter
+    (BUG-0013).
+
+    The test is existence, not extension. A Markdown file the corpus excludes is
+    as legitimately unlinked as a PNG; what still warns is a target that is not
+    there at all, which is the broken link the graph exists to surface.
+    """
+    if root is None:
+        return False
+    head, _ = _split_fragment(target)
+    if not head:
+        return False
+    candidates = (root / Path(source_path).parent / head, root / head)
+    return any(candidate.exists() for candidate in candidates)
+
+
 def resolve_edges(
     links_by_path: Mapping[str, Sequence[LinkRef]],
     index: CorpusIndex,
     *,
     namespace: str = "default",
+    root: Path | None = None,
 ) -> tuple[tuple[Edge, ...], tuple[str, ...]]:
     """Turn the corpus's link references into edges, plus warnings for the rest.
 
@@ -303,6 +328,8 @@ def resolve_edges(
                 continue
             target_path, reason = _resolve_target(index, source_path, link)
             if target_path is None:
+                if links_to_a_non_document(root, source_path, link.target):
+                    continue
                 warnings.append(
                     f"{source_path}: unresolved {link.kind} [[{link.target}]] - {reason}"
                 )
@@ -364,7 +391,7 @@ class GraphState(Protocol):
 
 
 def resolve_graph(
-    states: Sequence[GraphState], namespace: str = "default"
+    states: Sequence[GraphState], namespace: str = "default", root: Path | None = None
 ) -> tuple[tuple[Edge, ...], tuple[str, ...]]:
     """Resolve the whole corpus's authored links into edges, plus warnings.
 
@@ -380,6 +407,7 @@ def resolve_graph(
         {state.path: decode_links(state.links) for state in states},
         index,
         namespace=namespace,
+        root=root,
     )
 
 

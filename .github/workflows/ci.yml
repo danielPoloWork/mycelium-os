@@ -149,6 +149,50 @@ jobs:
         shell: bash
         run: uv run pytest -m determinism -q
 
+  # ---------------------------------------------------------------------------
+  # Gates G1-G6 — the evaluation gates spec 04 §7.3 makes CI-enforced (roadmap 3.7).
+  #
+  # The repository is its own corpus, so the job compiles it and scores the judged
+  # set against the snapshot it just published. `mycelium.toml` says which of this
+  # tree's Markdown is documentation; without that the corpus would include test
+  # fixtures and gate G4 would fail against a fixture (BUG-0007).
+  #
+  # The build pins `mycelium_id` into the checked-out documents. That is the
+  # documented behaviour of a first build and it is what makes anchors stable; the
+  # runner's checkout is thrown away, so nothing is committed.
+  # ---------------------------------------------------------------------------
+  eval:
+    name: eval / gates G1-G6
+    needs: bootstrap
+    if: needs.bootstrap.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Compile this repository's own documentation
+        shell: bash
+        run: uv run mycelium build .
+      - name: Gates G1-G6 on the judged case set
+        shell: bash
+        run: uv run mycelium eval . --gate
+      - name: The grep baseline, for the record (D-010)
+        shell: bash
+        # Reported, never gated: the incumbent's numbers are evidence about the
+        # product, and a baseline that could fail the build would be a baseline
+        # nobody dares improve.
+        run: uv run mycelium eval . --retriever grep || true
+      - name: Agent-task suite against the grep loop
+        shell: bash
+        run: uv run mycelium eval . --tasks
+
   # Reproducible performance gate — runs only when the project has a benchmark suite.
   benchmark:
     name: benchmark / reproducible perf

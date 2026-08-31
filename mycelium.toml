@@ -1,0 +1,16 @@
+# Mycelium OS compiles its own documentation — this file says which of its
+# Markdown is documentation and which is not (spec 05 §2).
+
+[project]
+name = "mycelium-os"
+knowledge_dir = "."            # the docs live at the root, not under knowledge/
+exclude = [
+    "tests",                   # fixtures are test data, not knowledge: a corpus that
+                               # indexes them scores an unanswerable case against a
+                               # fixture and reports gate G4 red for it (BUG-0007)
+    "docs/journal",            # grows every session; churns judgments for no gain
+    ".mycelium-os-legacy",     # the superseded implementation, kept for salvage only
+]
+
+[retrieval]
+profile = "lexical"            # hybrid has not earned the default (ADR-0017)

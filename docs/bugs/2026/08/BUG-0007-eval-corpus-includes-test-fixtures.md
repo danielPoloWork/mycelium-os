@@ -1,12 +1,12 @@
 ---
 id: BUG-0007
 title: the evaluation corpus includes test fixtures, so an unanswerable case is answered and G4 fails
-status: open
+status: fixed
 severity: medium
 reporter: internal
 discovered: 2026-08-30
 affected-versions: "0.2.0 and unreleased (introduced by PR #24, roadmap 2.11)"
-fixed-in: ""
+fixed-in: "0.3.0"
 ---
 
 # BUG-0007: the evaluation corpus includes test fixtures, so an unanswerable case is answered and G4 fails
@@ -72,24 +72,21 @@ G3's future regression baseline would inherit the same distortion.
 
 ## Fix / workaround
 
-Not fixed here: this is a question about what the evaluation corpus *is*, and answering it
-by editing a judged case would be tuning the benchmark to the corpus — the move D-010
-explicitly warns against. Filed as **roadmap 3.10**, to be decided with the eval-scoping and
-CI-gate work at 3.7. The options on the table:
+Fixed at roadmap 3.7, with the option this record listed first: `[project] exclude` — glob
+patterns naming the Markdown in a tree that is not documentation. This repository's own
+`mycelium.toml` now excludes `tests`, `docs/journal`, and the legacy tree, and gate G4 went
+from 25 % to 0 % for the product retriever.
 
-1. an exclusion setting under `[project]` (new surface, and useful to any repository whose
-   tree carries sample data);
-2. evaluating against a staged copy of the documentation set, the way roadmap 3.3's
-   measurement did by hand;
-3. moving the determinism fixtures somewhere discovery does not reach (a dot-directory),
-   which costs the fixture corpus its readability as ordinary Markdown.
-
-Until then the number is reported honestly rather than suppressed: ADR-0017 states the
-lexical baseline's 25 % alongside hybrid's 100 %, and neither is presented as a pass.
+The judged case was not touched, which was the point: the corpus was wrong, not the case.
+Two further guards came out of it, because the same trap is easy to walk into again — the
+case builder now refuses to write a set in which an `unanswerable` case is answerable by
+either retriever, and it warns when a grade-3 anchor is a heading stub carrying no answer.
+The first of those immediately caught a replacement query that this repository's own
+documentation had grown into.
 
 ## References
 
-- Discovering PR: #33 (roadmap 3.3)
+- Discovering PR: #33 (roadmap 3.3); fixing PR: #37 (roadmap 3.7)
 - Introduced by: #24 (roadmap 2.11); fixture from #23 (roadmap 2.10)
 - Related: [ADR-0013](../../../adr/0013-adopt-the-evaluation-harness.md),
   [ADR-0017](../../../adr/0017-adopt-the-local-embedder-and-hybrid-retrieval.md),
