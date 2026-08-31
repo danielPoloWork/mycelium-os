@@ -12,6 +12,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- `tools/measure_ranking.py` scores candidate re-rankings of the lexical leg against the
+  **dev** sets of both corpora, so a proposal starts from evidence. Three were measured and
+  all three refused — nothing in the query path changed — and the reasons are in ADR-0031:
+  BM25 normalises by document length, our chunks are wildly heterogeneous, and a three-token
+  code fence containing the query term outranks the paragraph that answers it. A length
+  threshold cannot repair that, because short chunks are sometimes the answer.
+
 - **A judged evaluation case may name a section rather than a chunk.** A trailing slash —
   `docs/a.md#setup/` — means "any chunk under this heading", credited **once** however many
   of them come back, so a twelve-chunk section cannot fill a top-ten and score a perfect run
