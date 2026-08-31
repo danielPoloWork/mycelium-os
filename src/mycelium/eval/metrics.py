@@ -9,15 +9,61 @@ read is a number nobody should trust — and because the graded-relevance detail
 """
 
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Final
 
 __all__ = [
+    "SECTION_MARKER",
     "citation_coverage",
+    "credit_judgments",
     "dcg",
     "ndcg_at_k",
     "recall_at_k",
     "reciprocal_rank",
 ]
+
+
+SECTION_MARKER: Final = "/"
+"""A judged anchor ending here names a section, not a chunk (ADR-0029)."""
+
+
+def section_of(anchor: str) -> str:
+    """The section a chunk anchor belongs to, in judged-anchor form."""
+    document, _, path = anchor.partition("#")
+    return f"{document}#{path.rsplit('/', 1)[0]}/"
+
+
+def credit_judgments(retrieved: Sequence[str], judged: Mapping[str, int]) -> list[str]:
+    """Rewrite a retrieved list into the judgments it satisfies, each **once**.
+
+    A judgment may name a chunk or a section (:data:`mycelium.sdk.types.JudgedAnchor`).
+    A chunk judgment is satisfied by that chunk; a section judgment by any chunk
+    under it. Everything else is passed through unchanged, so it scores zero the
+    way an unjudged anchor always has.
+
+    **Once** is the load-bearing word. A section split into twelve chunks would
+    otherwise let a retriever fill the top ten with that one section and score a
+    perfect run for finding a single thing. After the first match the rest of the
+    section is neither rewarded nor punished — it lands in the ranking as any
+    unjudged passage does, which is what it is.
+
+    Chunk judgments are matched before section judgments, so a set that names both
+    means what it wrote: the exact chunk, and its section as a weaker fallback.
+    """
+    seen: set[str] = set()
+    credited: list[str] = []
+    for anchor in retrieved:
+        if anchor in judged and anchor not in seen:
+            seen.add(anchor)
+            credited.append(anchor)
+            continue
+        section = section_of(anchor)
+        if section in judged and section not in seen:
+            seen.add(section)
+            credited.append(section)
+            continue
+        credited.append(anchor)
+    return credited
 
 
 def dcg(gains: Sequence[float]) -> float:

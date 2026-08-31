@@ -470,3 +470,76 @@ def test_both_corpora_carry_a_dev_and_a_release_set() -> None:
     assert not dev_ids & release_ids
     for name, cases in sets.items():
         assert any(not case.answerable for case in cases), f"{name} has no unanswerable case"
+
+
+# ---------------------------------------------------------------------------
+# Judged-anchor granularity (roadmap 3.15, ADR-0029)
+# ---------------------------------------------------------------------------
+
+
+def test_a_section_judgment_is_satisfied_by_any_chunk_under_it() -> None:
+    from mycelium.eval.metrics import credit_judgments
+
+    judged = {"a.md#setup/": 3}
+    credited = credit_judgments(["a.md#setup/7"], judged)
+    assert credited == ["a.md#setup/"]
+    assert ndcg_at_k(credited, judged, 10) == 1.0
+
+
+def test_a_section_is_credited_once_however_many_of_its_chunks_come_back() -> None:
+    """Without this a retriever fills the top ten with one section and scores a
+    perfect run for finding a single thing (ADR-0029)."""
+    from mycelium.eval.metrics import credit_judgments
+
+    judged = {"a.md#setup/": 3, "b.md#other/": 3}
+    credited = credit_judgments(
+        ["a.md#setup/0", "a.md#setup/1", "a.md#setup/2", "b.md#other/4"], judged
+    )
+    assert credited == ["a.md#setup/", "a.md#setup/1", "a.md#setup/2", "b.md#other/"]
+    assert recall_at_k(credited, judged, 10) == 1.0
+    assert (
+        recall_at_k(credit_judgments(["a.md#setup/0", "a.md#setup/1"], judged), judged, 10) == 0.5
+    )
+
+
+def test_a_chunk_judgment_still_means_that_chunk() -> None:
+    from mycelium.eval.metrics import credit_judgments
+
+    judged = {"a.md#setup/3": 3}
+    assert credit_judgments(["a.md#setup/7"], judged) == ["a.md#setup/7"]
+    assert ndcg_at_k(credit_judgments(["a.md#setup/7"], judged), judged, 10) == 0.0
+    assert ndcg_at_k(credit_judgments(["a.md#setup/3"], judged), judged, 10) == 1.0
+
+
+def test_an_exact_judgment_wins_over_a_section_one_for_the_same_chunk() -> None:
+    """A set naming both means what it wrote: the chunk, and the section as a
+    weaker fallback."""
+    from mycelium.eval.metrics import credit_judgments
+
+    judged = {"a.md#setup/3": 3, "a.md#setup/": 1}
+    assert credit_judgments(["a.md#setup/3", "a.md#setup/9"], judged) == [
+        "a.md#setup/3",
+        "a.md#setup/",
+    ]
+
+
+def test_a_judged_anchor_may_not_be_ambiguous() -> None:
+    """A heading can slug to digits, so a bare `doc#2024` cannot be told apart
+    from ordinal 2024 of the lead section. The trailing slash removes the guess."""
+    from pydantic import ValidationError
+
+    from mycelium.sdk.types import RelevantAnchor
+
+    RelevantAnchor(anchor="a.md#2024/", grade=3)
+    RelevantAnchor(anchor="a.md#2024/0", grade=3)
+    with pytest.raises(ValidationError):
+        RelevantAnchor(anchor="a.md#2024", grade=3)
+
+
+def test_the_committed_sets_still_judge_chunks() -> None:
+    """This item shipped the *notation*; re-judging the sets under it is a
+    separate, deliberate act (roadmap 3.17), so nothing here has moved yet."""
+    for path in (CASES, RELEASE):
+        for case in load_cases(path):
+            for relevant in case.relevant:
+                assert not relevant.anchor.endswith("/"), f"{case.case_id} already section-scoped"
