@@ -53,6 +53,7 @@ __all__ = [
     "EvalRunManifest",
     "EvalSlice",
     "GateResult",
+    "JudgedAnchor",
     "MetricSummary",
     "RelevantAnchor",
     "EmbeddingInfo",
@@ -109,6 +110,21 @@ type Anchor = Annotated[
 
 Survives edits that keep the heading path; slug construction rules are the
 identity library's contract (roadmap 2.3) — this validates the shape only.
+"""
+
+type JudgedAnchor = Annotated[
+    str,
+    StringConstraints(pattern=r"^[^#]+#[^#]*(?:/(?:0|[1-9][0-9]*)|/)$"),
+]
+"""What a judgment may point at: one chunk, or a whole section.
+
+``docs/a.md#setup/2`` names that chunk. ``docs/a.md#setup/`` — the trailing slash
+is the whole notation — names the *section*, and any chunk under it satisfies the
+judgment, counted once (ADR-0029).
+
+The trailing slash is not decoration: a heading can slug to digits (``## 2024``),
+so a bare ``docs/a.md#2024`` cannot be told apart from ordinal 2024 of the
+document's lead section. The marker removes the ambiguity instead of hoping.
 """
 
 type NonEmptyStr = Annotated[str, StringConstraints(min_length=1)]
@@ -639,9 +655,14 @@ class RelevantAnchor(Record):
     Grades are the usual graded-relevance scale — 3 answers the query outright,
     2 is strongly supporting, 1 is related context. 0 is not recorded: an
     unjudged anchor is simply absent.
+
+    The anchor may name a chunk or, with a trailing slash, a whole section — see
+    :data:`JudgedAnchor`. Which one to write is a judgment about the *document*:
+    a section whose answer is one paragraph deserves the chunk, and one whose
+    answer is spread across a dozen deserves the section (ADR-0029).
     """
 
-    anchor: Anchor
+    anchor: JudgedAnchor
     grade: int = Field(ge=1, le=3)
 
 

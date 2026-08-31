@@ -54,6 +54,7 @@ from mycelium.config import load_config
 from mycelium.embedding import Embedder, EmbeddingError, build_embedder
 from mycelium.eval.metrics import (
     citation_coverage,
+    credit_judgments,
     ndcg_at_k,
     recall_at_k,
     reciprocal_rank,
@@ -146,13 +147,19 @@ def _evaluate_case(case: EvalCase, retriever: Retriever, resolvable: set[str]) -
     retrieved = retriever.search(case.query, RETRIEVAL_LIMIT)
     elapsed_ms = int((time.perf_counter() - started) * 1000)
 
+    # Scored against the judgments the ranking satisfies, not the raw anchors: a
+    # judgment may name a section, and a section is credited once however many of
+    # its chunks come back (ADR-0029). `retrieved` is what the manifest records,
+    # because a reader checking a case wants the anchors, not their resolution.
+    credited = credit_judgments(retrieved, judged)
+
     return CaseResult(
         case_id=case.case_id,
         retrieved=tuple(retrieved[:10]),  # the manifest records what a reader would see
-        ndcg_at_10=ndcg_at_k(retrieved, judged, 10),
-        recall_at_10=recall_at_k(retrieved, judged, 10),
-        recall_at_50=recall_at_k(retrieved, judged, 50),
-        reciprocal_rank=reciprocal_rank(retrieved, judged),
+        ndcg_at_10=ndcg_at_k(credited, judged, 10),
+        recall_at_10=recall_at_k(credited, judged, 10),
+        recall_at_50=recall_at_k(credited, judged, 50),
+        reciprocal_rank=reciprocal_rank(credited, judged),
         citation_coverage=citation_coverage(retrieved, resolvable),
         abstained=not retrieved,
         latency_ms=elapsed_ms,

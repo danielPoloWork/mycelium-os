@@ -12,6 +12,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **A judged evaluation case may name a section rather than a chunk.** A trailing slash —
+  `docs/a.md#setup/` — means "any chunk under this heading", credited **once** however many
+  of them come back, so a twelve-chunk section cannot fill a top-ten and score a perfect run
+  for finding one thing. Exact chunk anchors still mean that chunk, and which to write stays
+  a judgment about the document: section scope credits the right neighbourhood as the right
+  answer, which is not always what a reader got. Nothing was re-judged and no committed
+  number moves (ADR-0029).
+
 - **The evaluation has a dev/release split and a second corpus.** Every corpus carries a
   `dev.jsonl` and a `release.jsonl`; CI gates the release sets and reports the gap to the
   dev set beside them, ungated. The second corpus is `uv`'s documentation — MIT, vendored
