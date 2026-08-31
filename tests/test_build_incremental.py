@@ -273,16 +273,19 @@ def test_flipping_config_back_restores_full_cache_hits(tmp_path: Path) -> None:
     assert third.manifest.artifact_digests == first.manifest.artifact_digests
 
 
-def test_advisory_target_tokens_does_not_invalidate_anything(tmp_path: Path) -> None:
-    """`target_tokens` is advisory (ADR-0014): the packer never reads it, so the
-    chunk slice excludes it and editing it must not dirty a single document."""
+def test_editing_the_target_recompiles_every_document(tmp_path: Path) -> None:
+    """`target_tokens` steers chunk size since ADR-0023, so the chunk slice carries
+    it and editing it must dirty every document — the opposite of what it did while
+    the knob was advisory (ADR-0014)."""
     root = repo(tmp_path)
     build(root)
-    edit(root, "mycelium.toml", "[chunking]\ntarget_tokens = 33\n")
+    edit(root, "mycelium.toml", "[chunking]" + chr(10) + "target_tokens = 33" + chr(10))
 
     result = build(root)
-    assert result.stats.reused == 4
-    assert result.stats.rebuilt == 0
+    assert result.stats.rebuilt == 4
+    assert result.stats.reused == 0
+    assert result.stats.parse_hits == 4  # a size knob is not a parsing knob
+    assert_equal_to_clean(tmp_path, root)
 
 
 def test_namespace_change_invalidates_chunks_but_not_parses(tmp_path: Path) -> None:

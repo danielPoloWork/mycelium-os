@@ -3,6 +3,8 @@
 """Heading-bounded chunker (roadmap 2.5): the spec's chunking policy holds, anchors are
 unique and readable, and — the invariant this item exists for — no text is ever lost."""
 
+from collections.abc import Sequence
+
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
@@ -172,7 +174,7 @@ def test_tables_and_code_blocks_are_atomic_chunks() -> None:
 def test_oversize_sections_split_at_paragraph_boundaries() -> None:
     paragraphs = [f"paragraph {index} " + "word " * 60 for index in range(10)]
     source = "## Section\n\n" + "\n\n".join(p.strip() for p in paragraphs) + "\n"
-    chunks = chunk(source, policy=ChunkingPolicy(target_min_tokens=50, target_max_tokens=250))
+    chunks = chunk(source, policy=ChunkingPolicy(target_tokens=50, max_tokens=250))
     assert len(chunks) > 1
     # Every chunk is made of whole paragraphs — nothing is cut mid-sentence.
     intact = {p.strip() for p in paragraphs} | {"Section"}
@@ -186,7 +188,7 @@ def test_a_single_oversize_paragraph_is_never_split_mid_sentence() -> None:
     giant = "word " * 500
     chunks = chunk(
         f"## Section\n\n{giant.strip()}\n",
-        policy=ChunkingPolicy(target_min_tokens=10, target_max_tokens=50),
+        policy=ChunkingPolicy(target_tokens=10, max_tokens=50),
     )
     assert len(chunks) == 1
     assert chunks[0].tokens > 50  # kept whole: a paragraph is the smallest boundary
@@ -194,8 +196,48 @@ def test_a_single_oversize_paragraph_is_never_split_mid_sentence() -> None:
 
 def test_prose_accumulates_up_to_the_ceiling() -> None:
     source = "## S\n\n" + "\n\n".join(f"para {i}" for i in range(20)) + "\n"
-    chunks = chunk(source, policy=ChunkingPolicy(target_max_tokens=800))
+    chunks = chunk(source, policy=ChunkingPolicy(max_tokens=800))
     assert len(chunks) == 1  # twenty short paragraphs fit in one chunk
+
+
+def _paragraphs(count: int, words: int) -> str:
+    body = (chr(10) * 2).join(f"p{index} " + "word " * words for index in range(count))
+    return f"## S\n\n{body}\n"
+
+
+def _paragraphs_of(chunks: Sequence[Chunk]) -> list[str]:
+    return [part for record in chunks for part in record.text.split(chr(10) * 2)]
+
+
+def test_lowering_the_target_shrinks_chunks() -> None:
+    """The knob steers size: same document, same ceiling, smaller chunks."""
+    source = _paragraphs(20, 40)
+    wide = chunk(source, policy=ChunkingPolicy(target_tokens=800, max_tokens=800))
+    narrow = chunk(source, policy=ChunkingPolicy(target_tokens=100, max_tokens=800))
+
+    assert len(narrow) > len(wide)
+    assert max(record.tokens for record in narrow) < max(record.tokens for record in wide)
+    # Different boundaries, same document: the paragraphs come back in order.
+    assert _paragraphs_of(narrow) == _paragraphs_of(wide)
+
+
+def test_the_target_at_the_ceiling_packs_exactly_as_the_ceiling_alone_did() -> None:
+    """`target_tokens == max_tokens` is fill-to-the-ceiling, unchanged (ADR-0023).
+
+    That is what makes the target a steering knob rather than a second ceiling:
+    at the top of its range it disappears, because a run can only have reached the
+    ceiling where adding anything would already have breached it.
+    """
+    source = _paragraphs(30, 30)
+    for record in chunk(source, policy=ChunkingPolicy(target_tokens=500, max_tokens=500)):
+        assert record.tokens <= 500 + estimate_tokens("S")
+
+
+def test_packing_never_breaches_the_ceiling_whatever_the_target() -> None:
+    source = _paragraphs(24, 25)
+    for target in (10, 50, 200, 400):
+        chunks = chunk(source, policy=ChunkingPolicy(target_tokens=target, max_tokens=400))
+        assert all(record.tokens <= 400 + estimate_tokens("S") for record in chunks)
 
 
 def test_headings_with_no_content_still_produce_a_citable_chunk() -> None:
@@ -266,7 +308,7 @@ def test_token_estimate_is_deterministic_and_bounded(text: str) -> None:
 def test_a_custom_token_counter_is_honoured() -> None:
     chunks = chunk(
         "## S\n\n" + "\n\n".join(f"para {i}" for i in range(6)) + "\n",
-        policy=ChunkingPolicy(target_min_tokens=1, target_max_tokens=10, count_tokens=len),
+        policy=ChunkingPolicy(target_tokens=1, max_tokens=10, count_tokens=len),
     )
     assert len(chunks) > 1
 
@@ -274,8 +316,8 @@ def test_a_custom_token_counter_is_honoured() -> None:
 @pytest.mark.parametrize(
     ("kwargs", "expected"),
     [
-        ({"target_max_tokens": 0}, "positive"),
-        ({"target_min_tokens": 900}, "exceeds"),
+        ({"max_tokens": 0}, "positive"),
+        ({"target_tokens": 900}, "exceeds"),
         ({"overlap_tokens": 50}, "overlap is not implemented"),
     ],
 )

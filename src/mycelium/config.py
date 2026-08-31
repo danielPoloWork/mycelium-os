@@ -131,13 +131,17 @@ class ProjectConfig(_Section):
 class ChunkingConfig(_Section):
     """`[chunking]` — the knobs spec 03 §5 exposes."""
 
-    target_tokens: int = Field(default=400, gt=0)
+    target_tokens: int | None = Field(default=None, gt=0)
+    """Unset means "the ceiling": prose fills toward ``max_tokens`` as it always
+    did, so lowering ``max_tokens`` alone stays a one-line edit rather than a
+    contradiction between two keys (ADR-0023)."""
+
     max_tokens: int = Field(default=800, gt=0)
     atomic: tuple[str, ...] = ("table", "code")
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
-        if self.target_tokens > self.max_tokens:
+        if self.target_tokens is not None and self.target_tokens > self.max_tokens:
             msg = (
                 f"[chunking] target_tokens ({self.target_tokens}) exceeds "
                 f"max_tokens ({self.max_tokens})"
@@ -165,15 +169,15 @@ class ChunkingConfig(_Section):
     def to_policy(self) -> ChunkingPolicy:
         """Build the chunker's policy from these settings.
 
-        ``max_tokens`` is the real ceiling. ``target_tokens`` maps to the policy's
-        *advisory* lower target: the packer fills toward the ceiling and splits at
-        the paragraph before breaching it, and it deliberately does not enforce a
-        minimum, because reaching one would mean merging across a heading boundary
-        (ADR-0007). Lowering ``target_tokens`` therefore does not shrink chunks
-        today — see ADR-0014 and roadmap 3.8.
+        Both keys reach the packer under their own names and mean what they say:
+        prose aims at ``target_tokens`` and never breaches ``max_tokens``. Lowering
+        the target shrinks chunks, which is what it did not do before ADR-0023.
+
+        An unset target *is* the ceiling — the measured default (ADR-0023), and the
+        one setting under which a build produces exactly what it produced before.
         """
         return ChunkingPolicy(
-            target_min_tokens=self.target_tokens, target_max_tokens=self.max_tokens
+            target_tokens=self.target_tokens or self.max_tokens, max_tokens=self.max_tokens
         )
 
 

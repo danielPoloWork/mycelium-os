@@ -31,9 +31,9 @@ net a missed bump lands in is gate G6 plus the incremental-equals-clean tests,
 which both compare cached against freshly computed output.
 
 Config enters keys as per-stage *slices* — only the settings a stage actually
-consumes — so editing ``[embedding]`` does not invalidate chunking. The slice for
-``chunk`` excludes ``target_tokens``: the packer does not read it (ADR-0014;
-roadmap 3.8 will bump ``CHUNK_STAGE_VERSION`` when it starts to).
+consumes — so editing ``[embedding]`` does not invalidate chunking. The ``chunk``
+slice carries both token knobs: since ADR-0023 the packer reads ``target_tokens``
+as well as ``max_tokens``, so editing either has to recompile every document.
 """
 
 import json
@@ -63,7 +63,7 @@ __all__ = [
 PARSE_STAGE_VERSION: Final = 1
 """Bump when the Markdown → KIR mapping changes output for unchanged input."""
 
-CHUNK_STAGE_VERSION: Final = 1
+CHUNK_STAGE_VERSION: Final = 2
 """Bump when packing, anchoring, or token counting changes output for unchanged input."""
 
 ASSEMBLE_STAGE_VERSION: Final = 1
@@ -123,7 +123,8 @@ class BuildEnv:
         return cls(
             namespace=namespace,
             chunk_slice={
-                "max_tokens": policy.target_max_tokens,
+                "target_tokens": policy.target_tokens,
+                "max_tokens": policy.max_tokens,
                 "counter": _counter_id(policy),
             },
             kir_schema=record_schema_version(KirDocument),

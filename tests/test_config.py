@@ -168,8 +168,8 @@ def test_errors_name_the_file(tmp_path: Path) -> None:
 def test_max_tokens_is_the_real_ceiling(tmp_path: Path) -> None:
     config = load_config(write(tmp_path, "[chunking]\nmax_tokens = 250\ntarget_tokens = 100\n"))
     policy = config.chunking.to_policy()
-    assert policy.target_max_tokens == 250
-    assert policy.target_min_tokens == 100
+    assert policy.max_tokens == 250
+    assert policy.target_tokens == 100
 
 
 def test_default_config_yields_the_default_policy() -> None:
@@ -177,7 +177,8 @@ def test_default_config_yields_the_default_policy() -> None:
     from mycelium.chunking import ChunkingPolicy
 
     policy = MyceliumConfig().chunking.to_policy()
-    assert policy.target_max_tokens == ChunkingPolicy().target_max_tokens
+    assert policy.max_tokens == ChunkingPolicy().max_tokens
+    assert policy.target_tokens == ChunkingPolicy().target_tokens
     assert policy.count_tokens is ChunkingPolicy().count_tokens
 
 

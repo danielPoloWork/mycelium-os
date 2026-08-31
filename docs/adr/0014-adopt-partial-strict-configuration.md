@@ -1,6 +1,6 @@
 # ADR-0014: Load `mycelium.toml` strictly, honour it partially, and say which is which
 
-- **Status:** Accepted
+- **Status:** Accepted — the `target_tokens` ruling is amended by [ADR-0023](0023-make-the-chunk-target-steer-size.md): the knob is honoured, and steers chunk size
 - **Date:** 2026-08-30
 - **Deciders:** tech-lead (EADOS delivery agent), per RFC-0001 / spec 05 §2
 - **Related:** [ADR-0007](0007-adopt-structure-first-chunking.md) (the chunking policy this
