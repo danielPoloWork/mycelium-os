@@ -42,22 +42,23 @@ __all__ = [
     "MyceliumConfig",
     "ProjectConfig",
     "RetrievalConfig",
+    "SynthesisConfig",
     "UNHONOURED_SECTIONS",
     "load_config",
 ]
 
 CONFIG_FILENAME: Final = "mycelium.toml"
 
-UNHONOURED_SECTIONS: Final = frozenset({"synthesis", "verification", "sources", "eval"})
+UNHONOURED_SECTIONS: Final = frozenset({"verification", "sources", "eval"})
 """Sections spec 05 §2 documents whose features this milestone has not built.
 
 They are accepted so a spec-valid file is not rejected, and digested so a build
 remains reproducible from its config, but nothing reads their values yet:
-`synthesis` (roadmap 4.4), `verification` (4.5), `sources` (4.5 — trust per
+`verification` (roadmap 4.5), `sources` (4.5 — trust per
 origin is a verification input), `eval` (the harness takes its case set on the
 command line). `retrieval` left this set at roadmap 3.3, when hybrid search gave
 it something to control; `ingest` left it at 4.1, and is the first section
-honoured *in part* — see :class:`IngestConfig`.
+honoured *in part* — see :class:`IngestConfig`; `synthesis` left it at 4.4.
 """
 
 _SUPPORTED_ATOMIC: Final = ("code", "table")
@@ -291,6 +292,68 @@ class EmbeddingConfig(_Section):
         return self
 
 
+class SynthesisConfig(_Section):
+    """`[synthesis]` — the LLM lane of ingestion (D-020, spec 05 §2).
+
+    **Off unless a provider is named.** `enabled = "auto"` — the spec's own
+    default — means *on when a provider is configured*, which is the only
+    reading compatible with D-013's offline default: a fresh install must make no
+    network call, and naming a provider is the operator's consent (D-017). `true`
+    forces the lane on and turns a missing provider into an error rather than a
+    silence; `false` switches it off with a provider configured.
+
+    `min_citation_coverage` is what makes "mandatory wikilink citations" a number
+    rather than an adjective. It defaults to **1.0**: every claim-bearing block in
+    a synthesized document cites the evidence, or the document is not written.
+    That is deliberately stricter than gate G7's 0.95 (roadmap 4.5), and the two
+    are not in competition — G7 decides whether an existing candidate may be
+    *promoted*, this decides whether one is written at all, and it is easier to
+    relax a floor than to un-publish an unsupported claim.
+    """
+
+    enabled: Literal["auto", True, False] = "auto"
+    plugin: str = "wiki"
+    provider: str | None = None
+    model_id: str | None = None
+    """Unset means the provider's own default. Named here it is pinned, and the
+    manifest records the model that actually answered (spec 05 §4.2)."""
+
+    effort: Literal["low", "medium", "high", "xhigh", "max"] = "high"
+    max_output_tokens: int = Field(default=16000, gt=0)
+    min_citation_coverage: float = Field(default=1.0, ge=0.0, le=1.0)
+    instructions: str = ""
+    """Style guidance passed to the synthesizer verbatim. It steers prose; it
+    cannot relax the citation contract, which is enforced after the model has
+    spoken."""
+
+    @model_validator(mode="after")
+    def _known_plugin(self) -> Self:
+        if self.plugin != "wiki":
+            msg = (
+                f'[synthesis] plugin "{self.plugin}" is not available; v1 ships "wiki", '
+                "the default synthesizer (D-026)"
+            )
+            raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _forced_on_needs_a_provider(self) -> Self:
+        if self.enabled is True and not self.provider:
+            msg = (
+                "[synthesis] enabled = true forces the lane on, but no provider is "
+                'configured; name one (provider = "anthropic") or use enabled = "auto"'
+            )
+            raise ValueError(msg)
+        return self
+
+    @property
+    def active(self) -> bool:
+        """Whether the lane runs: `auto` means "a provider was named" (D-020)."""
+        if self.enabled is False:
+            return False
+        return bool(self.provider)
+
+
 class RetrievalConfig(_Section):
     """`[retrieval]` — the query path's defaults (spec 05 §2, spec 04 §§2-3).
 
@@ -385,6 +448,7 @@ class MyceliumConfig(BaseModel):
 
     chunking: ChunkingConfig = ChunkingConfig()
     embedding: EmbeddingConfig = EmbeddingConfig()
+    synthesis: SynthesisConfig = SynthesisConfig()
     retrieval: RetrievalConfig = RetrievalConfig()
     modules: ModulesConfig = ModulesConfig()
     future: dict[str, JsonValue] = Field(
@@ -427,6 +491,7 @@ class MyceliumConfig(BaseModel):
                 "ingest": self.ingest.model_dump(mode="json"),
                 "chunking": self.chunking.model_dump(mode="json"),
                 "embedding": self.embedding.model_dump(mode="json"),
+                "synthesis": self.synthesis.model_dump(mode="json"),
                 "retrieval": self.retrieval.model_dump(mode="json"),
                 "modules": self.modules.model_dump(mode="json"),
                 "future": self.future,
@@ -464,7 +529,15 @@ def load_config(root: Path) -> MyceliumConfig:
         msg = f"{path}: cannot be read - {exc}"
         raise ConfigError(msg) from exc
 
-    honoured = {"project", "ingest", "chunking", "embedding", "retrieval", "modules"}
+    honoured = {
+        "project",
+        "ingest",
+        "chunking",
+        "embedding",
+        "synthesis",
+        "retrieval",
+        "modules",
+    }
     unknown = sorted(set(raw) - honoured - UNHONOURED_SECTIONS)
     if unknown:
         known = ", ".join(sorted(honoured | UNHONOURED_SECTIONS))

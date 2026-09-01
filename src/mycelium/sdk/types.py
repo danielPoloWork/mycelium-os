@@ -34,6 +34,7 @@ from pydantic import (
     JsonValue,
     NonNegativeInt,
     PlainSerializer,
+    PositiveInt,
     StringConstraints,
     model_validator,
 )
@@ -71,6 +72,7 @@ __all__ = [
     "Sha256Digest",
     "SnapshotCounts",
     "SnapshotManifest",
+    "SynthesisRecord",
     "SourceTrust",
     "SrcLocator",
     "Symbol",
@@ -685,6 +687,14 @@ class CustodyKind(StrEnum):
     FIDELITY = "fidelity"
     """The fidelity report of one projection, in canonical JSON (spec 02 §5)."""
 
+    SYNTHESIS = "synthesis"
+    """The record of one LLM synthesis run, in canonical JSON (D-020).
+
+    Custody, not the store, for the same reason the others are: a candidate
+    document's only claim to legitimacy is the run that produced it and the
+    citations that run was checked against, and that claim must not live in an
+    index a `mycelium gc` could remove."""
+
 
 class CustodyRecord(Record):
     """What is known about one blob held in tier-1 custody (ADR-0033).
@@ -723,6 +733,50 @@ class CustodyRecord(Record):
         default=None, description="The fidelity report of this original's projection."
     )
     first_seen: UtcDatetime
+
+
+class SynthesisRecord(Record):
+    """What produced one candidate document, and what it was checked against (D-020).
+
+    The synthesis stage is **non-deterministic by declaration** (architecture §5),
+    and this record is the price of that declaration: provider, model, prompt
+    digest and parameters, so a document nobody can reproduce can at least be
+    *explained*. It is the synthesized lane's counterpart to
+    :class:`FidelityReport` — where that one accounts for what an ingested
+    document lost, this one accounts for what a written document rests on.
+
+    ``coverage`` and ``citations`` are the grounding evidence gate G7 reads
+    (roadmap 4.5). They are recorded at the moment the document was accepted,
+    against the evidence set as it then was; `mycelium verify` recomputes them
+    against the corpus as it *is*, and a disagreement between the two is exactly
+    the drift verification exists to find.
+    """
+
+    schema_version: Literal["mycelium/synthesis/v0"] = "mycelium/synthesis/v0"
+    plugin: NonEmptyStr
+    plugin_version: NonEmptyStr
+    provider: NonEmptyStr
+    model: NonEmptyStr
+    prompt_digest: Sha256Digest
+    parameters: dict[str, JsonValue] = Field(default_factory=dict)
+    attempts: PositiveInt = 1
+    """Round-trips the citation contract needed. More than one means the first
+    draft was refused and repaired."""
+
+    evidence: tuple[Sha256Digest, ...] = ()
+    """Content digests of the evidence documents this was written from, sorted."""
+
+    citations: tuple[str, ...] = ()
+    """Every citation the accepted document carries, as `path` or `path#heading`."""
+
+    claims: NonNegativeInt = 0
+    cited_claims: NonNegativeInt = 0
+    synthesized_at: UtcDatetime
+
+    @property
+    def coverage(self) -> float:
+        """Cited claim-bearing blocks over claim-bearing blocks (ADR-0035)."""
+        return self.cited_claims / self.claims if self.claims else 1.0
 
 
 # ---------------------------------------------------------------------------

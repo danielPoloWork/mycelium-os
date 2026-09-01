@@ -6,8 +6,12 @@ import math
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-__all__ = ["FakeEmbedder", "hash_token"]
+if TYPE_CHECKING:
+    from mycelium.synthesis.provider import Completion
+
+__all__ = ["FakeEmbedder", "ScriptedProvider", "hash_token"]
 
 
 def hash_token(token: str) -> int:
@@ -53,3 +57,43 @@ class FakeEmbedder:
             # A vector of zeros has no direction; give it one so cosine is defined.
             return tuple(1.0 if index == 0 else 0.0 for index in range(self.dim))
         return tuple(value / norm for value in weights)
+
+
+class ScriptedProvider:
+    """An LLM that answers from a list, in order — the synthesis lane's test double.
+
+    It satisfies :class:`~mycelium.synthesis.provider.LlmProvider` in a dozen
+    lines, which is the check that the seam is a seam: everything the lane
+    decides — the prompt, the citation contract, the repair round-trip, the
+    refusal — is decided around this object, and none of it needs a network.
+
+    `prompts` records what it was asked, so a test can assert that the citable
+    vocabulary reached the model and that the second attempt carried the first
+    attempt's violations.
+    """
+
+    def __init__(self, *answers: str, model: str = "scripted-1") -> None:
+        self._answers = list(answers)
+        self._model = model
+        self.prompts: list[str] = []
+        self.systems: list[str] = []
+
+    @property
+    def name(self) -> str:
+        return "scripted"
+
+    @property
+    def model(self) -> str:
+        return self._model
+
+    def complete(self, *, system: str, prompt: str) -> "Completion":
+        from mycelium.synthesis.provider import Completion
+
+        self.prompts.append(prompt)
+        self.systems.append(system)
+        if not self._answers:
+            msg = "the scripted provider ran out of answers"
+            raise AssertionError(msg)
+        return Completion(
+            text=self._answers.pop(0), model=self._model, parameters={"effort": "high"}
+        )

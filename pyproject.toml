@@ -48,7 +48,18 @@ watch = ["watchdog>=4.0"]
 ingest = [
     "docling-slim[convert-core,format-docx,format-html,format-latex,format-pdf]>=2.124",
     "pypdfium2>=4.30",
+    # The synthesis extra is a dev dependency so CI type-checks the provider
+    # adapter on every platform. No test calls the API: the lane is exercised
+    # against a scripted provider, and the one live smoke test skips without a key.
+    "anthropic>=1.2",
 ]
+# The LLM synthesis lane (roadmap 4.4, ADR-0035). Optional because the evidence
+# lane — the deterministic one — needs none of it, and because a default install
+# must make no network call at all (D-013/D-017): without a configured provider
+# the lane does not run. Four packages, through the official SDK rather than a
+# hand-rolled POST, because auth resolution, retry policy and a typed error
+# hierarchy are three things not worth reimplementing.
+synthesis = ["anthropic>=1.2"]
 
 [project.scripts]
 mycelium = "mycelium.cli:main"
@@ -100,6 +111,7 @@ markers = [
     "determinism: gate G6 — byte-identical rebuild against the committed golden corpus",
     "embeddings: needs the local model files; skipped when they are not on this machine",
     "pandoc: needs the pandoc binary on PATH; skipped when it is not installed",
+    "llm: calls a real LLM provider; skipped unless a credential is configured",
 ]
 
 [tool.ruff]

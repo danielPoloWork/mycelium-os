@@ -12,6 +12,38 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The synthesis lane** (roadmap 4.4) — the LLM half of dual-lane ingestion (D-020).
+  `mycelium ingest` now additionally authors a *candidate* document under
+  `knowledge/candidate/` in which every claim-bearing block cites the evidence layer with a
+  wikilink. The lane runs only when `[synthesis]` names a provider, so a default install
+  still ingests entirely offline. See
+  [ADR-0035](docs/adr/0035-let-an-llm-write-only-what-a-machine-can-check.md).
+- **`Synthesizer`** joins `Connector` and `Parser` in `mycelium.sdk.protocols`, with
+  `SynthesisContext`, `EvidenceDocument` and `Synthesis` — the first plugin contract whose
+  output is not a function of its input, so it declares itself non-deterministic and returns
+  the identity of what produced the text.
+- **The `wiki` plugin** (D-026): a closed citable vocabulary in the prompt, one repair
+  round-trip when a draft breaks the contract, and a refusal when the second one does too.
+  An ungrounded document is never written.
+- **`[synthesis]`** is honoured — `enabled`, `plugin`, `provider`, `model_id`, `effort`,
+  `max_output_tokens`, `instructions`, and `min_citation_coverage`, which defaults to **1.0**:
+  every claim-bearing block cites, or nothing is written.
+- **A new optional install, `mycelium-os[synthesis]`** — the official `anthropic` SDK, four
+  packages. Nothing imports it unless a provider is configured.
+- **`mycelium/synthesis/v0`** run records in tier-1 custody (`CustodyKind.SYNTHESIS`):
+  provider, model, prompt digest, parameters, the evidence set, and the citations the
+  document was accepted on. The compiler recovers them into `provenance.synthesizer`.
+- **`mycelium ingest --no-synthesize`** skips the lane even when a provider is configured,
+  and `mycelium doctor` reports the lane's state once one is.
+
+### Changed
+
+- **A wikilink into `knowledge/evidence/` is now a `cites` edge**, not `links_to` (spec 03
+  §6). Folder-derived, so no store migration: `mycelium neighbors --type cites` answers what
+  a document rests on.
+- The snapshot manifest's `config_digest` now covers `[synthesis]`. The determinism golden is
+  re-blessed with a one-line diff — every chunk is byte-identical.
+
 - **Ingestion contracts and four parsers** (roadmap 4.1). `mycelium.sdk.protocols` declares
   the `Connector` and `Parser` Protocols, `Blob` and `PluginMeta` — the fourth of the five
   contracts that freeze at 1.0. Four adapters ship behind them: `markdown` (markdown-it,

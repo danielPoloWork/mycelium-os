@@ -46,6 +46,7 @@ from mycelium.sdk.types import (
 )
 
 __all__ = [
+    "EVIDENCE_FOLDER",
     "MAX_DEPTH",
     "CorpusIndex",
     "EdgeLookup",
@@ -54,6 +55,7 @@ __all__ = [
     "Neighbour",
     "decode_links",
     "edge_identity",
+    "edge_type",
     "edges_digest",
     "encode_links",
     "extract_links",
@@ -306,6 +308,43 @@ def links_to_a_non_document(root: Path | None, source_path: str, target: str) ->
     return any(candidate.exists() for candidate in candidates)
 
 
+EVIDENCE_FOLDER: Final = "evidence"
+"""The folder that makes a link a citation.
+
+Folder-derived, because the folder *is* the status (D-021) and the graph already
+knows every document's path. Nothing else in the corpus has to change for a
+citation to be typed as one — no new field, no store migration, no origin flag —
+and a document moved out of `evidence/` stops being citable in exactly the way a
+human moving it would expect.
+"""
+
+
+def _in_folder(path: str, folder: str) -> bool:
+    return folder in PurePosixPath(path).parts
+
+
+def edge_type(source_path: str, target_path: str) -> EdgeType:
+    """Which edge a resolved wikilink asserts (spec 03 §6).
+
+    A link *into* `knowledge/evidence/` from anywhere else is a **citation**: the
+    evidence layer is the verbatim projection of acquired sources, so pointing a
+    claim at it is the act D-020 requires of every synthesized statement and
+    `mycelium verify` measures (roadmap 4.5). Everything else — including a link
+    between two evidence documents, which is one projection referring to another
+    rather than a claim resting on one — stays `links_to`.
+
+    Note what this deliberately does *not* emit: the `derived_from` edge spec 03
+    §6 pairs with `cites`. At document granularity it would be the deduplicated
+    projection of the `cites` edges already here — the same assertion at lower
+    resolution — and the distinction the spec actually wants, *synthesized* docs
+    versus authored ones citing evidence, is not expressible until the graph's
+    per-document state carries `origin` (ADR-0035).
+    """
+    if _in_folder(target_path, EVIDENCE_FOLDER) and not _in_folder(source_path, EVIDENCE_FOLDER):
+        return EdgeType.CITES
+    return EdgeType.LINKS_TO
+
+
 def resolve_edges(
     links_by_path: Mapping[str, Sequence[LinkRef]],
     index: CorpusIndex,
@@ -353,7 +392,7 @@ def resolve_edges(
                 {
                     "from": doc_ref(source_path),
                     "to": reference,
-                    "type": EdgeType.LINKS_TO,
+                    "type": edge_type(source_path, target_path),
                     "status": EdgeStatus.AUTHORED,
                     "provenance": provenance,
                     "namespace": namespace,
