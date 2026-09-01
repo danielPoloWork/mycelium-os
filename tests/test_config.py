@@ -17,7 +17,12 @@ from mycelium.config import (
 )
 from mycelium.sdk.types import VerificationStatus
 
-# spec 05 §2, verbatim except for the commented-out alternatives.
+# spec 05 §2, verbatim except for the commented-out alternatives and one documented
+# deviation: the spec's single `[ingest] connectors` list names *parsers*, because §2
+# predates §4.1's split of the Connector and Parser Protocols. This project honours the
+# split (ADR-0032), so the parser list lives under `parsers` and `connectors` names how a
+# source is acquired. `test_the_specs_connector_list_is_refused_by_name` covers the old
+# shape.
 SPEC_FILE = """
 [project]
 name = "acme-docs"
@@ -26,7 +31,8 @@ knowledge_dir = "knowledge"
 sources_dir = "sources"
 
 [ingest]
-connectors = ["markdown", "html", "pdf"]
+parsers = ["markdown", "docling", "pandoc", "pdf"]
+connectors = ["file"]
 redact_secrets = true
 max_failed_elements = 0.05
 
@@ -89,7 +95,23 @@ def test_the_specs_own_file_loads(tmp_path: Path) -> None:
     assert config.chunking.max_tokens == 800
     assert config.embedding.provider == "local-onnx"
     assert set(config.unhonoured_sections) == UNHONOURED_SECTIONS
+    assert config.ingest.parsers == ("markdown", "docling", "pandoc", "pdf")
+    # `[ingest]` is the first section honoured by key rather than as a whole: the
+    # parser list steers ingestion today, the other two keys land at 4.3 and 4.6.
+    assert config.unhonoured_keys == ("ingest.redact_secrets", "ingest.max_failed_elements")
     assert config.source == tmp_path / CONFIG_FILENAME
+
+
+def test_the_specs_connector_list_is_refused_by_name(tmp_path: Path) -> None:
+    """Copying spec 05 §2's `connectors = ["markdown", ...]` says what replaced it.
+
+    Accepting it would be worse than refusing: the names would resolve as
+    connectors, fail three commands later, and the operator would have no way to
+    know the key had split (ADR-0032).
+    """
+    body = '[ingest]\nconnectors = ["markdown", "html", "pdf"]\n'
+    with pytest.raises(ConfigError, match="names parser"):
+        load_config(write(tmp_path, body))
 
 
 def test_a_missing_file_is_not_an_error(tmp_path: Path) -> None:
@@ -113,6 +135,9 @@ def test_the_generated_template_is_valid(tmp_path: Path) -> None:
 
     config = load_config(write(tmp_path, _CONFIG_TEMPLATE.format(name="demo")))
     assert config.unhonoured_sections == ()
+    # The template comments out the keys that do nothing yet, so a scaffolded
+    # repository has nothing for `doctor` to warn about.
+    assert config.unhonoured_keys == ()
     # The scaffold states the defaults explicitly, so it must equal them.
     assert config.chunking.to_policy() == MyceliumConfig().chunking.to_policy()
 

@@ -6,7 +6,7 @@ its section with a fresh `<milestone>.<task>` number; never renumber.
 
 - **Versioning start:** pre-1.0 milestone-driven.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-08-31 — the gates](docs/journal/2026/08/2026-08-31-eval-gates.md).
+  [2026-09-01 — four engines, one boundary](docs/journal/2026/09/2026-09-01-ingestion-protocols.md).
 - **Traceability:** every item names the RFC it implements (RFC-0001 for the whole v1
   design of record — [`docs/rfc/0001-mycelium-os-v1.md`](docs/rfc/0001-mycelium-os-v1.md));
   milestone goals are the spec phases' exit gates (`.draft-specs/06`). Sizes are T-shirt
@@ -103,13 +103,14 @@ Incremental single-doc rebuild < 2 s p95 equal to clean output; search p95 < 150
 
 Zero silent element loss on the fixture corpus; hostile-file suite quarantines without failing the build; an ingestion-heavy corpus joins the eval set
 
-- [ ] 4.1 Connector/Parser protocols exercised for real: docling adapter (PDF/DOCX/HTML), pandoc fallback (D-007) (RFC-0001) — size: M · route: standard / medium
+- [x] 4.1 Connector/Parser protocols exercised for real: docling adapter (PDF/DOCX/HTML), pandoc fallback (D-007) (RFC-0001) — size: M · route: standard / medium — delivered by PR #50: `Connector` and `Parser` in `mycelium.sdk.protocols` (contract four of the five that freeze at 1.0), a pinned entry-point registry that refuses rather than falls back, and **four** adapters — `markdown` (markdown-it), `docling` (DOCX/HTML through the declarative backends), `pandoc` (six formats through one `--sandbox`ed binary, read from its JSON AST so nothing is flattened away), `pdf` (PDFium's text layer). The claim the KIR boundary makes is now tested: one document rendered into DOCX, HTML and reStructuredText reaches four engines and comes back with the *same* anchors as its Markdown original. `[ingest]` becomes the first section honoured **by key** (ADR-0014's scheme, one level finer) and `doctor` reports which pinned plugins actually resolve here. ADR-0032 records two deliberate deviations — the `connectors`/`parsers` key split, and leaving docling's ML PDF pipeline out (measured: `torch`, a HuggingFace download on first use against NFR-6, and float kernels in a stage gate G6 compares byte-for-byte); that pipeline is filed as 4.9. The G6 golden is re-blessed with a **one-line** diff — `config_digest` only, every chunk byte-identical
 - [ ] 4.2 CAS custody of originals; KIR v0 hardened on hostile fixtures; opaque-node escape hatch (RFC-0001) — size: M · route: standard / medium
 - [ ] 4.3 Evidence-lane projection with provenance frontmatter, fidelity reports, per-document loss budgets (RFC-0001) — size: M · route: standard / medium
 - [ ] 4.4 Synthesis lane via the wiki plugin: LLM-authored candidate docs with mandatory wikilink citations (D-020/D-026) (RFC-0001) — size: L · route: standard / high
 - [ ] 4.5 mycelium verify / promote / demote with grounding gate G7 (D-021) (RFC-0001) — size: M · route: standard / medium
 - [ ] 4.6 Quarantine path + secret scanning (redact_secrets) (D-017) (RFC-0001) — size: S · route: standard / medium
 - [ ] 4.7 Ingestion fixture corpus with element inventories (RFC-0001) — size: M · route: fast / low
+- [ ] 4.9 Read PDF *structure*, or record why v1 does not. 4.1 ships PDF as PDFium's text layer: characters, page numbers, no headings, no tables, nothing from a scanned page. The structure lives in docling's ML pipeline, which 4.1 measured and refused on three grounds that are this item's acceptance criteria, not its obstacles — (a) the closure: `pip install docling` resolves 60+ packages including `torch` 2.13 and downgrades our own `typer` pin; (b) NFR-6: the layout and table models are fetched from HuggingFace on first use, which is an unconfigured network call, so it needs the `allow_download`/`artifacts_path` consent shape ADR-0017 established for the embedder; (c) NFR-1: float inference is not promised byte-identical across the Linux/Windows/macOS matrix, and the parse stage feeds the digests gate G6 compares — so the stage must either prove reproducibility or declare `deterministic = false` and be excluded from the golden the way vectors are. A defensible outcome is "stays optional, off by default, measured" (RFC-0001, D-007/D-013/D-017; ADR-0032) — filed at 4.1 — size: L · route: standard / high
 - [ ] 4.8 **The product loses to the grep incumbent on the second corpus**, and D-010 is explicit about what that means: fix the product, not the benchmark. Measured on `uv`'s documentation — release set nDCG@10 grep **0.409** against mycelium **0.249**, MRR 0.401 against 0.227, R@10 0.536 against 0.429 — while the product wins R@50 (0.857 against 0.643) and latency (14 ms against 195). Winning recall and losing precision is a *ranking* failure, not a retrieval one: the right passages are in the candidate set and come back below the wrong ones. The corpus is short imperative task pages where our field weights (title 3.0 / heading_path 2.0) and BM25's length normalisation may be mis-set, and the dev set is where any fix must be developed (RFC-0001) — filed at 3.15, carried into M4 when v0.3.0 was cut — size: M · route: standard / high — **diagnosed by PR #48, three candidate fixes measured, all three refused, and the item stays open** (ADR-0031). The failure is specific: BM25 normalises by document length, our chunks are wildly heterogeneous, and three- to eighteen-token fragments — often code blocks — outrank the paragraphs that answer. SQLite's `bm25()` exposes column weights and not `b`, so the normalisation is not ours to damp. Refused: a **length prior** (uv/dev 0.403 → 0.636 but ours 0.546 → 0.484 — it trades one corpus for the other, because short chunks are *sometimes* the answer: `## License` plus one line is 24 tokens); **coverage-first** (loses on both, so grep's edge is not term coverage); and **section aggregation** — which improved *both* dev sets with no free parameter, was implemented, and was then **failed by gate G3 on the held-out release set** (`conceptual` −51.3 %, `fact` −14.6 %) and reverted. **The dev/release split caught an overfit on its first real use.** Next hypothesis, in order: settle whether the release regression is retrieval or chunk-exact bookkeeping by judging those cases from the documents, then test scoring at the *section* level as an indexing change — a second FTS table whose documents are sections — so length normalisation compares comparable units. `tools/measure_ranking.py` re-runs the evidence
 
 ---
@@ -158,10 +159,10 @@ progress · ✅ done · ❎ N/A.
 | Spec § | Requirement | Roadmap items | Status |
 |--------|-------------|---------------|--------|
 | §1 | Objective & business context | 2.9, 2.11 | ⏳ |
-| §2 | Functional requirements | 2.2–2.11, 3.1–3.7, 4.1–4.7, 5.1–5.6 | 🚧 |
+| §2 | Functional requirements | 2.2–2.11, 3.1–3.7, 4.1–4.7, 4.9, 5.1–5.6 | 🚧 |
 | §3 | Non-functional requirements | 2.10, 3.7, 6.1, 6.3 | ⏳ |
 | §4 | Logical architecture | 2.7, 3.1 | ✅ |
-| §5 | Public interface | 2.8, 2.9, 3.4, 6.1 | ⏳ |
+| §5 | Public interface | 2.8, 2.9, 3.4, 4.1, 6.1 | 🚧 |
 | §6 | Verification & test strategy | 2.10, 2.11, 3.7, 6.4 | ⏳ |
 
 ---

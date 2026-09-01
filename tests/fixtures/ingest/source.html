@@ -1,0 +1,40 @@
+<h1 id="retry-policy">Retry Policy</h1>
+<p>Webhook deliveries are retried five times, and the <a
+href="https://example.com/log">delivery log</a> records each
+attempt.</p>
+<h2 id="backoff">Backoff</h2>
+<p>Backoff doubles after every failed attempt.</p>
+<ul>
+<li>first retry after 1 s</li>
+<li>second retry after 2 s</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>attempt</th>
+<th>delay</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>1 s</td>
+</tr>
+<tr>
+<td>2</td>
+<td>2 s</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>delay <span class="op">=</span> <span class="dv">2</span> <span class="op">**</span> attempt</span></code></pre></div>
+<blockquote>
+<p>Deliveries stop after the fifth failure.</p>
+</blockquote>
+<dl>
+<dt>Term</dt>
+<dd>
+A definition, which GFM cannot express and pandoc’s Markdown writer
+would drop.
+</dd>
+</dl>

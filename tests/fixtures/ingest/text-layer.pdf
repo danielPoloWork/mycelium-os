@@ -1,0 +1,52 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 315 >>
+stream
+BT
+/F2 18 Tf
+1 0 0 1 72 720 Tm
+(Retry Policy) Tj
+/F1 11 Tf
+1 0 0 1 72 690 Tm
+(Webhook deliveries are retried five times.) Tj
+/F1 11 Tf
+1 0 0 1 72 672 Tm
+(Backoff doubles after every failed attempt.) Tj
+/F2 14 Tf
+1 0 0 1 72 630 Tm
+(Limits) Tj
+/F1 11 Tf
+1 0 0 1 72 606 Tm
+(The maximum payload size is 256 KiB.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000251 00000 n 
+0000000616 00000 n 
+0000000686 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+761
+%%EOF

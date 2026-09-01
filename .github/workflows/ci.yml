@@ -82,6 +82,21 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras --dev
 
+      # The pandoc parser (roadmap 4.1) drives an external binary over a
+      # subprocess, and subprocess behaviour is exactly what differs between
+      # Windows and the Unix runners — so it is installed on every cell rather
+      # than on one. The tests that need it skip when it is absent, which is what
+      # a contributor without pandoc sees; CI does not get to skip them.
+      - name: Install pandoc
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux)   sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends pandoc ;;
+            macOS)   brew install pandoc ;;
+            Windows) choco install pandoc --no-progress -y ;;
+          esac
+          pandoc --version | head -n 1
+
       - name: Build
         shell: bash
         run: uv run hatch build
@@ -148,6 +163,36 @@ jobs:
       - name: Byte-identical rebuild against the committed golden corpus
         shell: bash
         run: uv run pytest -m determinism -q
+
+  # ---------------------------------------------------------------------------
+  # Roadmap 4.1 — the ingestion adapters, run against real engines. The suite also
+  # runs inside the build matrix (which is where cross-platform subprocess
+  # behaviour is proven); this job exists so "did docling and pandoc actually
+  # parse something" is legible by name in the checks list, the same reason the
+  # determinism job exists.
+  # ---------------------------------------------------------------------------
+  ingest:
+    name: ingest / parsers
+    needs: bootstrap
+    if: needs.bootstrap.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Install pandoc
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends pandoc
+      - name: Connector, registry and the four parsers
+        shell: bash
+        run: |
+          uv run pytest -q             tests/test_sdk_protocols.py             tests/test_ingest_media.py             tests/test_ingest_connector.py             tests/test_ingest_registry.py             tests/test_ingest_parsers.py
 
   # ---------------------------------------------------------------------------
   # Gates G1-G6 — the evaluation gates spec 04 §7.3 makes CI-enforced (roadmap 3.7).
