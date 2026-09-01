@@ -24,6 +24,7 @@ from mycelium.graph import (
     MAX_DEPTH,
     CorpusIndex,
     LinkRef,
+    edge_type,
     edges_digest,
     extract_links,
     neighbours,
@@ -436,3 +437,53 @@ def test_an_unknown_origin_has_no_neighbours(tmp_path: Path) -> None:
     build(root)
     with SqliteStore.open(root, read_only=True) as store:
         assert neighbours(store, doc_ref("knowledge/nothing.md")) == ()
+
+
+# ---------------------------------------------------------------------------
+# Citations are a typed edge (roadmap 4.4, spec 03 §6)
+# ---------------------------------------------------------------------------
+
+
+def test_a_link_into_evidence_is_a_citation() -> None:
+    """The assertion `mycelium verify` will measure (roadmap 4.5).
+
+    Folder-derived, because the folder *is* the status (D-021): nothing else in
+    the corpus has to change for a citation to be typed as one.
+    """
+    assert edge_type("knowledge/candidate/retries.md", "knowledge/evidence/policy.md") is (
+        EdgeType.CITES
+    )
+    assert edge_type("knowledge/verified/retries.md", "knowledge/evidence/policy.md") is (
+        EdgeType.CITES
+    )
+
+
+def test_a_link_between_two_evidence_documents_is_not_a_citation() -> None:
+    # One projection referring to another is not a claim resting on evidence.
+    assert edge_type("knowledge/evidence/a.md", "knowledge/evidence/b.md") is EdgeType.LINKS_TO
+
+
+def test_a_link_that_leaves_evidence_is_not_a_citation() -> None:
+    assert edge_type("knowledge/evidence/a.md", "knowledge/verified/b.md") is EdgeType.LINKS_TO
+
+
+def test_an_ordinary_link_is_unchanged() -> None:
+    assert edge_type("docs/a.md", "docs/b.md") is EdgeType.LINKS_TO
+
+
+def test_resolution_types_a_citation_end_to_end() -> None:
+    links = {
+        "knowledge/candidate/retries.md": [
+            LinkRef(
+                kind="wikilink",
+                target="policy",
+                fragment="",
+                anchor="knowledge/candidate/retries.md#/0",
+            )
+        ]
+    }
+    index = CorpusIndex.build(["knowledge/candidate/retries.md", "knowledge/evidence/policy.md"])
+    edges, warnings = resolve_edges(links, index)
+    assert warnings == ()
+    assert [edge.type for edge in edges] == [EdgeType.CITES]
+    assert edges[0].to == "doc:knowledge/evidence/policy.md"

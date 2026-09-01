@@ -55,7 +55,13 @@ from mycelium.eval import (
 from mycelium.export import DEFAULT_EXPORT_DIRNAME, ExportError, export_bundle
 from mycelium.graph import MAX_DEPTH
 from mycelium.graph import neighbours as graph_neighbours
-from mycelium.ingest import IngestError, Registry, ingest_source, write_projection
+from mycelium.ingest import (
+    Ingested,
+    IngestError,
+    Registry,
+    ingest_source,
+    write_projection,
+)
 from mycelium.mcp import serve_stdio
 from mycelium.retrieval import search as run_search
 from mycelium.sdk.identity import (
@@ -73,6 +79,14 @@ from mycelium.store import (
     SearchFilters,
     SqliteStore,
     StoreError,
+)
+from mycelium.synthesis import (
+    SynthesisError,
+    WikiSynthesizer,
+    build_synthesizer,
+    evidence_of,
+    synthesize_candidate,
+    write_candidate,
 )
 from mycelium.watch import WatcherUnavailableError, watched_paths
 from mycelium.watch import watch as run_watch_session
@@ -123,6 +137,15 @@ max_failed_elements = 0.05     # fidelity loss budget: refuse a projection that 
 max_tokens = 800               # hard ceiling: prose splits at the paragraph before it
 # target_tokens = 400         # aim smaller than the ceiling; measure before you do
 atomic = ["table", "code"]     # tables and code blocks are never split
+
+[synthesis]                    # the LLM lane of ingestion (D-020); off until a
+                               # provider is named, so a default install is offline
+enabled = "auto"               # auto = on when a provider is configured; true|false to force
+plugin = "wiki"                # the default synthesizer: cited, interlinked candidate docs
+# provider = "anthropic"       # naming one is the consent that lets Mycelium call out
+# model_id = "claude-opus-5"   # unset = the provider's own default
+min_citation_coverage = 1.0    # every claim-bearing block cites the evidence, or nothing
+                               # is written. Stricter than gate G7 on purpose
 
 [embedding]                    # the vector stage; "none" switches it off entirely
 provider = "local-onnx"        # default: zero keys, offline
@@ -394,6 +417,13 @@ def ingest(
             help="Take custody and report fidelity, but write no evidence document.",
         ),
     ] = False,
+    no_synthesize: Annotated[
+        bool,
+        typer.Option(
+            "--no-synthesize",
+            help="Skip the LLM synthesis lane even when a provider is configured.",
+        ),
+    ] = False,
 ) -> None:
     """Acquire, compile and project sources into `knowledge/evidence/` (spec 05 §1).
 
@@ -402,9 +432,16 @@ def ingest(
     exit code is 1 if any source failed, because a script that ingested a folder
     needs to know without parsing the output.
 
-    Nothing is indexed here. A projected document is compiled by `mycelium build`
-    like any other file in the authored tree — the projector writes Markdown only
-    (D-020).
+    Ingestion is dual-lane (D-020). The evidence lane always runs. The **synthesis
+    lane** additionally authors a cited candidate document under
+    `knowledge/candidate/`, and runs only when `[synthesis]` names an LLM provider
+    — so a default install ingests offline and writes no prose. A synthesis that
+    fails never fails the ingestion that carried it: the evidence is already on
+    disk, and the second lane is the additional one.
+
+    Nothing is indexed here. Both a projected document and a candidate are
+    compiled by `mycelium build` like any other file in the authored tree — the
+    lane writes Markdown only (D-020).
     """
     try:
         settings = load_config(path)
@@ -422,6 +459,13 @@ def ingest(
         raise fail(str(error), code=ExitCode.USAGE) from error
 
     mycelium_dir = path / STORE_DIRNAME
+    synthesizer = None
+    if settings.synthesis.active and not no_synthesize:
+        try:
+            synthesizer = build_synthesizer(settings.synthesis)
+        except SynthesisError as error:
+            # Degradable by design: the evidence lane is what ingestion promises.
+            warn(f"synthesis lane off: {error}")
     results: list[dict[str, object]] = []
     failures = 0
     for source in sources:
@@ -443,23 +487,33 @@ def ingest(
 
         written = None if dry_run else write_projection(path, ingested)
         report = ingested.report
-        results.append(
-            {
-                "source": str(source),
-                "ok": True,
-                "parser": ingested.parser_id,
-                "source_digest": ingested.original.digest,
-                "kir_digest": ingested.kir_digest,
-                "fidelity_report": ingested.fidelity_digest,
-                "document": str(ingested.projection.path),
-                "written": written is not None,
-                "elements": report.elements,
-                "represented": report.represented,
-                "degraded": report.degraded,
-                "lost": report.lost,
-                "warnings": list(report.warnings),
-            }
-        )
+        entry: dict[str, object] = {
+            "source": str(source),
+            "ok": True,
+            "parser": ingested.parser_id,
+            "source_digest": ingested.original.digest,
+            "kir_digest": ingested.kir_digest,
+            "fidelity_report": ingested.fidelity_digest,
+            "document": str(ingested.projection.path),
+            "written": written is not None,
+            "elements": report.elements,
+            "represented": report.represented,
+            "degraded": report.degraded,
+            "lost": report.lost,
+            "warnings": list(report.warnings),
+        }
+        if synthesizer is not None:
+            entry["synthesis"] = _synthesize(
+                path,
+                mycelium_dir,
+                synthesizer,
+                ingested,
+                knowledge_dir=scope.knowledge_dir,
+                dry_run=dry_run,
+                quiet=as_json,
+                instructions=settings.synthesis.instructions,
+            )
+        results.append(entry)
         if not as_json:
             verb = "would write" if dry_run else "wrote"
             success(f"{source} -> {verb} {ingested.projection.path} ({ingested.parser_id})")
@@ -476,6 +530,67 @@ def ingest(
         detail("run `mycelium build` to compile what was written")
     if failures:
         raise fail(f"{failures} of {len(sources)} source(s) could not be ingested")
+
+
+def _synthesize(
+    root: Path,
+    mycelium_dir: Path,
+    synthesizer: WikiSynthesizer,
+    ingested: Ingested,
+    *,
+    knowledge_dir: str,
+    dry_run: bool,
+    quiet: bool,
+    instructions: str,
+) -> dict[str, object]:
+    """Run the synthesis lane for one ingested source, and report what happened.
+
+    Never raises. A refused document, an unreachable model and a missing key are
+    all *results* here, because the evidence lane has already delivered what
+    ingestion promises and D-020 makes this the additional lane (spec 02 §5).
+    """
+    evidence = evidence_of(
+        ingested.projection.path,
+        ingested.projection.text,
+        source_uri=ingested.blob.source_uri,
+    )
+    try:
+        synthesized = synthesize_candidate(
+            mycelium_dir,
+            synthesizer,
+            [evidence],
+            topic=evidence.title,
+            instructions=instructions,
+            knowledge_dir=knowledge_dir,
+        )
+    except SynthesisError as error:
+        if not quiet:
+            warn(f"  no candidate written: {error}")
+        return {"ok": False, "error": str(error)}
+
+    if not dry_run:
+        write_candidate(root, synthesized)
+    if not quiet:
+        verb = "would write" if dry_run else "wrote"
+        success(f"  {verb} {synthesized.candidate.path} ({synthesized.record.model})")
+        detail(
+            f"  cited {synthesized.report.cited_claims}/{synthesized.report.claims} claim(s) "
+            f"across {len(synthesized.report.cited_documents)} evidence document(s), "
+            f"{synthesized.record.attempts} attempt(s)"
+        )
+    return {
+        "ok": True,
+        "document": str(synthesized.candidate.path),
+        "written": not dry_run,
+        "record": synthesized.record_digest,
+        "provider": synthesized.record.provider,
+        "model": synthesized.record.model,
+        "attempts": synthesized.record.attempts,
+        "claims": synthesized.report.claims,
+        "cited_claims": synthesized.report.cited_claims,
+        "coverage": round(synthesized.report.coverage, 4),
+        "citations": list(synthesized.report.citations),
+    }
 
 
 @app.command()

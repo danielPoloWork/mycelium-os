@@ -92,6 +92,8 @@ from mycelium.sdk.schema import (
 )
 from mycelium.sdk.types import (
     Chunk,
+    CustodyKind,
+    CustodyRecord,
     Document,
     DocumentStats,
     EmbeddingInfo,
@@ -102,11 +104,13 @@ from mycelium.sdk.types import (
     Sha256Digest,
     SnapshotCounts,
     SnapshotManifest,
+    SynthesisRecord,
     Toolchain,
     TrustClass,
     Verification,
     VerificationStatus,
 )
+from mycelium.sdk.types import Synthesizer as SynthesizerRecord
 from mycelium.store import STORE_DIRNAME, DocState, SqliteStore
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
 
@@ -326,9 +330,15 @@ def _assemble(
         collection=frontmatter.collection,
         tags=frontmatter.tags,
         content_digest=parsed.kir.source_digest,
-        # v0 mapping: ingested origins carry ingested trust; everything else is
-        # the authored layer. The curated/external classes arrive with ingestion
-        # (milestone 4), which owns the real assignment.
+        # Trust class is the *authority layer*, and spec 03 §3's v1 vocabulary has
+        # no `synthesized` member — deliberately. A synthesized document lives in
+        # tier 2 like any authored one; what makes it untrustworthy is not its
+        # layer but its *status*, and `verification_status = candidate` carries
+        # that, is folder-derived (D-021), and is already what retrieval filters
+        # on (ADR-0024). Adding a vocabulary member would put the same fact in two
+        # places, where they can disagree. If evaluation later shows retrieval
+        # must weight synthesized prose separately, that is an RFC — the same
+        # anti-sprawl valve the edge vocabulary uses (F-9, ADR-0035).
         trust_class=(
             TrustClass.INGESTED if origin is ProvenanceOrigin.INGESTED else TrustClass.AUTHORED
         ),
@@ -385,6 +395,8 @@ def _provenance_of(
         return provenance, None
     if record is None:
         return provenance, None
+    if record.kind is CustodyKind.SYNTHESIS:
+        return _synthesized_provenance(provenance, record, mycelium_dir), None
     return (
         provenance.model_copy(
             update={
@@ -394,6 +406,45 @@ def _provenance_of(
             }
         ),
         record.fidelity_digest,
+    )
+
+
+def _synthesized_provenance(
+    provenance: Provenance, record: CustodyRecord, mycelium_dir: Path
+) -> Provenance:
+    """Fill `provenance.synthesizer` from the synthesis record in custody (D-020).
+
+    The same one-key mechanism a projected document uses for its fidelity report
+    (ADR-0034), pointed at a different kind of record. It has to read the blob
+    rather than the record header, because what a manifest must state about a
+    non-deterministic stage — provider, model, prompt digest, parameters — is the
+    *run's* identity, and only the run wrote it down.
+
+    `source_digest` is cleared on the way out: on a synthesized document that key
+    is a link to the run, not to acquired bytes, and leaving it in
+    `provenance.source_digest` would claim there is a tier-1 original behind the
+    prose. There is not — that is what makes it a candidate.
+    """
+    blob = Custody(mycelium_dir).get(record.digest)
+    if blob is None:
+        return provenance.model_copy(update={"source_digest": None})
+    try:
+        run = SynthesisRecord.model_validate_json(blob.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        # A malformed record is `mycelium doctor`'s finding, not a build failure:
+        # the document itself is fine and its citations still resolve.
+        return provenance.model_copy(update={"source_digest": None})
+    return provenance.model_copy(
+        update={
+            "source_digest": None,
+            "ingested_at": run.synthesized_at,
+            "synthesizer": SynthesizerRecord(
+                provider=run.provider,
+                model=run.model,
+                prompt_digest=run.prompt_digest,
+                parameters=run.parameters,
+            ),
+        }
     )
 
 

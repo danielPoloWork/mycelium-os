@@ -173,7 +173,7 @@ jobs:
   # determinism job exists.
   # ---------------------------------------------------------------------------
   ingest:
-    name: ingest / parsers
+    name: ingest / lanes
     needs: bootstrap
     if: needs.bootstrap.outputs.ready == 'true'
     runs-on: ubuntu-24.04
@@ -190,10 +190,26 @@ jobs:
         run: uv sync --all-extras --dev
       - name: Install pandoc
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends pandoc
-      - name: Connector, registry, parsers, custody and the hostile suite
+      - name: Both lanes — connector, parsers, custody, hostile suite, and synthesis
         shell: bash
+        # The synthesis suite runs here with no credential configured, which is the
+        # point: every rule the lane enforces is decided around a scripted provider,
+        # and the one test that calls the real API skips itself. CI proves the
+        # contract; a live key proves the request shape (ADR-0035).
         run: |
-          uv run pytest -q             tests/test_sdk_protocols.py             tests/test_ingest_media.py             tests/test_ingest_connector.py             tests/test_ingest_registry.py             tests/test_ingest_parsers.py             tests/test_ingest_custody.py             tests/test_ingest_pipeline.py             tests/test_ingest_hostile.py
+          uv run pytest -q \
+            tests/test_sdk_protocols.py \
+            tests/test_ingest_media.py \
+            tests/test_ingest_connector.py \
+            tests/test_ingest_registry.py \
+            tests/test_ingest_parsers.py \
+            tests/test_ingest_custody.py \
+            tests/test_ingest_pipeline.py \
+            tests/test_ingest_hostile.py \
+            tests/test_synthesis_citations.py \
+            tests/test_synthesis_wiki.py \
+            tests/test_synthesis_lane.py \
+            tests/test_synthesis_provider.py
 
   # ---------------------------------------------------------------------------
   # Gates G1-G6 — the evaluation gates spec 04 §7.3 makes CI-enforced (roadmap 3.7).

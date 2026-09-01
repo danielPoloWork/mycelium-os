@@ -25,6 +25,7 @@ from mycelium.config import CONFIG_FILENAME, ConfigError, load_config
 from mycelium.ingest import Custody, CustodyError, probe
 from mycelium.store import STORE_DIRNAME, STORE_FILENAME, SqliteStore, StoreError
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
+from mycelium.synthesis import SynthesisError, build_provider
 
 __all__ = ["Check", "Status", "diagnose", "worst_status"]
 
@@ -182,6 +183,37 @@ def _check_custody(mycelium_dir: Path) -> Check:
     return Check("custody", "fail", f"{summary}; " + ", ".join(problems))
 
 
+def _check_synthesis(root: Path) -> Check | None:
+    """Report the synthesis lane's state — but only when an operator asked for it.
+
+    `None` when no provider is configured: the lane being off is the default and
+    the offline posture (D-013), not a finding. Once a provider *is* named, the
+    two ways it can fail — the SDK is not installed, there is no credential —
+    are worth a line before an ingestion discovers them.
+    """
+    try:
+        config = load_config(root)
+    except ConfigError:
+        return None
+    settings = config.synthesis
+    if not settings.provider:
+        return None
+    if settings.enabled is False:
+        return Check(
+            "synthesis", "ok", f"provider {settings.provider} configured; lane switched off"
+        )
+    try:
+        provider = build_provider(settings)
+    except SynthesisError as error:
+        return Check("synthesis", "warn", f"lane configured but unavailable: {error}")
+    return Check(
+        "synthesis",
+        "ok",
+        f"{settings.plugin} over {provider.name}/{provider.model}, "
+        f"citation coverage >= {settings.min_citation_coverage:.2f}",
+    )
+
+
 def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> list[Check]:
     """Run every diagnostic against the repository at `root`."""
     mycelium_dir = root / STORE_DIRNAME
@@ -195,6 +227,9 @@ def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> lis
         _check_parsers(root),
         _check_custody(mycelium_dir),
     ]
+    synthesis = _check_synthesis(root)
+    if synthesis is not None:
+        checks.append(synthesis)
 
     if not (mycelium_dir / STORE_FILENAME).exists():
         checks.append(Check("store", "warn", "no store yet; run `mycelium build`"))

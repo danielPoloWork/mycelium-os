@@ -6,12 +6,14 @@ prompt anywhere that a CI run could block on."""
 
 import json
 import os
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
+import mycelium.cli.app  # noqa: F401 - imported so `sys.modules` has the module below
 from mycelium.__about__ import __version__
 from mycelium.build import build as run_build
 from mycelium.build.lock import BuildLock
@@ -23,6 +25,10 @@ from mycelium.store import SqliteStore
 from mycelium.store.schema import META_CURRENT_SNAPSHOT, META_SCHEMA_VERSION
 
 runner = CliRunner()
+
+cli_app = sys.modules["mycelium.cli.app"]
+"""The command *module*, not the Typer object `mycelium.cli` re-exports under the
+same name. Tests that replace a collaborator have to patch the module."""
 
 DOC = """# Retry Policy
 
@@ -754,3 +760,104 @@ def test_export_before_a_build_fails_with_guidance(tmp_path: Path) -> None:
     assert result.exit_code == ExitCode.FAILED
     assert "mycelium build" in result.stderr
     assert result.stdout == ""  # a failure is commentary, not an answer
+
+
+# ---------------------------------------------------------------------------
+# The synthesis lane, through the command (roadmap 4.4)
+# ---------------------------------------------------------------------------
+
+
+SYNTHESIZED = """\
+# Retry Behaviour
+
+Webhook deliveries are retried up to five times [[retry-policy-md-{digest}#Retry Policy]].
+"""
+
+
+def _evidence_source(root: Path) -> Path:
+    root.mkdir(parents=True, exist_ok=True)
+    source = root / "retry-policy.md"
+    source.write_text(
+        "# Retry Policy\n\nWebhook deliveries are retried five times.\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    return source
+
+
+def test_ingest_writes_a_candidate_when_a_provider_is_configured(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from fakes import ScriptedProvider
+    from mycelium.synthesis import WikiSynthesizer
+
+    source = _evidence_source(tmp_path / "sources")
+    (tmp_path / "mycelium.toml").write_text(
+        '[synthesis]\nprovider = "anthropic"\n', encoding="utf-8"
+    )
+
+    # The evidence document's name carries the source digest (ADR-0034), so the
+    # citation the scripted model writes has to be built from the real one.
+    from mycelium.ingest.projection import evidence_path
+    from mycelium.sdk.identity import digest_bytes
+
+    stem = evidence_path(source.as_uri(), digest=digest_bytes(source.read_bytes())).stem
+    answer = f"# Retry Behaviour\n\nDeliveries are retried five times [[{stem}#Retry Policy]].\n"
+
+    monkeypatch.setattr(
+        cli_app, "build_synthesizer", lambda settings: WikiSynthesizer(ScriptedProvider(answer))
+    )
+    result = invoke("ingest", str(source), "--root", str(tmp_path), "--json")
+    assert result.exit_code == ExitCode.OK
+    payload = json.loads(result.stdout)
+    synthesis = payload["sources"][0]["synthesis"]
+    assert synthesis["ok"] is True
+    assert synthesis["coverage"] == 1.0
+    assert synthesis["provider"] == "scripted"
+    assert (tmp_path / synthesis["document"]).exists()
+
+
+def test_no_synthesize_skips_the_lane_without_touching_the_evidence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = _evidence_source(tmp_path / "sources")
+    (tmp_path / "mycelium.toml").write_text(
+        '[synthesis]\nprovider = "anthropic"\n', encoding="utf-8"
+    )
+
+    def refuse(settings: object) -> object:
+        raise AssertionError("the synthesizer must not be built")
+
+    monkeypatch.setattr(cli_app, "build_synthesizer", refuse)
+    result = invoke("ingest", str(source), "--root", str(tmp_path), "--json", "--no-synthesize")
+    assert result.exit_code == ExitCode.OK
+    payload = json.loads(result.stdout)
+    assert "synthesis" not in payload["sources"][0]
+    assert payload["sources"][0]["ok"] is True
+
+
+def test_an_unavailable_provider_warns_and_the_evidence_lane_still_delivers(
+    tmp_path: Path,
+) -> None:
+    """D-020's asymmetry, enforced: synthesis is the *additional* lane."""
+    source = _evidence_source(tmp_path / "sources")
+    (tmp_path / "mycelium.toml").write_text('[synthesis]\nprovider = "nowhere"\n', encoding="utf-8")
+    result = invoke("ingest", str(source), "--root", str(tmp_path))
+    assert result.exit_code == ExitCode.OK
+    assert "synthesis lane off" in result.stderr
+    assert (tmp_path / "knowledge" / "evidence").exists()
+
+
+def test_doctor_reports_the_lane_only_once_it_is_configured(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    names = {
+        check["name"]
+        for check in json.loads(invoke("doctor", str(tmp_path), "--json").stdout)["checks"]
+    }
+    assert "synthesis" not in names, "off by default is the posture, not a finding"
+
+    (tmp_path / "mycelium.toml").write_text('[synthesis]\nprovider = "nowhere"\n', encoding="utf-8")
+    payload = json.loads(invoke("doctor", str(tmp_path), "--json").stdout)
+    check = next(item for item in payload["checks"] if item["name"] == "synthesis")
+    assert check["status"] == "warn"
+    assert "nowhere" in check["detail"]

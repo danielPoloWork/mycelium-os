@@ -2,9 +2,9 @@
 # Copyright (c) 2026 Daniel Polo
 """The plugin contracts an ingestion source is compiled through (spec 05 §4).
 
-Two Protocols, one transport object, one identity record. They are the fourth of
-the five contracts architecture §10 freezes at 1.0, so the shapes here are chosen
-to survive the platform phase rather than to be convenient today:
+Three Protocols, two transport objects, one identity record. They are the fourth
+of the five contracts architecture §10 freezes at 1.0, so the shapes here are
+chosen to survive the platform phase rather than to be convenient today:
 
 ``Connector``
     Turns a *source reference* into bytes with custody — a digest, a media type,
@@ -18,29 +18,43 @@ to survive the platform phase rather than to be convenient today:
     adapter over an existing engine, and the adapter's whole job is to lose
     nothing silently.
 
-The split matters because the two fail differently. A connector failure is about
-*custody* — the file is outside the declared roots, too large, unreadable — and a
-parser failure is about *content*. Ingestion quarantines the second per document
-and refuses the first outright, which is only expressible if they are separate
-protocols (spec 02 §5).
+``Synthesizer``
+    Turns compiled evidence into a *readable* document — the LLM lane of
+    ingestion (D-020). It is the one contract here whose output is not a function
+    of its input: it declares itself non-deterministic and returns the identity
+    of what produced the text, because a stage that cannot be reproduced must at
+    least be *explainable* (architecture §5).
 
-Both are `runtime_checkable`, so `isinstance` answers "does this plugin satisfy
-the shape" at the registry boundary rather than at the first call, where the
-failure would be a confusing `AttributeError` deep inside a build.
+The connector/parser split matters because the two fail differently. A connector
+failure is about *custody* — the file is outside the declared roots, too large,
+unreadable — and a parser failure is about *content*. Ingestion quarantines the
+second per document and refuses the first outright, which is only expressible if
+they are separate protocols (spec 02 §5).
+
+All three are `runtime_checkable`, so `isinstance` answers "does this plugin
+satisfy the shape" at the registry boundary rather than at the first call, where
+the failure would be a confusing `AttributeError` deep inside a build.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pathlib import PurePosixPath
 from typing import Final, Protocol, Self, runtime_checkable
 
+from pydantic import JsonValue
+
 from mycelium.sdk.identity import digest_bytes
-from mycelium.sdk.types import KirDocument, Sha256Digest, Ulid
+from mycelium.sdk.types import KirDocument, Sha256Digest, SourceTrust, Ulid
 
 __all__ = [
     "MYCELIUM_API_VERSION",
     "Blob",
     "Connector",
+    "EvidenceDocument",
     "Parser",
     "PluginMeta",
+    "Synthesis",
+    "SynthesisContext",
+    "Synthesizer",
 ]
 
 MYCELIUM_API_VERSION: Final = 0
@@ -183,5 +197,91 @@ class Parser(Protocol):
         Raises a :class:`~mycelium.ingest.errors.ParseError` when the bytes cannot
         be represented — the per-document failure ingestion quarantines rather
         than aborting the build for (spec 02 §5).
+        """
+        ...
+
+
+# ---------------------------------------------------------------------------
+# The synthesis lane (D-020, spec 02 §5)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class EvidenceDocument:
+    """One projected evidence document, as a synthesizer must see it.
+
+    Both halves are needed and neither substitutes for the other. `kir` is what
+    the document *says* — the compiled content, verbatim, which is what a
+    synthesizer reads from. `headings` is what a statement can *cite*: a wikilink
+    fragment is resolved against a document's headings at build time (spec 03
+    §3.1), so a citation written against this list resolves after the next build
+    rather than pointing at a section the prose invented.
+    """
+
+    path: PurePosixPath
+    """Repository-relative path, under `knowledge/evidence/`."""
+
+    title: str
+    kir: KirDocument
+    headings: tuple[str, ...]
+    """The heading texts a wikilink fragment may name, in document order."""
+
+    source_uri: str
+    source_trust: SourceTrust | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SynthesisContext:
+    """What one synthesis run is asked to write, and from what."""
+
+    topic: str
+    """What the document is about — normally the source's own title."""
+
+    evidence: tuple[EvidenceDocument, ...]
+    """The documents the prose must be grounded in, and the only citable set."""
+
+    instructions: str = ""
+    """Operator-supplied guidance, passed through verbatim. Untrusted like any
+    other content: it steers style, never the citation contract."""
+
+
+@dataclass(frozen=True, slots=True)
+class Synthesis:
+    """A synthesized document, and the identity of what produced it.
+
+    Spec 05 §4.1 sketches ``synthesize`` returning a bare string. It cannot: the
+    synthesis stage is *non-deterministic by declaration* (architecture §5), and
+    the price of that declaration is recording provider, model, prompt digest and
+    parameters with the output. A string cannot carry them, and a build that
+    cannot say what wrote a document is exactly what D-020 forbids.
+    """
+
+    markdown: str
+    """Mycelium Markdown Profile v1 text, with its wikilink citations."""
+
+    provider: str
+    model: str
+    prompt_digest: Sha256Digest
+    parameters: dict[str, JsonValue] = field(default_factory=dict)
+    attempts: int = 1
+    """How many round-trips the citation contract needed. More than one means the
+    first draft was refused and repaired, which is worth seeing in a manifest."""
+
+
+@runtime_checkable
+class Synthesizer(Protocol):
+    """Authors a candidate document from evidence (D-020)."""
+
+    meta: PluginMeta
+
+    def synthesize(self, context: SynthesisContext) -> Synthesis:
+        """Write a candidate document grounded in `context.evidence`.
+
+        The returned Markdown must satisfy the citation contract: every wikilink
+        it contains resolves to a document in the evidence set, and the document
+        cites at least once. A synthesizer that cannot produce such a document
+        raises :class:`~mycelium.synthesis.errors.SynthesisError` rather than
+        returning ungrounded prose — an uncited claim in `candidate/` is the
+        failure mode the whole lane exists to prevent.
         """
         ...

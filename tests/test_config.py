@@ -52,7 +52,7 @@ enabled = []
 enabled = "auto"
 plugin = "wiki"
 provider = "anthropic"
-model_id = "claude-sonnet-5"
+model_id = "claude-opus-5"
 
 [verification]
 cites_coverage_min = 0.95
@@ -142,6 +142,58 @@ def test_the_generated_template_is_valid(tmp_path: Path) -> None:
     assert config.unhonoured_keys == ()
     # The scaffold states the defaults explicitly, so it must equal them.
     assert config.chunking.to_policy() == MyceliumConfig().chunking.to_policy()
+
+
+# ---------------------------------------------------------------------------
+# `[synthesis]` — the lane that must stay off until it is asked for (roadmap 4.4)
+# ---------------------------------------------------------------------------
+
+
+def test_the_synthesis_lane_is_off_by_default() -> None:
+    """The offline default (D-013): a fresh install makes no network call."""
+    synthesis = MyceliumConfig().synthesis
+    assert synthesis.enabled == "auto"
+    assert synthesis.provider is None
+    assert synthesis.active is False
+
+
+def test_auto_means_on_when_a_provider_is_named(tmp_path: Path) -> None:
+    body = '[synthesis]\nprovider = "anthropic"\n'
+    assert load_config(write(tmp_path, body)).synthesis.active is True
+
+
+def test_the_lane_can_be_switched_off_with_a_provider_configured(tmp_path: Path) -> None:
+    body = '[synthesis]\nenabled = false\nprovider = "anthropic"\n'
+    assert load_config(write(tmp_path, body)).synthesis.active is False
+
+
+def test_forcing_the_lane_on_without_a_provider_is_refused(tmp_path: Path) -> None:
+    # `enabled = true` says "this must run"; without a provider it cannot, and a
+    # silent no-op would be the worst reading of an explicit instruction.
+    with pytest.raises(ConfigError, match="no provider is configured"):
+        load_config(write(tmp_path, "[synthesis]\nenabled = true\n"))
+
+
+def test_an_unknown_synthesizer_plugin_is_refused_by_name(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="wiki"):
+        load_config(write(tmp_path, '[synthesis]\nplugin = "freestyle"\n'))
+
+
+def test_the_citation_floor_defaults_to_every_claim(tmp_path: Path) -> None:
+    # "Mandatory wikilink citations" as a number: 1.0, stricter than gate G7's
+    # 0.95, because relaxing a floor is easier than un-publishing a claim.
+    assert MyceliumConfig().synthesis.min_citation_coverage == 1.0
+
+
+def test_the_citation_floor_is_a_fraction(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="less than or equal to 1"):
+        load_config(write(tmp_path, "[synthesis]\nmin_citation_coverage = 1.5\n"))
+
+
+def test_synthesis_settings_reach_the_config_digest(tmp_path: Path) -> None:
+    plain = load_config(write(tmp_path / "a", "[project]\n"))
+    tuned = load_config(write(tmp_path / "b", "[synthesis]\nmin_citation_coverage = 0.9\n"))
+    assert plain.digest() != tuned.digest()
 
 
 # ---------------------------------------------------------------------------
