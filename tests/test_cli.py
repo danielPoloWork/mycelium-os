@@ -861,3 +861,298 @@ def test_doctor_reports_the_lane_only_once_it_is_configured(tmp_path: Path) -> N
     check = next(item for item in payload["checks"] if item["name"] == "synthesis")
     assert check["status"] == "warn"
     assert "nowhere" in check["detail"]
+
+
+# ---------------------------------------------------------------------------
+# verify / promote / demote (roadmap 4.5, gate G7)
+# ---------------------------------------------------------------------------
+
+_VERIFY_EVIDENCE = """\
+---
+title: Retry Policy
+origin: ingested
+source: https://docs.example.com/retries
+source_trust: high
+---
+
+# Retry Policy
+
+## Backoff
+
+Deliveries are retried five times, and backoff doubles after every failed attempt.
+"""
+
+_VERIFY_CANDIDATE = """\
+---
+title: Webhook Retries
+origin: synthesized
+generated_by: scripted/scripted-1
+---
+
+# Webhook Retries
+
+Deliveries are retried up to five times before the system gives up ([[retry-policy#Backoff]]).
+"""
+
+
+def _verifiable(tmp_path: Path, *, candidate: str = _VERIFY_CANDIDATE) -> Path:
+    knowledge = tmp_path / "knowledge"
+    (knowledge / "evidence").mkdir(parents=True, exist_ok=True)
+    (knowledge / "candidate").mkdir(parents=True, exist_ok=True)
+    (knowledge / "evidence" / "retry-policy.md").write_text(
+        _VERIFY_EVIDENCE, encoding="utf-8", newline=""
+    )
+    (knowledge / "candidate" / "webhook-retries.md").write_text(
+        candidate, encoding="utf-8", newline=""
+    )
+    return tmp_path
+
+
+def _with_judge(monkeypatch: pytest.MonkeyPatch, *, entailed: bool = True) -> None:
+    """Point the CLI at a judge that answers without a network."""
+
+    class Judge:
+        identity = "scripted/judge-1"
+
+        def judge(self, claim: str, evidence: str) -> tuple[bool, str]:
+            return entailed, "the test decided"
+
+    monkeypatch.setattr(cli_app, "build_judge", lambda *_: (Judge(), False, ""))
+
+
+def test_verify_reports_coverage_and_says_entailment_was_not_measured(tmp_path: Path) -> None:
+    _verifiable(tmp_path)
+    result = invoke("verify", "--root", str(tmp_path), "--json")
+    assert result.exit_code == ExitCode.OK
+    payload = json.loads(result.stdout)
+    document = payload["documents"][0]
+    assert document["coverage"] == 1.0
+    assert document["entailment"] is None, "not measured is not zero"
+    assert document["blockers"][0]["code"] == "entailment-not-measured"
+    assert payload["thresholds"] == {"coverage": 0.95, "entailment": 0.9}
+
+
+def test_verify_gate_passes_offline_on_measured_coverage(tmp_path: Path) -> None:
+    # A gate that were red on every offline checkout is a gate everyone ignores.
+    _verifiable(tmp_path)
+    assert invoke("verify", "--root", str(tmp_path), "--gate").exit_code == ExitCode.OK
+
+
+def test_verify_gate_fails_on_a_measured_shortfall(tmp_path: Path) -> None:
+    broken = _VERIFY_CANDIDATE.replace("([[retry-policy#Backoff]])", "")
+    _verifiable(tmp_path, candidate=broken)
+    result = invoke("verify", "--root", str(tmp_path), "--gate")
+    assert result.exit_code == ExitCode.FAILED
+    assert "gate G7" in result.stderr
+
+
+def test_verify_writes_the_score_into_the_document(tmp_path: Path) -> None:
+    from mycelium.markdown.frontmatter import parse_frontmatter
+
+    _verifiable(tmp_path)
+    invoke("verify", "--root", str(tmp_path))
+    text = (tmp_path / "knowledge/candidate/webhook-retries.md").read_text(encoding="utf-8")
+    assert parse_frontmatter(text).frontmatter.grounding == 1.0
+
+
+def test_verify_dry_run_writes_nothing(tmp_path: Path) -> None:
+    _verifiable(tmp_path)
+    before = (tmp_path / "knowledge/candidate/webhook-retries.md").read_text(encoding="utf-8")
+    invoke("verify", "--root", str(tmp_path), "--dry-run")
+    after = (tmp_path / "knowledge/candidate/webhook-retries.md").read_text(encoding="utf-8")
+    assert after == before
+
+
+def test_verify_measures_entailment_when_a_judge_is_configured(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _verifiable(tmp_path)
+    _with_judge(monkeypatch)
+    payload = json.loads(invoke("verify", "--root", str(tmp_path), "--json").stdout)
+    document = payload["documents"][0]
+    assert document["entailment"] == 1.0
+    assert document["judge"] == "scripted/judge-1"
+    assert document["passes"] is True
+
+
+def test_no_entailment_skips_the_judge_entirely(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _verifiable(tmp_path)
+
+    def refuse(*_: object) -> object:
+        raise AssertionError("no judge must be built")
+
+    monkeypatch.setattr(cli_app, "build_judge", refuse)
+    result = invoke("verify", "--root", str(tmp_path), "--no-entailment", "--json")
+    assert result.exit_code == ExitCode.OK
+    assert json.loads(result.stdout)["documents"][0]["entailment"] is None
+
+
+def test_verify_says_when_a_document_has_nothing_to_verify(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    result = invoke("verify", "--root", str(tmp_path))
+    assert result.exit_code == ExitCode.OK
+    assert "no synthesized documents" in result.stdout
+
+
+def test_promote_refuses_below_the_gate_and_points_at_force(tmp_path: Path) -> None:
+    _verifiable(tmp_path)
+    result = invoke("promote", "knowledge/candidate/webhook-retries.md", "--root", str(tmp_path))
+    assert result.exit_code == ExitCode.FAILED
+    assert "--force" in result.stderr
+    assert (tmp_path / "knowledge/candidate/webhook-retries.md").is_file()
+
+
+def test_promote_moves_the_document_when_the_gate_passes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _verifiable(tmp_path)
+    _with_judge(monkeypatch)
+    result = invoke(
+        "promote", "knowledge/candidate/webhook-retries.md", "--root", str(tmp_path), "--json"
+    )
+    assert result.exit_code == ExitCode.OK
+    promoted = json.loads(result.stdout)["promoted"]
+    assert promoted["to"] == "knowledge/verified/webhook-retries.md"
+    assert promoted["forced"] is False
+    assert "entailment via scripted/judge-1" in promoted["verified_by"]
+    assert (tmp_path / "knowledge/verified/webhook-retries.md").is_file()
+
+
+def test_promote_refuses_when_entailment_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _verifiable(tmp_path)
+    _with_judge(monkeypatch, entailed=False)
+    result = invoke("promote", "knowledge/candidate/webhook-retries.md", "--root", str(tmp_path))
+    assert result.exit_code == ExitCode.FAILED
+    assert "entailment-below-threshold" in result.stdout
+
+
+def test_force_promotion_records_the_human_and_the_reason(tmp_path: Path) -> None:
+    _verifiable(tmp_path)
+    result = invoke(
+        "promote",
+        "knowledge/candidate/webhook-retries.md",
+        "--root",
+        str(tmp_path),
+        "--force",
+        "--by",
+        "Daniel Polo",
+        "--json",
+    )
+    assert result.exit_code == ExitCode.OK
+    promoted = json.loads(result.stdout)["promoted"]
+    assert promoted["forced"] is True
+    assert promoted["verified_by"] == "Daniel Polo (forced: entailment-not-measured)"
+    # In the document, so the override survives in Git rather than in scrollback.
+    text = (tmp_path / "knowledge/verified/webhook-retries.md").read_text(encoding="utf-8")
+    assert "forced: entailment-not-measured" in text
+
+
+def test_promoting_something_that_is_not_synthesized_is_a_usage_error(tmp_path: Path) -> None:
+    seeded(tmp_path, name="knowledge/candidate/hand-written.md", text="# Notes\n\nBy hand.\n")
+    result = invoke("promote", "knowledge/candidate/hand-written.md", "--root", str(tmp_path))
+    assert result.exit_code == ExitCode.USAGE
+    assert "not a synthesized document" in result.stderr
+
+
+def test_demote_moves_back_and_strips_the_verification(tmp_path: Path) -> None:
+    from mycelium.markdown.frontmatter import parse_frontmatter
+
+    _verifiable(tmp_path)
+    invoke("promote", "knowledge/candidate/webhook-retries.md", "--root", str(tmp_path), "--force")
+    result = invoke(
+        "demote", "knowledge/verified/webhook-retries.md", "--root", str(tmp_path), "--json"
+    )
+    assert result.exit_code == ExitCode.OK
+    assert json.loads(result.stdout)["demoted"]["to"] == "knowledge/candidate/webhook-retries.md"
+    text = (tmp_path / "knowledge/candidate/webhook-retries.md").read_text(encoding="utf-8")
+    assert parse_frontmatter(text).frontmatter.verified_by is None
+
+
+def test_demoting_a_candidate_fails_rather_than_moving_it_sideways(tmp_path: Path) -> None:
+    _verifiable(tmp_path)
+    result = invoke("demote", "knowledge/candidate/webhook-retries.md", "--root", str(tmp_path))
+    assert result.exit_code == ExitCode.FAILED
+    assert "not under a verified/ folder" in result.stderr
+
+
+def test_verify_refuses_a_document_outside_the_repository(tmp_path: Path) -> None:
+    _verifiable(tmp_path)
+    outside = tmp_path.parent / "elsewhere.md"
+    outside.write_text("# Elsewhere\n", encoding="utf-8")
+    result = invoke("verify", str(outside), "--root", str(tmp_path))
+    assert result.exit_code == ExitCode.USAGE
+    assert "outside" in result.stderr
+
+
+def test_a_promoted_document_compiles_as_verified(tmp_path: Path) -> None:
+    """The end of the workflow: the store learns the new status from a build.
+
+    Nothing in verification writes an index (D-021), so this is what proves the
+    move actually reaches the served snapshot.
+    """
+    _verifiable(tmp_path)
+    invoke("promote", "knowledge/candidate/webhook-retries.md", "--root", str(tmp_path), "--force")
+    assert invoke("build", str(tmp_path)).exit_code == ExitCode.OK
+    store = SqliteStore.open(tmp_path, read_only=True)
+    try:
+        document = store.get_document_by_path("knowledge/verified/webhook-retries.md")
+    finally:
+        store.close()
+    assert document is not None, "the promoted document is in the published snapshot"
+    assert document.verification_status is VerificationStatus.VERIFIED
+    assert document.provenance.origin is ProvenanceOrigin.SYNTHESIZED
+    assert document.verification is not None, "and it carries the evidence it was promoted on"
+    assert document.verification.grounding == 1.0
+
+
+def test_doctor_says_nothing_about_verification_until_a_provider_exists(tmp_path: Path) -> None:
+    # With no provider there are no candidate documents, so a line about their
+    # grounding would be noise on every offline install.
+    seeded(tmp_path)
+    payload = json.loads(invoke("doctor", str(tmp_path), "--json").stdout)
+    assert not any(item["name"] == "verification" for item in payload["checks"])
+
+
+def test_doctor_names_the_judge_and_the_promotion_policy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seeded(tmp_path)
+    (tmp_path / "mycelium.toml").write_text(
+        '[synthesis]\nprovider = "anthropic"\n\n[verification]\nsample_size = 4\n',
+        encoding="utf-8",
+    )
+
+    class Judge:
+        identity = "anthropic/some-model"
+
+    from mycelium.cli import doctor as doctor_module
+
+    monkeypatch.setattr(doctor_module, "build_judge", lambda *_: (Judge(), True, ""))
+    payload = json.loads(invoke("doctor", str(tmp_path), "--json").stdout)
+    check = next(item for item in payload["checks"] if item["name"] == "verification")
+    assert check["status"] == "ok"
+    assert "anthropic/some-model (self-judged)" in check["detail"]
+    assert "4 sampled claims" in check["detail"]
+    assert "promotion is human" in check["detail"]
+
+
+def test_doctor_warns_when_the_gate_has_no_judge(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    seeded(tmp_path)
+    (tmp_path / "mycelium.toml").write_text(
+        '[synthesis]\nprovider = "anthropic"\n', encoding="utf-8"
+    )
+    from mycelium.cli import doctor as doctor_module
+
+    monkeypatch.setattr(
+        doctor_module, "build_judge", lambda *_: (None, False, "no credential here")
+    )
+    payload = json.loads(invoke("doctor", str(tmp_path), "--json").stdout)
+    check = next(item for item in payload["checks"] if item["name"] == "verification")
+    assert check["status"] == "warn"
+    assert "no credential here" in check["detail"]

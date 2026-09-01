@@ -24,13 +24,16 @@ default (ADR-0014).
 import tomllib
 from collections.abc import Mapping
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Any, Final, Literal, Self
+from typing import TYPE_CHECKING, Any, Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, model_validator
 
 from mycelium.chunking import ChunkingPolicy
 from mycelium.sdk.identity import digest_json
-from mycelium.sdk.types import Sha256Digest, VerificationStatus
+from mycelium.sdk.types import Sha256Digest, SourceTrust, VerificationStatus
+
+if TYPE_CHECKING:  # pragma: no cover - import-cycle guard, see `MyceliumConfig.ingest`
+    from mycelium.verification.grounding import Thresholds
 
 __all__ = [
     "CONFIG_FILENAME",
@@ -42,23 +45,26 @@ __all__ = [
     "MyceliumConfig",
     "ProjectConfig",
     "RetrievalConfig",
+    "SourcesConfig",
     "SynthesisConfig",
     "UNHONOURED_SECTIONS",
+    "VerificationConfig",
     "load_config",
 ]
 
 CONFIG_FILENAME: Final = "mycelium.toml"
 
-UNHONOURED_SECTIONS: Final = frozenset({"verification", "sources", "eval"})
+UNHONOURED_SECTIONS: Final = frozenset({"eval"})
 """Sections spec 05 §2 documents whose features this milestone has not built.
 
 They are accepted so a spec-valid file is not rejected, and digested so a build
-remains reproducible from its config, but nothing reads their values yet:
-`verification` (roadmap 4.5), `sources` (4.5 — trust per
-origin is a verification input), `eval` (the harness takes its case set on the
-command line). `retrieval` left this set at roadmap 3.3, when hybrid search gave
-it something to control; `ingest` left it at 4.1, and is the first section
-honoured *in part* — see :class:`IngestConfig`; `synthesis` left it at 4.4.
+remains reproducible from its config, but nothing reads their values yet. One is
+left: `eval`, and it is a different case from the others — the harness takes its
+case set on the command line, so the section may never be honoured at all.
+
+The rest arrived with their features: `retrieval` at roadmap 3.3, `ingest` at 4.1
+(the first honoured *in part* — see :class:`IngestConfig`), `synthesis` at 4.4,
+and `verification` with `sources` at 4.5.
 """
 
 _SUPPORTED_ATOMIC: Final = ("code", "table")
@@ -413,6 +419,122 @@ class RetrievalConfig(_Section):
         return self
 
 
+class VerificationConfig(_Section):
+    """`[verification]` — gate G7's floors, and who may cross them (D-021).
+
+    The two thresholds are spec 04 §7.3's, verbatim, and they are *different
+    kinds of number*. `cites_coverage_min` is checked against something this
+    repository computes; `entailment_min` is checked against a model's judgement,
+    and only when a judge exists at all. A run with no provider measures the first
+    and reports the second as unmeasured — never as zero (ADR-0036).
+
+    `auto_promote` is the spec's opt-in: with it on, `mycelium verify` promotes a
+    document that clears **both** components, which is only reachable with a judge
+    configured. Off — the default — promotion stays a human act in Git, which is
+    the whole of D-021.
+
+    Two keys go beyond spec 05 §2's three, and both exist because "sampled
+    entailment" needs saying how:
+
+    - `sample_size` — claims judged per document. Exhaustive judging would be one
+      model call per block, which nobody would run on every candidate.
+    - `model_id` — the judge's model, when it should differ from the writer's.
+      Unset means the synthesis model grades its own homework, which is a known
+      bias, so it is *named* in the report and said out loud by the CLI rather
+      than quietly averaged into a score.
+    """
+
+    cites_coverage_min: float = Field(default=0.95, ge=0.0, le=1.0)
+    entailment_min: float = Field(default=0.90, ge=0.0, le=1.0)
+    auto_promote: bool = False
+    sample_size: int = Field(default=8, ge=0)
+    model_id: str | None = None
+
+    def thresholds(self) -> "Thresholds":
+        """The gate's floors, in the shape the measurement takes.
+
+        Imported inside the method, like `[ingest]`'s registry lookup above and
+        for the same reason: `mycelium.verification` reaches the synthesis lane,
+        which reaches this module."""
+        from mycelium.verification.grounding import Thresholds  # noqa: PLC0415
+
+        return Thresholds(coverage=self.cites_coverage_min, entailment=self.entailment_min)
+
+
+class SourcesConfig(BaseModel):
+    """`[sources]` — the trust class of an origin (D-021, spec 05 §2).
+
+    A free-form table rather than a fixed field set: the keys are *origins* an
+    operator names — a hostname, a wiki name, a path prefix — and `"*"` is the
+    default for everything unmatched. Trust is a property of where bytes came
+    from, so it is stamped at acquisition and travels with the document
+    (`provenance.source_trust`); `mycelium verify` reports the weakest trust among
+    a candidate's cited evidence, because "well grounded in sources nobody
+    vouches for" is a thing an operator should be able to see.
+
+    It is deliberately **not** a gate. Refusing to promote a document because its
+    evidence is `unknown` would be this project deciding whose documentation is
+    trustworthy, which is the operator's call and nobody else's.
+    """
+
+    model_config = ConfigDict(frozen=True, extra="allow")
+
+    @model_validator(mode="after")
+    def _every_value_is_a_trust_class(self) -> Self:
+        """Validate at load time, not at first use.
+
+        `extra="allow"` accepts any key, which is the point — the keys are the
+        operator's origins. It also means nothing checks the *values* unless this
+        does, and a typo discovered three commands later is exactly the quiet
+        degradation ADR-0014 refuses.
+        """
+        for origin, value in (self.__pydantic_extra__ or {}).items():
+            _as_trust(origin, value)
+        return self
+
+    @property
+    def rules(self) -> tuple[tuple[str, SourceTrust], ...]:
+        """The configured origin → trust pairs, most specific pattern first."""
+        pairs: list[tuple[str, SourceTrust]] = []
+        for origin, value in (self.__pydantic_extra__ or {}).items():
+            trust = _as_trust(origin, value)
+            pairs.append((origin, trust))
+        # Longest pattern first, so `docs.python.org` beats `*` and
+        # `internal.example.com/wiki` beats `internal.example.com`.
+        return tuple(sorted(pairs, key=lambda pair: (-len(pair[0]), pair[0])))
+
+    def trust_for(self, source_uri: str) -> SourceTrust | None:
+        """The trust class configured for `source_uri`, or ``None`` if nothing matches.
+
+        Matching is substring-on-the-origin rather than a glob, and that is the
+        smaller promise: an operator writes the host or the path fragment they
+        recognise, and `"*"` is spelled out as the catch-all instead of being
+        implied by an empty pattern.
+        """
+        if not source_uri:
+            return None
+        default: SourceTrust | None = None
+        for pattern, trust in self.rules:
+            if pattern == "*":
+                default = trust
+                continue
+            if pattern and pattern in source_uri:
+                return trust
+        return default
+
+
+def _as_trust(origin: str, value: object) -> SourceTrust:
+    if not isinstance(value, str):
+        msg = f'[sources] "{origin}" must name a trust class, not {type(value).__name__}'
+        raise ValueError(msg)
+    try:
+        return SourceTrust(value)
+    except ValueError as error:
+        known = ", ".join(item.value for item in SourceTrust)
+        msg = f'[sources] "{origin}" = "{value}" is not a trust class; v1 has: {known}'
+        raise ValueError(msg) from error
+
+
 class ModulesConfig(_Section):
     """`[modules]` — activatable optional modules (D-023/D-025)."""
 
@@ -449,6 +571,8 @@ class MyceliumConfig(BaseModel):
     chunking: ChunkingConfig = ChunkingConfig()
     embedding: EmbeddingConfig = EmbeddingConfig()
     synthesis: SynthesisConfig = SynthesisConfig()
+    verification: VerificationConfig = VerificationConfig()
+    sources: SourcesConfig = SourcesConfig()
     retrieval: RetrievalConfig = RetrievalConfig()
     modules: ModulesConfig = ModulesConfig()
     future: dict[str, JsonValue] = Field(
@@ -492,6 +616,8 @@ class MyceliumConfig(BaseModel):
                 "chunking": self.chunking.model_dump(mode="json"),
                 "embedding": self.embedding.model_dump(mode="json"),
                 "synthesis": self.synthesis.model_dump(mode="json"),
+                "verification": self.verification.model_dump(mode="json"),
+                "sources": self.sources.model_dump(mode="json"),
                 "retrieval": self.retrieval.model_dump(mode="json"),
                 "modules": self.modules.model_dump(mode="json"),
                 "future": self.future,
@@ -535,6 +661,8 @@ def load_config(root: Path) -> MyceliumConfig:
         "chunking",
         "embedding",
         "synthesis",
+        "verification",
+        "sources",
         "retrieval",
         "modules",
     }

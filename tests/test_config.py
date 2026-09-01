@@ -101,6 +101,11 @@ def test_the_specs_own_file_loads(tmp_path: Path) -> None:
     # secret scan is still waiting (4.6).
     assert config.unhonoured_keys == ("ingest.redact_secrets",)
     assert config.ingest.max_failed_elements == 0.05
+    # `[verification]` and `[sources]` are honoured from roadmap 4.5.
+    assert config.verification.cites_coverage_min == 0.95
+    assert config.verification.entailment_min == 0.90
+    assert config.verification.auto_promote is False
+    assert config.sources.trust_for("https://docs.python.org/3/library").value == "high"
     assert config.source == tmp_path / CONFIG_FILENAME
 
 
@@ -406,3 +411,64 @@ def test_include_candidate_false_narrows_what_is_served(tmp_path: Path) -> None:
 def test_the_default_serves_every_status() -> None:
     """A candidate is labelled, not hidden (D-021)."""
     assert MyceliumConfig().retrieval.served_statuses is None
+
+
+# ---------------------------------------------------------------------------
+# [verification] and [sources] (roadmap 4.5)
+# ---------------------------------------------------------------------------
+
+
+def test_verification_defaults_are_gate_g7s_own_numbers(tmp_path: Path) -> None:
+    settings = load_config(tmp_path).verification
+    assert (settings.cites_coverage_min, settings.entailment_min) == (0.95, 0.90)
+    assert settings.auto_promote is False, "promotion is a human act by default (D-021)"
+    assert settings.model_id is None, "unset means the writer judges its own work"
+    thresholds = settings.thresholds()
+    assert (thresholds.coverage, thresholds.entailment) == (0.95, 0.90)
+
+
+@pytest.mark.parametrize(
+    ("body", "expected"),
+    [
+        ("[verification]\ncites_coverage_min = 1.5\n", "less than or equal to 1"),
+        ("[verification]\nentailment_min = -0.1\n", "greater than or equal to 0"),
+        ("[verification]\nsample_size = -1\n", "greater than or equal to 0"),
+        ('[verification]\nunknown_key = "x"\n', "unknown_key"),
+    ],
+)
+def test_a_bad_verification_setting_names_its_key(tmp_path: Path, body: str, expected: str) -> None:
+    with pytest.raises(ConfigError, match=expected):
+        load_config(write(tmp_path, body))
+
+
+def test_sources_matches_the_longest_pattern_first(tmp_path: Path) -> None:
+    body = '[sources]\n"example.com" = "medium"\n"example.com/internal" = "low"\n"*" = "unknown"\n'
+    sources = load_config(write(tmp_path, body)).sources
+    assert sources.trust_for("https://example.com/internal/wiki").value == "low"
+    assert sources.trust_for("https://example.com/public").value == "medium"
+    assert sources.trust_for("https://elsewhere.test/page").value == "unknown"
+
+
+def test_sources_with_no_catch_all_answers_none_for_an_unknown_origin(tmp_path: Path) -> None:
+    sources = load_config(write(tmp_path, '[sources]\n"example.com" = "high"\n')).sources
+    assert sources.trust_for("https://elsewhere.test/page") is None
+    assert sources.trust_for("") is None
+
+
+def test_an_unknown_trust_class_is_refused_by_name(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="is not a trust class"):
+        load_config(write(tmp_path, '[sources]\n"example.com" = "quite-good"\n'))
+
+
+def test_a_trust_class_must_be_a_string(tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="must name a trust class"):
+        load_config(write(tmp_path, '[sources]\n"example.com" = 3\n'))
+
+
+def test_the_two_new_sections_reach_the_config_digest(tmp_path: Path) -> None:
+    """A build recorded under different thresholds must not match one under others."""
+    base = load_config(write(tmp_path, "[verification]\nentailment_min = 0.9\n")).digest()
+    moved = load_config(write(tmp_path, "[verification]\nentailment_min = 0.8\n")).digest()
+    trusted = load_config(write(tmp_path, '[sources]\n"a.test" = "high"\n')).digest()
+    assert base != moved
+    assert base != trusted

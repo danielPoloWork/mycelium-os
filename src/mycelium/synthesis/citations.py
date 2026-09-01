@@ -58,6 +58,9 @@ __all__ = [
     "CitationReport",
     "check",
     "citable_names",
+    "claim_blocks",
+    "claim_owner",
+    "index_evidence",
     "resolve_target",
     "review",
 ]
@@ -83,6 +86,14 @@ class CitationReport:
     """Claim-bearing blocks in the document."""
 
     cited_claims: int
+    claim_citations: dict[str, tuple[str, ...]]
+    """Which citations each covered claim-bearing block carries, keyed by node id.
+
+    Recorded because `mycelium verify` needs it (roadmap 4.5): sampled entailment
+    judges a claim against *the evidence that claim cited*, and rebuilding the
+    mapping there would be a second walk of the same tree with a second chance to
+    disagree about which block a citation belongs to."""
+
     violations: tuple[str, ...]
     """Human-readable, quotable back to the model: each names the offending link
     or block and what was wrong with it."""
@@ -110,7 +121,7 @@ class CitationReport:
         }
 
 
-def _index(evidence: Sequence[EvidenceDocument]) -> dict[str, EvidenceDocument]:
+def index_evidence(evidence: Sequence[EvidenceDocument]) -> dict[str, EvidenceDocument]:
     """Every name a wikilink may legitimately use, mapped to its document.
 
     Both the stem and the full repository path, case-folded, because a vault
@@ -144,7 +155,7 @@ def resolve_target(
     return document, fragment.strip(), ""
 
 
-def _claim_blocks(nodes: Sequence[KirNode]) -> list[KirNode]:
+def claim_blocks(nodes: Sequence[KirNode]) -> list[KirNode]:
     return [
         node
         for node in nodes
@@ -159,14 +170,15 @@ def review(kir: KirDocument, evidence: Sequence[EvidenceDocument]) -> CitationRe
     grounding is decided here, which is what makes the decision testable without
     a model in the loop.
     """
-    index = _index(evidence)
+    index = index_evidence(evidence)
     by_id = {node.id: node for node in kir.nodes}
-    claims = _claim_blocks(kir.nodes)
+    claims = claim_blocks(kir.nodes)
     claim_ids = {node.id for node in claims}
 
     citations: list[str] = []
     documents: set[str] = set()
     cited_claims: set[str] = set()
+    per_claim: dict[str, list[str]] = {}
     violations: list[str] = []
 
     for node in kir.nodes:
@@ -190,11 +202,13 @@ def review(kir: KirDocument, evidence: Sequence[EvidenceDocument]) -> CitationRe
                 )
                 continue
         path = document.path.as_posix()
-        citations.append(f"{path}#{fragment}" if fragment else path)
+        citation = f"{path}#{fragment}" if fragment else path
+        citations.append(citation)
         documents.add(path)
-        owner = _claim_owner(node, by_id, claim_ids)
+        owner = claim_owner(node, by_id, claim_ids)
         if owner is not None:
             cited_claims.add(owner)
+            per_claim.setdefault(owner, []).append(citation)
 
     for node in claims:
         if node.id not in cited_claims:
@@ -206,11 +220,12 @@ def review(kir: KirDocument, evidence: Sequence[EvidenceDocument]) -> CitationRe
         cited_documents=tuple(sorted(documents)),
         claims=len(claims),
         cited_claims=len(cited_claims),
+        claim_citations={key: tuple(value) for key, value in per_claim.items()},
         violations=tuple(violations),
     )
 
 
-def _claim_owner(
+def claim_owner(
     node: KirNode, by_id: Mapping[str, KirNode], claim_ids: AbstractSet[str]
 ) -> str | None:
     """The claim-bearing block a wikilink belongs to, walking up the KIR tree.

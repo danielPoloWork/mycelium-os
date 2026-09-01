@@ -83,7 +83,7 @@ from mycelium.graph import (
 from mycelium.ingest.custody import Custody
 from mycelium.ingest.errors import CustodyError
 from mycelium.markdown import Frontmatter, MarkdownDocument, parse_markdown
-from mycelium.markdown.frontmatter import DELIMITER, parse_frontmatter
+from mycelium.markdown.frontmatter import parse_frontmatter, upsert
 from mycelium.sdk.identity import digest_json, digest_text, heading_slug, new_ulid
 from mycelium.sdk.schema import (
     RECORD_MODELS,
@@ -238,25 +238,23 @@ def _discover(root: Path, scope: CorpusScope) -> list[Path]:
 def _ensure_identity(text: str) -> tuple[str, str, bool]:
     """Return ``(text, doc_id, pinned)``, minting and inserting an id if needed.
 
-    A fresh ``mycelium_id`` is inserted textually — never via YAML
-    re-serialization — preserving every other byte: the file's own newline
-    convention is kept, and a BOM stays where it is.
+    The insert goes through :func:`~mycelium.markdown.frontmatter.upsert`, which
+    is also what `mycelium verify` stamps a grounding score with (roadmap 4.5).
+    One writer, because two would be two opinions about what a document's
+    frontmatter is allowed to look like after a tool has touched it — and this one
+    is the write that must be gentlest: identity pinning edits someone's tracked
+    file, so every byte it does not own stays where it is, newline convention and
+    byte-order mark included.
+
+    ``position="top"`` because `mycelium_id` is the document's name and reads
+    first.
     """
-    bom, body = (_BOM, text[len(_BOM) :]) if text.startswith(_BOM) else ("", text)
-    parsed = parse_frontmatter(body)
+    parsed = parse_frontmatter(text)
     if parsed.frontmatter.mycelium_id is not None:
         return text, parsed.frontmatter.mycelium_id, False
 
     doc_id = new_ulid()
-    newline = "\r\n" if "\r\n" in body else "\n"
-    line = f"mycelium_id: {doc_id}"
-    if parsed.body_line_offset > 0:
-        # A real frontmatter block: insert directly after the opening fence line.
-        head, _, tail = body.partition("\n")
-        new_body = f"{head}\n{line}{newline}{tail}"
-    else:
-        new_body = f"{DELIMITER}{newline}{line}{newline}{DELIMITER}{newline}{newline}{body}"
-    return bom + new_body, doc_id, True
+    return upsert(text, {"mycelium_id": doc_id}, position="top"), doc_id, True
 
 
 # ---------------------------------------------------------------------------
