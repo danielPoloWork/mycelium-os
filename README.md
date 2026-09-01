@@ -197,6 +197,53 @@ still look at it. The committed suite that proves this lives in
 can read rather than shipped as opaque binaries
 ([ADR-0033](docs/adr/0033-keep-the-original-and-bound-the-hostile.md)).
 
+### A refused file is written down, and a credential is not written out
+
+Two things ingestion does with a document that should not simply pass through, and both are
+about the same question: what happens when the answer is *not* "project it".
+
+**A refusal is recorded, not just reported.** A source that cannot be acquired, that no
+pinned parser reads, that breaches a shape guard, that the engine cannot compile, or that
+loses more than its budget allows is **quarantined**: one record under
+`.mycelium/quarantine/` naming the stage that refused it, the reason, and the digest of the
+bytes that caused it — which are already in custody, because ingestion stores the original
+before it tries to parse it. So an hour later you can still answer *which files failed, and
+why*, and open them again. Ingesting a source successfully clears its record;
+`mycelium ingest --forget <source>` clears one that is never coming back; `mycelium gc`
+never sweeps them.
+
+```console
+$ mycelium doctor
+warning: quarantine: 2 source(s) quarantined in .mycelium/quarantine:
+         legacy.doc (dispatch: UnsupportedMediaTypeError), scans.pdf (budget: LossBudgetError)
+```
+
+A quarantined source is a **warning**, never a failed health check. It is the system working
+as designed, and a `doctor` that goes red for one unreadable PDF is a `doctor` nobody runs.
+
+**A credential found in an ingested source is redacted before it can spread.** An ingested
+document is somebody else's file, and the lane's job is to write its content into your Git
+tree and then into an index. So the content is scanned, and a match is replaced *before the
+compiled form is stored*:
+
+```markdown
+export AWS_ACCESS_KEY_ID=[redacted: aws-access-key-id]
+```
+
+The verbatim bytes survive in exactly one place — the tier-1 original under `.mycelium/`,
+which is gitignored and is what a citation is checked against. Everything derived from it
+carries the placeholder. The rules that matched are recorded on the document
+(`secret_flags`), **whether or not** redaction acted: `[ingest] redact_secrets = false`
+turns off the redaction, not the record, and `mycelium doctor` says so while it is off.
+
+The scan is eleven **structural** rules — vendor key prefixes, PEM armour, credentials in a
+URL — and no entropy heuristic, because a scanner that fires on base64 images, digests and
+UUIDs is one you would turn off within a week. That trade is deliberate and it has a cost:
+a bare password or a home-grown token goes through unflagged. **This is not a substitute for
+a secret scanner on your repository** — it is the check ingestion can make on content it is
+about to write into your tree
+([ADR-0037](docs/adr/0037-record-what-was-refused-and-redact-what-was-found.md)).
+
 ### An LLM may write, but only what a machine can check
 
 Ingestion is dual-lane. The **evidence lane** above always runs and is deterministic. The

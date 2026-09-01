@@ -38,7 +38,9 @@ from mycelium.ingest.custody import Custody, CustodyIntegrity, custody_root
 from mycelium.ingest.errors import (
     ConnectorError,
     CustodyError,
+    GuardError,
     IngestError,
+    LossBudgetError,
     ParseError,
     PluginError,
     PluginUnavailableError,
@@ -50,6 +52,7 @@ from mycelium.ingest.fidelity import build_report, check_budget, encode_report
 from mycelium.ingest.media import EXTENSIONS, MEDIA_TYPES, MediaTypeClaim, classify
 from mycelium.ingest.pipeline import Ingested, encode_kir, ingest_source, write_projection
 from mycelium.ingest.projection import EVIDENCE_DIRNAME, Projection, evidence_path, project
+from mycelium.ingest.quarantine import Quarantine, quarantine_root, stage_of
 from mycelium.ingest.registry import (
     BUILTIN_CONNECTORS,
     BUILTIN_PARSERS,
@@ -59,10 +62,14 @@ from mycelium.ingest.registry import (
     probe,
 )
 from mycelium.ingest.safety import DEFAULT_LIMITS, Limits, guard
+from mycelium.ingest.secrets import RULES as SECRET_RULES
+from mycelium.ingest.secrets import describe as describe_secrets
+from mycelium.ingest.secrets import scan_kir, scan_text
 
 __all__ = [
     "BUILTIN_CONNECTORS",
     "BUILTIN_PARSERS",
+    "SECRET_RULES",
     "ENTRY_POINT_GROUP",
     "EVIDENCE_DIRNAME",
     "EXTENSIONS",
@@ -70,6 +77,9 @@ __all__ = [
     "DEFAULT_LIMITS",
     "ConnectorError",
     "Custody",
+    "GuardError",
+    "LossBudgetError",
+    "Quarantine",
     "CustodyError",
     "CustodyIntegrity",
     "IngestError",
@@ -89,6 +99,7 @@ __all__ = [
     "check_budget",
     "classify",
     "custody_root",
+    "describe_secrets",
     "encode_kir",
     "encode_report",
     "evidence_path",
@@ -96,5 +107,9 @@ __all__ = [
     "ingest_source",
     "probe",
     "project",
+    "quarantine_root",
+    "scan_kir",
+    "scan_text",
+    "stage_of",
     "write_projection",
 ]

@@ -15,14 +15,14 @@ detected here, and healed by the next build.
 import platform
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
-from typing import Literal
+from pathlib import Path, PurePosixPath
+from typing import Final, Literal
 
 from mycelium.__about__ import __version__
 from mycelium.build.lock import DEFAULT_STALE_AFTER_S, LOCK_FILENAME, BuildLock
 from mycelium.build.publish import manifest_path, read_current
 from mycelium.config import CONFIG_FILENAME, ConfigError, load_config
-from mycelium.ingest import Custody, CustodyError, probe
+from mycelium.ingest import Custody, CustodyError, Quarantine, probe
 from mycelium.store import STORE_DIRNAME, STORE_FILENAME, SqliteStore, StoreError
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
 from mycelium.synthesis import SynthesisError, build_provider
@@ -31,6 +31,11 @@ from mycelium.verification import build_judge
 __all__ = ["Check", "Status", "diagnose", "worst_status"]
 
 type Status = Literal["ok", "warn", "fail"]
+
+_QUARANTINE_SHOWN: Final = 5
+"""How many quarantined sources the text report names before it counts the rest.
+
+A health check is read at a glance; the full list is `--json`, or the directory."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,6 +189,62 @@ def _check_custody(mycelium_dir: Path) -> Check:
     return Check("custody", "fail", f"{summary}; " + ", ".join(problems))
 
 
+def _check_quarantine(mycelium_dir: Path) -> Check | None:
+    """List what ingestion refused, and why (spec 02 §5, roadmap 4.6).
+
+    `None` when nothing is quarantined: an empty list is the normal state, and a
+    line saying so on every run is noise that makes the non-empty case easier to
+    miss.
+
+    `warn`, never `fail`. A quarantined source is a *recorded* refusal — the
+    system working as designed — and a repository whose exit code went red for
+    one unreadable PDF would teach an operator to stop running `doctor`. The
+    entries carry the stage and the reason, which are what decides whether to fix
+    the source, change a setting, or forget it.
+    """
+    quarantine = Quarantine(mycelium_dir)
+    records = list(quarantine.records())
+    if not records:
+        return None
+    shown = ", ".join(
+        f"{PurePosixPath(record.source_uri).name or record.source_uri} "
+        f"({record.stage.value}: {record.reason})"
+        for record in records[:_QUARANTINE_SHOWN]
+    )
+    more = len(records) - _QUARANTINE_SHOWN
+    suffix = f", and {more} more" if more > 0 else ""
+    return Check(
+        "quarantine",
+        "warn",
+        f"{len(records)} source(s) quarantined in {quarantine.root}: {shown}{suffix}; "
+        "re-ingest to clear, or `mycelium ingest --forget <source>`",
+    )
+
+
+def _check_secrets(root: Path) -> Check | None:
+    """Say when the secret scan is on but not acting (spec 02 §8).
+
+    `None` in the default configuration, which is the one that redacts. The check
+    exists for the *other* setting: `redact_secrets = false` means a credential
+    found in an ingested source is written into the authored tree and the index
+    verbatim, and that is a deliberate choice which should be visible in a health
+    report rather than only in a config file nobody re-reads.
+    """
+    try:
+        settings = load_config(root)
+    except ConfigError:
+        return None  # the `config` check already reported it
+    if settings.ingest.redact_secrets:
+        return None
+    return Check(
+        "secrets",
+        "warn",
+        "[ingest] redact_secrets = false: credentials found in an ingested source are "
+        "written to the authored tree and indexed verbatim; they are still flagged on "
+        "the document record",
+    )
+
+
 def _check_synthesis(root: Path) -> Check | None:
     """Report the synthesis lane's state — but only when an operator asked for it.
 
@@ -260,6 +321,12 @@ def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> lis
         _check_parsers(root),
         _check_custody(mycelium_dir),
     ]
+    quarantined = _check_quarantine(mycelium_dir)
+    if quarantined is not None:
+        checks.append(quarantined)
+    secrets = _check_secrets(root)
+    if secrets is not None:
+        checks.append(secrets)
     synthesis = _check_synthesis(root)
     if synthesis is not None:
         checks.append(synthesis)

@@ -22,6 +22,7 @@ from typing import Final
 __all__ = [
     "CAS_DIRNAME",
     "CUSTODY_DIRNAME",
+    "QUARANTINE_DIRNAME",
     "atomic_write_bytes",
     "atomic_write_text",
 ]
@@ -38,6 +39,14 @@ is named here, beside the sweepable layout it sits inside, because the garbage
 collector has to know which of the two it is looking at, and a lifecycle rule that
 lived only in the module writing the blobs would be invisible to the module
 deleting them. :mod:`mycelium.ingest.custody` owns what goes in it.
+"""
+
+QUARANTINE_DIRNAME: Final = "quarantine"
+"""Sources the evidence lane refused, at `.mycelium/quarantine/` (roadmap 4.6).
+
+Beside custody rather than inside it: a quarantine record is *about* an attempt,
+not content addressed by its own digest, and the garbage collector has to know it
+is another subtree it does not sweep. :mod:`mycelium.ingest.quarantine` owns it.
 """
 
 

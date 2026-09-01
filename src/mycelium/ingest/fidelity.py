@@ -43,7 +43,7 @@ denominator and quietly shrink every loss ratio.
 
 from typing import Final
 
-from mycelium.ingest.errors import ParseError
+from mycelium.ingest.errors import LossBudgetError
 from mycelium.sdk.identity import canonical_json, digest_bytes
 from mycelium.sdk.types import (
     FidelityReport,
@@ -121,8 +121,10 @@ def report_digest(report: FidelityReport) -> Sha256Digest:
 def check_budget(report: FidelityReport, *, max_lost_fraction: float) -> None:
     """Refuse a projection whose loss exceeds the budget (`[ingest] max_failed_elements`).
 
-    A `ParseError`, so a document over budget is quarantined per document like any
-    other ingestion failure rather than aborting a build (spec 02 §5). The message
+    A `LossBudgetError` — a `ParseError`, so a document over budget is quarantined
+    per document like any other ingestion failure rather than aborting a build
+    (spec 02 §5), and named so its quarantine record can say the document *parsed*
+    and was refused for what it lost. The message
     carries the ratio, the counts, and the setting's name — an operator meeting
     this is deciding whether the document is worth keeping at that fidelity, and
     cannot decide without the numbers.
@@ -137,7 +139,7 @@ def check_budget(report: FidelityReport, *, max_lost_fraction: float) -> None:
             "nothing to project. Its bytes are in custody; check whether the source is "
             "readable at all"
         )
-        raise ParseError(msg)
+        raise LossBudgetError(msg)
     if report.loss > max_lost_fraction:
         msg = (
             f"{report.lost} of {report.elements} elements did not survive parsing "
@@ -145,4 +147,4 @@ def check_budget(report: FidelityReport, *, max_lost_fraction: float) -> None:
             f"{max_lost_fraction:.0%}; the original is in custody and the projection was "
             "not written"
         )
-        raise ParseError(msg)
+        raise LossBudgetError(msg)

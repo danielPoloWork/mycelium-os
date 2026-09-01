@@ -319,7 +319,7 @@ def _assemble(
     warnings = [f"{doc_path}: {warning}" for warning in parsed.warnings]
 
     origin = frontmatter.origin or ProvenanceOrigin.AUTHORED
-    provenance, fidelity_report = _provenance_of(frontmatter, origin, mycelium_dir)
+    provenance, fidelity_report, secret_flags = _provenance_of(frontmatter, origin, mycelium_dir)
     document = Document(
         doc_id=doc_id,
         path=doc_path,
@@ -344,6 +344,7 @@ def _assemble(
         verification=_verification_of(frontmatter, warnings, doc_path),
         provenance=provenance,
         fidelity_report=fidelity_report,
+        secret_flags=secret_flags,
         stats=DocumentStats(
             tokens=sum(chunk.tokens for chunk in chunks),
             headings=sum(1 for node in parsed.kir.nodes if node.kind is NodeKind.HEADING),
@@ -363,14 +364,14 @@ def _assemble(
 
 def _provenance_of(
     frontmatter: Frontmatter, origin: ProvenanceOrigin, mycelium_dir: Path
-) -> tuple[Provenance, Sha256Digest | None]:
+) -> tuple[Provenance, Sha256Digest | None, tuple[str, ...]]:
     """Complete an ingested document's provenance from tier-1 custody (ADR-0034).
 
     Frontmatter carries the *link* — `source_digest`, one key — and custody carries
-    the facts: which connector acquired the bytes, when they were first seen, and
-    which fidelity report accounts for the projection. Four fields from one, and
-    they cannot drift from the evidence they describe, because they *are* the
-    evidence's own record.
+    the facts: which connector acquired the bytes, when they were first seen, which
+    fidelity report accounts for the projection, and which secret-scan rules
+    matched its content (roadmap 4.6). Five fields from one, and they cannot drift
+    from the evidence they describe, because they *are* the evidence's own record.
 
     A projected document compiled on a machine that does not have the custody
     store — a fresh clone, where `.mycelium/` is gitignored — keeps the digest and
@@ -384,17 +385,17 @@ def _provenance_of(
         source_trust=frontmatter.source_trust,
     )
     if frontmatter.source_digest is None:
-        return provenance, None
+        return provenance, None, ()
     try:
         record = Custody(mycelium_dir).record(frontmatter.source_digest)
     except CustodyError:
         # Unreadable custody is `mycelium doctor`'s finding to report, not a
         # reason to fail a build over a document that is otherwise fine.
-        return provenance, None
+        return provenance, None, ()
     if record is None:
-        return provenance, None
+        return provenance, None, ()
     if record.kind is CustodyKind.SYNTHESIS:
-        return _synthesized_provenance(provenance, record, mycelium_dir), None
+        return _synthesized_provenance(provenance, record, mycelium_dir), None, ()
     return (
         provenance.model_copy(
             update={
@@ -404,6 +405,7 @@ def _provenance_of(
             }
         ),
         record.fidelity_digest,
+        record.secret_flags,
     )
 
 

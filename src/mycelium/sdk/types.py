@@ -48,6 +48,8 @@ __all__ = [
     "CaseResult",
     "CustodyKind",
     "CustodyRecord",
+    "QuarantineRecord",
+    "QuarantineStage",
     "Edge",
     "EdgeProvenance",
     "EdgeStatus",
@@ -696,6 +698,57 @@ class CustodyKind(StrEnum):
     index a `mycelium gc` could remove."""
 
 
+class QuarantineStage(StrEnum):
+    """Where in the evidence lane a source was refused (roadmap 4.6).
+
+    The stage is the operator's first question, because it decides what to do
+    next, and the five answers are five different actions: `acquire` is usually a
+    path or a permission, `dispatch` is a configuration edit (the bytes are
+    readable, nothing pinned reads *that*), `guard` and `parse` are the document
+    itself, and `budget` is a document that parsed and arrived too damaged to
+    project.
+    """
+
+    ACQUIRE = "acquire"
+    DISPATCH = "dispatch"
+    GUARD = "guard"
+    PARSE = "parse"
+    BUDGET = "budget"
+
+
+class QuarantineRecord(Record):
+    """One source the evidence lane refused, kept so it can be looked at (spec 02 §5).
+
+    Malformed and hostile files quarantine rather than abort: the failure is
+    *recorded, skipped and reported*, and the build carries on. A record with no
+    durable form is only the second and third of those, which is why this is a
+    file under `.mycelium/quarantine/` rather than a line on stderr.
+
+    ``source_digest`` is the point of the whole arrangement. Ingestion stores the
+    acquired original **before** it tries to parse it (ADR-0033), so every
+    failure past acquisition leaves the exact bytes that caused it in tier-1
+    custody, and this record says which blob they are. A quarantined file whose
+    bytes were never kept cannot be re-examined, and re-examining them is the
+    reason to quarantine rather than drop.
+
+    ``first_seen`` never moves and ``last_seen`` does: a source that has been
+    failing since March and one that failed this morning need different answers,
+    and one timestamp cannot tell them apart.
+    """
+
+    schema_version: Literal["mycelium/quarantine/v0"] = "mycelium/quarantine/v0"
+    source_uri: NonEmptyStr
+    stage: QuarantineStage
+    reason: NonEmptyStr = Field(description="The error class, e.g. `ParseError`.")
+    detail: str = Field(description="The failure's own message, verbatim.")
+    media_type: str | None = None
+    source_digest: Sha256Digest | None = Field(
+        default=None, description="The tier-1 blob holding the bytes that failed, if acquired."
+    )
+    first_seen: UtcDatetime
+    last_seen: UtcDatetime
+
+
 class CustodyRecord(Record):
     """What is known about one blob held in tier-1 custody (ADR-0033).
 
@@ -732,6 +785,15 @@ class CustodyRecord(Record):
     fidelity_digest: Sha256Digest | None = Field(
         default=None, description="The fidelity report of this original's projection."
     )
+    secret_flags: tuple[str, ...] = ()
+    """Secret-scan rule ids that matched this original's content (roadmap 4.6).
+
+    Here rather than in frontmatter for ADR-0034's reason: the projected document
+    carries one link — its `source_digest` — and every fact about the evidence is
+    read back from this record, so the flags cannot drift from the bytes they
+    describe. They are recorded whether or not `[ingest] redact_secrets` acted on
+    them: flagging is the observation, redaction is the action (ADR-0037)."""
+
     first_seen: UtcDatetime
 
 
