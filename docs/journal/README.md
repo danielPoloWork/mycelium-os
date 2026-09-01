@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-01 — keeping the original (roadmap 4.2)](2026/09/2026-09-01-custody-and-hostile-input.md)
 - [2026-09-01 — four engines, one boundary (roadmap 4.1)](2026/09/2026-09-01-ingestion-protocols.md)
 
 #### August

@@ -22,6 +22,8 @@ only *what* a node is.
 
 from dataclasses import dataclass, field
 
+from mycelium.ingest.errors import ParseError
+from mycelium.ingest.safety import DEFAULT_LIMITS, Limits
 from mycelium.sdk.identity import normalize_text
 from mycelium.sdk.types import KirNode, NodeKind, SrcLocator
 
@@ -30,10 +32,20 @@ __all__ = ["KirBuilder"]
 
 @dataclass
 class KirBuilder:
-    """Accumulates KIR nodes in document order, threading the heading stack."""
+    """Accumulates KIR nodes in document order, threading the heading stack.
 
+    The builder is also the last line of the hostile-input defence (ADR-0033).
+    :mod:`mycelium.ingest.safety` bounds what an *engine* is asked to read; those
+    bounds are shape-specific and a new format arrives without them. What every
+    adapter shares is this class, so the two limits that apply to any document at
+    all — how many nodes it may produce and how much text they may hold — are
+    enforced here, where no adapter can forget them and a new one inherits them.
+    """
+
+    limits: Limits = DEFAULT_LIMITS
     nodes: list[KirNode] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    _text_bytes: int = 0
     _headings: list[tuple[int, str]] = field(default_factory=list)
 
     def add(
@@ -47,6 +59,20 @@ class KirBuilder:
     ) -> str:
         """Append a node under `parent` (or the open heading) and return its id."""
         ordinal = len(self.nodes)
+        if ordinal >= self.limits.max_nodes:
+            msg = (
+                f"document produces more than {self.limits.max_nodes} KIR nodes; "
+                "it is refused rather than compiled (ADR-0033)"
+            )
+            raise ParseError(msg)
+        if text is not None:
+            self._text_bytes += len(text)
+            if self._text_bytes > self.limits.max_text_bytes:
+                msg = (
+                    f"document carries more than {self.limits.max_text_bytes} bytes of node "
+                    "text; it is refused rather than compiled (ADR-0033)"
+                )
+                raise ParseError(msg)
         node_id = f"n{ordinal + 1}"
         self.nodes.append(
             KirNode(

@@ -13,6 +13,14 @@ CI must be able to exercise the parsers without the tool that produced the input
 renderings of it, so the same document reaches four parsers and the differences
 between their KIR are the adapters' own, not the corpus's.
 
+`hostile/` is the suite the M4 exit gate names: malformed, bomb-shaped and
+mislabelled files that must each produce **one typed failure**, fast, and never a
+hang, a crash, or an unhandled exception. Every one of them is generated here, so
+a reviewer can see exactly what makes it hostile instead of trusting an opaque
+binary. Sizes are kept small on purpose — `bomb.docx` is 51 KB that declares 50 MB,
+and `nested.html` is 55 KB that took docling 45 seconds before the guards existed
+(ADR-0033).
+
 `text-layer.pdf` is written here by hand, not by a converter. It is 964 bytes of
 uncompressed PDF with a real text layer and no compression, no fonts embedded and
 no metadata — small enough to read in a hex dump, which is what a fixture for an
@@ -20,12 +28,15 @@ untrusted-input parser should be. Producing it with a real PDF writer would have
 meant committing a kilobyte of opaque, unreviewable, timestamp-carrying binary.
 """
 
+import io
 import shutil
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).parent
+HOSTILE = HERE / "hostile"
 
 _PARAGRAPH = (
     "Webhook deliveries are retried five times, and the "
@@ -113,7 +124,65 @@ def write_pdf(path: Path) -> None:
     path.write_bytes(bytes(out))
 
 
+def write_hostile() -> None:
+    """Write the hostile suite. Each file has one job; the comment says which."""
+    HOSTILE.mkdir(parents=True, exist_ok=True)
+
+    # A decompression bomb: 50 MB of zeros in 51 KB. Invisible to a byte ceiling,
+    # obvious to the ratio check in `mycelium.ingest.safety`.
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
+        archive.writestr("[Content_Types].xml", b"<?xml version='1.0'?><Types/>")
+        archive.writestr("word/document.xml", bytes(50 * 1024 * 1024))
+    (HOSTILE / "bomb.docx").write_bytes(buffer.getvalue())
+
+    # Billion laughs inside a plausible container. The archive guard passes it —
+    # the declared sizes are honest — and the engine refuses it, which is the
+    # point: the guards are layers, not a single gate.
+    laughs = b"""<?xml version="1.0"?>
+<!DOCTYPE lolz [
+ <!ENTITY lol "lol">
+ <!ENTITY lol1 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">
+ <!ENTITY lol2 "&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;">
+ <!ENTITY lol3 "&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;">
+ <!ENTITY lol4 "&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;">
+ <!ENTITY lol5 "&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;">
+ <!ENTITY lol6 "&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;">
+ <!ENTITY lol7 "&lol6;&lol6;&lol6;&lol6;&lol6;&lol6;&lol6;&lol6;&lol6;&lol6;">
+ <!ENTITY lol8 "&lol7;&lol7;&lol7;&lol7;&lol7;&lol7;&lol7;&lol7;&lol7;&lol7;">
+]>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body><w:p><w:r><w:t>&lol8;</w:t></w:r></w:p></w:body></w:document>"""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", b"<?xml version='1.0'?><Types/>")
+        archive.writestr("_rels/.rels", b"<?xml version='1.0'?><Relationships/>")
+        archive.writestr("word/document.xml", laughs)
+    (HOSTILE / "laughs.docx").write_bytes(buffer.getvalue())
+
+    # A container whose member name climbs out of it (zip slip).
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("../../escaped.xml", b"<?xml version='1.0'?><x/>")
+    (HOSTILE / "escaping.docx").write_bytes(buffer.getvalue())
+
+    # 5 000 nested elements. docling took 45 s on this before the depth guard;
+    # at 50 000 it had not returned after five minutes.
+    (HOSTILE / "nested.html").write_bytes(b"<div>" * 5000 + b"deep" + b"</div>" * 5000)
+
+    # A DOCX that is not a ZIP, and a PDF that stops after its header.
+    (HOSTILE / "notazip.docx").write_bytes(b"plain text pretending to be a docx\n")
+    (HOSTILE / "truncated.pdf").write_bytes(b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\n")
+    (HOSTILE / "empty.pdf").write_bytes(b"")
+
+    # An extension that lies: PDF bytes under a .md name. Parsed as the extension
+    # claims (the operator's pinned parser list was written against names), with
+    # the contradiction recorded as a warning (roadmap 4.1).
+    (HOSTILE / "mislabelled.md").write_bytes(b"%PDF-1.4\nnot markdown at all\n")
+
+
 def main() -> int:
+    write_hostile()
     source = HERE / "source.md"
     source.write_text(SOURCE, encoding="utf-8", newline="\n")
     write_pdf(HERE / "text-layer.pdf")
@@ -142,7 +211,9 @@ def main() -> int:
             ],
             check=True,
         )
-    print(f"wrote {', '.join(p.name for p in sorted(HERE.glob('*')) if p.suffix != '.py')}")
+    written = [p.name for p in sorted(HERE.glob("*")) if p.suffix != ".py" and p.is_file()]
+    written += [f"hostile/{p.name}" for p in sorted(HOSTILE.glob("*"))]
+    print("wrote " + ", ".join(written))
     return 0
 
 

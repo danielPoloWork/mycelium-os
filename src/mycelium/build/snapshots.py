@@ -33,7 +33,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Final
 
-from mycelium.build.cas import CAS_DIRNAME, cas_get, cas_path, cas_put
+from mycelium.build.cas import CAS_DIRNAME, CUSTODY_DIRNAME, cas_get, cas_path, cas_put
 from mycelium.build.dag import decode_chunks_artifact, decode_document_artifact
 from mycelium.build.lock import DEFAULT_STALE_AFTER_S, BuildLock
 from mycelium.build.publish import (
@@ -407,6 +407,11 @@ class GarbageCollection:
     reclaimed_bytes: int
     removed_debris: int
     dry_run: bool
+    kept_custody_blobs: int = 0
+    kept_custody_bytes: int = 0
+    """Tier-1 evidence the sweep walked past. Reported rather than silent: an
+    operator running `gc` to reclaim space deserves to know how much of what is
+    on disk is not reclaimable, and why (ADR-0033)."""
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -416,6 +421,8 @@ class GarbageCollection:
             "removed_blobs": self.removed_blobs,
             "reclaimed_bytes": self.reclaimed_bytes,
             "removed_debris": self.removed_debris,
+            "kept_custody_blobs": self.kept_custody_blobs,
+            "kept_custody_bytes": self.kept_custody_bytes,
             "dry_run": self.dry_run,
         }
 
@@ -508,6 +515,7 @@ def collect_garbage(
 
             removed_blobs, reclaimed = _sweep_blobs(mycelium_dir, live, dry_run=dry_run)
             debris = _sweep_debris(mycelium_dir, dry_run=dry_run)
+            custody_blobs, custody_bytes = _measure_custody(mycelium_dir)
 
             removed_entries = len(aged_keys)
             if not dry_run:
@@ -525,6 +533,8 @@ def collect_garbage(
             removed_blobs=removed_blobs,
             reclaimed_bytes=reclaimed,
             removed_debris=debris,
+            kept_custody_blobs=custody_blobs,
+            kept_custody_bytes=custody_bytes,
             dry_run=dry_run,
         )
         append_journal(mycelium_dir, "gc.completed", **result.as_dict())
@@ -532,7 +542,16 @@ def collect_garbage(
 
 
 def _sweep_blobs(mycelium_dir: Path, live: set[Sha256Digest], *, dry_run: bool) -> tuple[int, int]:
-    """Delete every CAS blob outside `live`, returning (count, bytes)."""
+    """Delete every *derived* CAS blob outside `live`, returning (count, bytes).
+
+    Tier-1 custody lives under ``cas/originals/`` and is never swept, whatever
+    the live set says. The build cache is reuse — deleting it costs a recompile
+    (D-005) — while an acquired original is the evidence a citation quotes, and
+    the compiler is a pure function of tier 1 (architecture §4). One directory
+    name is the whole difference between "collectable" and "irreplaceable", so it
+    is excluded here by name rather than by the accident of nesting one level
+    deeper than the sweep looks (ADR-0033).
+    """
     cas_root = mycelium_dir / CAS_DIRNAME
     if not cas_root.is_dir():
         return 0, 0
@@ -541,7 +560,7 @@ def _sweep_blobs(mycelium_dir: Path, live: set[Sha256Digest], *, dry_run: bool) 
     removed = 0
     reclaimed = 0
     for shard in sorted(cas_root.iterdir()):
-        if not shard.is_dir():
+        if not shard.is_dir() or shard.name == CUSTODY_DIRNAME:
             continue
         for blob in sorted(shard.iterdir()):
             # Anything that is not a digest-named file was not written by the
@@ -557,6 +576,23 @@ def _sweep_blobs(mycelium_dir: Path, live: set[Sha256Digest], *, dry_run: bool) 
         if not dry_run and not any(shard.iterdir()):
             shard.rmdir()
     return removed, reclaimed
+
+
+def _measure_custody(mycelium_dir: Path) -> tuple[int, int]:
+    """Count and size the tier-1 subtree the sweep walked past."""
+    root = mycelium_dir / CAS_DIRNAME / CUSTODY_DIRNAME
+    if not root.is_dir():
+        return 0, 0
+    blobs = 0
+    total = 0
+    for shard in sorted(root.iterdir()):
+        if not shard.is_dir():
+            continue
+        for blob in sorted(shard.iterdir()):
+            if blob.is_file() and _DIGEST_FILENAME.match(blob.name):
+                blobs += 1
+                total += blob.stat().st_size
+    return blobs, total
 
 
 def _sweep_debris(mycelium_dir: Path, *, dry_run: bool) -> int:

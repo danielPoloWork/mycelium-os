@@ -481,6 +481,7 @@ def test_doctor_is_clean_after_a_build(tmp_path: Path) -> None:
         "toolchain",
         "config",
         "parsers",
+        "custody",
         "store",
         "snapshot",
         "manifest",
@@ -514,6 +515,29 @@ def test_doctor_lists_the_pinned_parsers_when_they_all_resolve(tmp_path: Path) -
     parsers = next(check for check in payload["checks"] if check["name"] == "parsers")
     assert parsers["status"] == "ok"
     assert "markdown" in parsers["detail"]
+
+
+def test_doctor_reports_tier_one_evidence_that_went_bad(tmp_path: Path) -> None:
+    """Custody does not heal itself, and that is the point (ADR-0033).
+
+    The build cache discards a blob that fails its own digest, because losing it
+    costs a recompile. A corrupt original is the loss of the only copy of
+    something a citation quotes, so it is reported and left where it is.
+    """
+    from mycelium.ingest import Custody
+    from mycelium.sdk.types import CustodyKind
+
+    seeded(tmp_path)
+    custody = Custody(tmp_path / ".mycelium")
+    record = custody.put(b"acquired bytes", kind=CustodyKind.ORIGINAL, media_type="text/plain")
+    custody.blob_path(record.digest).write_bytes(b"tampered with")
+
+    result = invoke("doctor", str(tmp_path), "--json")
+    payload = json.loads(result.stdout)
+    check = next(item for item in payload["checks"] if item["name"] == "custody")
+    assert check["status"] == "fail"
+    assert "no longer match their own digest" in check["detail"]
+    assert custody.blob_path(record.digest).is_file(), "reported, not tidied away"
 
 
 def test_doctor_warns_but_succeeds_on_a_fresh_repository(tmp_path: Path) -> None:

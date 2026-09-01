@@ -45,6 +45,8 @@ __all__ = [
     "Document",
     "DocumentStats",
     "CaseResult",
+    "CustodyKind",
+    "CustodyRecord",
     "Edge",
     "EdgeProvenance",
     "EdgeStatus",
@@ -587,6 +589,57 @@ class Entity(Record):
     status: EdgeStatus
     doc_refs: tuple[NonEmptyStr, ...] = ()
     namespace: str = "default"
+
+
+# ---------------------------------------------------------------------------
+# Custody record (tier 1; spec 02 §§3-5)
+# ---------------------------------------------------------------------------
+
+
+class CustodyKind(StrEnum):
+    """What a blob under tier-1 custody *is* (roadmap 4.2)."""
+
+    ORIGINAL = "original"
+    """The acquired bytes of a source, stored verbatim — the thing a citation quotes."""
+
+    KIR = "kir"
+    """The KIR document compiled from an original, in canonical JSON."""
+
+
+class CustodyRecord(Record):
+    """What is known about one blob held in tier-1 custody (ADR-0033).
+
+    A record is written beside its blob, not into the store, because the store is
+    tier 3 and disposable: an index that can be deleted must not be the only
+    thing that knows a piece of evidence exists (architecture §4, D-005).
+
+    ``first_seen`` is set once and never moved. That is what makes re-ingesting
+    unchanged bytes produce an unchanged document record — a refreshed timestamp
+    would invalidate an incremental build for no reason at all.
+    """
+
+    schema_version: Literal["mycelium/custody/v0"] = "mycelium/custody/v0"
+    digest: Sha256Digest
+    size: NonNegativeInt
+    kind: CustodyKind
+    media_type: NonEmptyStr
+    sources: tuple[str, ...] = ()
+    """Every URI these bytes have been acquired from, sorted.
+
+    Sorted rather than ordered by arrival: content addressing means two machines
+    can meet the same bytes in a different order, and a record that differed on
+    that would make custody itself non-reproducible.
+    """
+
+    connector: str | None = None
+    connector_version: str | None = None
+    derived_from: Sha256Digest | None = Field(
+        default=None, description="The original this blob was compiled from, for `kir`."
+    )
+    kir_digest: Sha256Digest | None = Field(
+        default=None, description="The KIR compiled from this original, for `original`."
+    )
+    first_seen: UtcDatetime
 
 
 # ---------------------------------------------------------------------------

@@ -48,3 +48,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0030](0030-correct-the-vector-scan-cost-model.md) | Correct the vector scan's cost model — the budget was met, and the benchmark was wrong | Accepted |
 | [0031](0031-refuse-three-rerankings.md) | Refuse three re-rankings, and name what the ranking failure actually is | Accepted |
 | [0032](0032-adapt-four-engines-and-pin-which-one-runs.md) | Adapt four engines behind two protocols, and pin which one runs | Accepted |
+| [0033](0033-keep-the-original-and-bound-the-hostile.md) | Keep the original, and bound what an engine is asked to read | Accepted |

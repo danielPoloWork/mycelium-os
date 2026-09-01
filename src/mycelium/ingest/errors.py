@@ -11,6 +11,10 @@ The distinctions are not decoration — each one is answered differently:
 - :class:`UnsupportedMediaTypeError` — no *configured* parser declares the type.
   Also a quarantine, but the remedy is a configuration edit, so the message names
   the media type and what is pinned.
+- :class:`CustodyError` — tier-1 evidence is missing, unreadable, or contradicts
+  itself. Never quarantined and never degraded past: custody is the thing a
+  citation rests on, so a build that cannot trust it must stop and say so
+  (ADR-0033).
 - :class:`PluginUnavailableError` — a pinned plugin's runtime is not installed
   here. This is a hard error at resolution time, never a silent fall-through to
   the next parser in the list: "best available" is exactly what spec 05 §4.2
@@ -19,6 +23,7 @@ The distinctions are not decoration — each one is answered differently:
 
 __all__ = [
     "ConnectorError",
+    "CustodyError",
     "IngestError",
     "ParseError",
     "PluginError",
@@ -43,6 +48,15 @@ class SourceTooLargeError(ConnectorError):
     A ceiling exists because acquisition reads into memory and the input is
     untrusted (D-017): "read whatever the file claims to be" is how a hostile
     fixture takes a build down instead of being quarantined by it.
+    """
+
+
+class CustodyError(IngestError):
+    """Tier-1 custody is missing, unreadable, or self-contradictory.
+
+    Distinct from every other failure here because it is the only one that is
+    not about *this* document: the build cache going bad costs a recompile
+    (D-005), but evidence going bad means a citation has nothing behind it.
     """
 
 
