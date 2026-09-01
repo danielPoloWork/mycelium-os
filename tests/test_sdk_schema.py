@@ -25,6 +25,7 @@ EXPECTED_FILES = {
     "entity.v0.schema.json",
     "manifest.v0.schema.json",
     "custody.v0.schema.json",
+    "fidelity.v0.schema.json",
     "eval-case.v0.schema.json",
     "eval-run.v0.schema.json",
 }

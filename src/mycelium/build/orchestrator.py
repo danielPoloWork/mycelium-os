@@ -80,6 +80,8 @@ from mycelium.graph import (
     extract_links,
     resolve_graph,
 )
+from mycelium.ingest.custody import Custody
+from mycelium.ingest.errors import CustodyError
 from mycelium.markdown import Frontmatter, MarkdownDocument, parse_markdown
 from mycelium.markdown.frontmatter import DELIMITER, parse_frontmatter
 from mycelium.sdk.identity import digest_json, digest_text, heading_slug, new_ulid
@@ -302,6 +304,7 @@ def _assemble(
     doc_id: str,
     namespace: str,
     mtime: datetime,
+    mycelium_dir: Path,
 ) -> tuple[Document, tuple[str, ...]]:
     """Derive the Document record — cheap arithmetic over the cached stages' output.
 
@@ -314,11 +317,7 @@ def _assemble(
     warnings = [f"{doc_path}: {warning}" for warning in parsed.warnings]
 
     origin = frontmatter.origin or ProvenanceOrigin.AUTHORED
-    provenance = Provenance(
-        origin=origin,
-        source_uri=frontmatter.source,
-        source_trust=frontmatter.source_trust,
-    )
+    provenance, fidelity_report = _provenance_of(frontmatter, origin, mycelium_dir)
     document = Document(
         doc_id=doc_id,
         path=doc_path,
@@ -336,6 +335,7 @@ def _assemble(
         verification_status=_verification_status(relative),
         verification=_verification_of(frontmatter, warnings, doc_path),
         provenance=provenance,
+        fidelity_report=fidelity_report,
         stats=DocumentStats(
             tokens=sum(chunk.tokens for chunk in chunks),
             headings=sum(1 for node in parsed.kir.nodes if node.kind is NodeKind.HEADING),
@@ -351,6 +351,50 @@ def _assemble(
 # ---------------------------------------------------------------------------
 # Cached stages (spec 02 §4.1: key → CAS blob, miss → run)
 # ---------------------------------------------------------------------------
+
+
+def _provenance_of(
+    frontmatter: Frontmatter, origin: ProvenanceOrigin, mycelium_dir: Path
+) -> tuple[Provenance, Sha256Digest | None]:
+    """Complete an ingested document's provenance from tier-1 custody (ADR-0034).
+
+    Frontmatter carries the *link* — `source_digest`, one key — and custody carries
+    the facts: which connector acquired the bytes, when they were first seen, and
+    which fidelity report accounts for the projection. Four fields from one, and
+    they cannot drift from the evidence they describe, because they *are* the
+    evidence's own record.
+
+    A projected document compiled on a machine that does not have the custody
+    store — a fresh clone, where `.mycelium/` is gitignored — keeps the digest and
+    loses the rest. That is the honest answer: there is no fidelity report to point
+    at on a machine without the evidence.
+    """
+    provenance = Provenance(
+        origin=origin,
+        source_uri=frontmatter.source,
+        source_digest=frontmatter.source_digest,
+        source_trust=frontmatter.source_trust,
+    )
+    if frontmatter.source_digest is None:
+        return provenance, None
+    try:
+        record = Custody(mycelium_dir).record(frontmatter.source_digest)
+    except CustodyError:
+        # Unreadable custody is `mycelium doctor`'s finding to report, not a
+        # reason to fail a build over a document that is otherwise fine.
+        return provenance, None
+    if record is None:
+        return provenance, None
+    return (
+        provenance.model_copy(
+            update={
+                "connector": record.connector,
+                "connector_version": record.connector_version,
+                "ingested_at": record.first_seen,
+            }
+        ),
+        record.fidelity_digest,
+    )
 
 
 def _cached_blob(store: SqliteStore, mycelium_dir: Path, key: str) -> tuple[str, str] | None:
@@ -796,6 +840,7 @@ def _build_locked(
                     doc_id=entry.doc_id,
                     namespace=namespace,
                     mtime=entry.mtime,
+                    mycelium_dir=mycelium_dir,
                 )
             except Exception as error:  # noqa: BLE001 - quarantine is the failure taxonomy
                 entry.outcome = _Outcome.QUARANTINED

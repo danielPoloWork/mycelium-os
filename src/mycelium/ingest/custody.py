@@ -43,9 +43,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
 
-from mycelium.build.cas import CAS_DIRNAME, CUSTODY_DIRNAME
-from mycelium.build.publish import atomic_write_bytes
 from mycelium.ingest.errors import CustodyError
+from mycelium.layout import CAS_DIRNAME, CUSTODY_DIRNAME, atomic_write_bytes
 from mycelium.sdk.identity import digest_bytes
 from mycelium.sdk.protocols import Blob
 from mycelium.sdk.types import CustodyKind, CustodyRecord, Sha256Digest
@@ -168,13 +167,21 @@ class Custody:
         adds, and re-parsing the same bytes with the same parser writes the same
         link, so the operation is idempotent like everything else here.
         """
+        return self._amend(original, "kir_digest", kir_digest)
+
+    def link_fidelity(self, original: Sha256Digest, fidelity_digest: Sha256Digest) -> CustodyRecord:
+        """Record which fidelity report accounts for this original's projection."""
+        return self._amend(original, "fidelity_digest", fidelity_digest)
+
+    def _amend(self, original: Sha256Digest, field: str, value: Sha256Digest) -> CustodyRecord:
+        """Add one derived-artefact link to an original's record, idempotently."""
         record = self.record(original)
         if record is None:
             msg = f"no custody record for {original}; the original must be stored first"
             raise CustodyError(msg)
-        if record.kir_digest == kir_digest:
+        if getattr(record, field) == value:
             return record
-        amended = record.model_copy(update={"kir_digest": kir_digest})
+        amended = record.model_copy(update={field: value})
         self._write_record(amended)
         return amended
 

@@ -24,24 +24,12 @@ a crash mid-write must never leave a blob whose name lies about its bytes.
 from pathlib import Path
 from typing import Final
 
-from mycelium.build.publish import atomic_write_text
+from mycelium.layout import CAS_DIRNAME, CUSTODY_DIRNAME, atomic_write_text
 from mycelium.sdk.identity import digest_bytes
 from mycelium.sdk.types import Sha256Digest
 
 __all__ = ["CAS_DIRNAME", "CUSTODY_DIRNAME", "cas_get", "cas_path", "cas_put"]
 
-CAS_DIRNAME: Final = "cas"
-
-CUSTODY_DIRNAME: Final = "originals"
-"""The one subtree of the CAS that is **not** disposable (roadmap 4.2, ADR-0033).
-
-Tier-1 custody — acquired originals and the KIR compiled from them — lives at
-``cas/originals/`` per architecture §4. It is named here, beside the sweepable
-layout it sits inside, because the garbage collector has to know which of the two
-it is looking at, and a lifecycle rule that lived only in the module that writes
-the blobs would be invisible to the module that deletes them.
-:mod:`mycelium.ingest.custody` owns what goes in it.
-"""
 
 _PREFIX: Final = "sha256:"
 _SHARD_CHARS: Final = 2

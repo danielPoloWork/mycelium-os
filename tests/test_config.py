@@ -96,9 +96,11 @@ def test_the_specs_own_file_loads(tmp_path: Path) -> None:
     assert config.embedding.provider == "local-onnx"
     assert set(config.unhonoured_sections) == UNHONOURED_SECTIONS
     assert config.ingest.parsers == ("markdown", "docling", "pandoc", "pdf")
-    # `[ingest]` is the first section honoured by key rather than as a whole: the
-    # parser list steers ingestion today, the other two keys land at 4.3 and 4.6.
-    assert config.unhonoured_keys == ("ingest.redact_secrets", "ingest.max_failed_elements")
+    # `[ingest]` is honoured by key rather than as a whole: the parser list steers
+    # ingestion (4.1), the loss budget bounds a projection (4.3), and only the
+    # secret scan is still waiting (4.6).
+    assert config.unhonoured_keys == ("ingest.redact_secrets",)
+    assert config.ingest.max_failed_elements == 0.05
     assert config.source == tmp_path / CONFIG_FILENAME
 
 

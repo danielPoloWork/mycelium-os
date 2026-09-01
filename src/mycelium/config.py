@@ -194,7 +194,9 @@ class IngestConfig(_Section):
     about `parsers`; marking it honoured would lie about the other two. So the
     keys are declared here, digested like everything else, and
     :attr:`unhonoured_keys` names the ones an operator has set that still do
-    nothing — the same promise ADR-0014 makes, one level finer.
+    nothing — the same promise ADR-0014 makes, one level finer. `parsers` and
+    `connectors` were honoured at 4.1, `max_failed_elements` at 4.3;
+    `redact_secrets` is the last one waiting (4.6).
 
     `parsers` is *ordered* and *pinned*. The order is the dispatch policy —
     `["docling", "pandoc"]` is architecture §5's "docling first, pandoc
@@ -212,7 +214,14 @@ class IngestConfig(_Section):
     """Accepted, digested, not honoured yet — the secret scan lands at roadmap 4.6."""
 
     max_failed_elements: float = Field(default=0.05, ge=0.0, le=1.0)
-    """Accepted, digested, not honoured yet — the loss budget lands at roadmap 4.3."""
+    """The fidelity loss budget: the fraction of a document's elements whose content
+    may fail to survive parsing before its projection is refused (spec 02 §5).
+
+    Counted over `lost` elements only — an element whose *structure* was simplified
+    but whose content reached the projection is not loss, and a budget that fired on
+    those would teach an operator to raise it (ADR-0034). At the default 5 %, a PDF
+    of scans is refused (100 % lost) and a document with one unreadable page in
+    thirty is not."""
 
     @model_validator(mode="after")
     def _lists_are_not_empty(self) -> Self:
@@ -251,7 +260,7 @@ class IngestConfig(_Section):
     @property
     def unhonoured_keys(self) -> tuple[str, ...]:
         """The keys this file *sets* that nothing reads yet, in file order."""
-        pending = ("redact_secrets", "max_failed_elements")
+        pending = ("redact_secrets",)
         return tuple(name for name in pending if name in self.model_fields_set)
 
 
@@ -365,7 +374,15 @@ class MyceliumConfig(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     project: ProjectConfig = ProjectConfig()
-    ingest: IngestConfig = IngestConfig()
+    ingest: IngestConfig = Field(default_factory=IngestConfig)
+    """A factory, not an instance, and the difference is an import cycle.
+
+    A section instantiated in this class body runs its validators while
+    `mycelium.config` is still executing — and `[ingest]`'s validator asks
+    `mycelium.ingest.registry` which plugin ids exist, which reaches
+    `mycelium.build`, which imports this module. Deferring construction to
+    instantiation breaks the loop, and by then nothing is half-imported."""
+
     chunking: ChunkingConfig = ChunkingConfig()
     embedding: EmbeddingConfig = EmbeddingConfig()
     retrieval: RetrievalConfig = RetrievalConfig()

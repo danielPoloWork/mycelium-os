@@ -37,7 +37,7 @@ from mycelium.ingest.media import DOCX, EPUB, HTML, LATEX, ODT, RST
 from mycelium.ingest.parsers.builder import KirBuilder
 from mycelium.sdk.identity import digest_bytes
 from mycelium.sdk.protocols import Blob, PluginMeta
-from mycelium.sdk.types import KirDocument, NodeKind, Ulid
+from mycelium.sdk.types import KirDocument, NodeKind, OpaqueDisposition, Ulid
 
 __all__ = ["DEFAULT_EXECUTABLE", "PARSER_ID", "READERS", "PandocParser", "plugin"]
 
@@ -353,21 +353,23 @@ def _opaque(builder: KirBuilder, tag: str, content: object, *, parent: str | Non
     is the same treatment ADR-0006 already gives raw HTML in authored Markdown:
     kept as text, never interpreted (D-017).
 
+    The `variant` records which of the two it was, because that is what the
+    fidelity report counts: a payload that survived is `degraded`, one that did
+    not is `lost`, and only the second is charged against the loss budget
+    (ADR-0034).
+
     It deliberately does **not** set `blob`. That field names a payload stored in
     the CAS, and a parser has no custody handle to store one with; a digest
     pointing at bytes nobody wrote is a claim the reader cannot follow (ADR-0033).
-    A structured construct therefore travels as its name and its position — which
-    is what "the fidelity report makes loss visible" asks for (spec 02 §5).
     """
     raw = _raw_text(tag, content)
-    builder.add(
-        NodeKind.OPAQUE,
+    builder.opaque(
+        f"pandoc {tag or 'unknown'}",
+        disposition=(OpaqueDisposition.DEGRADED if raw is not None else OpaqueDisposition.LOST),
         parent=parent,
         text=raw,
         media_type=_RAW_MEDIA.get(tag, "application/x-pandoc-ast+json"),
-        note=f"pandoc {tag or 'unknown'}",
     )
-    builder.warn(f"pandoc construct {tag or 'unknown'} kept as an opaque node")
 
 
 def _raw_text(tag: str, content: object) -> str | None:

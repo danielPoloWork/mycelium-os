@@ -36,7 +36,7 @@ from mycelium.ingest.media import PDF
 from mycelium.ingest.parsers.builder import KirBuilder
 from mycelium.sdk.identity import digest_bytes
 from mycelium.sdk.protocols import Blob, PluginMeta
-from mycelium.sdk.types import KirDocument, NodeKind, SrcLocator, Ulid
+from mycelium.sdk.types import KirDocument, NodeKind, OpaqueDisposition, SrcLocator, Ulid
 
 __all__ = ["PARSER_ID", "PdfParser", "plugin"]
 
@@ -98,7 +98,17 @@ def _page(builder: KirBuilder, page: Any, number: int) -> None:
     paragraphs = [block.strip() for block in text.replace("\r\n", "\n").split("\n\n")]
     paragraphs = [block for block in paragraphs if block]
     if not paragraphs:
-        builder.warn(f"page {number} carries no text layer; nothing was extracted")
+        # A page whose content did not survive at all. An opaque node rather than
+        # only a warning, because this is what the loss budget has to be able to
+        # count: a scanned PDF is 100 % lost, and projecting an empty evidence
+        # document from it would be exactly the silent failure the M4 exit gate
+        # forbids (ADR-0034).
+        builder.opaque(
+            f"page {number} has no text layer",
+            disposition=OpaqueDisposition.LOST,
+            media_type=PDF,
+            src=SrcLocator(page=number),
+        )
         return
     for block in paragraphs:
         builder.add(NodeKind.PARAGRAPH, text=block, src=SrcLocator(page=number))

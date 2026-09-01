@@ -41,6 +41,7 @@ The design of record is [RFC-0001](docs/rfc/0001-mycelium-os-v1.md); the specifi
 mycelium init              # scaffold knowledge/, mycelium.toml, the gitignore entries
 mycelium build             # compile what changed into a published snapshot
 mycelium build --watch     # ...and keep doing it as you edit (needs the `watch` extra)
+mycelium ingest doc.pdf    # acquire, keep, compile, project into knowledge/evidence/
 mycelium search "retry policy"          # add --hybrid for the vector leg, --explain for why
 mycelium show "mycelium://<doc-id>#retries/0"
 mycelium neighbors doc.md  # what this links to, and what links to it
@@ -147,6 +148,29 @@ needs docling's ML pipeline, which wants `torch` and downloads model weights on 
 against this project's offline default and its cross-platform determinism gate. The reasons,
 measured, are in [ADR-0032](docs/adr/0032-adapt-four-engines-and-pin-which-one-runs.md); the
 work is roadmap 4.9.
+
+### An ingested source becomes a document you can read
+
+`mycelium ingest report.pdf` acquires the file, keeps it, compiles it, and writes an
+**evidence document** under `knowledge/evidence/` — Markdown, with provenance frontmatter,
+which `mycelium build` then compiles like anything else you wrote. Nothing but the compiler
+ever writes an index (D-020), so an ingested PDF gets chunks, citations and `ingested` trust
+by the same path an authored note does.
+
+Every projection comes with a **fidelity report**: how many of the document's elements were
+represented, how many survived with their structure simplified, and how many did not survive
+at all. The last number is the one `[ingest] max_failed_elements` bounds — 5 % by default —
+and it is deliberately *only* that number. A budget that fired on a document which lost
+nothing would teach you to raise the budget. Where something was lost, the projected document
+says so where a person looks:
+
+```markdown
+> [!missing] page 3 has no text layer
+```
+
+So a PDF of scans is refused rather than projected as an empty document that claims to be
+evidence — with its bytes and its report already in custody, so you can see why. Raise the
+budget if you want it anyway.
 
 ### The original is kept, and hostile files are refused before they cost anything
 
