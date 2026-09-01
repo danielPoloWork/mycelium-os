@@ -26,6 +26,7 @@ from mycelium.ingest import Custody, CustodyError, probe
 from mycelium.store import STORE_DIRNAME, STORE_FILENAME, SqliteStore, StoreError
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
 from mycelium.synthesis import SynthesisError, build_provider
+from mycelium.verification import build_judge
 
 __all__ = ["Check", "Status", "diagnose", "worst_status"]
 
@@ -214,6 +215,38 @@ def _check_synthesis(root: Path) -> Check | None:
     )
 
 
+def _check_verification(root: Path) -> Check | None:
+    """Report gate G7's floors, and whether its second component has a judge.
+
+    `None` when nothing synthesized could exist yet — with no provider ever
+    configured there are no candidate documents, so a line about their grounding
+    would be noise. Once one is configured, "who judges" is the fact an operator
+    most needs before `mycelium promote` refuses on them.
+    """
+    try:
+        config = load_config(root)
+    except ConfigError:
+        return None
+    if not config.synthesis.provider:
+        return None
+    settings = config.verification
+    floors = (
+        f"coverage >= {settings.cites_coverage_min:.2f}, "
+        f"entailment >= {settings.entailment_min:.2f}"
+    )
+    judge, self_judged, reason = build_judge(config.synthesis, settings)
+    if judge is None:
+        return Check("verification", "warn", f"gate G7 {floors}; {reason}")
+    who = f"{judge.identity}{' (self-judged)' if self_judged else ''}"
+    promotion = "automatic on a pass" if settings.auto_promote else "human (D-021)"
+    return Check(
+        "verification",
+        "ok",
+        f"gate G7 {floors}; entailment judged by {who} on {settings.sample_size} "
+        f"sampled claims; promotion is {promotion}",
+    )
+
+
 def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> list[Check]:
     """Run every diagnostic against the repository at `root`."""
     mycelium_dir = root / STORE_DIRNAME
@@ -230,6 +263,9 @@ def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> lis
     synthesis = _check_synthesis(root)
     if synthesis is not None:
         checks.append(synthesis)
+    verification = _check_verification(root)
+    if verification is not None:
+        checks.append(verification)
 
     if not (mycelium_dir / STORE_FILENAME).exists():
         checks.append(Check("store", "warn", "no store yet; run `mycelium build`"))

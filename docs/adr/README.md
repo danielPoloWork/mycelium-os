@@ -51,3 +51,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0033](0033-keep-the-original-and-bound-the-hostile.md) | Keep the original, and bound what an engine is asked to read | Accepted |
 | [0034](0034-project-the-evidence-and-count-what-it-lost.md) | Project the evidence, and count what it lost | Accepted |
 | [0035](0035-let-an-llm-write-only-what-a-machine-can-check.md) | Let an LLM write only what a machine can check | Accepted |
+| [0036](0036-measure-what-can-be-measured-and-let-a-human-outrank-the-gate.md) | Measure what can be measured, and let a human outrank the gate | Accepted |

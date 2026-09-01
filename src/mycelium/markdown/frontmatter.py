@@ -33,9 +33,10 @@ break is not frontmatter at all: see :func:`_opens_a_mapping`.
 """
 
 import re
+from collections.abc import Mapping, Sequence
 from datetime import date, datetime, time
 from math import isfinite
-from typing import Final, Self
+from typing import Final, Literal, Self
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
@@ -51,10 +52,15 @@ __all__ = [
     "FrontmatterResult",
     "parse_frontmatter",
     "split_frontmatter",
+    "upsert",
 ]
 
 DELIMITER: Final = "---"
 _BOM: Final = "﻿"
+_UNWRAPPED: Final = 1 << 30
+"""A line width PyYAML will never reach, so no emitted value is ever folded."""
+_CONTINUATION: Final = re.compile(r"^(?:\s|-\s)")
+"""A line that belongs to the value above it: indented, or a sequence item."""
 
 _MAPPING_KEY: Final = re.compile(r"(?:'[^']+'|\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_.-]*)\s*:(\s|$)")
 """What a frontmatter block's first line looks like: a YAML key, quoted or not.
@@ -74,14 +80,21 @@ FIELD_OWNERS: Final[dict[str, str]] = {
     "source_trust": "mycelium ingest",
     "generated_by": "mycelium ingest",
     "verified_by": "mycelium verify",
-    "verified_at": "mycelium promote",
+    "verified_at": "mycelium verify",
     "grounding": "mycelium verify",
     "title": "human",
     "aliases": "human",
     "tags": "human",
     "collection": "human",
 }
-"""Who is allowed to write each contract field (spec 03 §3, anti-drift rule)."""
+"""Who is allowed to write each contract field (spec 03 §3, anti-drift rule).
+
+Spec 05 §2's own table assigns `verified_at` to `mycelium promote`. It is
+`mycelium verify` here, and `promote` runs that machinery rather than writing the
+field itself — because the compiler treats the three verification fields as a unit
+and warns about a partial block (spec 03 §3), so splitting their owners would put
+a warning on every candidate document in the corpus. ADR-0036 records the
+deviation."""
 
 
 class FrontmatterError(ValueError):
@@ -408,3 +421,123 @@ def parse_frontmatter(text: str) -> FrontmatterResult:
         body_line_offset=offset,
         warnings=tuple(warnings),
     )
+
+
+def upsert(
+    text: str, fields: Mapping[str, object], *, position: Literal["top", "bottom"] = "bottom"
+) -> str:
+    """Set or remove frontmatter keys, changing nothing else in the file.
+
+    A value of ``None`` removes the key. The edit is **textual**, one line at a
+    time, and never a YAML re-serialization: re-emitting the block would rewrite a
+    human's quoting, reorder their keys, expand their flow sequences and normalize
+    their newlines — a tool that stamps one number has no business touching the
+    rest of someone's document. The file's own newline convention is preserved and
+    a byte-order mark stays where it is (BUG-0008).
+
+    `position` decides where a *new* key lands. ``bottom`` is right for the fields
+    a tool adds to a document a human wrote — they belong after the author's own
+    keys — and ``top`` is what identity pinning wants, because `mycelium_id` is
+    the document's name and reads first. An existing key is replaced in place
+    either way, so the order a document already has survives every later write.
+
+    A document with no frontmatter gets one. A document whose frontmatter is
+    unreadable YAML is *not* rewritten: :class:`FrontmatterError` is raised
+    instead, because a writer that could not read the block would be guessing at
+    what it was about to overwrite.
+    """
+    bom, body = (_BOM, text[len(_BOM) :]) if text.startswith(_BOM) else ("", text)
+    newline = "\r\n" if "\r\n" in body else "\n"
+    block, rest, _offset = split_frontmatter(body)
+
+    fresh = block is None or not _opens_a_mapping(block)
+    if fresh or block is None:
+        lines: list[str] = []
+        remainder = body
+    else:
+        try:
+            loaded = yaml.safe_load(block)
+        except yaml.YAMLError as error:
+            msg = f"frontmatter is not readable YAML, so it will not be rewritten: {error}"
+            raise FrontmatterError(msg) from error
+        if loaded is not None and not isinstance(loaded, dict):
+            msg = "frontmatter is not a mapping, so it will not be rewritten"
+            raise FrontmatterError(msg)
+        # `split_frontmatter` splits on "\n", so a CRLF document leaves the "\r"
+        # at the end of every line. Stripping it here is what keeps a rewritten
+        # block from acquiring a bare "\r" of its own.
+        lines = [line.removesuffix("\r") for line in block.split("\n")]
+        remainder = rest
+
+    for key, value in fields.items():
+        rendered = None if value is None else f"{key}: {_scalar(value)}"
+        index = _key_line(lines, key)
+        if index is None:
+            if rendered is not None:
+                lines.insert(0 if position == "top" else len(lines), rendered)
+            continue
+        if rendered is None:
+            _delete(lines, index)
+        else:
+            _delete(lines, index)
+            lines.insert(index, rendered)
+
+    if not any(line.strip() for line in lines):
+        # Every key was removed: the document keeps its body and loses the fence
+        # rather than carrying an empty block nothing can parse.
+        return bom + remainder.lstrip("\r\n")
+    # Lines the caller did not name are passed through verbatim — blank lines and
+    # comments included. Filtering them would make this function's *other* job,
+    # inserting one key, rewrite parts of a document it was not asked about.
+    rebuilt = newline.join([DELIMITER, *lines, DELIMITER])
+    # The closing fence needs its own terminator, and `remainder` already carries
+    # whatever separation the author put between the block and the body — a blank
+    # line, usually. A document that had no block gets that blank line here, the
+    # shape identity pinning has written since roadmap 2.7.
+    separator = newline + newline if fresh else newline
+    return bom + rebuilt + separator + remainder
+
+
+def _delete(lines: list[str], index: int) -> None:
+    """Remove the line at `index` and every continuation line beneath it.
+
+    A value this module did not write may span lines — a block scalar, a nested
+    mapping, a YAML sequence. Deleting only the first line would leave the rest
+    behind as a syntax error, so the whole value goes.
+    """
+    end = index + 1
+    while end < len(lines) and _CONTINUATION.match(lines[end]):
+        end += 1
+    del lines[index:end]
+
+
+def _key_line(lines: Sequence[str], key: str) -> int | None:
+    """The index of `key`'s own top-level line, or ``None``.
+
+    Only column zero counts: a nested mapping may repeat a contract key under
+    someone's plugin property, and rewriting *that* line would edit a value this
+    module does not own.
+    """
+    pattern = re.compile(rf"^(?:{re.escape(key)}|'{re.escape(key)}'|\"{re.escape(key)}\")\s*:")
+    for index, line in enumerate(lines):
+        if pattern.match(line):
+            return index
+    return None
+
+
+def _scalar(value: object) -> str:
+    """Render one scalar as YAML, on **one** line, without a trailing newline.
+
+    Through PyYAML rather than `str()`, so a title with a colon in it, a date, or
+    a float is quoted and formatted the way the parser on the other side expects.
+
+    ``width`` is effectively unbounded because a folded value would break this
+    module's own contract: a long string wrapped across two lines leaves a
+    continuation line that :func:`_key_line` cannot see, so removing that key
+    later would delete the first line and orphan the second — a corrupted
+    frontmatter block. One key, one line, always.
+    """
+    dumped = yaml.safe_dump(
+        value, default_flow_style=True, allow_unicode=True, width=_UNWRAPPED
+    ).strip()
+    return dumped.removesuffix("...").strip()

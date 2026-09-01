@@ -12,6 +12,35 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Verification: `mycelium verify`, `promote`, `demote`** (roadmap 4.5) — gate G7 as a
+  per-document decision (D-021). `verify` recomputes citation coverage against the corpus
+  *as it is*, which is what catches a candidate whose evidence has been edited,
+  re-projected or deleted since it was written, and measures **sampled entailment** through
+  an LLM judge when one is configured. `promote` moves a candidate into
+  `knowledge/verified/`, refusing below the gate; `demote` moves it back and strips its
+  verification block. See
+  [ADR-0036](docs/adr/0036-measure-what-can-be-measured-and-let-a-human-outrank-the-gate.md).
+- **`entailment` is `None` when it was not measured**, never a number. There is deliberately
+  no offline approximation: term overlap between a claim and its citation would look like a
+  grounding score and would not be one. The recorded `grounding` is
+  `min(coverage, entailment)`, so a perfect citation record cannot hide a failed entailment.
+- **`verify --gate`** is the CI form and fails on a *measured* shortfall; an unmeasured
+  entailment is reported and does not fail it. `promote` is stricter — there the unmeasured
+  half is a blocker, and `--force` is the human override, recorded in the document as
+  `verified_by: <name> (forced: <code>)` so it survives in Git.
+- **`[verification]`** is honoured — `cites_coverage_min` (0.95), `entailment_min` (0.90),
+  `auto_promote` (off: promotion is a human act), plus `sample_size` and `model_id`, which
+  points the judge at a different model than the one that wrote. Unset, the writer grades its
+  own work, and the report, the document and the CLI all say `self-judged`.
+- **`[sources]`** is honoured — trust per origin, stamped at acquisition and carried by the
+  document. `verify` reports the weakest trust among a candidate's cited evidence, and never
+  gates on it.
+- **`mycelium doctor` reports gate G7** — the floors, the judge, the sample size, and whether
+  promotion is automatic — once a provider is configured.
+- **`mycelium.markdown.frontmatter.upsert`** — one textual frontmatter writer, shared by
+  identity pinning and by verification. It never re-serializes a human's block, and it never
+  folds a value across lines.
+
 - **The synthesis lane** (roadmap 4.4) — the LLM half of dual-lane ingestion (D-020).
   `mycelium ingest` now additionally authors a *candidate* document under
   `knowledge/candidate/` in which every claim-bearing block cites the evidence layer with a
@@ -37,6 +66,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   and `mycelium doctor` reports the lane's state once one is.
 
 ### Changed
+
+- **`[verification]` and `[sources]` are honoured**, leaving `eval` as the only section
+  `mycelium.toml` accepts and nothing reads — and it may stay that way, since the harness
+  takes its case set on the command line.
+- **All three verification frontmatter fields are written by the verify machinery.** Spec 05
+  §2's table assigns `verified_at` to `promote`; the compiler treats the three as a unit and
+  warns about a partial block, so splitting their owners would warn on every candidate in the
+  corpus. `promote` runs the measurement rather than writing the field itself (ADR-0036).
+- **`verified_at` records when the grounding last *moved*.** The block is rewritten only when
+  the score or the checker changed, so a nightly `verify` over an unchanged corpus produces no
+  diff and no rebuild.
+- Identity pinning now goes through the shared frontmatter writer rather than its own textual
+  insert. Byte-compatible: the determinism golden did not move.
+- The snapshot manifest's `config_digest` covers the two new sections. The golden is
+  re-blessed with a one-line diff — every chunk byte-identical.
 
 - **A wikilink into `knowledge/evidence/` is now a `cites` edge**, not `links_to` (spec 03
   §6). Folder-derived, so no store migration: `mycelium neighbors --type cites` answers what

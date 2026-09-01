@@ -16,6 +16,7 @@ from mycelium.markdown.frontmatter import (
     FrontmatterError,
     parse_frontmatter,
     split_frontmatter,
+    upsert,
 )
 from mycelium.sdk.types import ProvenanceOrigin, SourceTrust
 
@@ -65,11 +66,13 @@ def test_field_owners_covers_exactly_the_contract() -> None:
     contract = set(Frontmatter.model_fields) - {"properties"}
     assert contract == set(FIELD_OWNERS)
     # Three tool writers and the human; no `status` field exists at all (D-021).
+    # `verified_at` is owned by `mycelium verify`, not `promote`: the compiler
+    # treats the three verification fields as a unit and warns about a partial
+    # block, so splitting their owners would warn on every candidate (ADR-0036).
     assert set(FIELD_OWNERS.values()) == {
         "mycelium build",
         "mycelium ingest",
         "mycelium verify",
-        "mycelium promote",
         "human",
     }
     assert "status" not in FIELD_OWNERS
@@ -274,3 +277,120 @@ def test_any_yaml_written_frontmatter_round_trips(
     assert result.frontmatter.title == title
     assert result.frontmatter.tags == tuple(tags)
     assert result.frontmatter.properties == properties
+
+
+# ---------------------------------------------------------------------------
+# The writer (roadmap 4.5): one key, one line, every other byte untouched
+# ---------------------------------------------------------------------------
+
+_HUMAN = """\
+---
+title: "Colon: in a title"
+tags:
+  - one
+  - two
+off: "quoted because YAML 1.1 would read it as false"
+
+# a comment the author wrote
+custom: kept
+---
+
+body text
+"""
+
+
+def test_upsert_sets_a_key_and_leaves_the_author_s_block_alone() -> None:
+    out = upsert(_HUMAN, {"grounding": 0.97})
+    assert parse_frontmatter(out).frontmatter.grounding == 0.97
+    for line in ('title: "Colon: in a title"', "  - one", "# a comment the author wrote"):
+        assert line in out, f"{line!r} was rewritten"
+
+
+def test_upsert_replaces_a_key_in_place() -> None:
+    once = upsert("---\ntitle: A\ngrounding: 0.5\ntags: [x]\n---\n\nbody\n", {"grounding": 0.9})
+    assert once.count("grounding:") == 1
+    assert once.index("grounding:") < once.index("tags:"), "order is the document's, not ours"
+
+
+def test_upsert_removes_a_key_with_none() -> None:
+    out = upsert("---\ntitle: A\ngrounding: 0.5\n---\n\nbody\n", {"grounding": None})
+    assert "grounding" not in out
+    assert parse_frontmatter(out).frontmatter.title == "A"
+
+
+def test_removing_a_multi_line_value_takes_its_continuation_lines() -> None:
+    out = upsert(_HUMAN, {"tags": None})
+    assert "- one" not in out
+    assert "- two" not in out
+    assert parse_frontmatter(out).frontmatter.title == "Colon: in a title"
+
+
+def test_a_new_key_can_go_at_the_top_or_the_bottom() -> None:
+    top = upsert("---\ntitle: A\n---\n\nbody\n", {"mycelium_id": "x"}, position="top")
+    bottom = upsert("---\ntitle: A\n---\n\nbody\n", {"grounding": 1.0})
+    assert top.index("mycelium_id") < top.index("title")
+    assert bottom.index("grounding") > bottom.index("title")
+
+
+def test_a_document_with_no_frontmatter_gets_one() -> None:
+    out = upsert("# Heading\n\nbody\n", {"grounding": 1.0})
+    assert out.startswith("---\ngrounding: 1.0\n---\n\n# Heading")
+    assert parse_frontmatter(out).frontmatter.grounding == 1.0
+
+
+def test_removing_every_key_removes_the_block() -> None:
+    out = upsert("---\ngrounding: 0.5\n---\n\nbody\n", {"grounding": None})
+    assert out == "body\n"
+
+
+def test_the_file_s_own_newlines_survive() -> None:
+    out = upsert("---\r\ntitle: A\r\n---\r\n\r\nbody\r\n", {"grounding": 1.0})
+    assert "\r\n" in out
+    bare = [index for index, char in enumerate(out) if char == "\n" and out[index - 1] != "\r"]
+    assert bare == [], "a CRLF document must not acquire a bare LF"
+    assert parse_frontmatter(out).frontmatter.grounding == 1.0
+
+
+def test_a_byte_order_mark_stays_where_it_is() -> None:
+    out = upsert("\ufeff---\ntitle: A\n---\n\nbody\n", {"grounding": 1.0})
+    assert out.startswith("\ufeff")
+    assert parse_frontmatter(out).frontmatter.grounding == 1.0
+
+
+def test_a_nested_key_of_the_same_name_is_not_the_one_rewritten() -> None:
+    source = "---\ntitle: A\nplugin:\n  grounding: 9\n---\n\nbody\n"
+    out = upsert(source, {"grounding": 0.5})
+    assert "  grounding: 9" in out
+    assert parse_frontmatter(out).frontmatter.grounding == 0.5
+
+
+def test_a_long_value_is_never_folded_across_lines() -> None:
+    # A folded value leaves a continuation line the remover cannot see, which
+    # corrupts the block on the next write.
+    long = "x" * 400
+    out = upsert("---\ntitle: A\n---\n\nbody\n", {"verified_by": long})
+    assert len([line for line in out.splitlines() if line.startswith("verified_by")]) == 1
+    assert parse_frontmatter(out).frontmatter.verified_by == long
+
+
+def test_unreadable_frontmatter_is_refused_rather_than_overwritten() -> None:
+    # A writer that could not read the block would be guessing at what it is
+    # about to replace.
+    with pytest.raises(FrontmatterError, match="not readable YAML"):
+        upsert("---\ntitle: [unclosed\n---\n\nbody\n", {"grounding": 1.0})
+
+
+@given(
+    score=st.floats(min_value=0.0, max_value=1.0, allow_nan=False),
+    who=_yaml_safe_text.filter(lambda s: s.strip() == s and s != ""),
+)
+def test_any_verification_block_written_reads_back(score: float, who: str) -> None:
+    """The writer and the parser agree, whatever the score and whoever vouched."""
+    out = upsert(
+        "---\ntitle: A\n---\n\nbody\n",
+        {"grounding": round(score, 4), "verified_by": who, "verified_at": date(2026, 9, 1)},
+    )
+    parsed = parse_frontmatter(out).frontmatter
+    assert parsed.grounding == round(score, 4)
+    assert parsed.verified_by == who
+    assert parsed.verified_at == date(2026, 9, 1)

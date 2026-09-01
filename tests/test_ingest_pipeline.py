@@ -19,7 +19,7 @@ from mycelium.ingest import (
 from mycelium.ingest.errors import ConnectorError, ParseError, UnsupportedMediaTypeError
 from mycelium.ingest.parsers import pandoc as pandoc_parser
 from mycelium.sdk.identity import canonical_json, digest_bytes
-from mycelium.sdk.types import CustodyKind
+from mycelium.sdk.types import CustodyKind, SourceTrust
 
 FIXTURES = Path(__file__).parent / "fixtures" / "ingest"
 HOSTILE = FIXTURES / "hostile"
@@ -210,3 +210,59 @@ def test_ingesting_writes_nothing_into_the_repository_by_itself(
     # Git working tree is `write_projection`'s decision to be asked for.
     ingest_source(mycelium_dir, registry, str(FIXTURES / "source.docx"), doc_id=DOC_ID)
     assert not (tmp_path / "knowledge").exists()
+
+
+# ---------------------------------------------------------------------------
+# `[sources]` — trust stamped at acquisition (roadmap 4.5, D-021)
+# ---------------------------------------------------------------------------
+
+
+def test_trust_is_resolved_from_the_uri_the_connector_produced(
+    registry: Registry, mycelium_dir: Path
+) -> None:
+    """The resolver is handed down, not the answer.
+
+    `[sources]` classifies an *origin*, and the origin is only known once the
+    connector has turned a source into a URI — so the caller passes the function.
+    """
+    seen: list[str] = []
+
+    def trust_for(uri: str) -> SourceTrust | None:
+        seen.append(uri)
+        return SourceTrust.MEDIUM
+
+    result = ingest_source(
+        mycelium_dir,
+        registry,
+        str(FIXTURES / "source.md"),
+        doc_id=DOC_ID,
+        trust_for=trust_for,
+    )
+    assert seen and seen[0].startswith("file://")
+    assert "source_trust: medium" in result.projection.text
+
+
+def test_an_origin_nothing_matches_leaves_the_document_unlabelled(
+    registry: Registry, mycelium_dir: Path
+) -> None:
+    result = ingest_source(
+        mycelium_dir,
+        registry,
+        str(FIXTURES / "source.md"),
+        doc_id=DOC_ID,
+        trust_for=lambda _uri: None,
+    )
+    assert "source_trust" not in result.projection.text
+
+
+def test_an_explicit_trust_wins_over_the_resolver(registry: Registry, mycelium_dir: Path) -> None:
+    # A caller that says "I know what this is" is not overruled by a pattern.
+    result = ingest_source(
+        mycelium_dir,
+        registry,
+        str(FIXTURES / "source.md"),
+        doc_id=DOC_ID,
+        source_trust=SourceTrust.HIGH,
+        trust_for=lambda _uri: SourceTrust.UNKNOWN,
+    )
+    assert "source_trust: high" in result.projection.text

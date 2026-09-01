@@ -38,6 +38,7 @@ test asserts the type, and a future build stage records it in the manifest. A
 seam that swallowed failures would take that choice away from all three.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -97,6 +98,7 @@ def ingest_source(
     max_failed_elements: float = 0.05,
     knowledge_dir: str = "knowledge",
     source_trust: SourceTrust | None = None,
+    trust_for: Callable[[str], SourceTrust | None] | None = None,
 ) -> Ingested:
     """Take `source` into custody, compile it, account for it, and project it.
 
@@ -114,6 +116,15 @@ def ingest_source(
     """
     custody = Custody(mycelium_dir)
     blob = registry.acquire(source, scheme=scheme)
+    # `[sources]` classifies an *origin*, and the origin is only known once the
+    # connector has resolved the source into a URI — so the caller passes the
+    # resolver, not a resolved answer. An explicit `source_trust` still wins: it
+    # is a caller saying "I know what this is".
+    trust = (
+        source_trust
+        if source_trust is not None
+        else (trust_for(blob.source_uri) if trust_for else None)
+    )
     parser = registry.parser_for(blob.media_type)
 
     original = custody.put_blob(
@@ -172,7 +183,7 @@ def ingest_source(
             kir,
             source_uri=blob.source_uri,
             source_digest=original.digest,
-            source_trust=source_trust,
+            source_trust=trust,
             knowledge_dir=knowledge_dir,
         ),
     )

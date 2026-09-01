@@ -5,16 +5,16 @@
 v1 has exactly two public surfaces, CLI and MCP (D-011), so every flag here is a
 compatibility liability and the skeleton stays deliberately small: ``init``,
 ``build``, ``snapshots``, ``rollback``, ``gc``, ``search``, ``show``,
-``neighbors``, ``export``, ``doctor``, ``eval``, and ``serve``. The rest of the
-spec's table arrives with the features behind it — ``ingest``, ``verify``, and
-``promote`` with milestone 4.
+``neighbors``, ``export``, ``doctor``, ``eval``, and ``serve``, joined at
+milestone 4 by ``ingest``, ``verify``, ``promote`` and ``demote``.
 
 The CLI is a shell, not a layer: it parses arguments, calls one function, and
 renders. Nothing here decides anything the library does not already decide.
 """
 
 from contextlib import suppress
-from pathlib import Path
+from datetime import date
+from pathlib import Path, PurePosixPath
 from typing import Annotated, Final
 
 import typer
@@ -88,6 +88,17 @@ from mycelium.synthesis import (
     synthesize_candidate,
     write_candidate,
 )
+from mycelium.verification import (
+    VerificationError,
+    Verified,
+    author_name,
+    build_judge,
+    verify_tree,
+)
+from mycelium.verification import (
+    demote as demote_document,
+)
+from mycelium.verification import promote as promote_document
 from mycelium.watch import WatcherUnavailableError, watched_paths
 from mycelium.watch import watch as run_watch_session
 
@@ -137,6 +148,18 @@ max_failed_elements = 0.05     # fidelity loss budget: refuse a projection that 
 max_tokens = 800               # hard ceiling: prose splits at the paragraph before it
 # target_tokens = 400         # aim smaller than the ceiling; measure before you do
 atomic = ["table", "code"]     # tables and code blocks are never split
+
+[verification]                 # gate G7: what a synthesized document must clear
+cites_coverage_min = 0.95      # of claim-bearing blocks must cite the evidence
+entailment_min = 0.90          # of sampled claims must be supported by what they cite
+auto_promote = false           # default: promotion is a human act in Git (D-021)
+sample_size = 8                # claims judged per document; 0 skips entailment
+# model_id = "claude-opus-5"   # have a different model judge than the one that wrote
+
+[sources]                      # trust per origin, stamped at acquisition (D-021)
+# "docs.python.org" = "high"
+# "internal-wiki" = "medium"
+# "*" = "unknown"
 
 [synthesis]                    # the LLM lane of ingestion (D-020); off until a
                                # provider is named, so a default install is offline
@@ -477,6 +500,11 @@ def ingest(
                 doc_id=new_ulid(),
                 max_failed_elements=settings.ingest.max_failed_elements,
                 knowledge_dir=scope.knowledge_dir,
+                # Trust is a property of where the bytes came from, so it is
+                # stamped once, here, and travels with the document (D-021). The
+                # source URI is not known until the connector has resolved it, so
+                # the resolver is handed down rather than the answer.
+                trust_for=settings.sources.trust_for,
             )
         except IngestError as error:
             failures += 1
@@ -1008,6 +1036,284 @@ def _missing_anchor_help(store: SqliteStore, target: str) -> str:
 # ---------------------------------------------------------------------------
 # doctor
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# verify / promote / demote (D-021, gate G7)
+# ---------------------------------------------------------------------------
+
+
+def _relative(root: Path, document: Path) -> PurePosixPath:
+    """A document argument as a repository-relative POSIX path."""
+    candidate = document if document.is_absolute() else root / document
+    try:
+        return PurePosixPath(candidate.resolve().relative_to(root.resolve()).as_posix())
+    except ValueError as error:
+        raise fail(
+            f"{document} is outside {root}; verification only touches the repository",
+            code=ExitCode.USAGE,
+        ) from error
+
+
+def _report_grounding(result: Verified) -> None:
+    grounding = result.grounding
+    entailment = "not measured" if grounding.entailment is None else f"{grounding.entailment:.2f}"
+    line = (
+        f"{grounding.path.as_posix()}: grounding {grounding.score:.2f} "
+        f"(coverage {grounding.coverage:.2f} over {grounding.claims} claims, "
+        f"entailment {entailment}"
+    )
+    if grounding.sampled:
+        line += f" on {grounding.sampled} sampled"
+    line += ")"
+    if result.blockers:
+        warn(line)
+    else:
+        success(line)
+    if grounding.self_judged:
+        detail("  note: the model that judged is the model that wrote (set")
+        detail("        [verification] model_id to have a different one judge)")
+    if grounding.weakest_trust is not None:
+        detail(f"  weakest cited source trust: {grounding.weakest_trust.value}")
+    for blocker in result.blockers:
+        detail(f"  blocked [{blocker.code}]: {blocker.message}")
+    for judgement in grounding.judgements:
+        if not judgement.entailed:
+            detail(f"  not entailed: {judgement.claim[:70]!r} - {judgement.reason}")
+    if result.stamped:
+        detail("  verification block updated (commit it)")
+    if result.promoted is not None:
+        success(f"  promoted -> {result.promoted.destination.as_posix()}")
+
+
+@app.command()
+def verify(
+    documents: Annotated[
+        list[Path] | None,
+        typer.Argument(help="Documents to verify. Default: every synthesized document."),
+    ] = None,
+    path: Annotated[Path, typer.Option("--root", help="Repository root.")] = Path(),
+    gate: Annotated[
+        bool, typer.Option("--gate", help="Exit non-zero when gate G7 is not satisfied.")
+    ] = False,
+    no_entailment: Annotated[
+        bool,
+        typer.Option("--no-entailment", help="Measure coverage only; make no LLM call."),
+    ] = False,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Report, and write no verification block.")
+    ] = False,
+    as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+) -> None:
+    """Measure grounding on synthesized documents (gate G7, D-021).
+
+    Two components, and they are not the same kind of thing. **Citation coverage**
+    is recomputed here against the corpus *as it is* — which is the point of the
+    command: the evidence a candidate cites may have been edited, re-projected or
+    deleted since it was written, and no care at writing time can catch that.
+    **Sampled entailment** asks whether the cited evidence actually says what the
+    claim says, which needs a judge; with no LLM provider configured it is
+    reported as *not measured* rather than as a number nobody computed.
+
+    The score is written into each document's frontmatter, and only when it
+    changed — so a nightly run over a corpus nothing happened to produces no diff.
+    Verification never moves a document unless `[verification] auto_promote` says
+    so; promotion is a human act in Git (D-021).
+
+    `--gate` is the CI form and fails on a *measured* shortfall. An unmeasured
+    entailment is reported and does not fail the gate, because a gate that were
+    red on every offline checkout is a gate everyone learns to ignore. Promotion
+    is stricter: there, an unmeasured half needs `mycelium promote --force`.
+    """
+    try:
+        settings = load_config(path)
+    except ConfigError as error:
+        raise fail(str(error), code=ExitCode.USAGE) from error
+    scope = CorpusScope.of(settings.project)
+
+    judge = None
+    self_judged = False
+    if not no_entailment:
+        judge, self_judged, reason = build_judge(settings.synthesis, settings.verification)
+        if judge is None and not as_json:
+            warn(reason)
+
+    try:
+        results = verify_tree(
+            path,
+            scope,
+            thresholds=settings.verification.thresholds(),
+            judge=judge,
+            sample_size=settings.verification.sample_size,
+            self_judged=self_judged,
+            only=[_relative(path, item) for item in documents or []],
+            write=not dry_run,
+            auto_promote=settings.verification.auto_promote,
+        )
+    except (VerificationError, SynthesisError) as error:
+        raise fail(str(error)) from error
+
+    if as_json:
+        emit_json(
+            {
+                "root": str(path),
+                "thresholds": {
+                    "coverage": settings.verification.cites_coverage_min,
+                    "entailment": settings.verification.entailment_min,
+                },
+                "documents": [item.as_dict() for item in results],
+            }
+        )
+    else:
+        for result in results:
+            _report_grounding(result)
+        if not results:
+            detail("no synthesized documents to verify")
+
+    failures = [
+        item
+        for item in results
+        if item.grounding.blockers(settings.verification.thresholds(), require_entailment=False)
+    ]
+    if gate and failures:
+        raise fail(f"gate G7: {len(failures)} of {len(results)} document(s) below threshold")
+
+
+@app.command()
+def promote(
+    document: Annotated[Path, typer.Argument(help="The candidate document to promote.")],
+    path: Annotated[Path, typer.Option("--root", help="Repository root.")] = Path(),
+    by: Annotated[
+        str | None,
+        typer.Option("--by", help="Who is promoting. Default: your git user.name."),
+    ] = None,
+    force: Annotated[
+        bool, typer.Option("--force", help="Promote below gate G7, recorded in the document.")
+    ] = False,
+    no_entailment: Annotated[
+        bool,
+        typer.Option("--no-entailment", help="Measure coverage only; make no LLM call."),
+    ] = False,
+    as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+) -> None:
+    """Move a candidate into `knowledge/verified/` (D-021).
+
+    Gate G7 is measured first — not read from the document, which may carry a
+    number from before the evidence moved — and a document below it is refused
+    with the specific component named. `--force` is the human override the spec
+    provides, and it writes *why* it was forced into `verified_by`, so the
+    override is visible in the file and in every diff after it.
+
+    The move is a file move: verification status is the folder (D-021), so `git
+    status` shows what happened and nothing else has to be trusted. Run
+    `mycelium build` afterwards to serve the new status.
+    """
+    try:
+        settings = load_config(path)
+    except ConfigError as error:
+        raise fail(str(error), code=ExitCode.USAGE) from error
+    scope = CorpusScope.of(settings.project)
+    relative = _relative(path, document)
+
+    judge = None
+    self_judged = False
+    if not no_entailment:
+        judge, self_judged, reason = build_judge(settings.synthesis, settings.verification)
+        if judge is None and not as_json:
+            warn(reason)
+
+    thresholds = settings.verification.thresholds()
+    try:
+        measured = verify_tree(
+            path,
+            scope,
+            thresholds=thresholds,
+            judge=judge,
+            sample_size=settings.verification.sample_size,
+            self_judged=self_judged,
+            only=[relative],
+            write=False,
+        )
+    except (VerificationError, SynthesisError) as error:
+        raise fail(str(error)) from error
+    if not measured:
+        raise fail(
+            f"{relative.as_posix()} is not a synthesized document; only the synthesis "
+            "lane's output has grounding to gate (D-021)",
+            code=ExitCode.USAGE,
+        )
+
+    result = measured[0]
+    blockers = result.blockers
+    if blockers and not force:
+        for blocker in blockers:
+            detail(f"  blocked [{blocker.code}]: {blocker.message}")
+        raise fail(
+            f"{relative.as_posix()} does not satisfy gate G7; read it and use --force to "
+            "promote it on your own authority"
+        )
+
+    # Who vouches. Below the gate that is the human, by name, with the reason in
+    # the field: the override has to be legible in the document itself, not only
+    # in whatever scrollback the operator had open. Above it, the check vouches.
+    if blockers:
+        codes = ", ".join(item.code for item in blockers)
+        verified_by = f"{by or author_name()} (forced: {codes})"
+    else:
+        verified_by = result.checker
+    try:
+        moved = promote_document(
+            path,
+            relative,
+            verified_by=verified_by,
+            grounding=result.grounding.score,
+            at=date.today(),
+            forced=bool(blockers),
+        )
+    except VerificationError as error:
+        raise fail(str(error)) from error
+
+    if as_json:
+        emit_json({"root": str(path), "promoted": moved.as_dict()})
+        return
+    success(f"{moved.source.as_posix()} -> {moved.destination.as_posix()}")
+    detail(f"  verified_by: {moved.verified_by}")
+    detail(f"  grounding:   {moved.grounding}")
+    if moved.forced:
+        warn("promoted below gate G7 on your authority; the document records that")
+    detail("commit the move, then run `mycelium build`")
+
+
+@app.command()
+def demote(
+    document: Annotated[Path, typer.Argument(help="The verified document to demote.")],
+    path: Annotated[Path, typer.Option("--root", help="Repository root.")] = Path(),
+    as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+) -> None:
+    """Move a verified document back to `knowledge/candidate/` (D-021).
+
+    The verification block is removed on the way down. A demoted document is not
+    poorly grounded, it is no longer vouched for — and a `verified_by` left behind
+    would be a false claim sitting in the file, which is the drift folder-encoded
+    status exists to prevent.
+    """
+    try:
+        settings = load_config(path)
+    except ConfigError as error:
+        raise fail(str(error), code=ExitCode.USAGE) from error
+    _ = settings
+    relative = _relative(path, document)
+    try:
+        moved = demote_document(path, relative)
+    except VerificationError as error:
+        raise fail(str(error)) from error
+
+    if as_json:
+        emit_json({"root": str(path), "demoted": moved.as_dict()})
+        return
+    success(f"{moved.source.as_posix()} -> {moved.destination.as_posix()}")
+    detail("  verification block removed")
+    detail("commit the move, then run `mycelium build`")
 
 
 @app.command()

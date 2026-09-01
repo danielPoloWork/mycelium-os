@@ -20,6 +20,7 @@ _(newest first)_
 #### September
 
 - [2026-09-02 — the lane that refuses to write (roadmap 4.4)](2026/09/2026-09-02-synthesis-lane.md)
+- [2026-09-01 — measure what can be measured (roadmap 4.5)](2026/09/2026-09-01-verification-gate.md)
 - [2026-09-01 — the document you can read (roadmap 4.3)](2026/09/2026-09-01-evidence-projection.md)
 - [2026-09-01 — keeping the original (roadmap 4.2)](2026/09/2026-09-01-custody-and-hostile-input.md)
 - [2026-09-01 — four engines, one boundary (roadmap 4.1)](2026/09/2026-09-01-ingestion-protocols.md)

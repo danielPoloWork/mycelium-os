@@ -50,6 +50,9 @@ mycelium snapshots         # what has been published, newest first
 mycelium rollback <id>     # serve an earlier snapshot again - nothing recompiles
 mycelium gc                # drop snapshots beyond retention and unreachable artifacts
 mycelium export            # the snapshot as a JSONL bundle another tool can read
+mycelium verify            # measure grounding on synthesized documents (gate G7)
+mycelium promote doc.md    # candidate -> verified, in Git, once the gate passes
+mycelium demote doc.md     # ...and back again, verification block removed
 mycelium eval              # score a judged case set against the snapshot
 mycelium doctor            # store, snapshot pointer, and lock health
 mycelium serve             # read-only MCP server over stdio, for your agent
@@ -220,13 +223,65 @@ What comes out lands in `knowledge/candidate/` — the folder **is** the verific
 (D-021) — carrying `origin: synthesized` and the model that wrote it. `mycelium build`
 compiles it like any other file, retrieval labels it a candidate, and its citations are
 `cites` edges you can query. Nothing here can produce a `verified` document: promotion is a
-human action in Git (roadmap 4.5).
+human action in Git, and the next section is the gate it has to pass.
 
 The lane is **off unless you configure a provider**. A default install ingests entirely
 offline and calls nothing; the engines are an optional install
 (`pip install mycelium-os[synthesis]`). The reasoning, and the limits — coverage is per
 block, and a resolving citation is not yet a *supporting* one — are in
-[ADR-0035](docs/adr/0035-let-an-llm-write-only-what-a-machine-can-check.md).
+[ADR-0035](docs/adr/0035-let-an-llm-write-only-what-a-machine-can-check.md). Whether a
+citation *supports* its claim is what `mycelium verify` asks, below.
+
+### Nothing becomes verified without a gate and a person
+
+A candidate document is a claim, not truth. `mycelium verify` measures **gate G7** on it, and
+the two halves of that gate are not the same kind of thing:
+
+```bash
+mycelium verify                    # measure every synthesized document
+mycelium verify --gate             # ...and fail in CI on a measured shortfall
+mycelium promote knowledge/candidate/webhook-retries.md
+mycelium demote  knowledge/verified/webhook-retries.md
+```
+
+**Citation coverage** is recomputed against the corpus *as it is*, and that recomputation is
+why the command exists. A candidate accepted last month cites evidence that may have been
+edited, re-projected under a different heading, or deleted since — nothing at writing time
+can catch that, and `verify` reports it as `citations-unresolved`.
+
+**Sampled entailment** asks whether the cited evidence actually *says* what the claim says.
+Nothing in this repository can answer that, so it asks the configured model — a deterministic
+sample of claims, fail-closed, so a verdict that cannot be read counts as *not* entailed.
+With no provider configured it is reported as **not measured**. Not zero, not a guess:
+
+> There is deliberately no offline approximation. Term overlap between a claim and its
+> citation would produce a number in the right range and it would be a fabricated grounding
+> score, which is the one artifact this project refuses above all others.
+
+The score written into the document is `min(coverage, entailment)`, because an average would
+let perfect citations hide a failed entailment.
+
+**Promotion is a file move, in Git, by a person.** `knowledge/candidate/` → `knowledge/verified/`
+— the folder *is* the status (D-021) — and `promote` measures the gate first rather than
+trusting the number already in the file. Below the gate it refuses and names the component
+that blocked it. `--force` is your override, and it is written into the document:
+
+```yaml
+verified_by: 'Daniel Polo (forced: entailment-not-measured)'
+verified_at: 2026-09-01
+grounding: 1.0
+```
+
+so the override lives in the diff rather than in someone's terminal. `demote` moves a document
+back and *removes* that block — a demoted document is not badly grounded, it is no longer
+vouched for.
+
+Two more things worth knowing before you rely on the number. `[verification] auto_promote`
+exists and is **off**: with it on, a document clearing both components is promoted for you.
+And with `[verification] model_id` unset, the model that wrote the document is the model that
+judges it — a real bias, so the report, the document and the CLI all say `self-judged` rather
+than averaging it away. The full reasoning is in
+[ADR-0036](docs/adr/0036-measure-what-can-be-measured-and-let-a-human-outrank-the-gate.md).
 
 ## Inspiration & Origins
 
