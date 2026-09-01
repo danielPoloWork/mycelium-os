@@ -19,10 +19,10 @@ The publication rules (spec 02 §7, D-015), which every later phase inherits:
 """
 
 import json
-import os
 from pathlib import Path
 from typing import Final
 
+from mycelium.layout import atomic_write_bytes, atomic_write_text
 from mycelium.sdk.types import SnapshotManifest
 
 __all__ = [
@@ -42,52 +42,6 @@ __all__ = [
 CURRENT_FILENAME: Final = "CURRENT"
 SNAPSHOTS_DIRNAME: Final = "snapshots"
 JOURNAL_FILENAME: Final = "journal.jsonl"
-
-
-def atomic_write_text(path: Path, text: str) -> None:
-    """Write `text` to `path` through a same-directory temp file and rename."""
-    atomic_write_bytes(path, text.encode("utf-8"))
-
-
-def atomic_write_bytes(path: Path, data: bytes) -> None:
-    """Write `data` to `path` through a same-directory temp file and rename.
-
-    The temp file lives beside the target (rename is only atomic within one
-    filesystem), is fsynced before the rename (so the *content* is durable
-    before the *name* appears), and is removed on failure.
-
-    Bytes rather than text is the primitive because tier-1 custody stores
-    acquired originals — a DOCX, a PDF — and those must land byte-for-byte
-    (roadmap 4.2). `atomic_write_text` is the UTF-8 wrapper over it.
-    """
-    tmp = path.with_name(path.name + ".tmp")
-    # O_BINARY matters: without it, Windows' CRT opens in text mode and rewrites
-    # LF as CRLF — which would make manifest bytes platform-dependent (G6), and
-    # would corrupt every acquired original that happens to contain 0x0A.
-    flags = os.O_CREAT | os.O_WRONLY | os.O_TRUNC | getattr(os, "O_BINARY", 0)
-    descriptor = os.open(tmp, flags)
-    try:
-        try:
-            os.write(descriptor, data)
-            os.fsync(descriptor)
-        finally:
-            os.close(descriptor)
-        os.replace(tmp, path)
-    except BaseException:
-        tmp.unlink(missing_ok=True)
-        raise
-    _fsync_dir(path.parent)
-
-
-def _fsync_dir(directory: Path) -> None:
-    """Make a rename durable on POSIX; a no-op where directories can't be opened."""
-    if os.name != "posix":  # pragma: no cover - exercised on the POSIX CI cells
-        return
-    descriptor = os.open(directory, os.O_RDONLY)  # pragma: no cover
-    try:  # pragma: no cover
-        os.fsync(descriptor)
-    finally:  # pragma: no cover
-        os.close(descriptor)
 
 
 def manifest_path(mycelium_dir: Path, snapshot_id: str) -> Path:

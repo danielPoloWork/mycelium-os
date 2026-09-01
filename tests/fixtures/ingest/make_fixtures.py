@@ -5,9 +5,15 @@
     python tests/fixtures/ingest/make_fixtures.py
 
 The fixtures are committed rather than generated at test time for two reasons.
-They must be *identical bytes* on every machine — a DOCX produced by whichever
+The bytes must be *the same on every machine* — a DOCX produced by whichever
 pandoc a contributor happens to have would move the digests a test asserts — and
 CI must be able to exercise the parsers without the tool that produced the input.
+
+This script is therefore not byte-reproducible, and does not need to be: the ZIP
+containers it writes embed a modification time, so re-running it produces
+different bytes for the same content. Regenerating a fixture is a deliberate act
+whose diff a reviewer reads; `git checkout` is the way back for the ones that only
+churned.
 
 `source.md` is the source of truth: DOCX, HTML and reStructuredText are pandoc's
 renderings of it, so the same document reaches four parsers and the differences
@@ -85,16 +91,22 @@ PDF_LINES = [
 ]
 
 
-def write_pdf(path: Path) -> None:
-    """Write a minimal, uncompressed, single-page PDF with a real text layer."""
+def write_pdf(path: Path, lines: list[tuple[str, int, int, str]] | None = None) -> None:
+    """Write a minimal, uncompressed, single-page PDF.
+
+    An empty `lines` writes a page with **no text layer** — a valid PDF that
+    PDFium opens and finds nothing in, which is what a scan looks like to a text
+    extractor.
+    """
 
     def escape(text: str) -> str:
         return text.replace("\\", r"\\").replace("(", r"\(").replace(")", r"\)")
 
+    drawn = PDF_LINES if lines is None else lines
     content = (
         "BT\n"
         + "".join(
-            f"{font}\n1 0 0 1 {x} {y} Tm\n({escape(text)}) Tj\n" for font, x, y, text in PDF_LINES
+            f"{font}\n1 0 0 1 {x} {y} Tm\n({escape(text)}) Tj\n" for font, x, y, text in drawn
         )
         + "ET\n"
     )
@@ -174,6 +186,12 @@ def write_hostile() -> None:
     (HOSTILE / "notazip.docx").write_bytes(b"plain text pretending to be a docx\n")
     (HOSTILE / "truncated.pdf").write_bytes(b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\n")
     (HOSTILE / "empty.pdf").write_bytes(b"")
+
+    # A PDF whose only page carries no text layer at all — a scan, in effect.
+    # Every element is lost, so the loss budget refuses its projection: this is
+    # the fixture that makes `[ingest] max_failed_elements` a knob that bites
+    # rather than a knob that is merely documented (ADR-0034).
+    write_pdf(HOSTILE / "no-text-layer.pdf", lines=[])
 
     # An extension that lies: PDF bytes under a .md name. Parsed as the extension
     # claims (the operator's pinned parser list was written against names), with

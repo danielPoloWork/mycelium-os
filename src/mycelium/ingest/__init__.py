@@ -19,15 +19,19 @@ is both halves of it plus the resolution that pins which implementation runs:
   an engine is asked to read it.
 - :mod:`mycelium.ingest.custody` — tier-1 custody: the acquired original and its
   KIR, kept, and never garbage-collected.
+- :mod:`mycelium.ingest.fidelity` — the loss accounting, and the budget it is
+  measured against.
+- :mod:`mycelium.ingest.projection` — KIR back to Markdown, under
+  `knowledge/evidence/`, where the compiler picks it up like any authored file.
 - :mod:`mycelium.ingest.pipeline` — the evidence lane end to end: acquire, store,
-  guard, parse, store.
+  guard, parse, store, account, project.
 - :mod:`mycelium.ingest.errors` — the failure taxonomy, because a custody failure
   and a parse failure are answered differently.
 
-What this package deliberately does **not** do yet: project evidence Markdown
-with provenance frontmatter and fidelity reports (roadmap 4.3), scan for secrets,
-or decide what happens to a document that fails (4.6). `ingest_source` raises a
-typed error and leaves the decision to its caller.
+What this package deliberately does **not** do yet: author candidate documents
+with an LLM (roadmap 4.4), compute grounding (4.5), scan for secrets, or decide
+what happens to a document that fails (4.6). `ingest_source` raises a typed error
+and leaves that decision to its caller.
 """
 
 from mycelium.ingest.custody import Custody, CustodyIntegrity, custody_root
@@ -42,8 +46,10 @@ from mycelium.ingest.errors import (
     UnknownPluginError,
     UnsupportedMediaTypeError,
 )
+from mycelium.ingest.fidelity import build_report, check_budget, encode_report
 from mycelium.ingest.media import EXTENSIONS, MEDIA_TYPES, MediaTypeClaim, classify
-from mycelium.ingest.pipeline import Ingested, encode_kir, ingest_source
+from mycelium.ingest.pipeline import Ingested, encode_kir, ingest_source, write_projection
+from mycelium.ingest.projection import EVIDENCE_DIRNAME, Projection, evidence_path, project
 from mycelium.ingest.registry import (
     BUILTIN_CONNECTORS,
     BUILTIN_PARSERS,
@@ -58,6 +64,7 @@ __all__ = [
     "BUILTIN_CONNECTORS",
     "BUILTIN_PARSERS",
     "ENTRY_POINT_GROUP",
+    "EVIDENCE_DIRNAME",
     "EXTENSIONS",
     "MEDIA_TYPES",
     "DEFAULT_LIMITS",
@@ -70,6 +77,7 @@ __all__ = [
     "Limits",
     "MediaTypeClaim",
     "ParseError",
+    "Projection",
     "PluginError",
     "PluginStatus",
     "PluginUnavailableError",
@@ -77,10 +85,16 @@ __all__ = [
     "SourceTooLargeError",
     "UnknownPluginError",
     "UnsupportedMediaTypeError",
+    "build_report",
+    "check_budget",
     "classify",
     "custody_root",
     "encode_kir",
+    "encode_report",
+    "evidence_path",
     "guard",
     "ingest_source",
     "probe",
+    "project",
+    "write_projection",
 ]

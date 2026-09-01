@@ -18,6 +18,7 @@ from mycelium.build.lock import BuildLock
 from mycelium.cli import app
 from mycelium.cli.doctor import diagnose, worst_status
 from mycelium.cli.output import ExitCode, use_color
+from mycelium.sdk.types import ProvenanceOrigin, TrustClass, VerificationStatus
 from mycelium.store import SqliteStore
 from mycelium.store.schema import META_CURRENT_SNAPSHOT, META_SCHEMA_VERSION
 
@@ -468,6 +469,113 @@ def test_show_reports_an_unknown_document(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # doctor
 # ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# `mycelium ingest` (roadmap 4.3)
+# ---------------------------------------------------------------------------
+
+INGEST_FIXTURES = Path(__file__).parent / "fixtures" / "ingest"
+INGEST_CONFIG = '[ingest]\nparsers = ["markdown", "docling", "pdf"]\n'
+
+
+def _ingestable(tmp_path: Path, name: str, *, subdir: str = "") -> Path:
+    """Copy a fixture into the repository, because acquisition is root-bounded."""
+    sources = tmp_path / "sources"
+    sources.mkdir(parents=True, exist_ok=True)
+    origin = INGEST_FIXTURES / subdir / name if subdir else INGEST_FIXTURES / name
+    target = sources / name
+    target.write_bytes(origin.read_bytes())
+    (tmp_path / "mycelium.toml").write_text(INGEST_CONFIG, encoding="utf-8")
+    return target
+
+
+def test_ingest_projects_a_source_and_reports_its_fidelity(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    source = _ingestable(tmp_path, "source.docx")
+
+    result = invoke("ingest", str(source), "--root", str(tmp_path), "--json")
+    assert result.exit_code == ExitCode.OK
+    (entry,) = json.loads(result.stdout)["sources"]
+    assert entry["ok"] is True
+    assert entry["parser"] == "docling"
+    assert entry["lost"] == 0
+    assert entry["written"] is True
+
+    projected = tmp_path / entry["document"]
+    assert projected.is_file()
+    assert projected.parent.name == "evidence"
+    assert "origin: ingested" in projected.read_text(encoding="utf-8")
+
+
+def test_ingest_dry_run_takes_custody_but_writes_no_document(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    source = _ingestable(tmp_path, "source.docx")
+
+    result = invoke("ingest", str(source), "--root", str(tmp_path), "--dry-run", "--json")
+    assert result.exit_code == ExitCode.OK
+    (entry,) = json.loads(result.stdout)["sources"]
+    assert entry["written"] is False
+    assert not (tmp_path / entry["document"]).exists()
+    # The evidence is kept anyway: custody is not conditional on projection.
+    assert (tmp_path / ".mycelium" / "cas" / "originals").is_dir()
+
+
+def test_ingest_reports_a_failure_per_source_and_carries_on(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    good = _ingestable(tmp_path, "source.docx")
+    hostile = _ingestable(tmp_path, "no-text-layer.pdf", subdir="hostile")
+
+    result = invoke("ingest", str(hostile), str(good), "--root", str(tmp_path), "--json")
+    # Exit 1 because something failed, and a script needs to know without parsing.
+    assert result.exit_code == ExitCode.FAILED
+    entries = {Path(item["source"]).name: item for item in json.loads(result.stdout)["sources"]}
+    assert entries["no-text-layer.pdf"]["ok"] is False
+    assert "did not survive parsing" in entries["no-text-layer.pdf"]["error"]
+    assert entries["source.docx"]["ok"] is True, "the good source was still ingested"
+
+
+def test_ingest_refuses_a_source_outside_the_repository(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    (tmp_path / "mycelium.toml").write_text(INGEST_CONFIG, encoding="utf-8")
+    outside = tmp_path.parent / f"outside-{tmp_path.name}.md"
+    outside.write_text("# nope\n", encoding="utf-8")
+    try:
+        result = invoke("ingest", str(outside), "--root", str(tmp_path), "--json")
+        assert result.exit_code == ExitCode.FAILED
+        (entry,) = json.loads(result.stdout)["sources"]
+        assert "outside the declared root" in entry["error"]
+    finally:
+        outside.unlink(missing_ok=True)
+
+
+def test_a_projected_document_compiles_as_ingested_evidence(tmp_path: Path) -> None:
+    """The point of the whole lane (spec 02 §5, ADR-0034).
+
+    The projector writes Markdown only; the compiler does everything else. So an
+    ingested PDF has to arrive in the store as a document with `ingested` trust,
+    `evidence` status, and the provenance the custody record holds — none of which
+    the projection itself writes.
+    """
+    seeded(tmp_path)
+    source = _ingestable(tmp_path, "text-layer.pdf")
+    ingested = invoke("ingest", str(source), "--root", str(tmp_path), "--json")
+    assert ingested.exit_code == ExitCode.OK
+    (entry,) = json.loads(ingested.stdout)["sources"]
+
+    assert invoke("build", str(tmp_path)).exit_code == ExitCode.OK
+    with SqliteStore.open(tmp_path, read_only=True) as store:
+        document = store.get_document_by_path(str(entry["document"]).replace("\\", "/"))
+    assert document is not None
+    assert document.trust_class is TrustClass.INGESTED
+    assert document.verification_status is VerificationStatus.EVIDENCE
+    assert document.provenance.origin is ProvenanceOrigin.INGESTED
+    assert document.provenance.source_digest == entry["source_digest"]
+    # Filled from tier-1 custody, not from frontmatter: one key carries the link
+    # and the record carries the facts (ADR-0034).
+    assert document.provenance.connector == "file"
+    assert document.provenance.ingested_at is not None
+    assert document.fidelity_report == entry["fidelity_report"]
 
 
 def test_doctor_is_clean_after_a_build(tmp_path: Path) -> None:

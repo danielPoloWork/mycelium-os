@@ -55,6 +55,10 @@ CASES: dict[str, str | None] = {
     "notazip.docx": "docling",
     "truncated.pdf": "PDFium could not read",
     "empty.pdf": "PDFium could not read",
+    # A valid PDF whose page has no text layer: PDFium reads it and finds nothing,
+    # so every element is lost and the loss budget refuses the projection. This is
+    # the fixture that makes `[ingest] max_failed_elements` bite (ADR-0034).
+    "no-text-layer.pdf": "did not survive parsing",
     "mislabelled.md": None,
 }
 

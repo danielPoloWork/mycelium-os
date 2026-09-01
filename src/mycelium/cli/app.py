@@ -40,6 +40,7 @@ from mycelium.cli.output import (
     warn,
 )
 from mycelium.config import ConfigError, MyceliumConfig, RetrievalConfig, load_config
+from mycelium.corpus import CorpusScope
 from mycelium.embedding import Embedder, EmbeddingError, build_embedder
 from mycelium.eval import (
     EvaluationError,
@@ -54,9 +55,17 @@ from mycelium.eval import (
 from mycelium.export import DEFAULT_EXPORT_DIRNAME, ExportError, export_bundle
 from mycelium.graph import MAX_DEPTH
 from mycelium.graph import neighbours as graph_neighbours
+from mycelium.ingest import IngestError, Registry, ingest_source, write_projection
 from mycelium.mcp import serve_stdio
 from mycelium.retrieval import search as run_search
-from mycelium.sdk.identity import IdentityError, anchor, citation_uri, doc_ref, parse_anchor
+from mycelium.sdk.identity import (
+    IdentityError,
+    anchor,
+    citation_uri,
+    doc_ref,
+    new_ulid,
+    parse_anchor,
+)
 from mycelium.sdk.identity import parse_citation_uri as parse_uri
 from mycelium.sdk.types import Chunk, EdgeType, TrustClass, VerificationStatus
 from mycelium.store import (
@@ -106,8 +115,9 @@ parsers = ["markdown"]         # add "docling", "pandoc", "pdf" to ingest those 
                                # every name must resolve or the command says what to
                                # install - there is no "best available" (spec 05 §4.2)
 connectors = ["file"]          # v1 acquires from the local tree only
+max_failed_elements = 0.05     # fidelity loss budget: refuse a projection that lost
+                               # more than this fraction of a document's elements
 # redact_secrets = true       # not honoured yet (roadmap 4.6)
-# max_failed_elements = 0.05  # not honoured yet (roadmap 4.3)
 
 [chunking]
 max_tokens = 800               # hard ceiling: prose splits at the paragraph before it
@@ -368,6 +378,104 @@ def _watch(path: Path, *, clean: bool, require_vectors: bool) -> None:
 # ---------------------------------------------------------------------------
 # snapshots / rollback / gc
 # ---------------------------------------------------------------------------
+
+
+@app.command()
+def ingest(
+    sources: Annotated[
+        list[Path], typer.Argument(help="Files to ingest. Must live inside the repository.")
+    ],
+    path: Annotated[Path, typer.Option("--root", help="Repository root.")] = Path(),
+    as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run",
+            help="Take custody and report fidelity, but write no evidence document.",
+        ),
+    ] = False,
+) -> None:
+    """Acquire, compile and project sources into `knowledge/evidence/` (spec 05 §1).
+
+    Each source is handled on its own: one that cannot be read, or that loses more
+    than `[ingest] max_failed_elements`, is reported and the rest continue. The
+    exit code is 1 if any source failed, because a script that ingested a folder
+    needs to know without parsing the output.
+
+    Nothing is indexed here. A projected document is compiled by `mycelium build`
+    like any other file in the authored tree — the projector writes Markdown only
+    (D-020).
+    """
+    try:
+        settings = load_config(path)
+    except ConfigError as error:
+        raise fail(str(error), code=ExitCode.USAGE) from error
+    scope = CorpusScope.of(settings.project)
+    roots = [path, path / settings.project.sources_dir]
+    try:
+        registry = Registry.resolve(
+            parsers=settings.ingest.parsers,
+            connectors=settings.ingest.connectors,
+            roots=[root for root in roots if root.is_dir()] or [path],
+        )
+    except IngestError as error:
+        raise fail(str(error), code=ExitCode.USAGE) from error
+
+    mycelium_dir = path / STORE_DIRNAME
+    results: list[dict[str, object]] = []
+    failures = 0
+    for source in sources:
+        try:
+            ingested = ingest_source(
+                mycelium_dir,
+                registry,
+                str(source),
+                doc_id=new_ulid(),
+                max_failed_elements=settings.ingest.max_failed_elements,
+                knowledge_dir=scope.knowledge_dir,
+            )
+        except IngestError as error:
+            failures += 1
+            results.append({"source": str(source), "ok": False, "error": str(error)})
+            if not as_json:
+                warn(f"{source}: {error}")
+            continue
+
+        written = None if dry_run else write_projection(path, ingested)
+        report = ingested.report
+        results.append(
+            {
+                "source": str(source),
+                "ok": True,
+                "parser": ingested.parser_id,
+                "source_digest": ingested.original.digest,
+                "kir_digest": ingested.kir_digest,
+                "fidelity_report": ingested.fidelity_digest,
+                "document": str(ingested.projection.path),
+                "written": written is not None,
+                "elements": report.elements,
+                "represented": report.represented,
+                "degraded": report.degraded,
+                "lost": report.lost,
+                "warnings": list(report.warnings),
+            }
+        )
+        if not as_json:
+            verb = "would write" if dry_run else "wrote"
+            success(f"{source} -> {verb} {ingested.projection.path} ({ingested.parser_id})")
+            detail(
+                f"  {report.represented} represented, {report.degraded} degraded, "
+                f"{report.lost} lost of {report.elements} elements"
+            )
+            for warning in report.warnings:
+                detail(f"  note: {warning}")
+
+    if as_json:
+        emit_json({"root": str(path), "dry_run": dry_run, "sources": results})
+    elif not dry_run and failures < len(sources):
+        detail("run `mycelium build` to compile what was written")
+    if failures:
+        raise fail(f"{failures} of {len(sources)} source(s) could not be ingested")
 
 
 @app.command()

@@ -3,7 +3,7 @@
 """The authored-Markdown frontmatter contract (spec 03 §3).
 
 Frontmatter is the *only* machine-read metadata in an authored document, and its
-field set is closed: eleven keys with named owners. Everything else a vault
+field set is closed: twelve keys with named owners. Everything else a vault
 carries — Obsidian plugin properties, Dataview fields, personal conventions — is
 preserved as opaque `properties` and never machine-interpreted (D-022).
 
@@ -14,7 +14,8 @@ humans own the rest.
 Owner                Fields
 ===================  ==========================================================
 ``mycelium build``   ``mycelium_id``
-``mycelium ingest``  ``origin``, ``source``, ``source_trust``, ``generated_by``
+``mycelium ingest``  ``origin``, ``source``, ``source_digest``,
+                     ``source_trust``, ``generated_by``
 ``mycelium verify``  ``verified_by``, ``verified_at``, ``grounding``
 human                ``title``, ``aliases``, ``tags``, ``collection``
 ===================  ==========================================================
@@ -40,7 +41,7 @@ import yaml
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from mycelium.sdk.identity import IdentityError, decode_ulid
-from mycelium.sdk.types import ProvenanceOrigin, SourceTrust, Ulid
+from mycelium.sdk.types import ProvenanceOrigin, Sha256Digest, SourceTrust, Ulid
 
 __all__ = [
     "DELIMITER",
@@ -69,6 +70,7 @@ FIELD_OWNERS: Final[dict[str, str]] = {
     "mycelium_id": "mycelium build",
     "origin": "mycelium ingest",
     "source": "mycelium ingest",
+    "source_digest": "mycelium ingest",
     "source_trust": "mycelium ingest",
     "generated_by": "mycelium ingest",
     "verified_by": "mycelium verify",
@@ -103,6 +105,17 @@ class Frontmatter(BaseModel):
     collection: str | None = None
     origin: ProvenanceOrigin | None = None
     source: str | None = None
+    source_digest: Sha256Digest | None = None
+    """The tier-1 blob this document was projected from (ADR-0034).
+
+    Spec 03 §3's frontmatter table stops at `source`, while the same section's
+    document record wants `provenance.source_digest` and `fidelity_report` filled
+    for an ingested document. Something has to carry the link across, and a
+    digest is the smallest thing that can: from it the compiler finds the custody
+    record, and from the record the connector identity, the acquisition time and
+    the fidelity report. One key rather than four, and the four cannot drift from
+    the evidence they describe."""
+
     source_trust: SourceTrust | None = None
     generated_by: str | None = None
     verified_by: str | None = None
@@ -320,6 +333,24 @@ def _as_json_value(value: object) -> object:
     return _UNREPRESENTABLE
 
 
+_DIGEST: Final = re.compile(r"\Asha256:[0-9a-f]{64}\Z")
+
+
+def _as_digest(value: object, warnings: list[str]) -> str | None:
+    """Read `source_digest`, warning on a malformed one rather than raising.
+
+    Lopsided the same way every non-identity field is (see the module docstring):
+    a bad digest costs the document its provenance link, which `mycelium doctor`
+    can report, and is not worth refusing to compile a document for.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str) and _DIGEST.match(value):
+        return value
+    warnings.append("source_digest: dropped, not a sha256:<64 hex> digest")
+    return None
+
+
 def parse_frontmatter(text: str) -> FrontmatterResult:
     """Parse a document's frontmatter block and return it with the remaining body."""
     block, body, offset = split_frontmatter(text)
@@ -363,6 +394,7 @@ def parse_frontmatter(text: str) -> FrontmatterResult:
         collection=_as_string(fields.get("collection"), "collection", warnings),
         origin=_as_enum(fields.get("origin"), "origin", ProvenanceOrigin, warnings),
         source=_as_string(fields.get("source"), "source", warnings),
+        source_digest=_as_digest(fields.get("source_digest"), warnings),
         source_trust=_as_enum(fields.get("source_trust"), "source_trust", SourceTrust, warnings),
         generated_by=_as_string(fields.get("generated_by"), "generated_by", warnings),
         verified_by=_as_string(fields.get("verified_by"), "verified_by", warnings),

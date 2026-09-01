@@ -25,7 +25,7 @@ from dataclasses import dataclass, field
 from mycelium.ingest.errors import ParseError
 from mycelium.ingest.safety import DEFAULT_LIMITS, Limits
 from mycelium.sdk.identity import normalize_text
-from mycelium.sdk.types import KirNode, NodeKind, SrcLocator
+from mycelium.sdk.types import KirNode, NodeKind, OpaqueDisposition, SrcLocator
 
 __all__ = ["KirBuilder"]
 
@@ -93,6 +93,35 @@ class KirBuilder:
             self._headings.pop()
         node_id = self.add(NodeKind.HEADING, text=text, level=level, src=src)
         self._headings.append((level, node_id))
+        return node_id
+
+    def opaque(
+        self,
+        note: str,
+        *,
+        disposition: OpaqueDisposition,
+        parent: str | None = None,
+        text: str | None = None,
+        media_type: str | None = None,
+        src: SrcLocator | None = None,
+    ) -> str:
+        """Record an element KIR cannot model, with what became of it (ADR-0034).
+
+        Shared rather than per-adapter because the fidelity report reads
+        `variant` back out of these nodes: an adapter that invented its own
+        spelling would silently drop out of the loss accounting, which is the one
+        thing the M4 exit gate forbids.
+        """
+        node_id = self.add(
+            NodeKind.OPAQUE,
+            parent=parent,
+            text=text,
+            src=src,
+            media_type=media_type,
+            note=note,
+            variant=disposition.value,
+        )
+        self.warn(f"{note} kept as an opaque node ({disposition.value})")
         return node_id
 
     @property

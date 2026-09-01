@@ -54,6 +54,7 @@ __all__ = [
     "EvalCase",
     "EvalRunManifest",
     "EvalSlice",
+    "FidelityReport",
     "GateResult",
     "JudgedAnchor",
     "MetricSummary",
@@ -63,6 +64,7 @@ __all__ = [
     "KirDocument",
     "KirNode",
     "NodeKind",
+    "OpaqueDisposition",
     "Provenance",
     "ProvenanceOrigin",
     "Record",
@@ -227,6 +229,23 @@ class NodeKind(StrEnum):
     FOOTNOTE = "footnote"
     QUOTE = "quote"
     OPAQUE = "opaque"
+
+
+class OpaqueDisposition(StrEnum):
+    """What happened to the source element an ``opaque`` node stands for (ADR-0034).
+
+    KIR models an element or it does not; when it does not, the element still has
+    to be *accounted for*, and these are the only two honest answers. There is no
+    third value for "dropped by policy": a declared policy is a property of the
+    parser, recorded in the KIR document's warnings, not of a node that would then
+    have to be emitted for something the adapter decided not to represent.
+    """
+
+    DEGRADED = "degraded"
+    """Recorded with its payload intact — visible loss of *structure*, not content."""
+
+    LOST = "lost"
+    """Its content did not survive. This is what the loss budget counts."""
 
 
 class ChunkKind(StrEnum):
@@ -419,13 +438,18 @@ _KIND_FIELDS: Final[dict[NodeKind, frozenset[str]]] = {
     NodeKind.IMAGE: frozenset({"target", "title"}),
     NodeKind.WIKILINK: frozenset({"target"}),
     NodeKind.EMBED: frozenset({"target"}),
-    NodeKind.OPAQUE: frozenset({"media_type", "blob", "note"}),
+    NodeKind.OPAQUE: frozenset({"media_type", "blob", "note", "variant"}),
 }
 """Which optional fields each kind may carry; every other kind takes none.
 
 The vocabulary is closed (spec 03 §4) but the per-kind field sets are not stated,
 so they are declared here and enforced — adding one is a deliberate, reviewable
 schema event rather than a field quietly appearing on a node kind (ADR-0006).
+
+`variant` on `opaque` is one such event, made at roadmap 4.3 (ADR-0034): the
+fidelity report has to distinguish an element whose payload survived from one
+whose did not, and reading that out of a free-text `note` would be a
+stringly-typed contract. The values are :class:`OpaqueDisposition`.
 """
 
 _KIND_SPECIFIC: Final[frozenset[str]] = frozenset(
@@ -592,6 +616,59 @@ class Entity(Record):
 
 
 # ---------------------------------------------------------------------------
+# Fidelity report (tier 1; spec 02 §5)
+# ---------------------------------------------------------------------------
+
+
+class FidelityReport(Record):
+    """What an ingested document lost on the way to its projection (ADR-0034).
+
+    A **pure function of the KIR document** it describes, which is the property
+    that makes it worth storing: anyone holding the KIR blob can recompute the
+    report and check it against the digest the document record carries. Nothing
+    here is a judgement the parser made and forgot.
+
+    ``loss`` is the ratio ``[ingest] max_failed_elements`` bounds — deliberately
+    *not* every kind of imperfection. Structure simplified but content preserved
+    is `degraded`, and a parser's declared policies are in `warnings`; neither is
+    counted, because a budget that fires on a document that lost nothing teaches
+    an operator to raise the budget.
+    """
+
+    schema_version: Literal["mycelium/fidelity/v0"] = "mycelium/fidelity/v0"
+    doc_id: Ulid
+    source_digest: Sha256Digest
+    kir_digest: Sha256Digest
+    parser: NonEmptyStr
+    parser_version: NonEmptyStr
+    elements: NonNegativeInt = Field(
+        description="Source elements accounted for: every KIR node that stands for one."
+    )
+    represented: NonNegativeInt
+    degraded: NonNegativeInt
+    lost: NonNegativeInt
+    warnings: tuple[str, ...] = ()
+    """The KIR document's own warnings, verbatim — where a parser's declared
+    policies and simplifications are already recorded."""
+
+    @property
+    def loss(self) -> float:
+        """Fraction of accounted elements whose content did not survive."""
+        return self.lost / self.elements if self.elements else 0.0
+
+    @property
+    def complete(self) -> bool:
+        """Whether every element survived *whole* — no loss and no simplification.
+
+        Distinct from ``loss == 0`` on purpose: a document whose raw blocks were
+        kept as literal text lost no content and is still not a faithful
+        round-trip, and the two questions have different answers for a reader
+        deciding whether to trust the projection or go back to the original.
+        """
+        return self.lost == 0 and self.degraded == 0
+
+
+# ---------------------------------------------------------------------------
 # Custody record (tier 1; spec 02 §§3-5)
 # ---------------------------------------------------------------------------
 
@@ -604,6 +681,9 @@ class CustodyKind(StrEnum):
 
     KIR = "kir"
     """The KIR document compiled from an original, in canonical JSON."""
+
+    FIDELITY = "fidelity"
+    """The fidelity report of one projection, in canonical JSON (spec 02 §5)."""
 
 
 class CustodyRecord(Record):
@@ -638,6 +718,9 @@ class CustodyRecord(Record):
     )
     kir_digest: Sha256Digest | None = Field(
         default=None, description="The KIR compiled from this original, for `original`."
+    )
+    fidelity_digest: Sha256Digest | None = Field(
+        default=None, description="The fidelity report of this original's projection."
     )
     first_seen: UtcDatetime
 

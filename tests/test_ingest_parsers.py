@@ -264,7 +264,10 @@ def test_an_unknown_pandoc_construct_becomes_opaque_without_the_engine() -> None
     # A structured construct has no literal text to keep, so it travels as its
     # name and its position — which is what "makes loss visible" asks for.
     assert builder.nodes[0].text is None
-    assert builder.warnings == ["pandoc construct SomeFutureBlock kept as an opaque node"]
+    # The warning names the construct *and* its disposition, because the fidelity
+    # report reads the disposition back out of the node (ADR-0034).
+    assert builder.warnings == ["pandoc SomeFutureBlock kept as an opaque node (lost)"]
+    assert builder.nodes[0].variant == "lost"
 
 
 @needs_pandoc
