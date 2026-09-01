@@ -22,7 +22,7 @@ from mycelium.__about__ import __version__
 from mycelium.build.lock import DEFAULT_STALE_AFTER_S, LOCK_FILENAME, BuildLock
 from mycelium.build.publish import manifest_path, read_current
 from mycelium.config import CONFIG_FILENAME, ConfigError, load_config
-from mycelium.ingest import probe
+from mycelium.ingest import Custody, CustodyError, probe
 from mycelium.store import STORE_DIRNAME, STORE_FILENAME, SqliteStore, StoreError
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
 
@@ -156,6 +156,32 @@ def _check_parsers(root: Path) -> Check:
     )
 
 
+def _check_custody(mycelium_dir: Path) -> Check:
+    """Re-hash tier-1 evidence and report what no longer holds (ADR-0033).
+
+    The build cache heals itself by discarding a blob that fails its own digest;
+    custody must not, because a corrupt original is the loss of the only copy of
+    something a citation quotes. So it is reported here, loudly, and the operator
+    decides — re-ingest from the source, or accept that the evidence is gone.
+    """
+    custody = Custody(mycelium_dir)
+    if not custody.root.is_dir():
+        return Check("custody", "ok", "nothing ingested yet")
+    try:
+        integrity = custody.verify()
+    except CustodyError as error:
+        return Check("custody", "fail", str(error))
+    summary = f"{integrity.blobs} tier-1 blob(s), {integrity.bytes} bytes"
+    if integrity.healthy:
+        return Check("custody", "ok", f"{summary}; every digest verifies")
+    problems = []
+    if integrity.corrupt:
+        problems.append(f"{len(integrity.corrupt)} blob(s) no longer match their own digest")
+    if integrity.orphaned_records:
+        problems.append(f"{len(integrity.orphaned_records)} record(s) whose blob is gone")
+    return Check("custody", "fail", f"{summary}; " + ", ".join(problems))
+
+
 def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> list[Check]:
     """Run every diagnostic against the repository at `root`."""
     mycelium_dir = root / STORE_DIRNAME
@@ -167,6 +193,7 @@ def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> lis
         ),
         _check_config(root),
         _check_parsers(root),
+        _check_custody(mycelium_dir),
     ]
 
     if not (mycelium_dir / STORE_FILENAME).exists():

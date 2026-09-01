@@ -165,10 +165,11 @@ jobs:
         run: uv run pytest -m determinism -q
 
   # ---------------------------------------------------------------------------
-  # Roadmap 4.1 — the ingestion adapters, run against real engines. The suite also
-  # runs inside the build matrix (which is where cross-platform subprocess
-  # behaviour is proven); this job exists so "did docling and pandoc actually
-  # parse something" is legible by name in the checks list, the same reason the
+  # Roadmap 4.1-4.2 — the ingestion lane, run against real engines and real hostile
+  # files. The suite also runs inside the build matrix (which is where
+  # cross-platform subprocess behaviour is proven); this job exists so "did
+  # docling and pandoc actually parse something, and did the hostile suite still
+  # fail fast" is legible by name in the checks list, the same reason the
   # determinism job exists.
   # ---------------------------------------------------------------------------
   ingest:
@@ -189,10 +190,10 @@ jobs:
         run: uv sync --all-extras --dev
       - name: Install pandoc
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends pandoc
-      - name: Connector, registry and the four parsers
+      - name: Connector, registry, parsers, custody and the hostile suite
         shell: bash
         run: |
-          uv run pytest -q             tests/test_sdk_protocols.py             tests/test_ingest_media.py             tests/test_ingest_connector.py             tests/test_ingest_registry.py             tests/test_ingest_parsers.py
+          uv run pytest -q             tests/test_sdk_protocols.py             tests/test_ingest_media.py             tests/test_ingest_connector.py             tests/test_ingest_registry.py             tests/test_ingest_parsers.py             tests/test_ingest_custody.py             tests/test_ingest_pipeline.py             tests/test_ingest_hostile.py
 
   # ---------------------------------------------------------------------------
   # Gates G1-G6 — the evaluation gates spec 04 §7.3 makes CI-enforced (roadmap 3.7).

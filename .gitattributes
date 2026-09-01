@@ -17,3 +17,9 @@ tests/fixtures/ingest/*.html text eol=lf
 tests/fixtures/ingest/*.rst text eol=lf
 tests/fixtures/ingest/*.docx binary
 tests/fixtures/ingest/*.pdf binary
+
+# The hostile suite is *all* binary, text-looking members included: a fixture is
+# hostile because of its exact bytes — a nesting depth, a compression ratio, a
+# truncation point — and a line-ending filter rewriting one on checkout would
+# quietly weaken the test that guards against it (roadmap 4.2).
+tests/fixtures/ingest/hostile/* binary

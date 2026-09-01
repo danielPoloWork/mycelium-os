@@ -19,6 +19,7 @@ from typing import Any, Final
 
 from mycelium.sdk.types import (
     Chunk,
+    CustodyRecord,
     Document,
     Edge,
     Entity,
@@ -50,6 +51,7 @@ RECORD_MODELS: Mapping[str, type[Record]] = {
     "edge": Edge,
     "entity": Entity,
     "manifest": SnapshotManifest,
+    "custody": CustodyRecord,
     "eval-case": EvalCase,
     "eval-run": EvalRunManifest,
 }
@@ -63,7 +65,8 @@ SNAPSHOT_ARTIFACT_CLASSES: Final = ("document", "chunk", "kir", "edge")
 Narrower than :data:`RECORD_MODELS` on purpose: a manifest describes what *this
 snapshot published*, not every contract the project exports. `symbol` and `entity`
 join it when their stages exist (roadmap 5.1, 5.4); evaluation records never do —
-an eval run is not a snapshot artifact.
+an eval run is not a snapshot artifact, and neither is a custody record, which
+outlives every snapshot that ever referenced it (ADR-0033).
 """
 
 

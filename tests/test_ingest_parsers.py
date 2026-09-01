@@ -243,8 +243,13 @@ def test_pandoc_keeps_raw_output_as_an_opaque_node() -> None:
     opaque = [node for node in document.nodes if node.kind is NodeKind.OPAQUE]
     assert len(opaque) == 1
     assert opaque[0].note == "pandoc RawBlock"
-    assert opaque[0].media_type == "application/x-pandoc-ast+json"
-    assert opaque[0].blob is not None, "the element is addressable, not merely counted"
+    # The payload is literal source text, so it is kept as text — the treatment
+    # ADR-0006 already gives raw HTML in authored Markdown. `blob` stays unset:
+    # a parser has no custody handle, and a digest naming bytes nobody wrote is
+    # a claim the reader cannot follow (ADR-0033).
+    assert opaque[0].media_type == "text/plain"
+    assert opaque[0].text == "<marquee>legacy</marquee>"
+    assert opaque[0].blob is None
     assert any("RawBlock" in warning for warning in document.warnings)
     assert texts(document, NodeKind.PARAGRAPH) == ["text"], "the rest is untouched"
 
@@ -256,6 +261,9 @@ def test_an_unknown_pandoc_construct_becomes_opaque_without_the_engine() -> None
     pandoc_parser._block(builder, {"t": "SomeFutureBlock", "c": ["x"]}, parent=None)
     assert [node.kind for node in builder.nodes] == [NodeKind.OPAQUE]
     assert builder.nodes[0].note == "pandoc SomeFutureBlock"
+    # A structured construct has no literal text to keep, so it travels as its
+    # name and its position — which is what "makes loss visible" asks for.
+    assert builder.nodes[0].text is None
     assert builder.warnings == ["pandoc construct SomeFutureBlock kept as an opaque node"]
 
 

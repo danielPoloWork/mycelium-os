@@ -30,6 +30,7 @@ __all__ = [
     "JOURNAL_FILENAME",
     "SNAPSHOTS_DIRNAME",
     "append_journal",
+    "atomic_write_bytes",
     "atomic_write_text",
     "manifest_path",
     "read_current",
@@ -44,20 +45,30 @@ JOURNAL_FILENAME: Final = "journal.jsonl"
 
 
 def atomic_write_text(path: Path, text: str) -> None:
-    """Write `text` to `path` through a same-directory temp file and rename.
+    """Write `text` to `path` through a same-directory temp file and rename."""
+    atomic_write_bytes(path, text.encode("utf-8"))
+
+
+def atomic_write_bytes(path: Path, data: bytes) -> None:
+    """Write `data` to `path` through a same-directory temp file and rename.
 
     The temp file lives beside the target (rename is only atomic within one
     filesystem), is fsynced before the rename (so the *content* is durable
     before the *name* appears), and is removed on failure.
+
+    Bytes rather than text is the primitive because tier-1 custody stores
+    acquired originals — a DOCX, a PDF — and those must land byte-for-byte
+    (roadmap 4.2). `atomic_write_text` is the UTF-8 wrapper over it.
     """
     tmp = path.with_name(path.name + ".tmp")
     # O_BINARY matters: without it, Windows' CRT opens in text mode and rewrites
-    # LF as CRLF — which would make manifest bytes platform-dependent (G6).
+    # LF as CRLF — which would make manifest bytes platform-dependent (G6), and
+    # would corrupt every acquired original that happens to contain 0x0A.
     flags = os.O_CREAT | os.O_WRONLY | os.O_TRUNC | getattr(os, "O_BINARY", 0)
     descriptor = os.open(tmp, flags)
     try:
         try:
-            os.write(descriptor, text.encode("utf-8"))
+            os.write(descriptor, data)
             os.fsync(descriptor)
         finally:
             os.close(descriptor)

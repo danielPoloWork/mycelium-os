@@ -60,6 +60,9 @@ Pandoc reads three dozen more formats. Each entry here is one this repository ha
 a fixture for, so widening the set is a line plus a fixture rather than an
 untested claim."""
 
+_MAX_DEPTH: Final = 256
+"""How deeply the block walk will descend, matching `safety.Limits.max_depth`."""
+
 _MIN_MAJOR: Final = 3
 """``--sandbox`` arrived in pandoc 3. Refusing 2.x is refusing to run an untrusted
 document through an unfenced converter."""
@@ -69,6 +72,9 @@ _INLINE_MARKUP: Final = frozenset(
 )
 _INLINE_WRAPPED: Final = frozenset({"Quoted", "Span", "Cite"})
 _WHITESPACE: Final = {"Space": " ", "SoftBreak": "\n", "LineBreak": "\n"}
+_RAW_MEDIA: Final = {"RawBlock": "text/plain", "RawInline": "text/plain"}
+"""An opaque node's media type: the raw constructs carry literal source text; a
+structured constructor we could not map is described by its AST shape."""
 
 
 class PandocParser:
@@ -98,8 +104,12 @@ class PandocParser:
             raise ParseError(msg)
 
         builder = KirBuilder()
-        for block in blocks:
-            _block(builder, block, parent=None)
+        try:
+            for block in blocks:
+                _block(builder, block, parent=None)
+        except RecursionError as error:  # pragma: no cover - _MAX_DEPTH bites first
+            msg = f"{blob.source_uri}: pandoc's document tree is nested too deeply to walk"
+            raise ParseError(msg) from error
         return KirDocument(
             doc_id=doc_id,
             source_digest=digest_bytes(blob.data),
@@ -135,6 +145,14 @@ class PandocParser:
         except json.JSONDecodeError as error:
             msg = f"{blob.source_uri}: pandoc emitted output that is not JSON - {error}"
             raise ParseError(msg) from error
+        except RecursionError as error:
+            # Measured: HTML nested 1 000 elements deep blows the decoder's stack
+            # (ADR-0033). `mycelium.ingest.safety` refuses such a document before
+            # pandoc is ever run, so reaching here means a format whose depth the
+            # pre-scan does not bound — and a hostile document must still fail as
+            # one document, never as an unhandled exception.
+            msg = f"{blob.source_uri}: pandoc's output is nested too deeply to decode"
+            raise ParseError(msg) from error
         if not isinstance(parsed, dict):
             msg = f"{blob.source_uri}: pandoc emitted {type(parsed).__name__}, not a document"
             raise ParseError(msg)
@@ -160,12 +178,21 @@ def _contents(node: object) -> Any:
     return node.get("c") if isinstance(node, dict) else None
 
 
-def _block(builder: KirBuilder, block: object, *, parent: str | None) -> None:  # noqa: C901
+def _block(  # noqa: C901
+    builder: KirBuilder, block: object, *, parent: str | None, depth: int = 0
+) -> None:
     """Emit one pandoc block.
 
     One branch per constructor, and the final fall-through is an opaque node: a
     construct this adapter does not know is *recorded*, never skipped.
+
+    `depth` is the adapter's own bound on the walk. Relying on the interpreter's
+    stack limit would make the failure a `RecursionError` from an arbitrary frame
+    instead of a document-level refusal that names what was wrong (ADR-0033).
     """
+    if depth > _MAX_DEPTH:
+        msg = f"pandoc document nests deeper than {_MAX_DEPTH} blocks"
+        raise ParseError(msg)
     tag = _tag(block)
     content = _contents(block)
 
@@ -197,33 +224,33 @@ def _block(builder: KirBuilder, block: object, *, parent: str | None) -> None:  
             NodeKind.LIST, parent=parent, variant="ordered" if ordered else "bullet"
         )
         for item in items:
-            _list_item(builder, item, parent=list_id)
+            _list_item(builder, item, parent=list_id, depth=depth + 1)
         return
 
     if tag == "DefinitionList":
-        _definition_list(builder, content, parent=parent)
+        _definition_list(builder, content, parent=parent, depth=depth)
         return
 
     if tag == "BlockQuote":
         quote_id = builder.add(NodeKind.QUOTE, parent=parent)
         for child in content:
-            _block(builder, child, parent=quote_id)
+            _block(builder, child, parent=quote_id, depth=depth + 1)
         return
 
     if tag == "Table":
-        _table(builder, content, parent=parent)
+        _table(builder, content, parent=parent, depth=depth)
         return
 
     if tag == "Figure":
         _attr, caption, blocks = content
         for child in blocks:
-            _block(builder, child, parent=parent)
-        _caption(builder, caption, parent=parent)
+            _block(builder, child, parent=parent, depth=depth + 1)
+        _caption(builder, caption, parent=parent, depth=depth)
         return
 
     if tag == "Div":
         for child in content[1]:
-            _block(builder, child, parent=parent)
+            _block(builder, child, parent=parent, depth=depth + 1)
         return
 
     if tag == "LineBlock":
@@ -238,7 +265,7 @@ def _block(builder: KirBuilder, block: object, *, parent: str | None) -> None:  
     _opaque(builder, tag, content, parent=parent)
 
 
-def _list_item(builder: KirBuilder, item: object, *, parent: str) -> None:
+def _list_item(builder: KirBuilder, item: object, *, parent: str, depth: int = 0) -> None:
     """Emit a list item; its leading paragraph becomes the item's own text."""
     blocks = list(item) if isinstance(item, list) else []
     text = ""
@@ -250,10 +277,12 @@ def _list_item(builder: KirBuilder, item: object, *, parent: str) -> None:
     if lead is not None:
         _references(builder, _contents(lead), item_id)
     for child in blocks:
-        _block(builder, child, parent=item_id)
+        _block(builder, child, parent=item_id, depth=depth + 1)
 
 
-def _definition_list(builder: KirBuilder, content: object, *, parent: str | None) -> None:
+def _definition_list(
+    builder: KirBuilder, content: object, *, parent: str | None, depth: int = 0
+) -> None:
     """Emit a definition list as a list, and say what that representation drops.
 
     KIR's list variants are ``bullet`` and ``ordered`` (ADR-0006); a
@@ -271,18 +300,18 @@ def _definition_list(builder: KirBuilder, content: object, *, parent: str | None
         _references(builder, term, item_id)
         for definition in definitions:
             for child in definition:
-                _block(builder, child, parent=item_id)
+                _block(builder, child, parent=item_id, depth=depth + 1)
 
 
-def _caption(builder: KirBuilder, caption: object, *, parent: str | None) -> None:
+def _caption(builder: KirBuilder, caption: object, *, parent: str | None, depth: int = 0) -> None:
     """Emit a table's or figure's caption blocks, which are content like any other."""
     if not isinstance(caption, list) or len(caption) != 2:  # pragma: no cover - fixed shape
         return
     for child in caption[1]:
-        _block(builder, child, parent=parent)
+        _block(builder, child, parent=parent, depth=depth + 1)
 
 
-def _table(builder: KirBuilder, content: Any, *, parent: str | None) -> None:
+def _table(builder: KirBuilder, content: Any, *, parent: str | None, depth: int = 0) -> None:
     """Emit a pandoc Table as table → row → cell, with header rows marked.
 
     The caption is emitted *before* the table rather than inside it: the chunker
@@ -290,7 +319,7 @@ def _table(builder: KirBuilder, content: Any, *, parent: str | None) -> None:
     belongs with the surrounding section, not inside the grid.
     """
     _attr, caption, _colspecs, head, bodies, foot = content
-    _caption(builder, caption, parent=parent)
+    _caption(builder, caption, parent=parent, depth=depth)
     table_id = builder.add(NodeKind.TABLE, parent=parent)
     for row in head[1]:
         _table_row(builder, row, parent=table_id, variant="header")
@@ -319,19 +348,33 @@ def _table_row(builder: KirBuilder, row: object, *, parent: str, variant: str) -
 def _opaque(builder: KirBuilder, tag: str, content: object, *, parent: str | None) -> None:
     """Record an unmappable construct as an opaque node (spec 03 §4).
 
-    The node keeps the constructor's name and a digest of its serialized content,
-    so a fidelity report can count it, point at it, and recognise the same
-    element across two builds — without KIR pretending to model it.
+    The node keeps the constructor's name in `note` and, when pandoc's payload is
+    literal source text — a `RawBlock`, a `RawInline` — that text verbatim. This
+    is the same treatment ADR-0006 already gives raw HTML in authored Markdown:
+    kept as text, never interpreted (D-017).
+
+    It deliberately does **not** set `blob`. That field names a payload stored in
+    the CAS, and a parser has no custody handle to store one with; a digest
+    pointing at bytes nobody wrote is a claim the reader cannot follow (ADR-0033).
+    A structured construct therefore travels as its name and its position — which
+    is what "the fidelity report makes loss visible" asks for (spec 02 §5).
     """
-    payload = json.dumps({"t": tag, "c": content}, sort_keys=True, ensure_ascii=False)
+    raw = _raw_text(tag, content)
     builder.add(
         NodeKind.OPAQUE,
         parent=parent,
-        media_type="application/x-pandoc-ast+json",
-        blob=digest_bytes(payload.encode("utf-8")),
+        text=raw,
+        media_type=_RAW_MEDIA.get(tag, "application/x-pandoc-ast+json"),
         note=f"pandoc {tag or 'unknown'}",
     )
     builder.warn(f"pandoc construct {tag or 'unknown'} kept as an opaque node")
+
+
+def _raw_text(tag: str, content: object) -> str | None:
+    """The literal payload of a raw construct, or ``None`` for a structured one."""
+    if tag in {"RawBlock", "RawInline"} and isinstance(content, list) and len(content) == 2:
+        return str(content[1])
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -385,7 +428,7 @@ def _references(builder: KirBuilder, inlines: object, parent: str | None) -> Non
         elif tag == "Note":
             note_id = builder.add(NodeKind.FOOTNOTE, parent=parent)
             for block in content:
-                _block(builder, block, parent=note_id)
+                _block(builder, block, parent=note_id, depth=1)
         elif tag == "RawInline":
             _opaque(builder, "RawInline", content, parent=parent)
         elif tag in _INLINE_MARKUP:

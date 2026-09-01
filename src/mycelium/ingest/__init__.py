@@ -15,18 +15,25 @@ is both halves of it plus the resolution that pins which implementation runs:
   markdown-it (D-007).
 - :mod:`mycelium.ingest.registry` — pinned, ordered resolution; never "best
   available" (spec 05 §4.2).
+- :mod:`mycelium.ingest.safety` — the bounds hostile input is refused by, before
+  an engine is asked to read it.
+- :mod:`mycelium.ingest.custody` — tier-1 custody: the acquired original and its
+  KIR, kept, and never garbage-collected.
+- :mod:`mycelium.ingest.pipeline` — the evidence lane end to end: acquire, store,
+  guard, parse, store.
 - :mod:`mycelium.ingest.errors` — the failure taxonomy, because a custody failure
   and a parse failure are answered differently.
 
-What this milestone deliberately does **not** do: write blobs to the CAS
-(roadmap 4.2), project evidence Markdown with provenance frontmatter (4.3), or
-scan for secrets and quarantine (4.6). A KIR document comes back from here; where
-it is stored, and what is written from it, belongs to the items that own those
-questions.
+What this package deliberately does **not** do yet: project evidence Markdown
+with provenance frontmatter and fidelity reports (roadmap 4.3), scan for secrets,
+or decide what happens to a document that fails (4.6). `ingest_source` raises a
+typed error and leaves the decision to its caller.
 """
 
+from mycelium.ingest.custody import Custody, CustodyIntegrity, custody_root
 from mycelium.ingest.errors import (
     ConnectorError,
+    CustodyError,
     IngestError,
     ParseError,
     PluginError,
@@ -36,6 +43,7 @@ from mycelium.ingest.errors import (
     UnsupportedMediaTypeError,
 )
 from mycelium.ingest.media import EXTENSIONS, MEDIA_TYPES, MediaTypeClaim, classify
+from mycelium.ingest.pipeline import Ingested, encode_kir, ingest_source
 from mycelium.ingest.registry import (
     BUILTIN_CONNECTORS,
     BUILTIN_PARSERS,
@@ -44,6 +52,7 @@ from mycelium.ingest.registry import (
     Registry,
     probe,
 )
+from mycelium.ingest.safety import DEFAULT_LIMITS, Limits, guard
 
 __all__ = [
     "BUILTIN_CONNECTORS",
@@ -51,8 +60,14 @@ __all__ = [
     "ENTRY_POINT_GROUP",
     "EXTENSIONS",
     "MEDIA_TYPES",
+    "DEFAULT_LIMITS",
     "ConnectorError",
+    "Custody",
+    "CustodyError",
+    "CustodyIntegrity",
     "IngestError",
+    "Ingested",
+    "Limits",
     "MediaTypeClaim",
     "ParseError",
     "PluginError",
@@ -63,5 +78,9 @@ __all__ = [
     "UnknownPluginError",
     "UnsupportedMediaTypeError",
     "classify",
+    "custody_root",
+    "encode_kir",
+    "guard",
+    "ingest_source",
     "probe",
 ]

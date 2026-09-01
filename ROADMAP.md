@@ -6,7 +6,7 @@ its section with a fresh `<milestone>.<task>` number; never renumber.
 
 - **Versioning start:** pre-1.0 milestone-driven.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-09-01 — four engines, one boundary](docs/journal/2026/09/2026-09-01-ingestion-protocols.md).
+  [2026-09-01 — keeping the original](docs/journal/2026/09/2026-09-01-custody-and-hostile-input.md).
 - **Traceability:** every item names the RFC it implements (RFC-0001 for the whole v1
   design of record — [`docs/rfc/0001-mycelium-os-v1.md`](docs/rfc/0001-mycelium-os-v1.md));
   milestone goals are the spec phases' exit gates (`.draft-specs/06`). Sizes are T-shirt
@@ -104,7 +104,7 @@ Incremental single-doc rebuild < 2 s p95 equal to clean output; search p95 < 150
 Zero silent element loss on the fixture corpus; hostile-file suite quarantines without failing the build; an ingestion-heavy corpus joins the eval set
 
 - [x] 4.1 Connector/Parser protocols exercised for real: docling adapter (PDF/DOCX/HTML), pandoc fallback (D-007) (RFC-0001) — size: M · route: standard / medium — delivered by PR #50: `Connector` and `Parser` in `mycelium.sdk.protocols` (contract four of the five that freeze at 1.0), a pinned entry-point registry that refuses rather than falls back, and **four** adapters — `markdown` (markdown-it), `docling` (DOCX/HTML through the declarative backends), `pandoc` (six formats through one `--sandbox`ed binary, read from its JSON AST so nothing is flattened away), `pdf` (PDFium's text layer). The claim the KIR boundary makes is now tested: one document rendered into DOCX, HTML and reStructuredText reaches four engines and comes back with the *same* anchors as its Markdown original. `[ingest]` becomes the first section honoured **by key** (ADR-0014's scheme, one level finer) and `doctor` reports which pinned plugins actually resolve here. ADR-0032 records two deliberate deviations — the `connectors`/`parsers` key split, and leaving docling's ML PDF pipeline out (measured: `torch`, a HuggingFace download on first use against NFR-6, and float kernels in a stage gate G6 compares byte-for-byte); that pipeline is filed as 4.9. The G6 golden is re-blessed with a **one-line** diff — `config_digest` only, every chunk byte-identical
-- [ ] 4.2 CAS custody of originals; KIR v0 hardened on hostile fixtures; opaque-node escape hatch (RFC-0001) — size: M · route: standard / medium
+- [x] 4.2 CAS custody of originals; KIR v0 hardened on hostile fixtures; opaque-node escape hatch (RFC-0001) — size: M · route: standard / medium — delivered by PR #52: tier-1 custody under `.mycelium/cas/originals/` — the acquired original verbatim, the KIR compiled from it, and a `mycelium/custody/v0` record beside each blob rather than in the store, because the store is tier 3 and an index that can be deleted must not be the only thing that knows evidence exists. **`mycelium gc` never sweeps it** and reports how much it kept; the load-bearing test runs the most aggressive sweep the command offers and asserts the cache blob is gone and the evidence is not. `ingest_source` is the lane end to end, and stores the original *before* parsing so a refused file can still be examined. Hardening was **measured, not assumed**: HTML nested 5 000 deep took docling 45 s (50 000: never returned) and made the pandoc adapter raise an uncaught `RecursionError` — both now refused in under 0.1 s by shape-based guards (archive expansion ratio, markup depth, KIR node/text ceilings) with an eight-file committed hostile suite behind a per-file time budget. The opaque escape hatch is completed by *removing* a false claim: 4.1 set `blob` to a digest of bytes nobody stored, so raw payloads now travel as node `text` and `blob` is reserved for a payload actually in custody. No pattern was catalogued for the guards — `Specification` and `Guarded Suspension` are both recorded as **rejected** rather than force-fitted (§8). ADR-0033
 - [ ] 4.3 Evidence-lane projection with provenance frontmatter, fidelity reports, per-document loss budgets (RFC-0001) — size: M · route: standard / medium
 - [ ] 4.4 Synthesis lane via the wiki plugin: LLM-authored candidate docs with mandatory wikilink citations (D-020/D-026) (RFC-0001) — size: L · route: standard / high
 - [ ] 4.5 mycelium verify / promote / demote with grounding gate G7 (D-021) (RFC-0001) — size: M · route: standard / medium
@@ -160,7 +160,7 @@ progress · ✅ done · ❎ N/A.
 |--------|-------------|---------------|--------|
 | §1 | Objective & business context | 2.9, 2.11 | ⏳ |
 | §2 | Functional requirements | 2.2–2.11, 3.1–3.7, 4.1–4.7, 4.9, 5.1–5.6 | 🚧 |
-| §3 | Non-functional requirements | 2.10, 3.7, 6.1, 6.3 | ⏳ |
+| §3 | Non-functional requirements | 2.10, 3.7, 4.2, 6.1, 6.3 | 🚧 |
 | §4 | Logical architecture | 2.7, 3.1 | ✅ |
 | §5 | Public interface | 2.8, 2.9, 3.4, 4.1, 6.1 | 🚧 |
 | §6 | Verification & test strategy | 2.10, 2.11, 3.7, 6.4 | ⏳ |
