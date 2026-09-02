@@ -212,6 +212,38 @@ jobs:
             tests/test_synthesis_provider.py
 
   # ---------------------------------------------------------------------------
+  # The M4 exit gate — zero *silent* element loss on the ingestion corpus
+  # (roadmap 4.7, ADR-0038). Named separately from `ingest / lanes` for the same
+  # reason `determinism / gate G6` is named separately from the build matrix: a
+  # gate a milestone is measured against should be legible by name in the checks
+  # list rather than buried in a suite.
+  #
+  # The declaration half of the corpus is hand-authored, so this job is checking a
+  # claim a person made about a document, not a tool checking itself.
+  # ---------------------------------------------------------------------------
+  inventory:
+    name: inventory / zero silent element loss
+    needs: bootstrap
+    if: needs.bootstrap.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+      - name: Install pandoc
+        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends pandoc
+      - name: Every element declared, accounted for by every route
+        shell: bash
+        run: uv run pytest -m inventory -q
+
+  # ---------------------------------------------------------------------------
   # Gates G1-G6 — the evaluation gates spec 04 §7.3 makes CI-enforced (roadmap 3.7).
   #
   # The repository is its own corpus, so the job compiles it and scores the judged

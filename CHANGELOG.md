@@ -12,6 +12,26 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The ingestion fixture corpus and its element inventories** (roadmap 4.7) — the M4 exit
+  gate, *zero silent element loss*, is now a test. `tests/fixtures/ingest/inventory.json`
+  carries a hand-authored **declaration** of what each source document contains, in KIR node
+  kinds, and the gate compares it with what every engine produced: a difference is either
+  recorded with a reason a reviewer approved, or it fails. This is the half the fidelity
+  report cannot supply — the report is computed from the KIR, so it cannot see an element
+  that never became a node. See
+  [ADR-0038](docs/adr/0038-declare-the-corpus-then-compare-it.md).
+- **`tools/update_ingest_inventories.py`** — re-bless the corpus after an intended parser
+  change. It regenerates only the machine half of the file and never the declarations or
+  the approved deviations, so a regression cannot bless itself.
+- **A new CI job, `inventory / zero silent element loss`**, and a matching `inventory`
+  pytest marker.
+- **New corpus fixtures**: an `elements` family covering the node kinds the original fixture
+  never reached (deeper headings, an ordered list with a nested one, two code blocks, an
+  image, a footnote, a thematic break), a `profile` family for the Markdown-only vocabulary
+  (wikilinks, an embed, tags, a callout), and a two-page PDF whose second page has no text
+  layer — one parse producing both a page locator and an opaque `lost` node.
+- **Roadmap 4.10** — an ingestion-heavy corpus joining the eval set, the third clause of the
+  M4 exit gate, filed with the judging trap ADR-0027 warns about written into it.
 - **Ingestion quarantine** (roadmap 4.6) — a source the evidence lane refuses now leaves a
   `mycelium/quarantine/v0` record under `.mycelium/quarantine/` naming the stage that
   refused it (`acquire`, `dispatch`, `guard`, `parse`, `budget`), the reason, and the
@@ -180,9 +200,6 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 - **`mycelium.layout`** — a leaf module for the CAS layout and the durable-write primitives,
   which the build, snapshot publication and custody all need and none should have to import
   the compiler to get.
-
-### Changed
-
 - **A hostile document can no longer take a build down.** Measured before the fix: HTML
   nested 5 000 deep took docling **45 s** (at 50 000, it never returned), and the same input
   made the pandoc adapter raise an uncaught `RecursionError` out of `json.loads`. Both are
@@ -208,6 +225,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 ### Removed
 
 ### Fixed
+
+- **[BUG-0016](docs/bugs/2026/09/BUG-0016-docx-footnotes-vanish-unreported.md)** — a DOCX
+  footnote's body vanished and the fidelity report called the document complete. Word keeps
+  note bodies in `word/footnotes.xml`, a package part docling's DOCX backend does not read,
+  so the text reached no KIR node and — the report being a pure function of the KIR — nothing
+  downstream could tell that from a document with no footnotes. The adapter now counts the
+  notes the container declares and records each one docling did not surface as an opaque
+  `lost` element, so the loss is counted, charged to `[ingest] max_failed_elements`, and
+  named in the projection. Found by the corpus above, on its first run.
 
 ### Security
 

@@ -112,6 +112,7 @@ markers = [
     "embeddings: needs the local model files; skipped when they are not on this machine",
     "pandoc: needs the pandoc binary on PATH; skipped when it is not installed",
     "llm: calls a real LLM provider; skipped unless a credential is configured",
+    "inventory: the M4 exit gate — zero silent element loss on the ingestion corpus",
 ]
 
 [tool.ruff]

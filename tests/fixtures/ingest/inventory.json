@@ -1,0 +1,367 @@
+{
+  "families": {
+    "elements": {
+      "declared": {
+        "code_block": 2,
+        "footnote": 1,
+        "heading": 6,
+        "image": 1,
+        "list": 2,
+        "list_item": 4,
+        "paragraph": 6,
+        "quote": 1
+      },
+      "note": "Counted by reading corpus/elements.md: six headings (h1, two h2 before the break, h3, h4, and the h2 after it), an image and a footnote in the opening paragraph, an ordered list whose second item holds a nested bullet list (2 lists, 4 items), two fenced code blocks, one blockquote, and six paragraphs - five in the body plus the footnote's own. The thematic break is not an element: it carries no content, and every parser here drops it by declared policy.",
+      "source": "corpus/elements.md"
+    },
+    "profile": {
+      "declared": {
+        "callout": 1,
+        "embed": 1,
+        "heading": 1,
+        "paragraph": 5,
+        "tag_ref": 2,
+        "wikilink": 2
+      },
+      "note": "Counted by reading corpus/profile.md: one heading, four body paragraphs (one of which is the embed on its own line), two wikilinks, one embed, two tags, and a callout carrying one paragraph - five paragraphs in total. Mycelium Markdown Profile syntax (D-022), so this family has one route and makes no claim about the others.",
+      "source": "corpus/profile.md"
+    },
+    "retry-policy": {
+      "declared": {
+        "code_block": 1,
+        "heading": 2,
+        "link": 1,
+        "list": 2,
+        "list_item": 3,
+        "paragraph": 4,
+        "quote": 1,
+        "table": 1,
+        "table_cell": 6,
+        "table_row": 3
+      },
+      "note": "Counted by reading source.md: two headings, a link in the opening paragraph, a bullet list of two items, a definition list of one term (a list with one item, whose definition is a paragraph), a 2x3 table counted with its header row, one fenced code block, one blockquote, and four paragraphs - the opening one, the one under Backoff, the quotation's body and the definition's body.",
+      "source": "source.md"
+    },
+    "text-layer": {
+      "declared": {
+        "paragraph": 1
+      },
+      "note": "A hand-built single-page PDF whose text layer is five lines with no blank line between them, so a faithful text extractor returns one block. There is no structure in the file to find: a PDF's text layer carries characters and positions, not headings (ADR-0032).",
+      "source": "text-layer.pdf"
+    },
+    "two-pages": {
+      "declared": {
+        "opaque": 1,
+        "paragraph": 1
+      },
+      "note": "A hand-built two-page PDF: page one has a text layer (one block, as above), page two has none. The declaration says `opaque` because that is what a faithful parser must produce for a page it cannot read - an element recorded as lost, not a page quietly missing from the output.",
+      "source": "corpus/two-pages.pdf"
+    }
+  },
+  "fixtures": [
+    {
+      "deviations": {
+        "list": "CommonMark has no definition lists and the Mycelium Markdown Profile adds none, so markdown-it reads the term and its definition as the one paragraph they look like: the text survives, the list does not exist.",
+        "list_item": "CommonMark has no definition lists and the Mycelium Markdown Profile adds none, so markdown-it reads the term and its definition as the one paragraph they look like: the text survives, the list does not exist."
+      },
+      "family": "retry-policy",
+      "inventory": {
+        "dispositions": {
+          "degraded": 0,
+          "lost": 0,
+          "represented": 21
+        },
+        "kinds": {
+          "code_block": 1,
+          "heading": 2,
+          "link": 1,
+          "list": 1,
+          "list_item": 2,
+          "paragraph": 4,
+          "quote": 1,
+          "table": 1,
+          "table_cell": 6,
+          "table_row": 3
+        },
+        "opaque": [],
+        "policies": []
+      },
+      "parser": "markdown",
+      "path": "source.md"
+    },
+    {
+      "deviations": {
+        "list": "pandoc's DOCX writer renders a definition list as two styled paragraphs, so there is no list in the file for docling to find; the term and its definition arrive as prose.",
+        "list_item": "pandoc's DOCX writer renders a definition list as two styled paragraphs, so there is no list in the file for docling to find; the term and its definition arrive as prose.",
+        "paragraph": "Same cause as `list`: with the definition list flattened, its term arrives as a paragraph of its own, one more than the source has.",
+        "quote": "pandoc renders a blockquote as a styled paragraph in DOCX and as <blockquote> in HTML, and docling's backends emit the content of both as text: the quotation survives without its wrapper."
+      },
+      "family": "retry-policy",
+      "inventory": {
+        "dispositions": {
+          "degraded": 0,
+          "lost": 0,
+          "represented": 21
+        },
+        "kinds": {
+          "code_block": 1,
+          "heading": 2,
+          "link": 1,
+          "list": 1,
+          "list_item": 2,
+          "paragraph": 5,
+          "table": 1,
+          "table_cell": 6,
+          "table_row": 3
+        },
+        "opaque": [],
+        "policies": []
+      },
+      "parser": "docling",
+      "path": "source.docx"
+    },
+    {
+      "deviations": {
+        "list": "pandoc's HTML writer renders a definition list as <dl>, which docling reads as a list whose item holds a nested list - one list more than the source has.",
+        "list_item": "Same cause as `list`: the definition becomes an item of a nested list rather than a paragraph.",
+        "paragraph": "Same cause as `list`: the definition's body is a list item in HTML, so one paragraph fewer.",
+        "quote": "pandoc renders a blockquote as a styled paragraph in DOCX and as <blockquote> in HTML, and docling's backends emit the content of both as text: the quotation survives without its wrapper."
+      },
+      "family": "retry-policy",
+      "inventory": {
+        "dispositions": {
+          "degraded": 0,
+          "lost": 0,
+          "represented": 23
+        },
+        "kinds": {
+          "code_block": 1,
+          "heading": 2,
+          "link": 1,
+          "list": 3,
+          "list_item": 4,
+          "paragraph": 3,
+          "table": 1,
+          "table_cell": 6,
+          "table_row": 3
+        },
+        "opaque": [],
+        "policies": []
+      },
+      "parser": "docling",
+      "path": "source.html"
+    },
+    {
+      "deviations": {},
+      "family": "retry-policy",
+      "inventory": {
+        "dispositions": {
+          "degraded": 0,
+          "lost": 0,
+          "represented": 23
+        },
+        "kinds": {
+          "code_block": 1,
+          "heading": 2,
+          "link": 1,
+          "list": 2,
+          "list_item": 3,
+          "paragraph": 4,
+          "quote": 1,
+          "table": 1,
+          "table_cell": 6,
+          "table_row": 3
+        },
+        "opaque": [],
+        "policies": [
+          "definition lists became lists; the term/definition roles are lost"
+        ]
+      },
+      "parser": "pandoc",
+      "path": "source.rst"
+    },
+    {
+      "deviations": {},
+      "family": "text-layer",
+      "inventory": {
+        "dispositions": {
+          "degraded": 0,
+          "lost": 0,
+          "represented": 1
+        },
+        "kinds": {
+          "paragraph": 1
+        },
+        "opaque": [],
+        "policies": [
+          "PDF text layer only: no headings, tables or reading-order analysis (ADR-0032)"
+        ]
+      },
+      "parser": "pdf",
+      "path": "text-layer.pdf"
+    },
+    {
+      "deviations": {
+        "footnote": "CommonMark has no footnotes and the Mycelium Markdown Profile adds none, so markdown-it reads the definition line as the paragraph it looks like: the note's text survives, its role does not."
+      },
+      "family": "elements",
+      "inventory": {
+        "dispositions": {
+          "degraded": 0,
+          "lost": 0,
+          "represented": 21
+        },
+        "kinds": {
+          "code_block": 2,
+          "heading": 6,
+          "image": 1,
+          "list": 2,
+          "list_item": 4,
+          "paragraph": 6,
+          "quote": 1
+        },
+        "opaque": [],
+        "policies": []
+      },
+      "parser": "markdown",
+      "path": "corpus/elements.md"
+    },
+    {
+      "deviations": {
+        "code_block": "pandoc's DOCX writer emits both fenced blocks as consecutive SourceCode paragraphs, and docling joins a run of them into one code item; the text of both survives inside it.",
+        "footnote": "docling's DOCX backend does not read word/footnotes.xml, so the note's body never reaches the KIR at all (BUG-0016).",
+        "opaque": "The other half of `footnote`: the adapter counts the notes the container declares and records each one docling did not surface as an opaque `lost` element, so the loss is counted by the fidelity report instead of being invisible (BUG-0016).",
+        "quote": "pandoc renders a blockquote as a styled paragraph in DOCX and as <blockquote> in HTML, and docling's backends emit the content of both as text: the quotation survives without its wrapper."
+      },
+      "family": "elements",
+      "inventory": {
+        "dispositions": {
+          "degraded": 0,
+          "lost": 1,
+          "represented": 19
+        },
+        "kinds": {
+          "code_block": 1,
+          "heading": 6,
+          "image": 1,
+          "list": 2,
+          "list_item": 4,
+          "opaque": 1,
+          "paragraph": 6
+        },
+        "opaque": [
+          "a DOCX note whose body docling's backend does not surface (lost)"
+        ],
+        "policies": [
+          "a DOCX note whose body docling's backend does not surface kept as an opaque node (lost)"
+        ]
+      },
+      "parser": "docling",
+      "path": "corpus/elements.docx"
+    },
+    {
+      "deviations": {
+        "footnote": "pandoc's HTML writer renders a footnote as a trailing <ol> section linked from the body, so docling sees a list rather than a note; the body text survives inside it.",
+        "link": "Same cause as `footnote`: the HTML footnote section adds the reference anchor and the back-link, neither of which exists in the source.",
+        "list": "Same cause as `footnote`: the note's section is an <ol>.",
+        "list_item": "Same cause as `footnote`: the note itself is that list's one item.",
+        "paragraph": "docling emits an image's alternative text as a paragraph of its own, which the source does not have.",
+        "quote": "pandoc renders a blockquote as a styled paragraph in DOCX and as <blockquote> in HTML, and docling's backends emit the content of both as text: the quotation survives without its wrapper."
+      },
+      "family": "elements",
+      "inventory": {
+        "dispositions": {
+          "degraded": 0,
+          "lost": 0,
+          "represented": 23
+        },
+        "kinds": {
+          "code_block": 2,
+          "heading": 6,
+          "image": 1,
+          "link": 2,
+          "list": 3,
+          "list_item": 5,
+          "paragraph": 7
+        },
+        "opaque": [],
+        "policies": []
+      },
+      "parser": "docling",
+      "path": "corpus/elements.html"
+    },
+    {
+      "deviations": {},
+      "family": "elements",
+      "inventory": {
+        "dispositions": {
+          "degraded": 0,
+          "lost": 0,
+          "represented": 22
+        },
+        "kinds": {
+          "code_block": 2,
+          "footnote": 1,
+          "heading": 6,
+          "image": 1,
+          "list": 2,
+          "list_item": 4,
+          "paragraph": 6,
+          "quote": 1
+        },
+        "opaque": [],
+        "policies": []
+      },
+      "parser": "pandoc",
+      "path": "corpus/elements.rst"
+    },
+    {
+      "deviations": {},
+      "family": "profile",
+      "inventory": {
+        "dispositions": {
+          "degraded": 0,
+          "lost": 0,
+          "represented": 7
+        },
+        "kinds": {
+          "callout": 1,
+          "embed": 1,
+          "heading": 1,
+          "paragraph": 5,
+          "tag_ref": 2,
+          "wikilink": 2
+        },
+        "opaque": [],
+        "policies": []
+      },
+      "parser": "markdown",
+      "path": "corpus/profile.md"
+    },
+    {
+      "deviations": {},
+      "family": "two-pages",
+      "inventory": {
+        "dispositions": {
+          "degraded": 0,
+          "lost": 1,
+          "represented": 1
+        },
+        "kinds": {
+          "opaque": 1,
+          "paragraph": 1
+        },
+        "opaque": [
+          "page 2 has no text layer (lost)"
+        ],
+        "policies": [
+          "PDF text layer only: no headings, tables or reading-order analysis (ADR-0032)",
+          "page 2 has no text layer kept as an opaque node (lost)"
+        ]
+      },
+      "parser": "pdf",
+      "path": "corpus/two-pages.pdf"
+    }
+  ],
+  "schema_version": "mycelium/ingest-inventory/v0"
+}
