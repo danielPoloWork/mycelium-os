@@ -1,0 +1,71 @@
+<h1 id="the-uv-auth-cli">The <code>uv auth</code> CLI</h1>
+<p>uv provides a high-level interface for storing and retrieving
+credentials from services.</p>
+<h2 id="logging-in-to-a-service">Logging in to a service</h2>
+<p>To add credentials for service, use the <code>uv auth login</code>
+command:</p>
+<pre class="console"><code>$ uv auth login example.com</code></pre>
+<p>This will prompt for the credentials.</p>
+<p>The credentials can also be provided using the
+<code>--username</code> and <code>--password</code> options, or the
+<code>--token</code> option for services which use a
+<code>__token__</code> or arbitrary username.</p>
+<p>!!! note</p>
+<pre><code>We recommend providing the secret via stdin. Use `-` to indicate the value should be read from
+stdin, e.g., for `--password`:
+
+```console
+$ echo &#39;my-password&#39; | uv auth login example.com --password -
+```
+
+The same pattern can be used with `--token`.</code></pre>
+<p>Once credentials are added, uv will use them for packaging operations
+that require fetching content from the given service. At this time, only
+HTTPS Basic authentication is supported. The credentials will not yet be
+used for Git requests.</p>
+<p>!!! note</p>
+<pre><code>The credentials will not be validated, i.e., incorrect credentials will not fail.</code></pre>
+<h2 id="logging-out-of-a-service">Logging out of a service</h2>
+<p>To remove credentials, use the <code>uv auth logout</code>
+command:</p>
+<pre class="console"><code>$ uv auth logout example.com</code></pre>
+<p>!!! note</p>
+<pre><code>The credentials will not be invalidated with the remote server, i.e., they will only be removed
+from local storage not rendered unusable.</code></pre>
+<h2 id="showing-credentials-for-a-service">Showing credentials for a
+service</h2>
+<p>To show the credential stored for a given URL, use the
+<code>uv auth token</code> command:</p>
+<pre class="console"><code>$ uv auth token example.com</code></pre>
+<p>If a username was used to log in, it will need to be provided as
+well, e.g.:</p>
+<pre class="console"><code>$ uv auth token --username foo example.com</code></pre>
+<h2 id="using-credentials-with-external-tools">Using credentials with
+external tools</h2>
+<p><code>uv auth helper</code> allows tools that support credential
+helpers to request HTTP credentials from uv. At this time, uv supports
+the <a
+href="https://github.com/bazelbuild/proposals/blob/main/designs/2022-06-07-bazel-credential-helpers.md">Bazel
+credential helper protocol</a>.</p>
+<p>The command is intended to be invoked by external tools. It reads a
+JSON request from stdin and writes a JSON response to stdout. When
+matching credentials are available, the response includes the
+<code>Authorization</code> header:</p>
+<pre class="console"><code>$ echo &#39;{&quot;uri&quot;: &quot;https://example.com/path&quot;}&#39; | uv --preview-features auth-helper auth helper --protocol=bazel get
+{&quot;headers&quot;:{&quot;Authorization&quot;:[&quot;Basic ...&quot;]}}</code></pre>
+<p>If no credentials are found, uv will return an empty set of
+headers:</p>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span> <span class="dt">&quot;headers&quot;</span><span class="fu">:</span> <span class="fu">{}</span> <span class="fu">}</span></span></code></pre></div>
+<p>!!! note</p>
+<pre><code>`uv auth helper` is experimental. Use `--preview-features auth-helper` or
+`UV_PREVIEW_FEATURES=auth-helper` to disable the warning.</code></pre>
+<p>The <a href="../../guides/integration/bazel.md">Bazel integration
+guide</a> explains how to use this command with Bazel.</p>
+<h2 id="configuring-the-storage-backend">Configuring the storage
+backend</h2>
+<p>Credentials are persisted to the uv <a
+href="./http.md#the-uv-credentials-store">credentials store</a>.</p>
+<p>By default, credentials are written to a plaintext file. An encrypted
+system-native storage backend can be enabled with
+<code>UV_PREVIEW_FEATURES=native-auth</code>.</p>

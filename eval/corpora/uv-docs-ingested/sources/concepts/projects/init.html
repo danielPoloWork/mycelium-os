@@ -1,0 +1,247 @@
+<h1 id="creating-projects">Creating projects</h1>
+<p>uv supports creating a project with <code>uv init</code>.</p>
+<p>When creating projects, uv supports two basic templates: <a
+href="#applications"><strong>applications</strong></a> and <a
+href="#libraries"><strong>libraries</strong></a>. By default, uv will
+create a project for an application. The <code>--lib</code> flag can be
+used to create a project for a library instead.</p>
+<p>In both cases, uv prefers to define a <a
+href="./config.md#build-systems">build system</a> and place source files
+in a dedicated <code>src/&lt;project_name&gt;/</code> directory.
+Defining a build system allows use of various Python packaging features,
+such as adding command-line entry points, and avoids common points of
+confusion with the Python import system. Use of a build system can be
+disabled by using the <a
+href="#creating-a-project-without-a-build-system"><code>--no-package</code></a>
+or <a href="#creating-a-minimal-project"><code>--bare</code></a>
+options.</p>
+<p>!!! note</p>
+<pre><code>Prior to v0.12, uv did not define a build system for applications by default.</code></pre>
+<h2 id="target-directory">Target directory</h2>
+<p>uv will create a project in the working directory, or, in a target
+directory by providing a name, e.g., <code>uv init foo</code>. The
+working directory can be modified with the <code>--directory</code>
+option, which will cause the target directory path to be interpreted
+relative to the specified working directory. If there’s already a
+project in the target directory, i.e., if there’s a
+<code>pyproject.toml</code>, uv will exit with an error.</p>
+<h2 id="applications">Applications</h2>
+<p>Application projects are suitable for web servers, scripts, and
+command-line interfaces.</p>
+<p>Applications are the default target for <code>uv init</code>, but can
+also be specified with the <code>--app</code> flag:</p>
+<pre class="console"><code>$ uv init example-app</code></pre>
+<p>The source code lives in a <code>src</code> directory with a module
+directory and an <code>__init__.py</code> file:</p>
+<pre class="console"><code>$ tree example-app
+example-app/
+├── .python-version
+├── README.md
+├── pyproject.toml
+└── src
+    └── example_app
+        └── __init__.py</code></pre>
+<p>A <a href="./config.md#build-systems">build system</a> is defined, so
+the project will be installed into the environment:</p>
+<p>```toml title=“pyproject.toml” hl_lines=“12-14” [project] name =
+“example-app” version = “0.1.0” description = “Add your description
+here” readme = “README.md” requires-python = “&gt;=3.11” dependencies =
+[]</p>
+<p>[project.scripts] example-app = “example_app:main”</p>
+<p>[build-system] requires = [“uv_build&gt;=0.12.7,&lt;0.13”]
+build-backend = “uv_build”</p>
+<pre><code>
+!!! tip
+
+    The `--build-backend` option can be used to request an alternative build system.
+
+A [command](./config.md#entry-points) definition is included:
+
+```toml title=&quot;pyproject.toml&quot; hl_lines=&quot;9 10&quot;
+[project]
+name = &quot;example-app&quot;
+version = &quot;0.1.0&quot;
+description = &quot;Add your description here&quot;
+readme = &quot;README.md&quot;
+requires-python = &quot;&gt;=3.11&quot;
+dependencies = []
+
+[project.scripts]
+example-app = &quot;example_app:main&quot;
+
+[build-system]
+requires = [&quot;uv_build&gt;=0.12.7,&lt;0.13&quot;]
+build-backend = &quot;uv_build&quot;</code></pre>
+<p>The command can be executed with <code>uv run</code>:</p>
+<pre class="console"><code>$ cd example-app
+$ uv run example-app
+Hello from example-app!</code></pre>
+<h2 id="libraries">Libraries</h2>
+<p>A library provides functions and objects for other projects to
+consume. Libraries are intended to be built and distributed, e.g., by
+uploading them to PyPI.</p>
+<p>Libraries can be created by using the <code>--lib</code> flag:</p>
+<pre class="console"><code>$ uv init --lib example-lib</code></pre>
+<p>!!! note</p>
+<pre><code>Libraries always require a packaged project.</code></pre>
+<p>A <code>py.typed</code> marker is included to indicate to consumers
+that types can be read from the library:</p>
+<pre class="console"><code>$ tree example-lib
+example-lib/
+├── .python-version
+├── README.md
+├── pyproject.toml
+└── src
+    └── example_lib
+        ├── py.typed
+        └── __init__.py</code></pre>
+<p>!!! note</p>
+<pre><code>A `src` layout is particularly valuable when developing libraries. It ensures that the library
+is isolated from any `python` invocations in the project root and that distributed library code
+is well separated from the rest of the project source.</code></pre>
+<p>A <a href="./config.md#build-systems">build system</a> is defined, so
+the project will be installed into the environment:</p>
+<p>```toml title=“pyproject.toml” hl_lines=“12-14” [project] name =
+“example-lib” version = “0.1.0” description = “Add your description
+here” readme = “README.md” requires-python = “&gt;=3.11” dependencies =
+[]</p>
+<p>[build-system] requires = [“uv_build&gt;=0.12.7,&lt;0.13”]
+build-backend = “uv_build”</p>
+<pre><code>
+!!! tip
+
+    You can select a different build backend template by using `--build-backend` with `hatchling`,
+    `uv_build`, `flit-core`, `pdm-backend`, `setuptools`, `maturin`, or `scikit-build-core`. An
+    alternative backend is required if you want to create a [library with extension modules](#projects-with-extension-modules).
+
+The created module defines a simple API function:
+
+```python title=&quot;__init__.py&quot;
+def hello() -&gt; str:
+    return &quot;Hello from example-lib!&quot;</code></pre>
+<p>And you can import and execute it using <code>uv run</code>:</p>
+<pre class="console"><code>$ cd example-lib
+$ uv run python -c &quot;import example_lib; print(example_lib.hello())&quot;
+Hello from example-lib!</code></pre>
+<h2 id="projects-with-extension-modules">Projects with extension
+modules</h2>
+<p>Most Python projects are “pure Python”, meaning they do not define
+modules in other languages like C, C++, FORTRAN, or Rust. However,
+projects with extension modules are often used for performance sensitive
+code.</p>
+<p>Creating a project with an extension module requires choosing an
+alternative build system. uv supports creating projects with the
+following build systems that support building extension modules:</p>
+<ul>
+<li><a href="https://www.maturin.rs"><code>maturin</code></a> for
+projects with Rust</li>
+<li><a
+href="https://github.com/scikit-build/scikit-build-core"><code>scikit-build-core</code></a>
+for projects with C, C++, FORTRAN, Cython</li>
+</ul>
+<p>Specify the build system with the <code>--build-backend</code>
+flag:</p>
+<pre class="console"><code>$ uv init --build-backend maturin example-ext</code></pre>
+<p>!!! note</p>
+<pre><code>Using `--build-backend` implies `--package`.</code></pre>
+<p>The project contains a <code>Cargo.toml</code> and a
+<code>lib.rs</code> file in addition to the typical Python project
+files:</p>
+<pre class="console"><code>$ tree example-ext
+example-ext/
+├── .python-version
+├── Cargo.toml
+├── README.md
+├── pyproject.toml
+└── src
+    ├── lib.rs
+    └── example_ext
+        ├── __init__.py
+        └── _core.pyi</code></pre>
+<p>!!! note</p>
+<pre><code>If using `scikit-build-core`, you&#39;ll see CMake configuration and a `main.cpp` file instead.</code></pre>
+<p>The Rust library defines a simple function:</p>
+<p>```rust title=“src/lib.rs” use pyo3::prelude::*;</p>
+<p>#[pymodule] mod _core { use pyo3::prelude::*;</p>
+<pre><code>#[pyfunction]
+fn hello_from_bin() -&gt; String {
+    &quot;Hello from example-ext!&quot;.to_string()
+}</code></pre>
+<p>}</p>
+<pre><code>
+And the Python module imports it:
+
+```python title=&quot;src/example_ext/__init__.py&quot;
+from example_ext._core import hello_from_bin
+
+
+def main() -&gt; None:
+    print(hello_from_bin())</code></pre>
+<p>The command can be executed with <code>uv run</code>:</p>
+<pre class="console"><code>$ cd example-ext
+$ uv run example-ext
+Hello from example-ext!</code></pre>
+<p>!!! important</p>
+<pre><code>When creating a project with maturin or scikit-build-core, uv configures [`tool.uv.cache-keys`](../../reference/settings.md#cache-keys)
+to include common source file types. To force a rebuild, e.g. when changing files outside
+`cache-keys` or when not using `cache-keys`, use `--reinstall`.</code></pre>
+<h2 id="creating-a-project-without-a-build-system">Creating a project
+without a build system</h2>
+<p>While defining a build system generally provides a better experience,
+there are some cases in which it can be easier to omit it and define
+your Python modules directly in the top-level directory.</p>
+<p>Use the <code>--no-package</code> flag to disable using a build
+system:</p>
+<pre class="console"><code>$ uv init --no-package example-app</code></pre>
+<p>The project includes a <code>pyproject.toml</code>, a sample file
+(<code>main.py</code>), a readme, and a Python version pin file
+(<code>.python-version</code>).</p>
+<pre class="console"><code>$ tree example-app
+example-app/
+├── .python-version
+├── README.md
+├── main.py
+└── pyproject.toml</code></pre>
+<p>The <code>pyproject.toml</code> includes basic metadata. It does not
+include a build system, it is not a <a
+href="./config.md#project-packaging">package</a>, and will not be
+installed into the environment:</p>
+<p><code>toml title="pyproject.toml" [project] name = "example-app" version = "0.1.0" description = "Add your description here" readme = "README.md" requires-python = "&gt;=3.11" dependencies = []</code></p>
+<p>The sample file defines a <code>main</code> function with some
+standard boilerplate:</p>
+<p>```python title=“main.py” def main(): print(“Hello from
+example-app!”)</p>
+<p>if <strong>name</strong> == “<strong>main</strong>”: main()</p>
+<pre><code>
+Python files can be executed with `uv run`:
+
+```console
+$ cd example-app
+$ uv run main.py
+Hello from example-app!</code></pre>
+<h2 id="creating-a-minimal-project">Creating a minimal project</h2>
+<p>If you only want to create a <code>pyproject.toml</code>, use the
+<code>--bare</code> option:</p>
+<pre class="console"><code>$ uv init example-bare --bare</code></pre>
+<p>uv will skip creating a Python version pin file, a README, and any
+source directories or files. Additionally, uv will not initialize a
+version control system (i.e., <code>git</code>).</p>
+<pre class="console"><code>$ tree example-bare
+example-bare
+└── pyproject.toml</code></pre>
+<p>uv will also not add extra metadata to the
+<code>pyproject.toml</code>, such as the <code>description</code> or
+<code>authors</code>.</p>
+<div class="sourceCode" id="cb25"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[project]</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;example-bare&quot;</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="dt">version</span> <span class="op">=</span> <span class="st">&quot;0.1.0&quot;</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a><span class="dt">requires-python</span> <span class="op">=</span> <span class="st">&quot;&gt;=3.12&quot;</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a><span class="dt">dependencies</span> <span class="op">=</span> <span class="op">[]</span></span></code></pre></div>
+<p>The <code>--bare</code> option can be used with other options like
+<code>--lib</code> or <code>--build-backend</code> — in these cases uv
+will still configure a build system but will not create the expected
+file structure.</p>
+<p>When <code>--bare</code> is used, additional features can still be
+used opt-in:</p>
+<pre class="console"><code>$ uv init example-bare --bare --description &quot;Hello world&quot; --author-from git --vcs git --pin-python</code></pre>

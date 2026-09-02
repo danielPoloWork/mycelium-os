@@ -21,7 +21,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-RELEASE_SETS = ("eval/release.jsonl", "eval/corpora/uv-docs/eval/release.jsonl")
+RELEASE_SETS = (
+    "eval/release.jsonl",
+    "eval/corpora/uv-docs/eval/release.jsonl",
+    "eval/corpora/uv-docs-ingested/eval/release.jsonl",
+)
+"""Every frozen release set. The third one is *derived* — its judgements are carried
+from the second, not written — so an ingestion change may legitimately move it, and
+ingestion is deliberately not in `TUNING_PATHS`. What stays refused is the thing the
+rule is about: moving the retriever and the judgements in one change."""
 
 TUNING_PATHS = (
     "src/mycelium/retrieval.py",

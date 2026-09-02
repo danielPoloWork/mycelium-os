@@ -12,6 +12,27 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **A third judged corpus — the second one, ingested** (roadmap 4.10). The same 81 upstream
+  documents as `eval/corpora/uv-docs`, rendered into DOCX, HTML and PDF and put back through
+  `mycelium ingest`; what is scored is the evidence documents the projector wrote. It is
+  built and gated in CI beside the other two. **Nothing in it is judged**: every query, grade
+  and slice is copied from the frozen `uv-docs` sets and only the anchor is recomputed, so
+  the document is the only thing that varies (ADR-0027's discipline, applied). See
+  [ADR-0039](docs/adr/0039-measure-what-projection-costs.md) and the corpus's own
+  [README](eval/corpora/uv-docs-ingested/README.md).
+- **`tools/measure_projection_cost.py`** — the paired comparison this makes possible: the
+  same cases over Markdown and over its ingested twin, per format, beside the size of the
+  judged passage on each side. **Recall does not move** (R@10, R@50 ±0.000 in every format);
+  where structure survives — DOCX, HTML — the numbers are *identical*; PDF's apparent
+  ranking gain comes with a target 10.6× larger and is refused as an artefact. Reported in
+  CI, never gated.
+- **`tools/build_ingested_corpus.py`** and **`tools/build_ingested_cases.py`** — the corpus
+  and the carried judgements. `build_ingested_corpus.py --check` re-ingests the committed
+  sources and compares, and runs in the `ingest / lanes` CI job.
+- **Roadmap 5.7** — *ingested documents are not in the graph*. Measured here: the Markdown
+  corpus compiles 229 edges, its ingested twin 10. A relative link does not survive rendering
+  and re-projection.
+
 - **The ingestion fixture corpus and its element inventories** (roadmap 4.7) — the M4 exit
   gate, *zero silent element loss*, is now a test. `tests/fixtures/ingest/inventory.json`
   carries a hand-authored **declaration** of what each source document contains, in KIR node
@@ -225,6 +246,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 ### Removed
 
 ### Fixed
+
+- **A projected evidence document no longer records the absolute path of the machine that
+  ingested it** ([BUG-0017](docs/bugs/2026/09/BUG-0017-evidence-frontmatter-carries-an-absolute-path.md)).
+  The file connector stamped `file:///C:/Users/…` into every projection's provenance, so the
+  same source ingested by two people produced two different documents and a local directory
+  layout was published to whoever could read the repository. Sources inside the repository
+  now get a relative-path URI (`file:sources/a.pdf`); anything outside keeps the absolute
+  form. `mycelium ingest --forget` asks the connector for the same key rather than rebuilding
+  it.
 
 - **[BUG-0016](docs/bugs/2026/09/BUG-0016-docx-footnotes-vanish-unreported.md)** — a DOCX
   footnote's body vanished and the fidelity report called the document complete. Word keeps

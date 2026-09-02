@@ -1,0 +1,74 @@
+<h1 id="running-commands-in-projects">Running commands in projects</h1>
+<p>When working on a project, it is installed into the virtual
+environment at <code>.venv</code>. This environment is isolated from the
+current shell by default, so invocations that require the project, e.g.,
+<code>python -c "import example"</code>, will fail. Instead, use
+<code>uv run</code> to run commands in the project environment:</p>
+<pre class="console"><code>$ uv run python -c &quot;import example&quot;</code></pre>
+<p>When using <code>run</code>, uv will ensure that the project
+environment is up-to-date before running the given command.</p>
+<p>The given command can be provided by the project environment or exist
+outside of it, e.g.:</p>
+<pre class="console"><code>$ # Presuming the project provides `example-cli`
+$ uv run example-cli foo
+
+$ # Running a `bash` script that requires the project to be available
+$ uv run bash scripts/foo.sh</code></pre>
+<h2 id="requesting-additional-dependencies">Requesting additional
+dependencies</h2>
+<p>Additional dependencies or different versions of dependencies can be
+requested per invocation.</p>
+<p>The <code>--with</code> option is used to include a dependency for
+the invocation, e.g., to request a different version of
+<code>httpx</code>:</p>
+<pre class="console"><code>$ uv run --with httpx==0.26.0 python -c &quot;import httpx; print(httpx.__version__)&quot;
+0.26.0
+$ uv run --with httpx==0.25.0 python -c &quot;import httpx; print(httpx.__version__)&quot;
+0.25.0</code></pre>
+<p>The requested version will be respected regardless of the project’s
+requirements. For example, even if the project requires
+<code>httpx==0.24.0</code>, the output above would be the same.</p>
+<h2 id="running-scripts">Running scripts</h2>
+<p>Scripts that declare inline metadata are automatically executed in
+environments isolated from the project. See the <a
+href="../../guides/scripts.md#declaring-script-dependencies">scripts
+guide</a> for more details.</p>
+<p>For example, given a script:</p>
+<p>```python title=“example.py” # /// script # dependencies = [ #
+“httpx”, # ] # ///</p>
+<p>import httpx</p>
+<p>resp = httpx.get(“https://peps.python.org/api/peps.json”) data =
+resp.json() print([(k, v[“title”]) for k, v in data.items()][:10])</p>
+<pre><code>
+The invocation `uv run example.py` would run _isolated_ from the project with only the given
+dependencies listed.
+
+## Legacy scripts on Windows
+
+Support is provided for
+[legacy setuptools scripts](https://packaging.python.org/en/latest/guides/distributing-packages-using-setuptools/#scripts).
+These types of scripts are additional files installed by setuptools in `.venv\Scripts`.
+
+Currently only legacy scripts with the `.ps1`, `.cmd`, and `.bat` extensions are supported.
+
+For example, below is an example running a Command Prompt script.
+
+```console
+$ uv run --with nuitka==2.6.7 -- nuitka.cmd --version</code></pre>
+<p>In addition, you don’t need to specify the extension. <code>uv</code>
+will automatically look for files ending in <code>.ps1</code>,
+<code>.cmd</code>, and <code>.bat</code> in that order of execution on
+your behalf.</p>
+<pre class="console"><code>$ uv run --with nuitka==2.6.7 -- nuitka --version</code></pre>
+<h2 id="signal-handling">Signal handling</h2>
+<p>uv does not cede control of the process to the spawned command in
+order to provide better error messages on failure. Consequently, uv is
+responsible for forwarding some signals to the child process the
+requested command runs in.</p>
+<p>On Unix systems, uv will forward most signals (with the exception of
+SIGKILL, SIGCHLD, SIGIO, and SIGPOLL) to the child process. Since
+terminals send SIGINT to the foreground process group on Ctrl-C, uv will
+only forward a SIGINT to the child process if it is sent more than once
+or the child process group differs from uv’s.</p>
+<p>On Windows, these concepts do not apply and uv ignores Ctrl-C events,
+deferring handling to the child process so it can exit cleanly.</p>

@@ -1,0 +1,23 @@
+<h1 id="third-party-services">Third-party services</h1>
+<h2 id="authentication-with-alternative-package-indexes">Authentication
+with alternative package indexes</h2>
+<p>See the dedicated guides for authentication with popular alternative
+Python package indexes:</p>
+<ul>
+<li><a href="../../guides/integration/azure.md">Azure Artifacts</a></li>
+<li><a href="../../guides/integration/google.md">Google Artifact
+Registry</a></li>
+<li><a href="../../guides/integration/aws.md">AWS CodeArtifact</a></li>
+<li><a href="../../guides/integration/jfrog.md">JFrog
+Artifactory</a></li>
+</ul>
+<h2 id="hugging-face-support">Hugging Face support</h2>
+<p>uv supports automatic authentication for the Hugging Face Hub.
+Specifically, if the <code>HF_TOKEN</code> environment variable is set,
+uv will propagate it to requests to <code>huggingface.co</code>.</p>
+<p>This is particularly useful for accessing private scripts in Hugging
+Face Datasets. For example, you can run the following command to execute
+the script <code>main.py</code> script from a private dataset:</p>
+<pre class="console"><code>$ HF_TOKEN=hf_... uv run https://huggingface.co/datasets/&lt;user&gt;/&lt;name&gt;/resolve/&lt;branch&gt;/main.py</code></pre>
+<p>You can disable automatic Hugging Face authentication by setting the
+<code>UV_NO_HF_TOKEN=1</code> environment variable.</p>

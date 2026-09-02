@@ -1,0 +1,59 @@
+<h1 id="building-distributions">Building distributions</h1>
+<p>To distribute your project to others (e.g., to upload it to an index
+like PyPI), you’ll need to build it into a distributable format.</p>
+<p>Python projects are typically distributed as both source
+distributions (sdists) and binary distributions (wheels). The former is
+typically a <code>.tar.gz</code> or <code>.zip</code> file containing
+the project’s source code along with some additional metadata, while the
+latter is a <code>.whl</code> file containing pre-built artifacts that
+can be installed directly.</p>
+<p>!!! important</p>
+<pre><code>When using `uv build`, uv acts as a [build frontend](https://peps.python.org/pep-0517/#terminology-and-goals)
+and only determines the Python version to use and invokes the build backend. The details of
+the builds, such as the included files and the distribution filenames, are determined by the build
+backend, as defined in [`[build-system]`](./config.md#build-systems). Information about build
+configuration can be found in the respective tool&#39;s documentation.</code></pre>
+<h2 id="using-uv-build">Using <code>uv build</code></h2>
+<p><code>uv build</code> can be used to build both source distributions
+and binary distributions for your project. By default,
+<code>uv build</code> will build the project in the current directory,
+and place the built artifacts in a <code>dist/</code> subdirectory:</p>
+<pre class="console"><code>$ uv build
+$ ls dist/
+example-0.1.0-py3-none-any.whl
+example-0.1.0.tar.gz</code></pre>
+<p>You can build the project in a different directory by providing a
+path to <code>uv build</code>, e.g.,
+<code>uv build path/to/project</code>.</p>
+<p><code>uv build</code> will first build a source distribution, and
+then build a binary distribution (wheel) from that source
+distribution.</p>
+<p>You can limit <code>uv build</code> to building a source distribution
+with <code>uv build --sdist</code>, a binary distribution with
+<code>uv build --wheel</code>, or build both distributions from source
+with <code>uv build --sdist --wheel</code>.</p>
+<h2 id="build-constraints">Build constraints</h2>
+<p><code>uv build</code> accepts <code>--build-constraint</code>, which
+can be used to constrain the versions of any build requirements during
+the build process. When coupled with <code>--require-hashes</code>, uv
+will enforce that the requirement used to build the project match
+specific, known hashes, for reproducibility.</p>
+<p>For example, given the following <code>constraints.txt</code>:</p>
+<pre class="text"><code>setuptools==68.2.2 --hash=sha256:b454a35605876da60632df1a60f736524eb73cc47bbc9f3f1ef1b644de74fd2a</code></pre>
+<p>Running the following would build the project with the specified
+version of <code>setuptools</code>, and verify that the downloaded
+<code>setuptools</code> distribution matches the specified hash:</p>
+<pre class="console"><code>$ uv build --build-constraint constraints.txt --require-hashes</code></pre>
+<h2 id="preventing-publish-to-pypi">Preventing publish to PyPI</h2>
+<p>If you have internal packages that you do not want to be published,
+you can mark them as private:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[project]</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="dt">classifiers</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;Private :: Do Not Upload&quot;</span><span class="op">]</span></span></code></pre></div>
+<p>This setting makes PyPI reject your uploaded package from publishing.
+It does not affect security or privacy settings on alternative
+registries.</p>
+<p>We also recommend only generating <a
+href="https://pypi.org/help/#apitoken">per-project PyPI API tokens</a>:
+Without a PyPI token matching the project, it can’t be accidentally
+published.</p>

@@ -1,0 +1,161 @@
+<h1 id="building-and-publishing-a-package">Building and publishing a
+package</h1>
+<p>uv supports building Python packages into source and binary
+distributions via <code>uv build</code> and uploading them to a registry
+with <code>uv publish</code>.</p>
+<h2 id="preparing-your-project">Preparing your project</h2>
+<p>Before attempting to publish your project, you’ll want to make sure
+it’s ready to be packaged for distribution.</p>
+<p>If your project does not include a <code>[build-system]</code>
+definition in the <code>pyproject.toml</code>, uv will not build it
+during <code>uv sync</code> operations in the project, but will fall
+back to the legacy setuptools build system during
+<code>uv build</code>.</p>
+<p>!!! note</p>
+<pre><code>Projects created with `uv init` include a `[build-system]` definition by default.</code></pre>
+<p>We strongly recommend configuring a build system. Read more about
+build systems in the <a
+href="../concepts/projects/config.md#build-systems">project
+configuration</a> documentation.</p>
+<h2 id="building-your-package">Building your package</h2>
+<p>Build your package with <code>uv build</code>:</p>
+<pre class="console"><code>$ uv build</code></pre>
+<p>By default, <code>uv build</code> will build the project in the
+current directory, and place the built artifacts in a <code>dist/</code>
+subdirectory.</p>
+<p>Alternatively, <code>uv build &lt;SRC&gt;</code> will build the
+package in the specified directory, while
+<code>uv build --package &lt;PACKAGE&gt;</code> will build the specified
+package within the current workspace.</p>
+<p>!!! info</p>
+<pre><code>By default, `uv build` respects `tool.uv.sources` when resolving build dependencies from the
+`build-system.requires` section of the `pyproject.toml`. When publishing a package, we recommend
+running `uv build --no-sources` to ensure that the package builds correctly when `tool.uv.sources`
+is disabled, as is the case when using other build tools, like [`pypa/build`](https://github.com/pypa/build).</code></pre>
+<h2 id="updating-your-version">Updating your version</h2>
+<p>The <code>uv version</code> command provides conveniences for
+updating the version of your package before you publish it. <a
+href="./projects.md#viewing-your-version">See the project docs for
+reading your package’s version</a>.</p>
+<p>To update to an exact version, provide it as a positional
+argument:</p>
+<pre class="console"><code>$ uv version 1.0.0
+hello-world 0.7.0 =&gt; 1.0.0</code></pre>
+<p>To preview the change without updating the
+<code>pyproject.toml</code>, use the <code>--dry-run</code> flag:</p>
+<pre class="console"><code>$ uv version 2.0.0 --dry-run
+hello-world 1.0.0 =&gt; 2.0.0
+$ uv version
+hello-world 1.0.0</code></pre>
+<p>To increase the version of your package semantics, use the
+<code>--bump</code> option:</p>
+<pre class="console"><code>$ uv version --bump minor
+hello-world 1.2.3 =&gt; 1.3.0</code></pre>
+<p>The <code>--bump</code> option supports the following common version
+components: <code>major</code>, <code>minor</code>, <code>patch</code>,
+<code>stable</code>, <code>alpha</code>, <code>beta</code>,
+<code>rc</code>, <code>post</code>, and <code>dev</code>. When provided
+more than once, the components will be applied in order, from largest
+(<code>major</code>) to smallest (<code>dev</code>).</p>
+<p>You can optionally provide a numeric value with
+<code>--bump &lt;component&gt;=&lt;value&gt;</code> to set the resulting
+component explicitly:</p>
+<pre class="console"><code>$ uv version --bump patch --bump dev=66463664
+hello-world 0.0.1 =&gt; 0.0.2.dev66463664</code></pre>
+<p>To move from a stable to pre-release version, bump one of the major,
+minor, or patch components in addition to the pre-release component:</p>
+<pre class="console"><code>$ uv version --bump patch --bump beta
+hello-world 1.3.0 =&gt; 1.3.1b1
+$ uv version --bump major --bump alpha
+hello-world 1.3.0 =&gt; 2.0.0a1</code></pre>
+<p>When moving from a pre-release to a new pre-release version, just
+bump the relevant pre-release component:</p>
+<pre class="console"><code>$ uv version --bump beta
+hello-world 1.3.0b1 =&gt; 1.3.0b2</code></pre>
+<p>When moving from a pre-release to a stable version, the
+<code>stable</code> option can be used to clear the pre-release
+component:</p>
+<pre class="console"><code>$ uv version --bump stable
+hello-world 1.3.1b2 =&gt; 1.3.1</code></pre>
+<p>!!! info</p>
+<pre><code>By default, when `uv version` modifies the project it will perform a lock and sync. To
+prevent locking and syncing, use `--frozen`, or,  to just prevent syncing, use `--no-sync`.</code></pre>
+<h2 id="publishing-your-package">Publishing your package</h2>
+<p>!!! note</p>
+<pre><code>A complete guide to publishing from GitHub Actions to PyPI can be found in the
+[GitHub Guide](integration/github.md#publishing-to-pypi)</code></pre>
+<p>Publish your package with <code>uv publish</code>:</p>
+<pre class="console"><code>$ uv publish</code></pre>
+<p>Set a PyPI token with <code>--token</code> or
+<code>UV_PUBLISH_TOKEN</code>, or set a username with
+<code>--username</code> or <code>UV_PUBLISH_USERNAME</code> and password
+with <code>--password</code> or <code>UV_PUBLISH_PASSWORD</code>. For
+publishing to PyPI from GitHub Actions or another Trusted Publisher, you
+don’t need to set any credentials. Instead, <a
+href="https://docs.pypi.org/trusted-publishers/adding-a-publisher/">add
+a trusted publisher to the PyPI project</a>.</p>
+<p>!!! note</p>
+<pre><code>PyPI does not support publishing with username and password anymore, instead you need to
+generate a token. Using a token is equivalent to setting `--username __token__` and using the
+token as password.</code></pre>
+<p>If you’re using a custom index through
+<code>[[tool.uv.index]]</code>, add <code>publish-url</code> and use
+<code>uv publish --index &lt;name&gt;</code>. For example:</p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[[tool.uv.index]]</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;testpypi&quot;</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a><span class="dt">url</span> <span class="op">=</span> <span class="st">&quot;https://test.pypi.org/simple/&quot;</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="dt">publish-url</span> <span class="op">=</span> <span class="st">&quot;https://test.pypi.org/legacy/&quot;</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="dt">explicit</span> <span class="op">=</span> <span class="cn">true</span></span></code></pre></div>
+<p>!!! note</p>
+<pre><code>When using `uv publish --index &lt;name&gt;`, the `pyproject.toml` must be present, i.e., you need to
+have a checkout step in a publish CI job.</code></pre>
+<p>Even though <code>uv publish</code> retries failed uploads, it can
+happen that publishing fails in the middle, with some files uploaded and
+some files still missing. With PyPI, you can retry the exact same
+command, existing identical files will be ignored. With other
+registries, use <code>--check-url &lt;index url&gt;</code> with the
+index URL (not the publishing URL) the packages belong to. When using
+<code>--index</code>, the index URL is used as check URL. uv will skip
+uploading files that are identical to files in the registry, and it will
+also handle raced parallel uploads. Note that existing files need to
+match exactly with those previously uploaded to the registry, this
+avoids accidentally publishing source distribution and wheels with
+different contents for the same version.</p>
+<h3 id="uploading-attestations-with-your-package">Uploading attestations
+with your package</h3>
+<p>!!! note</p>
+<pre><code>Some third-party package indexes may not support attestations, and may
+reject uploads that include them (rather than silently ignoring them).
+If you encounter issues when uploading, you can use `--no-attestations` or
+`UV_PUBLISH_NO_ATTESTATIONS` to disable uv&#39;s default behavior.</code></pre>
+<p>!!! tip</p>
+<pre><code>`uv publish` does not currently generate attestations; attestations must
+be created separately before publishing.</code></pre>
+<p><code>uv publish</code> supports uploading <a
+href="https://peps.python.org/pep-0740/">attestations</a> to registries
+that support them, like PyPI.</p>
+<p>uv will automatically discover and match attestations. For example,
+given the following <code>dist/</code> directory,
+<code>uv publish</code> will upload the attestations along with their
+corresponding distributions:</p>
+<pre class="console"><code>$ ls dist/
+hello_world-1.0.0-py3-none-any.whl
+hello_world-1.0.0-py3-none-any.whl.publish.attestation
+hello_world-1.0.0.tar.gz
+hello_world-1.0.0.tar.gz.publish.attestation</code></pre>
+<h2 id="installing-your-package">Installing your package</h2>
+<p>Test that the package can be installed and imported with
+<code>uv run</code>:</p>
+<pre class="console"><code>$ uv run --with &lt;PACKAGE&gt; --no-project -- python -c &quot;import &lt;PACKAGE&gt;&quot;</code></pre>
+<p>The <code>--no-project</code> flag is used to avoid installing the
+package from your local project directory.</p>
+<p>!!! tip</p>
+<pre><code>If you have recently installed the package, you may need to include the
+`--refresh-package &lt;PACKAGE&gt;` option to avoid using a cached version of the package.</code></pre>
+<h2 id="next-steps">Next steps</h2>
+<p>To learn more about publishing packages, check out the <a
+href="https://packaging.python.org/en/latest/guides/section-build-and-publish/">PyPA
+guides</a> on building and publishing.</p>
+<p>Or, read on for <a href="./integration/index.md">guides</a> on
+integrating uv with other software.</p>

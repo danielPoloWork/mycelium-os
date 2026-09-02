@@ -1,0 +1,23 @@
+<h1 id="using-uv-with-bazel">Using uv with Bazel</h1>
+<p>For broader Bazel workflows with uv, see the <a
+href="https://github.com/aspect-build/rules_py#dependency-resolution-with-uv"><code>rules_py</code>
+uv guide</a> or the <a
+href="https://rules-python.readthedocs.io/en/latest/pypi/lock.html#uv-pip-compile-bzlmod-only"><code>rules_python</code>
+uv guide</a>.</p>
+<h2 id="authentication">Authentication</h2>
+<p>Bazel 7 and newer supports credential helpers via the
+<code>--credential_helper</code> option. To use credentials stored by uv
+for Bazel fetches, first authenticate uv with the service that hosts the
+files Bazel needs to fetch:</p>
+<pre class="console"><code>$ uv auth login https://packages.example.com</code></pre>
+<p>Then, configure Bazel to invoke <a
+href="../../concepts/authentication/cli.md#using-credentials-with-external-tools"><code>uv auth helper</code></a>
+for matching hosts:</p>
+<p><code>text title=".bazelrc" common --credential_helper=packages.example.com=%workspace%/bazel/uv-auth-helper common --credential_helper=files.example.com=%workspace%/bazel/uv-auth-helper</code></p>
+<p>Replace the host patterns with the hosts that serve the index and
+files Bazel will fetch.</p>
+<p>Finally, add the wrapper script referenced by
+<code>.bazelrc</code>:</p>
+<p><code>bash title="bazel/uv-auth-helper" #!/usr/bin/env bash exec uv --preview-features auth-helper auth helper --protocol=bazel "$@"</code></p>
+<p>The script must be executable:</p>
+<pre class="console"><code>$ chmod +x bazel/uv-auth-helper</code></pre>

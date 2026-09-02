@@ -39,6 +39,7 @@ EVAL = Path(__file__).parent.parent / "eval"
 CASES = EVAL / "dev.jsonl"
 RELEASE = EVAL / "release.jsonl"
 UV_CORPUS = EVAL / "corpora" / "uv-docs"
+INGESTED_CORPUS = EVAL / "corpora" / "uv-docs-ingested"
 
 
 @pytest.fixture(scope="module")
@@ -451,14 +452,17 @@ def test_the_committed_baseline_covers_the_gated_case_set() -> None:
     assert baseline["corpus_digest"]  # blessed against a named corpus, not a mood
 
 
-def test_both_corpora_carry_a_dev_and_a_release_set() -> None:
+def test_every_corpus_carries_a_dev_and_a_release_set() -> None:
     """Spec 04 §7.6 asks for >= 60 judged cases across two corpora; §7.1 asks for
-    the dev/release split. This is the assertion that says we have both."""
+    the dev/release split. This is the assertion that says we have both — and, from
+    roadmap 4.10, a third corpus of the same documents ingested."""
     sets = {
         "mycelium/dev": load_cases(CASES),
         "mycelium/release": load_cases(RELEASE),
         "uv-docs/dev": load_cases(UV_CORPUS / "eval" / "dev.jsonl"),
         "uv-docs/release": load_cases(UV_CORPUS / "eval" / "release.jsonl"),
+        "uv-docs-ingested/dev": load_cases(INGESTED_CORPUS / "eval" / "dev.jsonl"),
+        "uv-docs-ingested/release": load_cases(INGESTED_CORPUS / "eval" / "release.jsonl"),
     }
     assert sum(len(cases) for cases in sets.values()) >= 60
     # Disjoint by construction: a case that sits in both sets makes the split a

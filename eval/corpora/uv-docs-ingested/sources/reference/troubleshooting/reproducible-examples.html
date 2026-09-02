@@ -1,0 +1,129 @@
+<h1 id="reproducible-examples">Reproducible examples</h1>
+<h2 id="why-reproducible-examples-are-important">Why reproducible
+examples are important</h2>
+<p>A minimal reproducible example (MRE) is essential for fixing bugs.
+Without an example that can be used to reproduce the problem, a
+maintainer cannot debug it or test if it is fixed. If the example is not
+minimal, i.e., if it includes lots of content which is not related to
+the issue, it can take a maintainer much longer to identify the root
+cause of the problem.</p>
+<h2 id="how-to-write-a-reproducible-example">How to write a reproducible
+example</h2>
+<p>When writing a reproducible example, the goal is to provide all the
+context necessary for someone else to reproduce your example. This
+includes:</p>
+<ul>
+<li>The platform you’re using (e.g., the operating system and
+architecture)</li>
+<li>Any relevant system state (e.g., explicitly set environment
+variables)</li>
+<li>The version of uv</li>
+<li>The version of other relevant tools</li>
+<li>The relevant files (the <code>uv.lock</code>,
+<code>pyproject.toml</code>, etc.)</li>
+<li>The commands to run</li>
+</ul>
+<p>To ensure your reproduction is minimal, remove as many dependencies,
+settings, and files as possible. Be sure to test your reproduction
+before sharing it. We recommend including verbose logs from your
+reproduction; they may differ on your machine in a critical way. Using a
+<a href="https://gist.github.com">Gist</a> can be helpful for very long
+logs.</p>
+<p>Below, we’ll cover several specific <a
+href="#strategies-for-reproducible-examples">strategies</a> for creating
+and sharing reproducible examples.</p>
+<p>!!! tip</p>
+<pre><code>There&#39;s a great guide to the basics of creating MREs on
+[Stack Overflow](https://stackoverflow.com/help/minimal-reproducible-example).</code></pre>
+<h2 id="strategies-for-reproducible-examples">Strategies for
+reproducible examples</h2>
+<h3 id="docker-image">Docker image</h3>
+<p>Writing a Docker image is often the best way to share a reproducible
+example because it is entirely self-contained. This means that the state
+from the reproducer’s system does not affect the problem.</p>
+<p>!!! note</p>
+<pre><code>Using a Docker image is only feasible if the issue is reproducible on Linux. When using macOS,
+it&#39;s prudent to ensure your image is not reproducible on Linux but some bugs _are_ specific
+to the operating system. While using Docker to run Windows containers is feasible, it&#39;s not
+commonplace. These sorts of bugs are expected to be reported as a [script](#script) instead.</code></pre>
+<p>When writing a Docker MRE with uv, it’s best to start with one of <a
+href="../../guides/integration/docker.md#available-images">uv’s Docker
+images</a>. When doing so, be sure to pin to a specific version of
+uv.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> ghcr.io/astral-sh/uv:0.12.0-debian-slim</span></code></pre></div>
+<p>While Docker images are isolated from the system, the build will use
+your system’s architecture by default. When sharing a reproduction, you
+can explicitly set the platform to ensure a reproducer gets the expected
+behavior. uv publishes images for <code>linux/amd64</code> (e.g., Intel
+or AMD) and <code>linux/arm64</code> (e.g., Apple M Series or ARM)</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> <span class="op">--platform=linux/amd64</span> ghcr.io/astral-sh/uv:0.12.0-debian-slim</span></code></pre></div>
+<p>Docker images are best for reproducing issues that can be constructed
+with commands, e.g.:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> <span class="op">--platform=linux/amd64</span> ghcr.io/astral-sh/uv:0.12.0-debian-slim</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> init /mre</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /mre</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> add pydantic</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> sync</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> run <span class="at">-v</span> python <span class="at">-c</span> <span class="st">&quot;import pydantic&quot;</span></span></code></pre></div>
+<p>However, you can also write files into the image inline:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> <span class="op">--platform=linux/amd64</span> ghcr.io/astral-sh/uv:0.12.0-debian-slim</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> &lt;&lt;EOF /mre/pyproject.toml</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>[project]</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>name = <span class="st">&quot;example&quot;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>version = <span class="st">&quot;0.1.0&quot;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>description = <span class="st">&quot;Add your description here&quot;</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>readme = <span class="st">&quot;README.md&quot;</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>requires-python = <span class="st">&quot;&gt;=3.12&quot;</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>dependencies = [<span class="st">&quot;pydantic&quot;</span>]</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>EOF</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /mre</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> lock</span></code></pre></div>
+<p>If you need to write many files, it’s better to create and publish a
+<a href="#git-repository">Git repository</a>. You can combine these
+approaches and include a <code>Dockerfile</code> in the repository.</p>
+<p>When sharing a Docker reproduction, it’s helpful to include the build
+logs. You can see more output from the build steps by disabling caching
+and the fancy output:</p>
+<pre class="console"><code>docker build . --progress plain --no-cache</code></pre>
+<h3 id="script">Script</h3>
+<p>When reporting platform-specific bugs that cannot be reproduced in a
+<a href="#docker-image">container</a>, it’s best practice to include a
+script showing the commands that can be used to reproduce the bug,
+e.g.:</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> init</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> add pydantic</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> sync</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> run <span class="at">-v</span> python <span class="at">-c</span> <span class="st">&quot;import pydantic&quot;</span></span></code></pre></div>
+<p>If your reproduction requires many files, use a <a
+href="#git-repository">Git repository</a> to share them.</p>
+<p>In addition to the script, include <em>verbose</em> logs (i.e., with
+the <code>-v</code> flag) of the failure and the complete error
+message.</p>
+<p>Whenever a script relies on external state, be sure to share that
+information. For example, if you wrote the script on Windows, and it
+uses a Python version that you installed with <code>choco</code> and
+runs on PowerShell 6.2, please include that in the report.</p>
+<h3 id="git-repository">Git repository</h3>
+<p>When sharing a Git repository reproduction, include a <a
+href="#script">script</a> that reproduces the problem or, even better, a
+<a href="#docker-image">Dockerfile</a>. The first step of the script
+should be to clone the repository and checkout a specific commit:</p>
+<pre class="console"><code>$ git clone https://github.com/&lt;user&gt;/&lt;project&gt;.git
+$ cd &lt;project&gt;
+$ git checkout &lt;commit&gt;
+$ &lt;commands to produce error&gt;</code></pre>
+<p>You can quickly create a new repository in the <a
+href="https://github.com/new">GitHub UI</a> or with the <code>gh</code>
+CLI:</p>
+<pre class="console"><code>$ gh repo create uv-mre-1234 --clone</code></pre>
+<p>When using a Git repository for a reproduction, please remember to
+<em>minimize</em> the contents by excluding files or settings that are
+not required to reproduce your problem.</p>

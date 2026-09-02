@@ -34,3 +34,4 @@ a `fixed` record names its `fixed-in`) is enforced by the consistency lint's `bu
 | [BUG-0014](2026/08/BUG-0014-g3-compares-incomparable-corpora.md) | gate G3 compares against a baseline taken on a different corpus, failing a build that changed no retrieval code | medium | fixed | 0.3.0 |
 | [BUG-0015](2026/08/BUG-0015-benchmark-times-a-pattern-no-code-has.md) | the vector benchmark times a pattern no code path has, and reported 78 ms where the truth is 31 | medium | fixed | 0.3.0 |
 | [BUG-0016](2026/09/BUG-0016-docx-footnotes-vanish-unreported.md) | a DOCX footnote's body vanishes, and the fidelity report calls the document complete | medium | fixed | 0.4.0 |
+| [BUG-0017](2026/09/BUG-0017-evidence-frontmatter-carries-an-absolute-path.md) | a projected evidence document records the absolute path of the machine that ingested it | medium | fixed | 0.4.0 |

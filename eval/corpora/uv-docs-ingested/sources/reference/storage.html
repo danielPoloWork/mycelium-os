@@ -1,0 +1,160 @@
+<h1 id="storage">Storage</h1>
+<h2 id="storage-directories">Storage directories</h2>
+<p>uv uses the following high-level directories for storage.</p>
+<p>For each location, uv checks for the existence of environment
+variables in the given order and uses the first path found.</p>
+<p>The paths of storage directories are platform-specific. uv follows
+the <a
+href="https://specifications.freedesktop.org/basedir-spec/latest/">XDG</a>
+conventions on Linux and macOS and the <a
+href="https://learn.microsoft.com/en-us/windows/win32/shell/known-folders">Known
+Folder</a> scheme on Windows.</p>
+<h3 id="temporary-directory">Temporary directory</h3>
+<p>The temporary directory is used for ephemeral data.</p>
+<p>=== “Unix”</p>
+<pre><code>1. `$TMPDIR`
+1. `/tmp`</code></pre>
+<p>=== “Windows”</p>
+<pre><code>1. `%TMP%`
+1. `%TEMP%`
+1. `%USERPROFILE%`</code></pre>
+<h3 id="cache-directory">Cache directory</h3>
+<p>The cache directory is used for data that is disposable, but is
+useful to be long-lived.</p>
+<p>=== “Unix”</p>
+<pre><code>1. `$XDG_CACHE_HOME/uv`
+1. `$HOME/.cache/uv`</code></pre>
+<p>=== “Windows”</p>
+<pre><code>1. `%LOCALAPPDATA%\uv\cache`
+1. `uv\cache` within [`FOLDERID_LocalAppData`](https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#FOLDERID_LocalAppData)</code></pre>
+<h3 id="persistent-data-directory">Persistent data directory</h3>
+<p>The persistent data directory is used for non-disposable data.</p>
+<p>=== “Unix”</p>
+<pre><code>1. `$XDG_DATA_HOME/uv`
+1. `$HOME/.local/share/uv`
+1. `$CWD/.uv`</code></pre>
+<p>=== “Windows”</p>
+<pre><code>1. `%APPDATA%\uv\data`
+1. `.\.uv`</code></pre>
+<h3 id="configuration-directories">Configuration directories</h3>
+<p>The configuration directories are used to store changes to uv’s
+settings.</p>
+<p>User-level configuration</p>
+<p>=== “Unix”</p>
+<pre><code>1. `$XDG_CONFIG_HOME/uv`
+1. `$HOME/.config/uv`</code></pre>
+<p>=== “Windows”</p>
+<pre><code>1. `%APPDATA%\uv`
+1. `uv` within [`FOLDERID_RoamingAppData`](https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#FOLDERID_RoamingAppData)</code></pre>
+<p>System-level configuration</p>
+<p>=== “Unix”</p>
+<pre><code>1. `$XDG_CONFIG_DIRS/uv`
+1. `/etc/uv`</code></pre>
+<p>=== “Windows”</p>
+<pre><code>1. `%PROGRAMDATA%\uv`
+1. `uv` within [`FOLDERID_AppDataProgramData`](https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#FOLDERID_AppDataProgramData)</code></pre>
+<h3 id="executable-directory">Executable directory</h3>
+<p>The executable directory is used to store files that can be run by
+the user, i.e., a directory that should be on the <code>PATH</code>.</p>
+<p>=== “Unix”</p>
+<pre><code>1. `$XDG_BIN_HOME`
+1. `$XDG_DATA_HOME/../bin`
+1. `$HOME/.local/bin`</code></pre>
+<p>=== “Windows”</p>
+<pre><code>1. `%XDG_BIN_HOME%`
+1. `%XDG_DATA_HOME%\..\bin`
+1. `%USERPROFILE%\.local\bin`</code></pre>
+<h2 id="types-of-data">Types of data</h2>
+<h3 id="dependency-cache">Dependency cache</h3>
+<p>uv uses a local cache to avoid re-downloading and re-building
+dependencies.</p>
+<p>By default, the cache is stored in the <a
+href="#cache-directory">cache directory</a> but it can be overridden via
+command line arguments, environment variables, or settings as detailed
+in <a href="../concepts/cache.md#cache-directory">the cache
+documentation</a>. When the cache is disabled, the cache will be stored
+in a <a href="#temporary-directory">temporary directory</a>.</p>
+<p>Use <code>uv cache dir</code> to show the current cache directory
+path.</p>
+<p>!!! important</p>
+<pre><code>For optimal performance, the cache directory needs to be on the same filesystem as virtual
+environments.</code></pre>
+<h3 id="python-versions">Python versions</h3>
+<p>uv can install managed <a
+href="../concepts/python-versions.md">Python versions</a>, e.g., with
+<code>uv python install</code>.</p>
+<p>By default, Python versions managed by uv are stored in a
+<code>python/</code> subdirectory of the <a
+href="#persistent-data-directory">persistent data directory</a>, e.g.,
+<code>~/.local/share/uv/python</code>.</p>
+<p>Use <code>uv python dir</code> to show the Python installation
+directory.</p>
+<p>Use the <code>UV_PYTHON_INSTALL_DIR</code> environment variable to
+override the installation directory.</p>
+<p>!!! note</p>
+<pre><code>Changing where Python is installed will not be automatically reflected in existing virtual environments; they will keep referring to the old location, and will need to be updated manually (e.g. by re-creating them).</code></pre>
+<h3 id="python-executables">Python executables</h3>
+<p>uv installs executables for <a href="#python-versions">Python
+versions</a>, e.g., <code>python3.13</code>.</p>
+<p>By default, Python executables are stored in the <a
+href="#executable-directory">executable directory</a>.</p>
+<p>Use <code>uv python dir --bin</code> to show the Python executable
+directory.</p>
+<p>Use the <code>UV_PYTHON_BIN_DIR</code> environment variable to
+override the Python executable directory.</p>
+<h3 id="tools">Tools</h3>
+<p>uv can install Python packages as <a
+href="../concepts/tools.md">command-line tools</a> using
+<code>uv tool install</code>.</p>
+<p>By default, tools are installed in a <code>tools/</code> subdirectory
+of the <a href="#persistent-data-directory">persistent data
+directory</a>, e.g., <code>~/.local/share/uv/tools</code>.</p>
+<p>Use <code>uv tool dir</code> to show the tool installation
+directory.</p>
+<p>Use the <code>UV_TOOL_DIR</code> environment variable to configure
+the installation directory.</p>
+<h3 id="tool-executables">Tool executables</h3>
+<p>uv installs executables for installed <a href="#tools">tools</a>,
+e.g., <code>ruff</code>.</p>
+<p>By default, tool executables are stored in the <a
+href="#executable-directory">executable directory</a>.</p>
+<p>Use <code>uv tool dir --bin</code> to show the tool executable
+directory.</p>
+<p>Use the <code>UV_TOOL_BIN_DIR</code> environment variable to
+configure the tool executable directory.</p>
+<h3 id="the-uv-executable">The uv executable</h3>
+<p>When using uv’s <a href="./installer.md">standalone installer</a> to
+install uv, the <code>uv</code> and <code>uvx</code> executables are
+installed into the <a href="#executable-directory">executable
+directory</a>.</p>
+<p>Use the <code>UV_INSTALL_DIR</code> environment variable to configure
+uv’s installation directory.</p>
+<h3 id="configuration-files">Configuration files</h3>
+<p>uv’s behavior can be configured through TOML files.</p>
+<p>Configuration files are discovered in the <a
+href="#configuration-directories">configuration directories</a>.</p>
+<p>For more details, see the <a
+href="../concepts/configuration-files.md">configuration files
+documentation</a>.</p>
+<h3 id="project-virtual-environments">Project virtual environments</h3>
+<p>When working on <a href="../concepts/projects/index.md">projects</a>,
+uv creates a dedicated virtual environment for each project.</p>
+<p>By default, project virtual environments are created in
+<code>.venv</code> in the project or workspace root, i.e., next to the
+<code>pyproject.toml</code>.</p>
+<p>Use the <code>UV_PROJECT_ENVIRONMENT</code> environment variable to
+override this location. For more details, see the <a
+href="../concepts/projects/config.md#project-environment-path">projects
+environment documentation</a>.</p>
+<p>With the <a
+href="../concepts/preview.md"><code>centralized-project-envs</code>
+preview feature</a>, uv stores default project environments in the <a
+href="#cache-directory">cache directory</a>. They can be removed by
+<code>uv cache clean</code> or <code>uv cache prune</code> and are
+recreated when next needed. See the <a
+href="../concepts/projects/layout.md#centralized-project-environments">centralized
+project environments</a> documentation for details.</p>
+<h3 id="script-virtual-environments">Script virtual environments</h3>
+<p>When running <a href="../guides/scripts.md">scripts with inline
+metadata</a>, uv creates a dedicated virtual environment for each script
+in the <a href="#cache-directory">cache directory</a>.</p>

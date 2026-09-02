@@ -1,0 +1,519 @@
+<h1 id="using-uv-in-docker">Using uv in Docker</h1>
+<h2 id="getting-started">Getting started</h2>
+<p>!!! tip</p>
+<pre><code>Check out the [`uv-docker-example`](https://github.com/astral-sh/uv-docker-example) project for
+an example of best practices when using uv to build an application in Docker.</code></pre>
+<p>uv provides both <em>distroless</em> Docker images, which are useful
+for <a href="#installing-uv">copying uv binaries</a> into your own image
+builds, and images derived from popular base images, which are useful
+for using uv in a container. The distroless images do not contain
+anything but the uv binaries. In contrast, the derived images include an
+operating system with uv pre-installed.</p>
+<p>As an example, to run uv in a container using a Debian-based
+image:</p>
+<pre class="console"><code>$ docker run --rm -it ghcr.io/astral-sh/uv:debian uv --help</code></pre>
+<h3 id="available-images">Available images</h3>
+<p>The following distroless images are available:</p>
+<ul>
+<li><code>ghcr.io/astral-sh/uv:latest</code></li>
+<li><code>ghcr.io/astral-sh/uv:{major}.{minor}.{patch}</code>, e.g.,
+<code>ghcr.io/astral-sh/uv:0.12.7</code></li>
+<li><code>ghcr.io/astral-sh/uv:{major}.{minor}</code>, e.g.,
+<code>ghcr.io/astral-sh/uv:0.12</code> (the latest patch version)</li>
+</ul>
+<p>And the following derived images are available:</p>
+<!-- prettier-ignore-start -->
+<ul>
+<li>Based on <code>alpine:3.23</code>:
+<ul>
+<li><code>ghcr.io/astral-sh/uv:alpine</code></li>
+<li><code>ghcr.io/astral-sh/uv:alpine3.23</code></li>
+</ul></li>
+<li>Based on <code>alpine:3.22</code>:
+<ul>
+<li><code>ghcr.io/astral-sh/uv:alpine3.22</code></li>
+</ul></li>
+<li>Based on <code>debian:trixie-slim</code>:
+<ul>
+<li><code>ghcr.io/astral-sh/uv:debian-slim</code></li>
+<li><code>ghcr.io/astral-sh/uv:trixie-slim</code></li>
+</ul></li>
+<li>Based on <code>buildpack-deps:trixie</code>:
+<ul>
+<li><code>ghcr.io/astral-sh/uv:debian</code></li>
+<li><code>ghcr.io/astral-sh/uv:trixie</code></li>
+</ul></li>
+<li>Based on <code>dhi.io/alpine-base:3.23</code>:
+<ul>
+<li><code>ghcr.io/astral-sh/uv:alpine-dhi</code></li>
+<li><code>ghcr.io/astral-sh/uv:alpine3.23-dhi</code></li>
+</ul></li>
+<li>Based on <code>dhi.io/debian-base:trixie-debian13</code>:
+<ul>
+<li><code>ghcr.io/astral-sh/uv:debian-dhi</code></li>
+<li><code>ghcr.io/astral-sh/uv:trixie-dhi</code></li>
+</ul></li>
+<li>Based on <code>dhi/python:3.x</code>:
+<ul>
+<li><code>ghcr.io/astral-sh/uv:python3.14-dhi</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.13-dhi</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.12-dhi</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.11-dhi</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.10-dhi</code></li>
+</ul></li>
+<li>Based on <code>python3.x-alpine</code>:
+<ul>
+<li><code>ghcr.io/astral-sh/uv:python3.15-rc-alpine</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.15-rc-alpine3.23</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.14-alpine</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.14-alpine3.23</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.13-alpine</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.13-alpine3.23</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.12-alpine</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.12-alpine3.23</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.11-alpine</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.11-alpine3.23</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.10-alpine</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.10-alpine3.23</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.9-alpine</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.9-alpine3.22</code></li>
+</ul></li>
+<li>Based on <code>python3.x-trixie</code>:
+<ul>
+<li><code>ghcr.io/astral-sh/uv:python3.15-rc-trixie</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.14-trixie</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.13-trixie</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.12-trixie</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.11-trixie</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.10-trixie</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.9-trixie</code></li>
+</ul></li>
+<li>Based on <code>python3.x-slim-trixie</code>:
+<ul>
+<li><code>ghcr.io/astral-sh/uv:python3.15-rc-trixie-slim</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.14-trixie-slim</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.13-trixie-slim</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.12-trixie-slim</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.11-trixie-slim</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.10-trixie-slim</code></li>
+<li><code>ghcr.io/astral-sh/uv:python3.9-trixie-slim</code></li>
+</ul></li>
+</ul>
+<!-- prettier-ignore-end -->
+<p>As with the distroless image, each derived image is published with uv
+version tags as
+<code>ghcr.io/astral-sh/uv:{major}.{minor}.{patch}-{base}</code> and
+<code>ghcr.io/astral-sh/uv:{major}.{minor}-{base}</code>, e.g.,
+<code>ghcr.io/astral-sh/uv:0.12.7-alpine</code>.</p>
+<p>In addition, starting with <code>0.8</code> each derived image also
+sets <code>UV_TOOL_BIN_DIR</code> to <code>/usr/local/bin</code> to
+allow <code>uv tool install</code> to work as expected with the default
+user.</p>
+<p>For more details, see the <a
+href="https://github.com/astral-sh/uv/pkgs/container/uv">GitHub
+Container</a> page.</p>
+<h3 id="installing-uv">Installing uv</h3>
+<p>Use one of the above images with uv pre-installed or install uv by
+copying the binary from the official distroless Docker image:</p>
+<p><code>dockerfile title="Dockerfile" FROM python:3.12-slim-trixie COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/</code></p>
+<p>Or, with the installer:</p>
+<p>```dockerfile title=“Dockerfile” FROM python:3.12-slim-trixie</p>
+<h1
+id="the-installer-requires-curl-and-certificates-to-download-the-release-archive">The
+installer requires curl (and certificates) to download the release
+archive</h1>
+<p>RUN apt-get update &amp;&amp; apt-get install -y
+–no-install-recommends curl ca-certificates</p>
+<h1 id="download-the-latest-installer">Download the latest
+installer</h1>
+<p>ADD https://astral.sh/uv/install.sh /uv-installer.sh</p>
+<h1 id="run-the-installer-then-remove-it">Run the installer then remove
+it</h1>
+<p>RUN sh /uv-installer.sh &amp;&amp; rm /uv-installer.sh</p>
+<h1 id="ensure-the-installed-binary-is-on-the-path">Ensure the installed
+binary is on the <code>PATH</code></h1>
+<p>ENV PATH=“/root/.local/bin/:$PATH”</p>
+<pre><code>
+Note this requires `curl` to be available.
+
+In either case, it is best practice to pin to a specific uv version, e.g., with:
+
+```dockerfile
+COPY --from=ghcr.io/astral-sh/uv:0.12.7 /uv /uvx /bin/</code></pre>
+<p>!!! tip</p>
+<pre><code>While the Dockerfile example above pins to a specific tag, it&#39;s also
+possible to pin a specific SHA256. Pinning a specific SHA256 is considered
+best practice in environments that require reproducible builds as tags can
+be moved across different commit SHAs.
+
+```Dockerfile
+# e.g., using a hash from a previous release
+COPY --from=ghcr.io/astral-sh/uv@sha256:2381d6aa60c326b71fd40023f921a0a3b8f91b14d5db6b90402e65a635053709 /uv /uvx /bin/
+```</code></pre>
+<p>Or, with the installer:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">ADD</span> https://astral.sh/uv/0.12.7/install.sh /uv-installer.sh</span></code></pre></div>
+<h3 id="installing-a-project">Installing a project</h3>
+<p>If you’re using uv to manage your project, you can copy it into the
+image and install it:</p>
+<p>```dockerfile title=“Dockerfile” # Copy the project into the image
+COPY . /app</p>
+<h1 id="disable-development-dependencies">Disable development
+dependencies</h1>
+<p>ENV UV_NO_DEV=1</p>
+<h1
+id="sync-the-project-into-a-new-environment-asserting-the-lockfile-is-up-to-date">Sync
+the project into a new environment, asserting the lockfile is up to
+date</h1>
+<p>WORKDIR /app RUN uv sync –locked</p>
+<pre><code>
+!!! important
+
+    It is best practice to add `.venv` to a [`.dockerignore` file](https://docs.docker.com/build/concepts/context/#dockerignore-files)
+    in your repository to prevent it from being included in image builds. The project virtual
+    environment is dependent on your local platform and should be created from scratch in the image.
+
+Then, to start your application by default:
+
+```dockerfile title=&quot;Dockerfile&quot;
+# Presuming there is a `my_app` command provided by the project
+CMD [&quot;uv&quot;, &quot;run&quot;, &quot;my_app&quot;]</code></pre>
+<p>!!! tip</p>
+<pre><code>It is best practice to use [intermediate layers](#intermediate-layers) separating installation
+of dependencies and the project itself to improve Docker image build times.</code></pre>
+<p>See a complete example in the <a
+href="https://github.com/astral-sh/uv-docker-example/blob/main/Dockerfile"><code>uv-docker-example</code>
+project</a>.</p>
+<h3 id="using-the-environment">Using the environment</h3>
+<p>Once the project is installed, you can either <em>activate</em> the
+project virtual environment by placing its binary directory at the front
+of the path:</p>
+<p><code>dockerfile title="Dockerfile" ENV PATH="/app/.venv/bin:$PATH"</code></p>
+<p>Or, you can use <code>uv run</code> for any commands that require the
+environment:</p>
+<p><code>dockerfile title="Dockerfile" RUN uv run some_script.py</code></p>
+<p>!!! tip</p>
+<pre><code>Alternatively, the
+[`UV_PROJECT_ENVIRONMENT` setting](../../concepts/projects/config.md#project-environment-path) can
+be set before syncing to install to the system Python environment and skip environment activation
+entirely.</code></pre>
+<h3 id="using-installed-tools">Using installed tools</h3>
+<p>To use installed tools, ensure the <a
+href="../../concepts/tools.md#tool-executables">tool bin directory</a>
+is on the path:</p>
+<p><code>dockerfile title="Dockerfile" ENV PATH=/root/.local/bin:$PATH RUN uv tool install cowsay</code></p>
+<pre class="console"><code>$ docker run -it $(docker build -q .) /bin/bash -c &quot;cowsay -t hello&quot;
+  _____
+| hello |
+  =====
+     \
+      \
+        ^__^
+        (oo)\_______
+        (__)\       )\/\
+            ||----w |
+            ||     ||</code></pre>
+<p>!!! note</p>
+<pre><code>The tool bin directory&#39;s location can be determined by running the `uv tool dir --bin` command
+in the container.
+
+Alternatively, it can be set to a constant location:
+
+```dockerfile title=&quot;Dockerfile&quot;
+ENV UV_TOOL_BIN_DIR=/opt/uv-bin/
+```</code></pre>
+<h2 id="developing-in-a-container">Developing in a container</h2>
+<p>When developing, it’s useful to mount the project directory into a
+container. With this setup, changes to the project can be immediately
+reflected in a containerized service without rebuilding the image.
+However, it is important <em>not</em> to include the project virtual
+environment (<code>.venv</code>) in the mount, because the virtual
+environment is platform specific and the one built for the image should
+be kept.</p>
+<h3 id="mounting-the-project-with-docker-run">Mounting the project with
+<code>docker run</code></h3>
+<p>Bind mount the project (in the working directory) to
+<code>/app</code> while retaining the <code>.venv</code> directory with
+an <a href="https://docs.docker.com/engine/storage/#volumes">anonymous
+volume</a>:</p>
+<pre class="console"><code>$ docker run --rm --volume .:/app --volume /app/.venv [...]</code></pre>
+<p>!!! tip</p>
+<pre><code>The `--rm` flag is included to ensure the container and anonymous volume are cleaned up when the
+container exits.</code></pre>
+<p>See a complete example in the <a
+href="https://github.com/astral-sh/uv-docker-example/blob/main/run.sh"><code>uv-docker-example</code>
+project</a>.</p>
+<h3 id="configuring-watch-with-docker-compose">Configuring
+<code>watch</code> with <code>docker compose</code></h3>
+<p>When using Docker compose, more sophisticated tooling is available
+for container development. The <a
+href="https://docs.docker.com/compose/file-watch/#compose-watch-versus-bind-mounts"><code>watch</code></a>
+option allows for greater granularity than is practical with a bind
+mount and supports triggering updates to the containerized service when
+files change.</p>
+<p>!!! note</p>
+<pre><code>This feature requires Compose 2.22.0 which is bundled with Docker Desktop 4.24.</code></pre>
+<p>Configure <code>watch</code> in your <a
+href="https://docs.docker.com/compose/compose-application-model/#the-compose-file">Docker
+compose file</a> to mount the project directory without syncing the
+project virtual environment and to rebuild the image when the
+configuration changes:</p>
+<p>```yaml title=“compose.yaml” services: example: build: .</p>
+<pre><code># ...
+
+develop:
+  # Create a `watch` configuration to update the app
+  #
+  watch:
+    # Sync the working directory with the `/app` directory in the container
+    - action: sync
+      path: .
+      target: /app
+      # Exclude the project virtual environment
+      ignore:
+        - .venv/
+
+    # Rebuild the image on changes to the `pyproject.toml`
+    - action: rebuild
+      path: ./pyproject.toml</code></pre>
+<pre><code>
+Then, run `docker compose watch` to run the container with the development setup.
+
+See a complete example in the
+[`uv-docker-example` project](https://github.com/astral-sh/uv-docker-example/blob/main/compose.yml).
+
+## Optimizations
+
+### Compiling bytecode
+
+Compiling Python source files to bytecode is typically desirable for production images as it tends
+to improve startup time (at the cost of increased installation time and image size).
+
+To enable bytecode compilation, use the `--compile-bytecode` flag:
+
+```dockerfile title=&quot;Dockerfile&quot;
+RUN uv python install --compile-bytecode
+RUN uv sync --compile-bytecode</code></pre>
+<p>Alternatively, you can set the <code>UV_COMPILE_BYTECODE</code>
+environment variable to ensure that all commands within the Dockerfile
+compile bytecode:</p>
+<p><code>dockerfile title="Dockerfile" ENV UV_COMPILE_BYTECODE=1</code></p>
+<p>!!! note</p>
+<pre><code> uv will only compile the standard library of _managed_ Python versions during
+`uv python install`. The distributor of unmanaged Python versions decides if the
+standard library is pre-compiled. For example, the official `python` image will not
+have a compiled standard library.</code></pre>
+<h3 id="caching">Caching</h3>
+<p>A <a
+href="https://docs.docker.com/build/guide/mounts/#add-a-cache-mount">cache
+mount</a> can be used to improve performance across builds:</p>
+<p>```dockerfile title=“Dockerfile” ENV UV_LINK_MODE=copy</p>
+<p>RUN –mount=type=cache,target=/root/.cache/uv<br />
+uv sync</p>
+<pre><code>
+Changing the [`UV_LINK_MODE`](../../reference/settings.md#link-mode) silences warnings about not
+being able to link files since the cache and sync target are on separate file systems.
+
+If you&#39;re not mounting the cache, image size can be reduced by using the `--no-cache` flag or
+setting `UV_NO_CACHE`.
+
+By default, managed Python installations are not cached before being installed. Setting
+`UV_PYTHON_CACHE_DIR` can be used in combination with a cache mount:
+
+```dockerfile title=&quot;Dockerfile&quot;
+ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv python install</code></pre>
+<p>!!! note</p>
+<pre><code>The cache directory&#39;s location can be determined by running the `uv cache dir` command in the
+container.
+
+Alternatively, the cache can be set to a constant location:
+
+```dockerfile title=&quot;Dockerfile&quot;
+ENV UV_CACHE_DIR=/opt/uv-cache/
+```</code></pre>
+<h3 id="intermediate-layers">Intermediate layers</h3>
+<p>If you’re using uv to manage your project, you can improve build
+times by moving your transitive dependency installation into its own
+layer via the <code>--no-install</code> options.</p>
+<p><code>uv sync --no-install-project</code> will install the
+dependencies of the project but not the project itself. Since the
+project changes frequently, but its dependencies are generally static,
+this can be a big time saver.</p>
+<p>```dockerfile title=“Dockerfile” # Install uv FROM python:3.12-slim
+COPY –from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/</p>
+<h1 id="change-the-working-directory-to-the-app-directory">Change the
+working directory to the <code>app</code> directory</h1>
+<p>WORKDIR /app</p>
+<h1 id="install-dependencies">Install dependencies</h1>
+<p>RUN –mount=type=cache,target=/root/.cache/uv<br />
+–mount=type=bind,source=uv.lock,target=uv.lock<br />
+–mount=type=bind,source=pyproject.toml,target=pyproject.toml<br />
+uv sync –locked –no-install-project</p>
+<h1 id="copy-the-project-into-the-image">Copy the project into the
+image</h1>
+<p>COPY . /app</p>
+<h1 id="sync-the-project">Sync the project</h1>
+<p>RUN –mount=type=cache,target=/root/.cache/uv<br />
+uv sync –locked</p>
+<pre><code>
+Note that the `pyproject.toml` is required to identify the project root and name, but the project
+_contents_ are not copied into the image until the final `uv sync` command.
+
+!!! tip
+
+    If you want to remove additional, specific packages from the sync,
+    use `--no-install-package &lt;name&gt;`.
+
+#### Intermediate layers in workspaces
+
+If you&#39;re using a [workspace](../../concepts/projects/workspaces.md), then a couple changes are
+needed:
+
+- Use `--frozen` instead of `--locked` during the initial sync.
+- Use the `--no-install-workspace` flag which excludes the project _and_ any workspace members.
+
+```dockerfile title=&quot;Dockerfile&quot;
+# Install uv
+FROM python:3.12-slim
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    --mount=type=bind,source=uv.lock,target=uv.lock \
+    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+    uv sync --frozen --no-install-workspace
+
+COPY . /app
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --locked</code></pre>
+<p>uv cannot assert that the <code>uv.lock</code> file is up-to-date
+without each of the workspace member <code>pyproject.toml</code> files,
+so we use <code>--frozen</code> instead of <code>--locked</code> to skip
+the check during the initial sync. The next sync, after all the
+workspace members have been copied, can still use <code>--locked</code>
+and will validate that the lockfile is correct for all workspace
+members.</p>
+<h3 id="non-editable-installs">Non-editable installs</h3>
+<p>By default, uv installs projects and workspace members in editable
+mode, such that changes to the source code are immediately reflected in
+the environment.</p>
+<p><code>uv sync</code> and <code>uv run</code> both accept a
+<code>--no-editable</code> flag, which instructs uv to install the
+project in non-editable mode, removing any dependency on the source
+code.</p>
+<p>In the context of a multi-stage Docker image,
+<code>--no-editable</code> can be used to include the project in the
+synced virtual environment from one stage, then copy the virtual
+environment alone (and not the source code) into the final image.</p>
+<p>For example:</p>
+<p>```dockerfile title=“Dockerfile” # Install uv FROM python:3.12-slim
+AS builder COPY –from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/</p>
+<h1 id="use-the-system-python-across-both-stages">Use the system Python
+across both stages</h1>
+<p>ENV UV_PYTHON_DOWNLOADS=0</p>
+<h1 id="change-the-working-directory-to-the-app-directory-1">Change the
+working directory to the <code>app</code> directory</h1>
+<p>WORKDIR /app</p>
+<h1 id="install-dependencies-1">Install dependencies</h1>
+<p>RUN –mount=type=cache,target=/root/.cache/uv<br />
+–mount=type=bind,source=uv.lock,target=uv.lock<br />
+–mount=type=bind,source=pyproject.toml,target=pyproject.toml<br />
+uv sync –locked –no-install-project –no-editable</p>
+<h1 id="copy-the-project-into-the-intermediate-image">Copy the project
+into the intermediate image</h1>
+<p>COPY . /app</p>
+<h1 id="sync-the-project-1">Sync the project</h1>
+<p>RUN –mount=type=cache,target=/root/.cache/uv<br />
+uv sync –locked –no-editable</p>
+<p>FROM python:3.12-slim</p>
+<h1 id="copy-the-environment-but-not-the-source-code">Copy the
+environment, but not the source code</h1>
+<p>COPY –from=builder /app/.venv /app/.venv</p>
+<h1 id="run-the-application">Run the application</h1>
+<p>CMD [“/app/.venv/bin/hello”]</p>
+<pre><code>
+### Using uv temporarily
+
+If uv isn&#39;t needed in the final image, the binary can be mounted in each invocation:
+
+```dockerfile title=&quot;Dockerfile&quot;
+RUN --mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv \
+    uv sync</code></pre>
+<h2 id="using-the-pip-interface">Using the pip interface</h2>
+<h3 id="installing-a-package">Installing a package</h3>
+<p>The system Python environment is safe to use in this context, since a
+container is already isolated. The <code>--system</code> flag can be
+used to install in the system environment:</p>
+<p><code>dockerfile title="Dockerfile" RUN uv pip install --system ruff</code></p>
+<p>To use the system Python environment by default, set the
+<code>UV_SYSTEM_PYTHON</code> variable:</p>
+<p><code>dockerfile title="Dockerfile" ENV UV_SYSTEM_PYTHON=1</code></p>
+<p>Alternatively, a virtual environment can be created and
+activated:</p>
+<p><code>dockerfile title="Dockerfile" RUN uv venv /opt/venv # Use the virtual environment automatically ENV VIRTUAL_ENV=/opt/venv # Place entry points in the environment at the front of the path ENV PATH="/opt/venv/bin:$PATH"</code></p>
+<p>When using a virtual environment, the <code>--system</code> flag
+should be omitted from uv invocations:</p>
+<p><code>dockerfile title="Dockerfile" RUN uv pip install ruff</code></p>
+<h3 id="installing-requirements">Installing requirements</h3>
+<p>To install requirements files, copy them into the container:</p>
+<p><code>dockerfile title="Dockerfile" COPY requirements.txt . RUN uv pip install -r requirements.txt</code></p>
+<h3 id="installing-a-project-1">Installing a project</h3>
+<p>When installing a project alongside requirements, it is best practice
+to separate copying the requirements from the rest of the source code.
+This allows the dependencies of the project (which do not change often)
+to be cached separately from the project itself (which changes very
+frequently).</p>
+<p><code>dockerfile title="Dockerfile" COPY pyproject.toml . RUN uv pip install -r pyproject.toml COPY . . RUN uv pip install -e .</code></p>
+<h2 id="verifying-image-provenance">Verifying image provenance</h2>
+<p>The Docker images are signed during the build process to provide
+proof of their origin. These attestations can be used to verify that an
+image was produced from an official channel.</p>
+<p>For example, you can verify the attestations with the <a
+href="https://cli.github.com/">GitHub CLI tool <code>gh</code></a>:</p>
+<pre class="console"><code>$ gh attestation verify --owner astral-sh oci://ghcr.io/astral-sh/uv:latest
+Loaded digest sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx for oci://ghcr.io/astral-sh/uv:latest
+Loaded 1 attestation from GitHub API
+
+The following policy criteria will be enforced:
+- OIDC Issuer must match:................... https://token.actions.githubusercontent.com
+- Source Repository Owner URI must match:... https://github.com/astral-sh
+- Predicate type must match:................ https://slsa.dev/provenance/v1
+- Subject Alternative Name must match regex: (?i)^https://github.com/astral-sh/
+
+✓ Verification succeeded!
+
+sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx was attested by:
+REPO          PREDICATE_TYPE                  WORKFLOW
+astral-sh/uv  https://slsa.dev/provenance/v1  .github/workflows/build-docker.yml@refs/heads/main</code></pre>
+<p>This tells you that the specific Docker image was built by the
+official uv GitHub release workflow and hasn’t been tampered with
+since.</p>
+<p>GitHub attestations build on the <a
+href="https://www.sigstore.dev/">sigstore.dev infrastructure</a>. As
+such you can also use the <a
+href="https://github.com/sigstore/cosign"><code>cosign</code>
+command</a> to verify the attestation blob against the (multi-platform)
+manifest for <code>uv</code>:</p>
+<pre class="console"><code>$ REPO=astral-sh/uv
+$ gh attestation download --repo $REPO oci://ghcr.io/${REPO}:latest
+Wrote attestations to file sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.jsonl.
+Any previous content has been overwritten
+
+The trusted metadata is now available at sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.jsonl
+$ docker buildx imagetools inspect ghcr.io/${REPO}:latest --format &quot;{{json .Manifest}}&quot; &gt; manifest.json
+$ cosign verify-blob-attestation \
+    --new-bundle-format \
+    --bundle &quot;$(jq -r .digest manifest.json).jsonl&quot;  \
+    --certificate-oidc-issuer=&quot;https://token.actions.githubusercontent.com&quot; \
+    --certificate-identity-regexp=&quot;^https://github\.com/${REPO}/.*&quot; \
+    &lt;(jq -j &#39;.|del(.digest,.size)&#39; manifest.json)
+Verified OK</code></pre>
+<p>!!! tip</p>
+<pre><code>These examples use `latest`, but best practice is to verify the attestation for a specific
+version tag, e.g., `ghcr.io/astral-sh/uv:0.12.7`, or (even better) the specific image digest,
+such as `ghcr.io/astral-sh/uv:0.5.27@sha256:5adf09a5a526f380237408032a9308000d14d5947eafa687ad6c6a2476787b4f`.</code></pre>

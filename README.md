@@ -154,6 +154,15 @@ because the fidelity report is computed from the parse and so cannot notice an e
 never arrived — which is exactly how a DOCX footnote was disappearing until the corpus asked
 ([BUG-0016](docs/bugs/2026/09/BUG-0016-docx-footnotes-vanish-unreported.md)).
 
+**And it is measured, not asserted.** The third judged corpus is the second one *ingested* —
+the same 81 documents rendered into DOCX, HTML and PDF and put back through `mycelium
+ingest` — scored with the judgements already frozen for the Markdown originals, so the
+document is the only thing that varies. The same 14 cases, twice: **recall does not move**,
+and where structure survives — DOCX, HTML — the numbers are *identical*, not merely close.
+PDF's apparent ranking gain is refused as an artefact of a target ten times the size
+([ADR-0039](docs/adr/0039-measure-what-projection-costs.md)). What projection *does* cost is
+the graph: 229 edges become 10, which is open as roadmap 5.7.
+
 What v1 does *not* do is read PDF structure: that
 needs docling's ML pipeline, which wants `torch` and downloads model weights on first use,
 against this project's offline default and its cross-platform determinism gate. The reasons,
@@ -377,8 +386,8 @@ a single-document edit recompiles that document's chain, not the corpus, and the
 byte-equal to a clean build by tested construction (ADR-0015) — snapshots are restorable,
 watch mode rebuilds on save with a manual build's guarantees, and a local embedder ships
 with hybrid retrieval *switched off*, because gate G2 said it had not earned the default.
-The evaluation now spans two corpora, one of them documentation this project did not write,
-with a frozen dev/release split gating CI. The five stable contracts freeze at 1.0.
+The evaluation now spans three corpora, two of them documentation this project did not
+write, with a frozen dev/release split gating CI. The five stable contracts freeze at 1.0.
 
 The honest part of that paragraph is what is missing from it: on the second corpus a plain
 `grep` loop still ranks better than we do, which is measured, diagnosed, and open as roadmap

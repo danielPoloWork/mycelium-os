@@ -1,0 +1,30 @@
+<h1 id="jfrog-artifactory">JFrog Artifactory</h1>
+<p>uv can install packages from JFrog Artifactory, either by using a
+username and password or a JWT token.</p>
+<p>To use it, add the index to your project:</p>
+<p><code>toml title="pyproject.toml" [[tool.uv.index]] name = "private-registry" url = "https://&lt;organization&gt;.jfrog.io/artifactory/api/pypi/&lt;repository&gt;/simple"</code></p>
+<h2 id="authenticate-with-username-and-password">Authenticate with
+username and password</h2>
+<pre class="console"><code>$ export UV_INDEX_PRIVATE_REGISTRY_USERNAME=&quot;&lt;username&gt;&quot;
+$ export UV_INDEX_PRIVATE_REGISTRY_PASSWORD=&quot;&lt;password&gt;&quot;</code></pre>
+<h2 id="authenticate-with-jwt-token">Authenticate with JWT token</h2>
+<pre class="console"><code>$ export UV_INDEX_PRIVATE_REGISTRY_USERNAME=&quot;&quot;
+$ export UV_INDEX_PRIVATE_REGISTRY_PASSWORD=&quot;$JFROG_JWT_TOKEN&quot;</code></pre>
+<p>!!! note</p>
+<pre><code>Replace `PRIVATE_REGISTRY` in the environment variable names with the actual index name defined in your `pyproject.toml`.</code></pre>
+<h2 id="publishing-packages">Publishing packages</h2>
+<p>Add a <code>publish-url</code> to your index definition:</p>
+<p><code>toml title="pyproject.toml" [[tool.uv.index]] name = "private-registry" url = "https://&lt;organization&gt;.jfrog.io/artifactory/api/pypi/&lt;repository&gt;/simple" publish-url = "https://&lt;organization&gt;.jfrog.io/artifactory/api/pypi/&lt;repository&gt;"</code></p>
+<p>!!! important</p>
+<pre><code>If you use `--token &quot;$JFROG_TOKEN&quot;` or `UV_PUBLISH_TOKEN` with JFrog, you will receive a
+401 Unauthorized error as JFrog requires an empty username but uv passes `__token__` for as
+the username when `--token` is used.</code></pre>
+<p>To authenticate, pass your token as the password and set the username
+to an empty string:</p>
+<pre class="console"><code>$ uv publish --index &lt;index_name&gt; -u &quot;&quot; -p &quot;$JFROG_TOKEN&quot;</code></pre>
+<p>Alternatively, you can set environment variables:</p>
+<pre class="console"><code>$ export UV_PUBLISH_USERNAME=&quot;&quot;
+$ export UV_PUBLISH_PASSWORD=&quot;$JFROG_TOKEN&quot;
+$ uv publish --index private-registry</code></pre>
+<p>!!! note</p>
+<pre><code>The publish environment variables (`UV_PUBLISH_USERNAME` and `UV_PUBLISH_PASSWORD`) do not include the index name.</code></pre>

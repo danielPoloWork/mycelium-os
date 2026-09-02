@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-02 — judging the same document twice (roadmap 4.10)](2026/09/2026-09-02-projection-cost.md)
 - [2026-09-02 — a report cannot corroborate itself (roadmap 4.7)](2026/09/2026-09-02-ingestion-inventories.md)
 - [2026-09-02 — the lane that refuses to write (roadmap 4.4)](2026/09/2026-09-02-synthesis-lane.md)
 - [2026-09-01 — the third verb, and the one copy (roadmap 4.6)](2026/09/2026-09-01-quarantine-and-secrets.md)

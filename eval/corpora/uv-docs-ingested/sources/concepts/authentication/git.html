@@ -1,0 +1,66 @@
+<h1 id="git-credentials">Git credentials</h1>
+<p>uv allows packages to be installed from private Git repositories
+using SSH or HTTP authentication.</p>
+<h2 id="ssh-authentication">SSH authentication</h2>
+<p>To authenticate using an SSH key, use the <code>ssh://</code>
+protocol:</p>
+<ul>
+<li><code>git+ssh://git@&lt;hostname&gt;/...</code> (e.g.,
+<code>git+ssh://git@github.com/astral-sh/uv</code>)</li>
+<li><code>git+ssh://git@&lt;host&gt;/...</code> (e.g.,
+<code>git+ssh://git@github.com-key-2/astral-sh/uv</code>)</li>
+</ul>
+<p>SSH authentication requires using the username <code>git</code>.</p>
+<p>See the <a
+href="https://docs.github.com/en/authentication/connecting-to-github-with-ssh/about-ssh">GitHub
+SSH documentation</a> for more details on how to configure SSH.</p>
+<h3 id="http-authentication">HTTP authentication</h3>
+<p>To authenticate over HTTP Basic authentication using a password or
+token:</p>
+<ul>
+<li><code>git+https://&lt;user&gt;:&lt;token&gt;@&lt;hostname&gt;/...</code>
+(e.g.,
+<code>git+https://git:github_pat_asdf@github.com/astral-sh/uv</code>)</li>
+<li><code>git+https://&lt;token&gt;@&lt;hostname&gt;/...</code> (e.g.,
+<code>git+https://github_pat_asdf@github.com/astral-sh/uv</code>)</li>
+<li><code>git+https://&lt;user&gt;@&lt;hostname&gt;/...</code> (e.g.,
+<code>git+https://git@github.com/astral-sh/uv</code>)</li>
+</ul>
+<p>!!! note</p>
+<pre><code>When using a GitHub personal access token, the username is arbitrary. GitHub doesn&#39;t allow you to
+use your account name and password in URLs like this, although other hosts may.</code></pre>
+<p>If there are no credentials present in the URL and authentication is
+needed, the <a href="#git-credential-helpers">Git credential helper</a>
+will be queried.</p>
+<h2 id="persistence-of-credentials">Persistence of credentials</h2>
+<p>When using <code>uv add</code>, uv <em>will not</em> persist Git
+credentials to the <code>pyproject.toml</code> or <code>uv.lock</code>.
+These files are often included in source control and distributions, so
+it is generally unsafe to include credentials in them.</p>
+<p>If you have a Git credential helper configured, your credentials may
+be automatically persisted, resulting in successful subsequent fetches
+of the dependency. However, if you do not have a Git credential helper
+or the project is used on a machine without credentials seeded, uv will
+fail to fetch the dependency.</p>
+<p>You <em>may</em> force uv to persist Git credentials by passing the
+<code>--raw</code> option to <code>uv add</code>. However, we strongly
+recommend setting up a <a href="#git-credential-helpers">credential
+helper</a> instead.</p>
+<h2 id="git-credential-helpers">Git credential helpers</h2>
+<p>Git credential helpers are used to store and retrieve Git
+credentials. See the <a
+href="https://git-scm.com/doc/credential-helpers">Git documentation</a>
+to learn more.</p>
+<p>If you’re using GitHub, the simplest way to set up a credential
+helper is to <a href="https://github.com/cli/cli#installation">install
+the <code>gh</code> CLI</a> and use:</p>
+<pre class="console"><code>$ gh auth login</code></pre>
+<p>See the <a
+href="https://cli.github.com/manual/gh_auth_login"><code>gh auth login</code></a>
+documentation for more details.</p>
+<p>!!! note</p>
+<pre><code>When using `gh auth login` interactively, the credential helper will be configured automatically.
+But when using `gh auth login --with-token`, as in the uv
+[GitHub Actions guide](../../guides/integration/github.md#private-repos), the
+[`gh auth setup-git`](https://cli.github.com/manual/gh_auth_setup-git) command will need to be
+run afterwards to configure the credential helper.</code></pre>

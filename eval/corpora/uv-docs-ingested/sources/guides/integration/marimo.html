@@ -1,0 +1,72 @@
+<h1 id="using-uv-with-marimo">Using uv with marimo</h1>
+<p><a href="https://github.com/marimo-team/marimo">marimo</a> is an
+open-source Python notebook that blends interactive computing with the
+reproducibility and reusability of traditional software, letting you
+version with Git, run as scripts, and share as apps. Because marimo
+notebooks are stored as pure Python scripts, they are able to integrate
+tightly with uv.</p>
+<p>You can readily use marimo as a standalone tool, as self-contained
+scripts, in projects, and in non-project environments.</p>
+<h2 id="using-marimo-as-a-standalone-tool">Using marimo as a standalone
+tool</h2>
+<p>For ad-hoc access to marimo notebooks, start a marimo server at any
+time in an isolated environment with:</p>
+<pre class="console"><code>$ uvx marimo edit</code></pre>
+<p>Start a specific notebook with:</p>
+<pre class="console"><code>$ uvx marimo edit my_notebook.py</code></pre>
+<h2 id="using-marimo-with-inline-script-metadata">Using marimo with
+inline script metadata</h2>
+<p>Because marimo notebooks are stored as Python scripts, they can
+encapsulate their own dependencies using inline script metadata, via
+uv’s <a href="../../guides/scripts.md">support for scripts</a>. For
+example, to add <code>numpy</code> as a dependency to your notebook, use
+this command:</p>
+<pre class="console"><code>$ uv add --script my_notebook.py numpy</code></pre>
+<p>To interactively edit a notebook containing inline script metadata,
+use:</p>
+<pre class="console"><code>$ uvx marimo edit --sandbox my_notebook.py</code></pre>
+<p>marimo will automatically use uv to start your notebook in an
+isolated virtual environment with your script’s dependencies. Packages
+installed from the marimo UI will automatically be added to the
+notebook’s script metadata.</p>
+<p>You can optionally run these notebooks as Python scripts, without
+opening an interactive session:</p>
+<pre class="console"><code>$ uv run my_notebook.py</code></pre>
+<h2 id="using-marimo-within-a-project">Using marimo within a
+project</h2>
+<p>If you’re working within a <a
+href="../../concepts/projects/index.md">project</a>, you can start a
+marimo notebook with access to the project’s virtual environment via the
+following command (assuming marimo is a project dependency):</p>
+<pre class="console"><code>$ uv run marimo edit my_notebook.py</code></pre>
+<p>To make additional packages available to your notebook, either add
+them to your project with <code>uv add</code>, or use marimo’s built-in
+package installation UI, which will invoke <code>uv add</code> on your
+behalf.</p>
+<p>If marimo is not a project dependency, you can still run a notebook
+with the following command:</p>
+<pre class="console"><code>$ uv run --with marimo marimo edit my_notebook.py</code></pre>
+<p>This will let you import your project’s modules while editing your
+notebook. However, packages installed via marimo’s UI when running in
+this way will not be added to your project, and may disappear on
+subsequent marimo invocations.</p>
+<h2 id="using-marimo-in-a-non-project-environment">Using marimo in a
+non-project environment</h2>
+<p>To run marimo in a virtual environment that isn’t associated with a
+<a href="../../concepts/projects/index.md">project</a>, add marimo to
+the environment directly:</p>
+<pre class="console"><code>$ uv venv
+$ uv pip install numpy
+$ uv pip install marimo
+$ uv run marimo edit</code></pre>
+<p>From here, <code>import numpy</code> will work within the notebook,
+and marimo’s UI installer will add packages to the environment with
+<code>uv pip install</code> on your behalf.</p>
+<h2 id="running-marimo-notebooks-as-scripts">Running marimo notebooks as
+scripts</h2>
+<p>Regardless of how your dependencies are managed (with inline script
+metadata, within a project, or with a non-project environment), you can
+run marimo notebooks as scripts with:</p>
+<pre class="console"><code>$ uv run my_notebook.py</code></pre>
+<p>This executes your notebook as a Python script, without opening an
+interactive session in your browser.</p>

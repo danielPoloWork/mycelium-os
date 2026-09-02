@@ -1,0 +1,47 @@
+<h1 id="preview-features">Preview features</h1>
+<p>uv includes opt-in preview features to provide an opportunity for
+community feedback and increase confidence that changes are a
+net-benefit before enabling them for everyone.</p>
+<h2 id="enabling-preview-features">Enabling preview features</h2>
+<p>To enable all preview features, use the <code>--preview</code>
+flag:</p>
+<pre class="console"><code>$ uv run --preview ...</code></pre>
+<p>Or, set the <code>UV_PREVIEW</code> environment variable:</p>
+<pre class="console"><code>$ UV_PREVIEW=1 uv run ...</code></pre>
+<p>To enable specific preview features, use the
+<code>--preview-features</code> flag:</p>
+<pre class="console"><code>$ uv run --preview-features foo ...</code></pre>
+<p>The <code>--preview-features</code> flag can be repeated to enable
+multiple features:</p>
+<pre class="console"><code>$ uv run --preview-features foo --preview-features bar ...</code></pre>
+<p>Or, features can be provided in a comma separated list:</p>
+<pre class="console"><code>$ uv run --preview-features foo,bar ...</code></pre>
+<p>The <code>UV_PREVIEW_FEATURES</code> environment variable can be used
+similarly, e.g.:</p>
+<pre class="console"><code>$ UV_PREVIEW_FEATURES=foo,bar uv run ...</code></pre>
+<p>Preview features can also be enabled in <code>uv.toml</code>, or
+under <code>[tool.uv]</code> in <code>pyproject.toml</code> and PEP 723
+metadata:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="dt">preview-features</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;foo&quot;</span><span class="op">,</span> <span class="st">&quot;bar&quot;</span><span class="op">]</span></span></code></pre></div>
+<p>Set <code>preview-features = true</code> to enable all preview
+features.</p>
+<p>Some preview features take effect before configuration files are
+loaded and cannot be enabled from configuration.</p>
+<p>For backwards compatibility, enabling preview features that do not
+exist will warn, but not error, regardless of the source.</p>
+<h2 id="using-preview-features">Using preview features</h2>
+<p>Often, preview features can be used without changing any preview
+settings if the behavior change is gated by some sort of user
+interaction, For example, while <code>pylock.toml</code> support is in
+preview, you can use <code>uv pip install</code> with a
+<code>pylock.toml</code> file without additional configuration because
+specifying the <code>pylock.toml</code> file indicates you want to use
+the feature. However, a warning will be displayed that the feature is in
+preview. The preview feature can be enabled to silence the warning.</p>
+<h2 id="available-preview-features">Available preview features</h2>
+<p>The following preview features are available:</p>
+<p>–8&lt;– “docs/reference/.preview-features.md”</p>
+<h2 id="disabling-preview-features">Disabling preview features</h2>
+<p>The <code>--no-preview</code> option can be used to disable preview
+features.</p>

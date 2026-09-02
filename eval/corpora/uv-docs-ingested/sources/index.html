@@ -1,0 +1,201 @@
+<h1 id="uv">uv</h1>
+<p>An extremely fast Python package and project manager, written in
+Rust.</p>
+<p align="center">
+<img alt="Shows a bar chart with benchmark results." src="https://github.com/astral-sh/uv/assets/1309177/629e59c0-9c6e-4013-9ad4-adb2bcf5080d#only-light">
+</p>
+<p align="center">
+<img alt="Shows a bar chart with benchmark results." src="https://github.com/astral-sh/uv/assets/1309177/03aa9163-1c79-4a87-a31d-7a9311ed9310#only-dark">
+</p>
+<p align="center">
+<i>Installing <a href="https://trio.readthedocs.io/">Trio</a>’s
+dependencies with a warm cache.</i>
+</p>
+<h2 id="highlights">Highlights</h2>
+<ul>
+<li>A single tool to replace <code>pip</code>, <code>pip-tools</code>,
+<code>pipx</code>, <code>poetry</code>, <code>pyenv</code>,
+<code>twine</code>, <code>virtualenv</code>, and more.</li>
+<li><a
+href="https://github.com/astral-sh/uv/blob/main/BENCHMARKS.md">10-100x
+faster</a> than <code>pip</code>.</li>
+<li>Provides <a href="#projects">comprehensive project management</a>,
+with a <a href="./concepts/projects/layout.md#the-lockfile">universal
+lockfile</a>.</li>
+<li><a href="#scripts">Runs scripts</a>, with support for <a
+href="./guides/scripts.md#declaring-script-dependencies">inline
+dependency metadata</a>.</li>
+<li><a href="#python-versions">Installs and manages</a> Python
+versions.</li>
+<li><a href="#tools">Runs and installs</a> tools published as Python
+packages.</li>
+<li>Includes a <a href="#the-pip-interface">pip-compatible interface</a>
+for a performance boost with a familiar
+<ol start="151" type="I">
+<li></li>
+</ol></li>
+<li>Supports Cargo-style <a
+href="./concepts/projects/workspaces.md">workspaces</a> for scalable
+projects.</li>
+<li>Disk-space efficient, with a <a href="./concepts/cache.md">global
+cache</a> for dependency deduplication.</li>
+<li>Installable without Rust or Python via <code>curl</code> or
+<code>pip</code>.</li>
+<li>Supports macOS, Linux, and Windows.</li>
+</ul>
+<p>uv is backed by <a href="https://astral.sh">Astral</a>, the creators
+of <a href="https://github.com/astral-sh/ruff">Ruff</a>.</p>
+<h2 id="installation">Installation</h2>
+<p>Install uv with our official standalone installer:</p>
+<p>=== “macOS and Linux”</p>
+<pre><code>```console
+$ curl -LsSf https://astral.sh/uv/install.sh | sh
+```</code></pre>
+<p>=== “Windows”</p>
+<pre><code>```pwsh-session
+PS&gt; powershell -ExecutionPolicy ByPass -c &quot;irm https://astral.sh/uv/install.ps1 | iex&quot;
+```</code></pre>
+<p>Then, check out the <a href="./getting-started/first-steps.md">first
+steps</a> or read on for a brief overview.</p>
+<p>!!! tip</p>
+<pre><code>uv may also be installed with pip, Homebrew, and more. See all of the methods on the
+[installation page](./getting-started/installation.md).</code></pre>
+<h2 id="projects">Projects</h2>
+<p>uv manages project dependencies and environments, with support for
+lockfiles, workspaces, and more, similar to <code>rye</code> or
+<code>poetry</code>:</p>
+<pre class="console"><code>$ uv init example
+Initialized project `example` at `/home/user/example`
+
+$ cd example
+
+$ uv add ruff
+Creating virtual environment at: .venv
+Resolved 2 packages in 170ms
+   Built example @ file:///home/user/example
+Prepared 2 packages in 627ms
+Installed 2 packages in 1ms
+ + example==0.1.0 (from file:///home/user/example)
+ + ruff==0.5.4
+
+$ uv run ruff check
+All checks passed!
+
+$ uv lock
+Resolved 2 packages in 0.33ms
+
+$ uv sync
+Resolved 2 packages in 0.70ms
+Checked 1 package in 0.02ms</code></pre>
+<p>See the <a href="./guides/projects.md">project guide</a> to get
+started.</p>
+<p>uv also supports building and publishing projects, even if they’re
+not managed with uv. See the <a href="./guides/package.md">packaging
+guide</a> to learn more.</p>
+<h2 id="scripts">Scripts</h2>
+<p>uv manages dependencies and environments for single-file scripts.</p>
+<p>Create a new script and add inline metadata declaring its
+dependencies:</p>
+<pre class="console"><code>$ echo &#39;import requests; print(requests.get(&quot;https://astral.sh&quot;))&#39; &gt; example.py
+
+$ uv add --script example.py requests
+Updated `example.py`</code></pre>
+<p>Then, run the script in an isolated virtual environment:</p>
+<pre class="console"><code>$ uv run example.py
+Reading inline script metadata from: example.py
+Installed 5 packages in 12ms
+&lt;Response [200]&gt;</code></pre>
+<p>See the <a href="./guides/scripts.md">scripts guide</a> to get
+started.</p>
+<h2 id="tools">Tools</h2>
+<p>uv executes and installs command-line tools provided by Python
+packages, similar to <code>pipx</code>.</p>
+<p>Run a tool in an ephemeral environment using <code>uvx</code> (an
+alias for <code>uv tool run</code>):</p>
+<pre class="console"><code>$ uvx pycowsay &#39;hello world!&#39;
+Resolved 1 package in 167ms
+Installed 1 package in 9ms
+ + pycowsay==0.0.0.2
+  &quot;&quot;&quot;
+
+  ------------
+&lt; hello world! &gt;
+  ------------
+   \   ^__^
+    \  (oo)\_______
+       (__)\       )\/\
+           ||----w |
+           ||     ||</code></pre>
+<p>Install a tool with <code>uv tool install</code>:</p>
+<pre class="console"><code>$ uv tool install ruff
+Resolved 1 package in 6ms
+Installed 1 package in 2ms
+ + ruff==0.5.4
+Installed 1 executable: ruff
+
+$ ruff --version
+ruff 0.5.4</code></pre>
+<p>See the <a href="./guides/tools.md">tools guide</a> to get
+started.</p>
+<h2 id="python-versions">Python versions</h2>
+<p>uv installs Python and allows quickly switching between versions.</p>
+<p>Install multiple Python versions:</p>
+<pre class="console"><code>$ uv python install 3.10 3.11 3.12
+Searching for Python versions matching: Python 3.10
+Searching for Python versions matching: Python 3.11
+Searching for Python versions matching: Python 3.12
+Installed 3 versions in 3.42s
+ + cpython-3.10.14-macos-aarch64-none
+ + cpython-3.11.9-macos-aarch64-none
+ + cpython-3.12.4-macos-aarch64-none</code></pre>
+<p>Download Python versions as needed:</p>
+<pre class="console"><code>$ uv venv --python 3.12.0
+Using CPython 3.12.0
+Creating virtual environment at: .venv
+Activate with: source .venv/bin/activate
+
+$ uv run --python pypy@3.8 -- python
+Python 3.8.16 (a9dbdca6fc3286b0addd2240f11d97d8e8de187a, Dec 29 2022, 11:45:30)
+[PyPy 7.3.11 with GCC Apple LLVM 13.1.6 (clang-1316.0.21.2.5)] on darwin
+Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;license&quot; for more information.
+&gt;&gt;&gt;&gt;</code></pre>
+<p>Use a specific Python version in the current directory:</p>
+<pre class="console"><code>$ uv python pin 3.11
+Pinned `.python-version` to `3.11`</code></pre>
+<p>See the <a href="./guides/install-python.md">installing Python
+guide</a> to get started.</p>
+<h2 id="the-pip-interface">The pip interface</h2>
+<p>uv provides a drop-in replacement for common <code>pip</code>,
+<code>pip-tools</code>, and <code>virtualenv</code> commands.</p>
+<p>uv extends their interfaces with advanced features, such as
+dependency version overrides, platform-independent resolutions,
+reproducible resolutions, alternative resolution strategies, and
+more.</p>
+<p>Migrate to uv without changing your existing workflows — and
+experience a 10-100x speedup — with the <code>uv pip</code>
+interface.</p>
+<p>Compile requirements into a platform-independent requirements
+file:</p>
+<pre class="console"><code>$ uv pip compile requirements.in \
+   --universal \
+   --output-file requirements.txt
+Resolved 43 packages in 12ms</code></pre>
+<p>Create a virtual environment:</p>
+<pre class="console"><code>$ uv venv
+Using CPython 3.12.3
+Creating virtual environment at: .venv
+Activate with: source .venv/bin/activate</code></pre>
+<p>Install the locked requirements:</p>
+<pre class="console"><code>$ uv pip sync requirements.txt
+Resolved 43 packages in 11ms
+Installed 43 packages in 208ms
+ + babel==2.15.0
+ + black==24.4.2
+ + certifi==2024.7.4
+ ...</code></pre>
+<p>See the <a href="./pip/index.md">pip interface documentation</a> to
+get started.</p>
+<h2 id="learn-more">Learn more</h2>
+<p>See the <a href="./getting-started/first-steps.md">first steps</a> or
+jump straight to the <a href="./guides/index.md">guides</a> to start
+using uv.</p>

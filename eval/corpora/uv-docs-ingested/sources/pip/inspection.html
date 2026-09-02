@@ -1,0 +1,20 @@
+<h1 id="inspecting-environments">Inspecting environments</h1>
+<h2 id="listing-installed-packages">Listing installed packages</h2>
+<p>To list all the packages in the environment:</p>
+<pre class="console"><code>$ uv pip list</code></pre>
+<p>To list the packages in a JSON format:</p>
+<pre class="console"><code>$ uv pip list --format json</code></pre>
+<p>To list all the packages in the environment in a
+<code>requirements.txt</code> format:</p>
+<pre class="console"><code>$ uv pip freeze</code></pre>
+<h2 id="inspecting-a-package">Inspecting a package</h2>
+<p>To show information about an installed package, e.g.,
+<code>numpy</code>:</p>
+<pre class="console"><code>$ uv pip show numpy</code></pre>
+<p>Multiple packages can be inspected at once.</p>
+<h2 id="verifying-an-environment">Verifying an environment</h2>
+<p>It is possible to install packages with conflicting requirements into
+an environment if installed in multiple steps.</p>
+<p>To check for conflicts or missing dependencies in the
+environment:</p>
+<pre class="console"><code>$ uv pip check</code></pre>
