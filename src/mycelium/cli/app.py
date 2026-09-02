@@ -44,7 +44,7 @@ from mycelium.corpus import CorpusScope
 from mycelium.embedding import Embedder, EmbeddingError, build_embedder
 from mycelium.eval import (
     EvaluationError,
-    corpus_digest_of,
+    corpus_fingerprint_of,
     load_cases,
     load_tasks,
     run_evaluation,
@@ -1553,7 +1553,7 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
         detail(f"  run manifest: {written}")
 
     if bless:
-        frozen = write_baseline(path, manifest, corpus_digest_of(path, manifest.snapshot_id))
+        frozen = write_baseline(path, manifest, corpus_fingerprint_of(path, manifest.snapshot_id))
         detail(f"  baseline: {frozen}")
 
     if gate and failed:

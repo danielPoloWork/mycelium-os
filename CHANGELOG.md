@@ -10,7 +10,47 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Fixed
+
+- **Gate G3 can now see a chunking change** (roadmap 4.13). G3 enforces its 2 % per-slice
+  rule only when the run is comparable to its baseline, and comparability was the fold of
+  chunk digests — so any change to chunk boundaries made the two runs "not comparable" and
+  the gate abstained. The change class G3 is best placed to judge was the only one it could
+  never see. A corpus now carries **two** fingerprints: `content_digest`, what the corpus
+  says, and `corpus_digest`, how it was cut. Enforcement keys on the first, the second is
+  reported, and a chunking change is gated with its cause named in the verdict. Measured
+  with `[chunking] pack_atomic` off then on: chunk fold moved and content fold held
+  identical on all three corpora with a baseline (932 → 731, 2244 → 568, 2073 → 624
+  chunks). See
+  [ADR-0045](docs/adr/0045-ask-the-documents-whether-two-runs-are-comparable.md).
+
+### Added
+
+- **`tools/stamp_baseline_fingerprints.py`** — arms that comparison on baselines blessed
+  before it existed, by adding `content_digest` and **moving no score**, so roadmap 4.15's
+  flip is measured against the line already drawn rather than one moved in the same change.
+  It refuses to write if a corpus's chunk fold has drifted since its bless, because then the
+  recorded numbers describe a different corpus and stamping would be a re-bless wearing a
+  migration's clothes. It refused on this repository's own baseline — correctly, since our
+  corpus has grown since that bless — so the two vendored corpora are armed and ours keeps
+  the comparison it had, which roadmap 4.22 exists to settle.
+- **`tests/test_frozen_release_sets.py`** — the frozen-release-set guard had no tests.
+  Roadmap 4.15 recorded that a single change could flip `[chunking] pack_atomic`'s shipped
+  default *and* re-judge the release set measuring it, because `src/mycelium/config.py` was
+  missing from `TUNING_PATHS`; PR #61 added the path, and this is what keeps it — plus the
+  assertion that every guarded path still exists, since a guard naming a file that moved
+  guards nothing, silently.
+
 ### Changed
+
+- **`mycelium eval --bless` records both fingerprints.** A baseline written before this
+  change keeps the comparison it was written for and the G3 verdict says so, naming
+  `--bless` as what arms the stronger one: treating the absent field as a match would let a
+  stale baseline enforce against a corpus nobody checked, and treating it as a mismatch
+  would stop enforcement everywhere at once.
+- `mycelium.eval.corpus_digest_of` is replaced by `corpus_fingerprint_of`, returning a
+  `CorpusFingerprint`. Pre-1.0, and `mycelium.eval` is not one of the five contracts that
+  freeze at 1.0.
 
 - **Six judged anchors were re-judged** (roadmap 4.12), and no code changed with them. Five
   name a chunk that `[chunking] pack_atomic` deletes, so they now name the section that chunk

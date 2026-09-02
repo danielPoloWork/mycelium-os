@@ -59,4 +59,5 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0041](0041-bound-the-section-unit-and-refuse-six-more.md) | Bound the section unit, and refuse six more re-rankings | Accepted |
 | [0042](0042-let-an-atomic-block-share-its-chunk.md) | Let an atomic block share its chunk, and ship it switched off | Accepted |
 | [0043](0043-judge-across-the-configurations-a-set-is-scored-under.md) | Judge across the configurations a set is scored under | Accepted |
+| [0045](0045-ask-the-documents-whether-two-runs-are-comparable.md) | Ask the documents whether two runs are comparable, not the boundaries | Accepted |
 | [0044](0044-name-what-a-two-case-slice-can-and-cannot-say.md) | Name what a two-case slice can and cannot say | Accepted |

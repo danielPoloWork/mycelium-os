@@ -74,7 +74,8 @@ Gate G3 refuses to enforce across a corpus change ([BUG-0014](../docs/bugs/2026/
 which is right — this repository's documentation *is* its corpus, so every PR moves the
 numbers — and the cost is that a slow decay can cross several milestones unremarked. That is
 what happened to `relationship` on our own release set: 0.304 to 0.106, unnoticed
-(roadmap 4.17).
+(roadmap 4.17). A *chunking* change is no longer one of the cases it abstains on: comparability
+is judged on the documents, so moving every boundary in the corpus is gated (ADR-0045).
 
 This tool asks the question the gate cannot. It holds the judgments and the compiler fixed and
 varies only the corpus — the named ref goes into a throwaway worktree, today's judged sets are
@@ -244,7 +245,7 @@ though the missing gates passed.
 |---|---|
 | G1 Citations | **Enforced** — every returned anchor must resolve; must be 1.00 |
 | G2 Earn hybrid | **Enforced when `--retriever hybrid` runs** — it scores the lexical baseline on the same cases and compares (ADR-0017) |
-| G3 No regression | **Enforced against `baselines/<set>.json`** when the corpus is the one the baseline was taken on — no slice may fall more than 2 %. When the corpus has changed the numbers are not comparable, so the gate *reports* the deltas instead of failing on them: this repository's documentation grows with every PR, and a gate that fails on that teaches everyone to re-bless on red. `--bless` writes a baseline, and records the corpus fingerprint it was measured on |
+| G3 No regression | **Enforced against `baselines/<set>.json`** when the corpus is the one the baseline was taken on — no slice may fall more than 2 %. "The same corpus" means the same *documents*, not the same chunk boundaries, so a chunking change is gated rather than excused (roadmap 4.13, ADR-0045) and the verdict names the re-cut. When the documents themselves have changed the numbers are not comparable, so the gate *reports* the deltas instead of failing on them: this repository's documentation grows with every PR, and a gate that fails on that teaches everyone to re-bless on red. `--bless` writes a baseline and records both fingerprints |
 | G4 Abstention | **Enforced** — false-answer rate on `unanswerable` ≤ 5 % |
 | G5 Performance | **Enforced, with its limit stated** — query p95 ≤ 150 ms, reported with the corpus size it was measured on. The budget is defined at the 10⁵-chunk reference profile, so passing here is a floor rather than the measurement spec 04 §1 asks for |
 | G6 Determinism | **Delegated** — a compiler gate with its own golden and its own CI job (ADR-0012) |
