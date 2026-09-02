@@ -235,6 +235,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 - **`mycelium doctor` now reports the pinned parsers** and whether each one can run on this
   machine, with the remedy in the message — so an unavailable plugin is met before a build
   rather than during one.
+- **Roadmap 4.16, 4.17 and 4.18** — three things roadmap 4.12 found and filed rather than
+  absorbed: the ingested twin's carried judgements do not reproduce from their own
+  generator ([BUG-0018](docs/bugs/2026/09/BUG-0018-carried-ingested-cases-do-not-reproduce.md)),
+  our release set's `relationship` slice has halved since the previous bless without this
+  change causing it, and a watch-mode test that asserts *no* event arrives flaked once on
+  macOS.
 - **Roadmap 4.9** — read PDF *structure*, or record why v1 does not — filed with the three
   measured constraints (dependency closure, first-use model download vs NFR-6,
   cross-platform float reproducibility vs gate G6) as its acceptance criteria.
