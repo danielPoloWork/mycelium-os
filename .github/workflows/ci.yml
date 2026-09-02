@@ -218,6 +218,16 @@ jobs:
         # the projector shows up here rather than as a corpus that quietly stopped
         # matching its own provenance (roadmap 4.10, ADR-0039).
         run: uv run python tools/build_ingested_corpus.py --check
+      - name: ...and its carried judgements still derive from that corpus
+        shell: bash
+        # The other half. The corpus check above proves the *documents* still match
+        # their sources; this proves the judgements carried onto them still derive
+        # from the frozen ones. They stopped once, silently, because the generator
+        # inherited a store built under a different chunking policy — the sets were
+        # then four cases smaller than committed and nothing said so (BUG-0018,
+        # roadmap 4.16). A derived artifact whose generator no longer reproduces it
+        # is a defect, not a cue to regenerate.
+        run: uv run python tools/build_ingested_cases.py --check
 
   # ---------------------------------------------------------------------------
   # The M4 exit gate — zero *silent* element loss on the ingestion corpus

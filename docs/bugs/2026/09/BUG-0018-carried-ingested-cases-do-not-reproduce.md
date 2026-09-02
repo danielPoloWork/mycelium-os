@@ -1,12 +1,12 @@
 ---
 id: BUG-0018
 title: the carried ingested judgements do not reproduce from their own generator
-status: open
+status: fixed
 severity: medium
 reporter: internal
 discovered: 2026-09-02
 affected-versions: ">=0.4.0"
-fixed-in:
+fixed-in: 0.4.0
 ---
 
 # BUG-0018: the carried ingested judgements do not reproduce from their own generator
@@ -68,20 +68,31 @@ whatever else is in the working tree.
 
 ## Root cause
 
-**Not established. Hypothesis, marked as such:** the committed sets were last generated at
-roadmap 4.10 (PR #58), and roadmap 4.11 (PR #61) changed `mycelium.chunking`. The carry works
-by coverage — it reads the judged passage out of the Markdown corpus's store and finds the
-best-covered chunk of the twin document — so both sides of that comparison are chunker
-output. A chunker change that moves either side by a few tokens moves the coverage, and four
-anchors were sitting within a hundredth of the floor.
+**Established at roadmap 4.16, and it is not what this record first suspected.**
 
-What is ruled out: stale local state. `build_ingested_cases.py` builds both corpora itself
-before reading them, so the result does not depend on what happened to be in `.mycelium`.
+The original hypothesis — that 4.11's chunker change moved the coverage — is **disproved by
+measurement**. Chunking both corpora with `chunking.py` at `d8a842b` (before 4.11) and at
+`HEAD`, with `pack_atomic` at its shipped default, produces **identical output**: 2244 chunks
+across `uv-docs` and 2073 across `uv-docs-ingested`, and *zero* documents differ in anchors,
+text or kind. With packing off the change is a no-op, exactly as ADR-0042 claimed.
 
-What would confirm it: regenerate the sets with `chunking.py` at `d8a842b` (the commit before
-4.11) and compare. That is the first step of the fix and is deliberately not done here — this
-record exists so the drift is on the books before someone regenerates the sets for an
-unrelated reason and silently ships four fewer cases.
+The real cause is the thing this record explicitly ruled out, and the reasoning that ruled it
+out was wrong. `build_ingested_cases.py` does call `build()` on both corpora — but `build()`
+is **incremental**. It recompiles what `doc_state` says is dirty, and a chunking *policy* that
+did not arrive through `mycelium.toml` leaves nothing dirty to notice. Roadmap 4.11's
+measurement session had built `uv-docs` with `pack_atomic` forced on from code; that store
+(gitignored, disposable, and therefore invisible) survived on disk, and the carry then read
+**packed** judged text — 568 chunks instead of 2244 — while scoring it against the twin's
+**unpacked** chunks. Coverage collapsed, and four anchors sitting within 0.02 of the floor
+went under.
+
+Confirmed by removing both `.mycelium` directories and re-running: the generator then
+reproduces the committed sets exactly, dropping only the anchors the committed sets already
+record as dropped.
+
+So the defect generalises past this tool: **a generator that derives a committed artifact
+from an incremental build inherits whatever the local store happens to hold, and records the
+machine rather than the corpus.**
 
 ## Impact
 
@@ -97,19 +108,29 @@ either a margin or a different matching rule.
 
 ## Fix / workaround
 
-**Workaround (in force):** do not regenerate the ingested sets. They are correct as committed;
-`tools/build_ingested_corpus.py --check` still verifies the *documents*, which is the half CI
-gates.
+Fixed at roadmap 4.16, in three parts:
 
-**Fix:** filed as roadmap 4.16. Confirm the cause against the pre-4.11 chunker, then make the
-carry stable rather than marginal — a recorded coverage score per anchor so drift is visible
-in the diff, a documented floor with margin, or a carry that pins the source passage by text
-digest instead of recomputing it.
+1. **Both builds are `clean=True`.** The generator no longer inherits ambient derived state,
+   so its output is a function of the committed corpora and nothing else.
+   `tools/build_uv_docs_cases.py` gets the same treatment for the same reason — it also
+   compiles its corpus in place.
+2. **`--check` regenerates and compares**, and runs in CI beside
+   `build_ingested_corpus.py --check`. The corpus check proves the *documents* still match
+   their sources; this one proves the *judgements* still derive from them. Proved to fail by
+   mutating one recorded coverage value and watching it name the file.
+3. **The carry now leaves a receipt.** `eval/corpora/uv-docs-ingested/eval/carry.json` records
+   every mapped anchor's twin and coverage, so drift shows up as a diff of numbers rather
+   than as a case that quietly vanished — which matters because three anchors legitimately
+   map between 0.42 and 0.49 against a 0.50 floor.
+
+`MIN_COVERAGE` is deliberately **not** widened. It is a floor below which "the same passage"
+stops being a defensible claim, not a dial; moving it so that marginal anchors survive would
+be fitting the threshold to the data.
 
 ## References
 
-- Fixing PR: —
-- `CHANGELOG` entry: —
+- Fixing PR: #63
+- `CHANGELOG` entry: `[Unreleased]` → Fixed
 - Related: [ADR-0039](../../../adr/0039-measure-what-projection-costs.md) (the carry and why
   nothing in it is judged), [ADR-0042](../../../adr/0042-let-an-atomic-block-share-its-chunk.md)
   (the chunker change that is the leading suspect), roadmap 4.10, 4.12, 4.16

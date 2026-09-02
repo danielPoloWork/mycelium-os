@@ -309,6 +309,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 - The snapshot manifest's `config_digest` now covers the `[ingest]` section. The
   determinism golden is re-blessed with a one-line diff — every chunk is byte-identical.
 
+### Fixed
+
+- **[BUG-0018](docs/bugs/2026/09/BUG-0018-carried-ingested-cases-do-not-reproduce.md) — the
+  carried ingested judgements now reproduce from their own generator** (roadmap 4.16). The
+  cause was not the chunker this record first suspected — measured, that change is a no-op
+  with packing off — but an *incremental* build inheriting a store left behind by a
+  measurement session, so the carry compared packed judged text against unpacked twin chunks.
+  Both builds are now clean, `tools/build_ingested_cases.py --check` regenerates and compares
+  in CI, and `eval/corpora/uv-docs-ingested/eval/carry.json` records every mapped anchor's
+  coverage so drift shows as a number in a diff. `MIN_COVERAGE` is unchanged: it is a floor,
+  not a dial.
+
 ### Deprecated
 
 ### Removed
