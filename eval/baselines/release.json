@@ -1,11 +1,11 @@
 {
   "grep": {
-    "blessed_from_snapshot": "01M1CDFBTVQWH9NAM1DP4Y9WB0",
-    "corpus_digest": "sha256:49a46e0ca0b55d7b26ddc3e72072838432aa34ba49bf098fb973954318e64c85",
-    "overall_ndcg_at_10": 0.268436,
+    "blessed_from_snapshot": "01M1H44G42E5VN110YVWS1N570",
+    "corpus_digest": "sha256:82251c611997483da1eb67f5ac3191528a2637d786804a01ea360806e5f17df3",
+    "overall_ndcg_at_10": 0.27136,
     "per_slice": {
       "conceptual": 0.053211,
-      "exact": 0.377451,
+      "exact": 0.412547,
       "fact": 0.438488,
       "relationship": 0.106423,
       "unanswerable": 0.0
@@ -16,14 +16,14 @@
     }
   },
   "mycelium": {
-    "blessed_from_snapshot": "01M1CDFBTVQWH9NAM1DP4Y9WB0",
-    "corpus_digest": "sha256:49a46e0ca0b55d7b26ddc3e72072838432aa34ba49bf098fb973954318e64c85",
-    "overall_ndcg_at_10": 0.456671,
+    "blessed_from_snapshot": "01M1H44G42E5VN110YVWS1N570",
+    "corpus_digest": "sha256:82251c611997483da1eb67f5ac3191528a2637d786804a01ea360806e5f17df3",
+    "overall_ndcg_at_10": 0.449891,
     "per_slice": {
-      "conceptual": 0.378469,
-      "exact": 0.95866,
+      "conceptual": 0.450735,
+      "exact": 0.983303,
       "fact": 0.435408,
-      "relationship": 0.303957,
+      "relationship": 0.106423,
       "unanswerable": 0.0
     },
     "toolchain": {

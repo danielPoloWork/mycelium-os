@@ -35,3 +35,4 @@ a `fixed` record names its `fixed-in`) is enforced by the consistency lint's `bu
 | [BUG-0015](2026/08/BUG-0015-benchmark-times-a-pattern-no-code-has.md) | the vector benchmark times a pattern no code path has, and reported 78 ms where the truth is 31 | medium | fixed | 0.3.0 |
 | [BUG-0016](2026/09/BUG-0016-docx-footnotes-vanish-unreported.md) | a DOCX footnote's body vanishes, and the fidelity report calls the document complete | medium | fixed | 0.4.0 |
 | [BUG-0017](2026/09/BUG-0017-evidence-frontmatter-carries-an-absolute-path.md) | a projected evidence document records the absolute path of the machine that ingested it | medium | fixed | 0.4.0 |
+| [BUG-0018](2026/09/BUG-0018-carried-ingested-cases-do-not-reproduce.md) | the carried ingested judgements do not reproduce from their own generator | medium | open | |

@@ -10,6 +10,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **Six judged anchors were re-judged** (roadmap 4.12), and no code changed with them. Five
+  name a chunk that `[chunking] pack_atomic` deletes, so they now name the section that chunk
+  merges into — the smallest unit holding the answer under both settings; every judgment in
+  all four sets now survives the flip (33/33, 17/17, 12/12, 18/18). The sixth, `r-0003`
+  *Conventional Commits*, gained **AGENTS.md §6.3**: the rule is documented in three places
+  and the judgment named two, omitting the one this repository calls its source of truth.
+  Release baselines are re-blessed, so **every comparison across this change is invalid**.
+  Measured cost, one build, shipped default: ours/dev +0.000, ours/release +0.002, uv/release
+  +0.025 — the last from one case whose section anchor is satisfied by a chunk that does not
+  answer it, accepted and explained in
+  [ADR-0043](docs/adr/0043-judge-across-the-configurations-a-set-is-scored-under.md).
+
 ### Added
 
 - **`[chunking] pack_atomic`** — lets a table or code block share a chunk with the prose
@@ -221,6 +235,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 - **`mycelium doctor` now reports the pinned parsers** and whether each one can run on this
   machine, with the remedy in the message — so an unavailable plugin is met before a build
   rather than during one.
+- **Roadmap 4.16, 4.17 and 4.18** — three things roadmap 4.12 found and filed rather than
+  absorbed: the ingested twin's carried judgements do not reproduce from their own
+  generator ([BUG-0018](docs/bugs/2026/09/BUG-0018-carried-ingested-cases-do-not-reproduce.md)),
+  our release set's `relationship` slice has halved since the previous bless without this
+  change causing it, and a watch-mode test that asserts *no* event arrives flaked once on
+  macOS.
 - **Roadmap 4.9** — read PDF *structure*, or record why v1 does not — filed with the three
   measured constraints (dependency closure, first-use model download vs NFR-6,
   cross-platform float reproducibility vs gate G6) as its acceptance criteria.
