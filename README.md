@@ -405,6 +405,13 @@ it on the corpus we already win is, and the ceiling of the whole family — with
 foresight no planner can have — is 3 % above grep. The evidence re-runs with
 `python tools/measure_ranking.py --release --oracle`.
 
+What did move the number was the *unit*, not the ranking. `[chunking] pack_atomic` lets a code
+block share a chunk with the prose it belongs to instead of ending it, which is worth **+61 %**
+on that corpus (0.280 → 0.451, against grep's 0.471) with no slice regressed. It ships
+**off**, because moving a chunk boundary deletes a judged anchor and five cases must be
+re-anchored before the default can flip — roadmap 4.12 and 4.15, deliberately separate changes
+([ADR-0042](docs/adr/0042-let-an-atomic-block-share-its-chunk.md)).
+
 | # | Title | Status |
 |---|---|---|
 | 1 | Project bootstrap & CI | ✅ done |

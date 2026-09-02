@@ -149,6 +149,13 @@ class ChunkingConfig(_Section):
     max_tokens: int = Field(default=800, gt=0)
     atomic: tuple[str, ...] = ("table", "code")
 
+    pack_atomic: bool = False
+    """Whether a table or code block may share a chunk with the prose around it.
+
+    Measured at roadmap 4.11 (ADR-0042) and off by default until 4.15; `atomic`
+    still forbids *splitting* a block either way.
+    """
+
     @model_validator(mode="after")
     def _consistent(self) -> Self:
         if self.target_tokens is not None and self.target_tokens > self.max_tokens:
@@ -187,7 +194,9 @@ class ChunkingConfig(_Section):
         one setting under which a build produces exactly what it produced before.
         """
         return ChunkingPolicy(
-            target_tokens=self.target_tokens or self.max_tokens, max_tokens=self.max_tokens
+            target_tokens=self.target_tokens or self.max_tokens,
+            max_tokens=self.max_tokens,
+            pack_atomic=self.pack_atomic,
         )
 
 

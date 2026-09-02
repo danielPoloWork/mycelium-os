@@ -76,13 +76,8 @@ document_strategy = st.lists(
 )
 
 
-@settings(max_examples=200)
-@given(blocks=document_strategy)
-def test_no_content_loss(blocks: list[str]) -> None:
+def assert_no_content_loss(kir: KirDocument, chunks: Sequence[Chunk]) -> None:
     """Every KIR text appears in the ordered chunk texts, in document order."""
-    source = "\n\n".join(blocks) + "\n"
-    kir = parse_markdown(source).kir
-    chunks = chunk_document(kir, doc_path=DOC_PATH)
     joined = "\n\n".join(chunk.text for chunk in chunks)
 
     cursor = 0
@@ -92,6 +87,28 @@ def test_no_content_loss(blocks: list[str]) -> None:
         # Consume the match: each piece needs its own occurrence, so a repeated
         # block cannot be satisfied twice by a single one.
         cursor = found + len(text)
+
+
+@settings(max_examples=200)
+@given(blocks=document_strategy)
+def test_no_content_loss(blocks: list[str]) -> None:
+    source = "\n\n".join(blocks) + "\n"
+    kir = parse_markdown(source).kir
+    assert_no_content_loss(kir, chunk_document(kir, doc_path=DOC_PATH))
+
+
+@settings(max_examples=200)
+@given(blocks=document_strategy)
+def test_no_content_loss_when_atomic_blocks_are_packed(blocks: list[str]) -> None:
+    """The invariant holds under `pack_atomic` too (roadmap 4.11).
+
+    It is the chunker's one promise, and a setting that moves every boundary is
+    exactly the kind of change that could break it. Asserted, not assumed.
+    """
+    source = "\n\n".join(blocks) + "\n"
+    kir = parse_markdown(source).kir
+    chunks = chunk_document(kir, doc_path=DOC_PATH, policy=ChunkingPolicy(pack_atomic=True))
+    assert_no_content_loss(kir, chunks)
 
 
 @given(blocks=document_strategy)
@@ -169,6 +186,93 @@ def test_tables_and_code_blocks_are_atomic_chunks() -> None:
     # Atomic: nothing else shares the chunk, and the table reads row-major.
     assert table.text == "a | b\n1 | 2"
     assert code.text == "x = 1"
+
+
+# ---------------------------------------------------------------------------
+# `pack_atomic` — atomicity means indivisible, not solitary (roadmap 4.11)
+# ---------------------------------------------------------------------------
+
+INSTALL = """## Install
+
+Run the installer:
+
+```sh
+uv tool install ruff
+```
+
+Then check it.
+"""
+
+
+def test_packed_atomic_blocks_share_a_chunk_with_their_prose() -> None:
+    """The change 4.11 is about: a command no longer ends the chunk it belongs to.
+
+    Under the shipped default a section reading "prose, code, prose" becomes
+    three chunks, two of them fragments. That is what makes chunk sizes bimodal,
+    and BM25 normalises by length — so a seven-token fragment outranks the
+    paragraph that answers (ADR-0031).
+    """
+    atomic = chunk(INSTALL)
+    packed = chunk(INSTALL, policy=ChunkingPolicy(pack_atomic=True))
+
+    assert [c.kind for c in atomic] == [ChunkKind.PROSE, ChunkKind.CODE, ChunkKind.PROSE]
+    assert len(packed) == 1
+    assert packed[0].kind is ChunkKind.PROSE, "a paragraph containing a command is prose"
+    for fragment in ("Run the installer:", "uv tool install ruff", "Then check it."):
+        assert fragment in packed[0].text
+    # The same text either way — this moves boundaries, never content.
+    assert "\n\n".join(c.text for c in atomic) == packed[0].text
+
+
+def test_a_section_that_is_only_code_still_yields_a_code_chunk() -> None:
+    """ADR-0007's constraint, preserved.
+
+    It refused lifting an atomic chunk to the minimum because that "means
+    merging across a heading boundary, which is what heading-bounded chunking
+    exists to prevent". Packing never crosses a heading, so a section whose only
+    content is a code block still produces one code chunk.
+    """
+    source = "## Example\n\n```sh\nuv run pytest\n```\n"
+    packed = chunk(source, policy=ChunkingPolicy(pack_atomic=True))
+    assert len(packed) == 1
+    assert packed[0].kind is ChunkKind.CODE
+    assert packed[0].text == "Example\n\nuv run pytest"
+
+
+def test_packing_never_crosses_a_heading() -> None:
+    source = "## First\n\n```sh\nalpha\n```\n\n## Second\n\n```sh\nbeta\n```\n"
+    packed = chunk(source, policy=ChunkingPolicy(pack_atomic=True))
+    assert [c.heading_path for c in packed] == [("First",), ("Second",)]
+
+
+def test_a_packed_run_still_respects_the_ceiling() -> None:
+    """Packing changes what may share a chunk, never the ceiling that bounds it."""
+    prose = ("word " * 200).strip()
+    code = ("tok " * 200).strip()
+    source = f"## Section\n\n{prose}\n\n```sh\n{code}\n```\n"
+    policy = ChunkingPolicy(target_tokens=250, max_tokens=250, pack_atomic=True)
+    packed = chunk(source, policy=policy)
+    assert len(packed) == 2, "the code block would breach the ceiling, so it opens a chunk"
+
+
+def test_an_oversize_atomic_block_is_never_split() -> None:
+    """`atomic` still means indivisible: a table past the ceiling stays whole."""
+    rows = "\n".join(f"| {index} | {'cell ' * 20} |" for index in range(40))
+    source = f"## Data\n\n| a | b |\n|---|---|\n{rows}\n"
+    policy = ChunkingPolicy(target_tokens=100, max_tokens=100, pack_atomic=True)
+    tables = [c for c in chunk(source, policy=policy) if c.kind is ChunkKind.TABLE]
+    assert len(tables) == 1
+    assert tables[0].tokens > 100, "an indivisible block may exceed the ceiling; it is not cut"
+
+
+def test_packing_is_off_by_default() -> None:
+    """The measured behaviour ships behind a setting, and the default is unchanged.
+
+    Flipping it re-anchors judged cases, and one change may move the retriever or
+    the judgments and not both (roadmap 4.12 and 4.15, ADR-0042).
+    """
+    assert ChunkingPolicy().pack_atomic is False
+    assert ChunkKind.CODE in {c.kind for c in chunk(INSTALL)}
 
 
 def test_oversize_sections_split_at_paragraph_boundaries() -> None:
