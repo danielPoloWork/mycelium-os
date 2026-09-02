@@ -1,0 +1,455 @@
+<h1 id="using-uv-with-aws-lambda">Using uv with AWS Lambda</h1>
+<p><a href="https://aws.amazon.com/lambda/">AWS Lambda</a> is a
+serverless computing service that lets you run code without provisioning
+or managing servers.</p>
+<p>You can use uv with AWS Lambda to manage your Python dependencies,
+build your deployment package, and deploy your Lambda functions.</p>
+<p>!!! tip</p>
+<pre><code>Check out the [`uv-aws-lambda-example`](https://github.com/astral-sh/uv-aws-lambda-example) project for
+an example of best practices when using uv to deploy an application to AWS Lambda.</code></pre>
+<h2 id="getting-started">Getting started</h2>
+<p>To start, assume we have a minimal FastAPI application with the
+following structure:</p>
+<pre class="plaintext"><code>project
+├── pyproject.toml
+└── app
+    ├── __init__.py
+    └── main.py</code></pre>
+<p>Where the <code>pyproject.toml</code> contains:</p>
+<p>```toml title=“pyproject.toml” [project] name =
+“uv-aws-lambda-example” version = “0.1.0” requires-python = “&gt;=3.13”
+dependencies = [ # FastAPI is a modern web framework for building APIs
+with Python. “fastapi”, # Mangum is a library that adapts ASGI
+applications to AWS Lambda and API Gateway. “mangum”,]</p>
+<p>[dependency-groups] dev = [ # In development mode, include the
+FastAPI development server. “fastapi[standard]&gt;=0.115”,]</p>
+<pre><code>
+And the `main.py` file contains:
+
+```python title=&quot;app/main.py&quot;
+import logging
+
+from fastapi import FastAPI
+from mangum import Mangum
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+app = FastAPI()
+handler = Mangum(app)
+
+
+@app.get(&quot;/&quot;)
+async def root() -&gt; str:
+    return &quot;Hello, world!&quot;</code></pre>
+<p>We can run this application locally with:</p>
+<pre class="console"><code>$ uv run fastapi dev</code></pre>
+<p>From there, opening http://127.0.0.1:8000/ in a web browser will
+display “Hello, world!”</p>
+<h2 id="deploying-a-docker-image">Deploying a Docker image</h2>
+<p>To deploy to AWS Lambda, we need to build a container image that
+includes the application code and dependencies in a single output
+directory.</p>
+<p>We’ll follow the principles outlined in the <a
+href="./docker.md">Docker guide</a> (in particular, a multi-stage build)
+to ensure that the final image is as small and cache-friendly as
+possible.</p>
+<p>In the first stage, we’ll populate a single directory with all
+application code and dependencies. In the second stage, we’ll copy this
+directory over to the final image, omitting the build tools and other
+unnecessary files.</p>
+<p>```dockerfile title=“Dockerfile” FROM ghcr.io/astral-sh/uv:0.12.7 AS
+uv</p>
+<h1 id="first-bundle-the-dependencies-into-the-task-root.">First, bundle
+the dependencies into the task root.</h1>
+<p>FROM public.ecr.aws/lambda/python:3.13 AS builder</p>
+<h1
+id="enable-bytecode-compilation-to-improve-cold-start-performance.">Enable
+bytecode compilation, to improve cold-start performance.</h1>
+<p>ENV UV_COMPILE_BYTECODE=1</p>
+<h1
+id="disable-installer-metadata-to-create-a-deterministic-layer.">Disable
+installer metadata, to create a deterministic layer.</h1>
+<p>ENV UV_NO_INSTALLER_METADATA=1</p>
+<h1 id="enable-copy-mode-to-support-bind-mount-caching.">Enable copy
+mode to support bind mount caching.</h1>
+<p>ENV UV_LINK_MODE=copy</p>
+<h1
+id="bundle-the-dependencies-into-the-lambda-task-root-via-uv-pip-install---target.">Bundle
+the dependencies into the Lambda task root via
+<code>uv pip install --target</code>.</h1>
+<h1 id="section"></h1>
+<h1
+id="omit-any-local-packages---no-emit-workspace-and-development-dependencies---no-dev.">Omit
+any local packages (<code>--no-emit-workspace</code>) and development
+dependencies (<code>--no-dev</code>).</h1>
+<h1
+id="this-ensures-that-the-docker-layer-cache-is-only-invalidated-when-the-pyproject.toml-or-uv.lock">This
+ensures that the Docker layer cache is only invalidated when the
+<code>pyproject.toml</code> or <code>uv.lock</code></h1>
+<h1
+id="files-change-but-remains-robust-to-changes-in-the-application-code.">files
+change, but remains robust to changes in the application code.</h1>
+<p>RUN –mount=from=uv,source=/uv,target=/bin/uv<br />
+–mount=type=cache,target=/root/.cache/uv<br />
+–mount=type=bind,source=uv.lock,target=uv.lock<br />
+–mount=type=bind,source=pyproject.toml,target=pyproject.toml<br />
+uv export –frozen –no-emit-workspace –no-dev –no-editable -o
+requirements.txt &amp;&amp;<br />
+uv pip install -r requirements.txt –target “${LAMBDA_TASK_ROOT}”</p>
+<p>FROM public.ecr.aws/lambda/python:3.13</p>
+<h1 id="copy-the-runtime-dependencies-from-the-builder-stage.">Copy the
+runtime dependencies from the builder stage.</h1>
+<p>COPY –from=builder ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}</p>
+<h1 id="copy-the-application-code.">Copy the application code.</h1>
+<p>COPY ./app ${LAMBDA_TASK_ROOT}/app</p>
+<h1 id="set-the-aws-lambda-handler.">Set the AWS Lambda handler.</h1>
+<p>CMD [“app.main.handler”]</p>
+<pre><code>
+!!! tip
+
+    To deploy to ARM-based AWS Lambda runtimes, replace `public.ecr.aws/lambda/python:3.13` with `public.ecr.aws/lambda/python:3.13-arm64`.
+
+We can build the image with, e.g.:
+
+```console
+$ uv lock
+$ docker build -t fastapi-app .</code></pre>
+<p>The core benefits of this Dockerfile structure are as follows:</p>
+<ol type="1">
+<li><strong>Minimal image size.</strong> By using a multi-stage build,
+we can ensure that the final image only includes the application code
+and dependencies. For example, the uv binary itself is not included in
+the final image.</li>
+<li><strong>Maximal cache reuse.</strong> By installing application
+dependencies separately from the application code, we can ensure that
+the Docker layer cache is only invalidated when the dependencies
+change.</li>
+</ol>
+<p>Concretely, rebuilding the image after modifying the application
+source code can reuse the cached layers, resulting in millisecond
+builds:</p>
+<pre class="console"><code> =&gt; [internal] load build definition from Dockerfile                                                                 0.0s
+ =&gt; =&gt; transferring dockerfile: 1.31kB                                                                               0.0s
+ =&gt; [internal] load metadata for public.ecr.aws/lambda/python:3.13                                                   0.3s
+ =&gt; [internal] load metadata for ghcr.io/astral-sh/uv:latest                                                         0.3s
+ =&gt; [internal] load .dockerignore                                                                                    0.0s
+ =&gt; =&gt; transferring context: 106B                                                                                    0.0s
+ =&gt; [uv 1/1] FROM ghcr.io/astral-sh/uv:latest@sha256:ea61e006cfec0e8d81fae901ad703e09d2c6cf1aa58abcb6507d124b50286f  0.0s
+ =&gt; [builder 1/2] FROM public.ecr.aws/lambda/python:3.13@sha256:f5b51b377b80bd303fe8055084e2763336ea8920d12955b23ef  0.0s
+ =&gt; [internal] load build context                                                                                    0.0s
+ =&gt; =&gt; transferring context: 185B                                                                                    0.0s
+ =&gt; CACHED [builder 2/2] RUN --mount=from=uv,source=/uv,target=/bin/uv     --mount=type=cache,target=/root/.cache/u  0.0s
+ =&gt; CACHED [stage-2 2/3] COPY --from=builder /var/task /var/task                                                     0.0s
+ =&gt; CACHED [stage-2 3/3] COPY ./app /var/task                                                                        0.0s
+ =&gt; exporting to image                                                                                               0.0s
+ =&gt; =&gt; exporting layers                                                                                              0.0s
+ =&gt; =&gt; writing image sha256:6f8f9ef715a7cda466b677a9df4046ebbb90c8e88595242ade3b4771f547652d                         0.0</code></pre>
+<p>After building, we can push the image to <a
+href="https://aws.amazon.com/ecr/">Elastic Container Registry (ECR)</a>
+with, e.g.:</p>
+<pre class="console"><code>$ aws ecr get-login-password --region region | docker login --username AWS --password-stdin aws_account_id.dkr.ecr.region.amazonaws.com
+$ docker tag fastapi-app:latest aws_account_id.dkr.ecr.region.amazonaws.com/fastapi-app:latest
+$ docker push aws_account_id.dkr.ecr.region.amazonaws.com/fastapi-app:latest</code></pre>
+<p>Finally, we can deploy the image to AWS Lambda using the AWS
+Management Console or the AWS CLI, e.g.:</p>
+<pre class="console"><code>$ aws lambda create-function \
+   --function-name myFunction \
+   --package-type Image \
+   --code ImageUri=aws_account_id.dkr.ecr.region.amazonaws.com/fastapi-app:latest \
+   --role arn:aws:iam::111122223333:role/my-lambda-role</code></pre>
+<p>Where the <a
+href="https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html#permissions-executionrole-api">execution
+role</a> is created via:</p>
+<pre class="console"><code>$ aws iam create-role \
+   --role-name my-lambda-role \
+   --assume-role-policy-document &#39;{&quot;Version&quot;: &quot;2012-10-17&quot;, &quot;Statement&quot;: [{ &quot;Effect&quot;: &quot;Allow&quot;, &quot;Principal&quot;: {&quot;Service&quot;: &quot;lambda.amazonaws.com&quot;}, &quot;Action&quot;: &quot;sts:AssumeRole&quot;}]}&#39;</code></pre>
+<p>Or, update an existing function with:</p>
+<pre class="console"><code>$ aws lambda update-function-code \
+   --function-name myFunction \
+   --image-uri aws_account_id.dkr.ecr.region.amazonaws.com/fastapi-app:latest \
+   --publish</code></pre>
+<p>To test the Lambda, we can invoke it via the AWS Management Console
+or the AWS CLI, e.g.:</p>
+<pre class="console"><code>$ aws lambda invoke \
+   --function-name myFunction \
+   --payload file://event.json \
+   --cli-binary-format raw-in-base64-out \
+   response.json
+{
+  &quot;StatusCode&quot;: 200,
+  &quot;ExecutedVersion&quot;: &quot;$LATEST&quot;
+}</code></pre>
+<p>Where <code>event.json</code> contains the event payload to pass to
+the Lambda function:</p>
+<p><code>json title="event.json" {   "httpMethod": "GET",   "path": "/",   "requestContext": {},   "version": "1.0" }</code></p>
+<p>And <code>response.json</code> contains the response from the Lambda
+function:</p>
+<p><code>json title="response.json" {   "statusCode": 200,   "headers": {     "content-length": "14",     "content-type": "application/json"   },   "multiValueHeaders": {},   "body": "\"Hello, world!\"",   "isBase64Encoded": false }</code></p>
+<p>For details, see the <a
+href="https://docs.aws.amazon.com/lambda/latest/dg/python-image.html">AWS
+Lambda documentation</a>.</p>
+<h3 id="workspace-support">Workspace support</h3>
+<p>If a project includes local dependencies (e.g., via <a
+href="../../concepts/projects/workspaces.md">Workspaces</a>), those too
+must be included in the deployment package.</p>
+<p>We’ll start by extending the above example to include a dependency on
+a locally-developed library named <code>library</code>.</p>
+<p>First, we’ll create the library itself:</p>
+<pre class="console"><code>$ uv init --lib library
+$ uv add ./library</code></pre>
+<p>Running <code>uv init</code> within the <code>project</code>
+directory will automatically convert <code>project</code> to a workspace
+and add <code>library</code> as a workspace member:</p>
+<p>```toml title=“pyproject.toml” [project] name =
+“uv-aws-lambda-example” version = “0.1.0” requires-python = “&gt;=3.13”
+dependencies = [ # FastAPI is a modern web framework for building APIs
+with Python. “fastapi”, # A local library. “library”, # Mangum is a
+library that adapts ASGI applications to AWS Lambda and API Gateway.
+“mangum”,]</p>
+<p>[dependency-groups] dev = [ # In development mode, include the
+FastAPI development server. “fastapi[standard]”,]</p>
+<p>[tool.uv.workspace] members = [“library”]</p>
+<p>[tool.uv.sources] lib = { workspace = true }</p>
+<pre><code>
+By default, `uv init --lib` will create a package that exports a `hello` function. We&#39;ll modify the
+application source code to call that function:
+
+```python title=&quot;app/main.py&quot;
+import logging
+
+from fastapi import FastAPI
+from mangum import Mangum
+
+from library import hello
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+
+app = FastAPI()
+handler = Mangum(app)
+
+
+@app.get(&quot;/&quot;)
+async def root() -&gt; str:
+    return hello()</code></pre>
+<p>We can run the modified application locally with:</p>
+<pre class="console"><code>$ uv run fastapi dev</code></pre>
+<p>And confirm that opening http://127.0.0.1:8000/ in a web browser
+displays, “Hello from library!” (instead of “Hello, World!”)</p>
+<p>Finally, we’ll update the Dockerfile to include the local library in
+the deployment package:</p>
+<p>```dockerfile title=“Dockerfile” FROM ghcr.io/astral-sh/uv:0.12.7 AS
+uv</p>
+<h1 id="first-bundle-the-dependencies-into-the-task-root.-1">First,
+bundle the dependencies into the task root.</h1>
+<p>FROM public.ecr.aws/lambda/python:3.13 AS builder</p>
+<h1
+id="enable-bytecode-compilation-to-improve-cold-start-performance.-1">Enable
+bytecode compilation, to improve cold-start performance.</h1>
+<p>ENV UV_COMPILE_BYTECODE=1</p>
+<h1
+id="disable-installer-metadata-to-create-a-deterministic-layer.-1">Disable
+installer metadata, to create a deterministic layer.</h1>
+<p>ENV UV_NO_INSTALLER_METADATA=1</p>
+<h1 id="enable-copy-mode-to-support-bind-mount-caching.-1">Enable copy
+mode to support bind mount caching.</h1>
+<p>ENV UV_LINK_MODE=copy</p>
+<h1
+id="bundle-the-dependencies-into-the-lambda-task-root-via-uv-pip-install---target.-1">Bundle
+the dependencies into the Lambda task root via
+<code>uv pip install --target</code>.</h1>
+<h1 id="section-1"></h1>
+<h1
+id="omit-any-local-packages---no-emit-workspace-and-development-dependencies---no-dev.-1">Omit
+any local packages (<code>--no-emit-workspace</code>) and development
+dependencies (<code>--no-dev</code>).</h1>
+<h1
+id="this-ensures-that-the-docker-layer-cache-is-only-invalidated-when-the-pyproject.toml-or-uv.lock-1">This
+ensures that the Docker layer cache is only invalidated when the
+<code>pyproject.toml</code> or <code>uv.lock</code></h1>
+<h1
+id="files-change-but-remains-robust-to-changes-in-the-application-code.-1">files
+change, but remains robust to changes in the application code.</h1>
+<p>RUN –mount=from=uv,source=/uv,target=/bin/uv<br />
+–mount=type=cache,target=/root/.cache/uv<br />
+–mount=type=bind,source=uv.lock,target=uv.lock<br />
+–mount=type=bind,source=pyproject.toml,target=pyproject.toml<br />
+uv export –frozen –no-emit-workspace –no-dev –no-editable -o
+requirements.txt &amp;&amp;<br />
+uv pip install -r requirements.txt –target “${LAMBDA_TASK_ROOT}”</p>
+<h1 id="if-you-have-a-workspace-copy-it-over-and-install-it-too.">If you
+have a workspace, copy it over and install it too.</h1>
+<h1 id="section-2"></h1>
+<h1
+id="by-omitting---no-emit-workspace-library-will-be-copied-into-the-task-root.-using-a-separate">By
+omitting <code>--no-emit-workspace</code>, <code>library</code> will be
+copied into the task root. Using a separate</h1>
+<h1
+id="run-command-ensures-that-all-third-party-dependencies-are-cached-separately-and-remain"><code>RUN</code>
+command ensures that all third-party dependencies are cached separately
+and remain</h1>
+<h1 id="robust-to-changes-in-the-workspace.">robust to changes in the
+workspace.</h1>
+<p>RUN –mount=from=uv,source=/uv,target=/bin/uv<br />
+–mount=type=cache,target=/root/.cache/uv<br />
+–mount=type=bind,source=uv.lock,target=uv.lock<br />
+–mount=type=bind,source=pyproject.toml,target=pyproject.toml<br />
+–mount=type=bind,source=library,target=library<br />
+uv export –frozen –no-dev –no-editable -o requirements.txt
+&amp;&amp;<br />
+uv pip install -r requirements.txt –target “${LAMBDA_TASK_ROOT}”</p>
+<p>FROM public.ecr.aws/lambda/python:3.13</p>
+<h1 id="copy-the-runtime-dependencies-from-the-builder-stage.-1">Copy
+the runtime dependencies from the builder stage.</h1>
+<p>COPY –from=builder ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}</p>
+<h1 id="copy-the-application-code.-1">Copy the application code.</h1>
+<p>COPY ./app ${LAMBDA_TASK_ROOT}/app</p>
+<h1 id="set-the-aws-lambda-handler.-1">Set the AWS Lambda handler.</h1>
+<p>CMD [“app.main.handler”]</p>
+<pre><code>
+!!! tip
+
+    To deploy to ARM-based AWS Lambda runtimes, replace `public.ecr.aws/lambda/python:3.13` with `public.ecr.aws/lambda/python:3.13-arm64`.
+
+From there, we can build and deploy the updated image as before.
+
+## Deploying a zip archive
+
+AWS Lambda also supports deployment via zip archives. For simple applications, zip archives can be a
+more straightforward and efficient deployment method than Docker images; however, zip archives are
+limited to
+[250 MB](https://docs.aws.amazon.com/lambda/latest/dg/python-package.html#python-package-create-update)
+in size.
+
+Returning to the FastAPI example, we can bundle the application dependencies into a local directory
+for AWS Lambda via:
+
+```console
+$ uv export --frozen --no-dev --no-editable -o requirements.txt
+$ uv pip install \
+   --no-installer-metadata \
+   --no-compile-bytecode \
+   --python-platform x86_64-manylinux2014 \
+   --python 3.13 \
+   --target packages \
+   -r requirements.txt</code></pre>
+<p>!!! tip</p>
+<pre><code>To deploy to ARM-based AWS Lambda runtimes, replace `x86_64-manylinux2014` with `aarch64-manylinux2014`.</code></pre>
+<p>Following the <a
+href="https://docs.aws.amazon.com/lambda/latest/dg/python-package.html">AWS
+Lambda documentation</a>, we can then bundle these dependencies into a
+zip as follows:</p>
+<pre class="console"><code>$ cd packages
+$ zip -r ../package.zip .
+$ cd ..</code></pre>
+<p>Finally, we can add the application code to the zip archive:</p>
+<pre class="console"><code>$ zip -r package.zip app</code></pre>
+<p>We can then deploy the zip archive to AWS Lambda via the AWS
+Management Console or the AWS CLI, e.g.:</p>
+<pre class="console"><code>$ aws lambda create-function \
+   --function-name myFunction \
+   --runtime python3.13 \
+   --zip-file fileb://package.zip \
+   --handler app.main.handler \
+   --role arn:aws:iam::111122223333:role/service-role/my-lambda-role</code></pre>
+<p>Where the <a
+href="https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html#permissions-executionrole-api">execution
+role</a> is created via:</p>
+<pre class="console"><code>$ aws iam create-role \
+   --role-name my-lambda-role \
+   --assume-role-policy-document &#39;{&quot;Version&quot;: &quot;2012-10-17&quot;, &quot;Statement&quot;: [{ &quot;Effect&quot;: &quot;Allow&quot;, &quot;Principal&quot;: {&quot;Service&quot;: &quot;lambda.amazonaws.com&quot;}, &quot;Action&quot;: &quot;sts:AssumeRole&quot;}]}&#39;</code></pre>
+<p>Or, update an existing function with:</p>
+<pre class="console"><code>$ aws lambda update-function-code \
+   --function-name myFunction \
+   --zip-file fileb://package.zip</code></pre>
+<p>!!! note</p>
+<pre><code>By default, the AWS Management Console assumes a Lambda entrypoint of `lambda_function.lambda_handler`.
+If your application uses a different entrypoint, you&#39;ll need to modify it in the AWS Management Console.
+For example, the above FastAPI application uses `app.main.handler`.</code></pre>
+<p>To test the Lambda, we can invoke it via the AWS Management Console
+or the AWS CLI, e.g.:</p>
+<pre class="console"><code>$ aws lambda invoke \
+   --function-name myFunction \
+   --payload file://event.json \
+   --cli-binary-format raw-in-base64-out \
+   response.json
+{
+  &quot;StatusCode&quot;: 200,
+  &quot;ExecutedVersion&quot;: &quot;$LATEST&quot;
+}</code></pre>
+<p>Where <code>event.json</code> contains the event payload to pass to
+the Lambda function:</p>
+<p><code>json title="event.json" {   "httpMethod": "GET",   "path": "/",   "requestContext": {},   "version": "1.0" }</code></p>
+<p>And <code>response.json</code> contains the response from the Lambda
+function:</p>
+<p><code>json title="response.json" {   "statusCode": 200,   "headers": {     "content-length": "14",     "content-type": "application/json"   },   "multiValueHeaders": {},   "body": "\"Hello, world!\"",   "isBase64Encoded": false }</code></p>
+<h3 id="using-a-lambda-layer">Using a Lambda layer</h3>
+<p>AWS Lambda also supports the deployment of multiple composed <a
+href="https://docs.aws.amazon.com/lambda/latest/dg/python-layers.html">Lambda
+layers</a> when working with zip archives. These layers are conceptually
+similar to layers in a Docker image, allowing you to separate
+application code from dependencies.</p>
+<p>In particular, we can create a lambda layer for application
+dependencies and attach it to the Lambda function, separate from the
+application code itself. This setup can improve cold-start performance
+for application updates, as the dependencies layer can be reused across
+deployments.</p>
+<p>To create a Lambda layer, we’ll follow similar steps, but create two
+separate zip archives: one for the application code and one for the
+application dependencies.</p>
+<p>First, we’ll create the dependency layer. Lambda layers are expected
+to follow a slightly different structure, so we’ll use
+<code>--prefix</code> rather than <code>--target</code>:</p>
+<pre class="console"><code>$ uv export --frozen --no-dev --no-editable -o requirements.txt
+$ uv pip install \
+   --no-installer-metadata \
+   --no-compile-bytecode \
+   --python-platform x86_64-manylinux2014 \
+   --python 3.13 \
+   --prefix packages \
+   -r requirements.txt</code></pre>
+<p>We’ll then zip the dependencies in adherence with the expected layout
+for Lambda layers:</p>
+<pre class="console"><code>$ mkdir python
+$ cp -r packages/lib python/
+$ zip -r layer_content.zip python</code></pre>
+<p>!!! tip</p>
+<pre><code>To generate deterministic zip archives, consider passing the `-X` flag to `zip` to exclude
+extended attributes and file system metadata.</code></pre>
+<p>And publish the Lambda layer:</p>
+<pre class="console"><code>$ aws lambda publish-layer-version --layer-name dependencies-layer \
+   --zip-file fileb://layer_content.zip \
+   --compatible-runtimes python3.13 \
+   --compatible-architectures &quot;x86_64&quot;</code></pre>
+<p>We can then create the Lambda function as in the previous example,
+omitting the dependencies:</p>
+<pre class="console"><code>$ # Zip the application code.
+$ zip -r app.zip app
+
+$ # Create the Lambda function.
+$ aws lambda create-function \
+   --function-name myFunction \
+   --runtime python3.13 \
+   --zip-file fileb://app.zip \
+   --handler app.main.handler \
+   --role arn:aws:iam::111122223333:role/service-role/my-lambda-role</code></pre>
+<p>Finally, we can attach the dependencies layer to the Lambda function,
+using the ARN returned by the <code>publish-layer-version</code>
+step:</p>
+<pre class="console"><code>$ aws lambda update-function-configuration --function-name myFunction \
+    --cli-binary-format raw-in-base64-out \
+    --layers &quot;arn:aws:lambda:region:111122223333:layer:dependencies-layer:1&quot;</code></pre>
+<p>When the application dependencies change, the layer can be updated
+independently of the application by republishing the layer and updating
+the Lambda function configuration:</p>
+<pre class="console"><code>$ # Update the dependencies in the layer.
+$ aws lambda publish-layer-version --layer-name dependencies-layer \
+   --zip-file fileb://layer_content.zip \
+   --compatible-runtimes python3.13 \
+   --compatible-architectures &quot;x86_64&quot;
+
+$ # Update the Lambda function configuration.
+$ aws lambda update-function-configuration --function-name myFunction \
+    --cli-binary-format raw-in-base64-out \
+    --layers &quot;arn:aws:lambda:region:111122223333:layer:dependencies-layer:2&quot;</code></pre>

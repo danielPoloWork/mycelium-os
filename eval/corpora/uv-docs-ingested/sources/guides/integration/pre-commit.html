@@ -1,0 +1,19 @@
+<h1 id="using-uv-in-pre-commit">Using uv in pre-commit</h1>
+<p>An official pre-commit hook is provided at <a
+href="https://github.com/astral-sh/uv-pre-commit"><code>astral-sh/uv-pre-commit</code></a>.</p>
+<p>To use uv with pre-commit, add one of the following examples to the
+<code>repos</code> list in the <code>.pre-commit-config.yaml</code>.</p>
+<p>To make sure your <code>uv.lock</code> file is up to date even if
+your <code>pyproject.toml</code> file was changed:</p>
+<p><code>yaml title=".pre-commit-config.yaml" repos:   - repo: https://github.com/astral-sh/uv-pre-commit     # uv version.     rev: 0.12.7     hooks:       - id: uv-lock</code></p>
+<p>To keep a <code>requirements.txt</code> file in sync with your
+<code>uv.lock</code> file:</p>
+<p><code>yaml title=".pre-commit-config.yaml" repos:   - repo: https://github.com/astral-sh/uv-pre-commit     # uv version.     rev: 0.12.7     hooks:       - id: uv-export</code></p>
+<p>To compile requirements files:</p>
+<p><code>yaml title=".pre-commit-config.yaml" repos:   - repo: https://github.com/astral-sh/uv-pre-commit     # uv version.     rev: 0.12.7     hooks:       # Compile requirements       - id: pip-compile         args: [requirements.in, -o, requirements.txt]</code></p>
+<p>To compile alternative requirements files, modify <code>args</code>
+and <code>files</code>:</p>
+<p><code>yaml title=".pre-commit-config.yaml" repos:   - repo: https://github.com/astral-sh/uv-pre-commit     # uv version.     rev: 0.12.7     hooks:       # Compile requirements       - id: pip-compile         args: [requirements-dev.in, -o, requirements-dev.txt]         files: ^requirements-dev\.(in|txt)$</code></p>
+<p>To run the hook over multiple files at the same time, add additional
+entries:</p>
+<p><code>yaml title=".pre-commit-config.yaml" repos:   - repo: https://github.com/astral-sh/uv-pre-commit     # uv version.     rev: 0.12.7     hooks:       # Compile requirements       - id: pip-compile         name: pip-compile requirements.in         args: [requirements.in, -o, requirements.txt]       - id: pip-compile         name: pip-compile requirements-dev.in         args: [requirements-dev.in, -o, requirements-dev.txt]         files: ^requirements-dev\.(in|txt)$</code></p>

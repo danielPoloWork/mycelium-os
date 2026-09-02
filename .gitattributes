@@ -34,3 +34,15 @@ tests/fixtures/ingest/corpus/*.png binary
 # truncation point — and a line-ending filter rewriting one on checkout would
 # quietly weaken the test that guards against it (roadmap 4.2).
 tests/fixtures/ingest/hostile/* binary
+
+# The third judged corpus (roadmap 4.10). Its sources are the *inputs* the
+# evidence was compiled from, and a judged anchor carries the source's digest in
+# its filename — so a line-ending filter rewriting one on checkout would move
+# every anchor that names it. The projected evidence is pinned to LF for the same
+# reason the determinism corpus is: it is compared byte-for-byte against a fresh
+# ingestion (`build_ingested_corpus.py --check`).
+eval/corpora/uv-docs-ingested/sources/* binary
+eval/corpora/uv-docs-ingested/sources/**/* binary
+eval/corpora/uv-docs-ingested/knowledge/evidence/*.md text eol=lf
+eval/corpora/uv-docs-ingested/eval/*.jsonl text eol=lf
+eval/corpora/uv-docs-ingested/provenance.json text eol=lf

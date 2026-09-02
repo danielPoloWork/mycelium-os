@@ -1,0 +1,15 @@
+# The third judged corpus (roadmap 4.10): the second one, ingested. `knowledge_dir`
+# scopes the corpus to the projected evidence, so `sources/` — the binaries the
+# evidence was compiled from — stays out of it. Indexing both would put every
+# document in the corpus twice.
+
+[project]
+name = "uv-docs-ingested"
+knowledge_dir = "knowledge"
+
+[ingest]
+parsers = ["markdown", "docling", "pdf"]   # what actually read this corpus
+connectors = ["file"]
+
+[retrieval]
+profile = "lexical"            # the shipped default; the corpus is here to measure it

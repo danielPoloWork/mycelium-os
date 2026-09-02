@@ -246,7 +246,9 @@ def test_trust_is_resolved_from_the_uri_the_connector_produced(
         doc_id=DOC_ID,
         trust_for=trust_for,
     )
-    assert seen and seen[0].startswith("file://")
+    # Relative, and that is the point: this URI is copied into a document that
+    # gets committed, so it must read the same on every machine (BUG-0017).
+    assert seen == ["file:source.md"]
     assert "source_trust: medium" in result.projection.text
 
 
@@ -289,7 +291,7 @@ def test_a_refused_source_is_recorded_where_it_can_be_found(
     with pytest.raises(ParseError):
         ingest_source(mycelium_dir, registry, str(source), doc_id=DOC_ID)
 
-    record = Quarantine(mycelium_dir).get(source.resolve().as_uri())
+    record = Quarantine(mycelium_dir).get(f"file:hostile/{source.name}")
     assert record is not None
     assert record.stage is QuarantineStage.PARSE
     assert record.media_type == "application/pdf"
@@ -308,7 +310,7 @@ def test_a_source_no_parser_reads_is_quarantined_at_dispatch(
     with pytest.raises(UnsupportedMediaTypeError):
         ingest_source(mycelium_dir, narrow, str(odd), doc_id=DOC_ID)
 
-    record = Quarantine(mycelium_dir).get(odd.resolve().as_uri())
+    record = Quarantine(mycelium_dir).get(f"file:{odd.name}")
     assert record is not None
     # Not `acquire`: the bytes were readable, and the remedy is a configuration
     # edit rather than anything to do with the file.

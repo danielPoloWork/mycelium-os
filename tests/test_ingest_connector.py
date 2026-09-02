@@ -29,9 +29,56 @@ def test_acquire_returns_bytes_digest_and_media_type(tree: Path) -> None:
     assert blob.data == b"# Notes\n"
     assert blob.digest == digest_bytes(b"# Notes\n")
     assert blob.media_type == MARKDOWN
-    assert blob.source_uri.startswith("file://")
+    assert blob.source_uri == "file:notes.md"
     assert blob.size == 8
     assert blob.warnings == ()
+
+
+def test_an_acquired_uri_is_relative_so_a_committed_document_travels(tree: Path) -> None:
+    """BUG-0017. This URI ends up in a projected document's frontmatter, and that
+    document is committed — so an absolute path would put one machine's directory
+    layout into everyone else's checkout."""
+    blob = FileConnector([tree]).acquire(str(tree / "nested" / "deep.md"))
+    assert blob.source_uri == "file:nested/deep.md"
+    assert str(tree) not in blob.source_uri
+
+
+def test_the_uri_is_written_against_base_not_against_the_widest_root(tmp_path: Path) -> None:
+    repository = tmp_path / "repo"
+    sources = repository / "sources"
+    sources.mkdir(parents=True)
+    (sources / "brief.md").write_bytes(b"# Brief\n")
+    # Two roots, as `mycelium ingest` declares them: the repository and its
+    # sources directory. The URI is written against the first, so it names the
+    # file the way the repository does.
+    connector = FileConnector([repository, sources])
+    assert connector.acquire("sources/brief.md").source_uri == "file:sources/brief.md"
+
+
+def test_a_source_outside_base_keeps_its_absolute_uri(tmp_path: Path) -> None:
+    repository = tmp_path / "repo"
+    elsewhere = tmp_path / "elsewhere"
+    repository.mkdir()
+    elsewhere.mkdir()
+    (elsewhere / "brief.md").write_bytes(b"# Brief\n")
+    # Readable because it is a declared root, but not *under* the repository, so
+    # a relative name would be a lie rather than a shorter truth.
+    connector = FileConnector([repository, elsewhere], base=repository)
+    uri = connector.acquire(str(elsewhere / "brief.md")).source_uri
+    assert uri.startswith("file:///")
+
+
+def test_an_acquired_uri_round_trips_back_through_the_connector(tree: Path) -> None:
+    connector = FileConnector([tree])
+    once = connector.acquire("nested/deep.md")
+    assert connector.acquire(once.source_uri).digest == once.digest
+
+
+def test_a_space_in_the_name_is_percent_encoded(tree: Path) -> None:
+    (tree / "two words.md").write_bytes(b"# Two\n")
+    blob = FileConnector([tree]).acquire("two words.md")
+    assert blob.source_uri == "file:two%20words.md"
+    assert FileConnector([tree]).acquire(blob.source_uri).digest == blob.digest
 
 
 def test_a_relative_source_resolves_against_the_first_root(tree: Path) -> None:

@@ -23,13 +23,21 @@ error is usually one typo away from a working `sources_dir`.
 
 The URI form is `file://` — accepted with or without the scheme, because an
 operator types a path and a manifest stores a URI, and both reach here.
+
+**What comes back out is relative** when the source is inside the repository, and
+that is not cosmetic. The URI a blob carries is copied into the provenance of the
+evidence document projected from it (spec 03 §3), and that document is committed
+to Git — so an absolute path would put one machine's directory layout into
+everyone else's checkout, and two people ingesting the same file would produce
+two different documents ([BUG-0017]). A source outside the repository keeps its
+absolute `file://` URI: there is no relative answer that would mean anything.
 """
 
 import os
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Final
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 
 from mycelium.ingest.errors import ConnectorError, SourceTooLargeError
 from mycelium.ingest.media import EXTENSIONS, classify
@@ -56,11 +64,28 @@ class FileConnector:
 
     schemes: tuple[str, ...] = ("file", "")
 
-    def __init__(self, roots: Sequence[Path], *, max_bytes: int = DEFAULT_MAX_BYTES) -> None:
+    def __init__(
+        self,
+        roots: Sequence[Path],
+        *,
+        max_bytes: int = DEFAULT_MAX_BYTES,
+        base: Path | None = None,
+    ) -> None:
+        """`base` is what an acquired URI is expressed relative to.
+
+        It defaults to the first declared root, which is the repository root
+        everywhere this connector is constructed — the caller that has two roots
+        passes the repository first and `sources/` second. It is a separate
+        parameter rather than an assumption because "the tree a URI is written
+        against" and "the trees a read is allowed in" are different questions,
+        and conflating them is how a second root would silently change what a
+        committed document says about itself.
+        """
         if not roots:
             msg = "the file connector needs at least one declared root"
             raise ConnectorError(msg)
         self._roots = tuple(_resolve_root(root) for root in roots)
+        self._base = _resolve_root(base) if base is not None else self._roots[0]
         self._max_bytes = max_bytes
 
     @property
@@ -94,9 +119,28 @@ class FileConnector:
         return Blob.of(
             data,
             media_type=claim.declared,
-            source_uri=path.as_uri(),
+            source_uri=self.uri_of(path),
             warnings=(mismatch,) if mismatch else (),
         )
+
+    def uri_of(self, path: Path) -> str:
+        """The portable name for an acquired file (BUG-0017).
+
+        `file:sources/a.pdf` — a relative-path URI reference, which RFC 3986
+        allows and which reads the same on every machine — for anything inside
+        `base`; the absolute `file:///…` form for anything outside it, where a
+        relative path would be a lie rather than a shorter truth.
+
+        Public because it is also the *lookup* key: a quarantine record is filed
+        under the URI acquisition produced, so anything asking "is this file
+        quarantined" has to ask the same question the same way. Two copies of
+        this rule is how `--forget` silently stops finding records.
+        """
+        try:
+            relative = _resolve_root(path).relative_to(self._base)
+        except ValueError:
+            return path.as_uri()
+        return f"file:{quote(relative.as_posix())}"
 
     def _locate(self, source: str) -> Path:
         """Resolve `source` to a real path inside a declared root, or refuse it."""

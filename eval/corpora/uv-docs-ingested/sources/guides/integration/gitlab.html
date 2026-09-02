@@ -1,0 +1,67 @@
+<h1 id="using-uv-in-gitlab-cicd">Using uv in GitLab CI/CD</h1>
+<h2 id="using-the-uv-image">Using the uv image</h2>
+<p>Astral provides <a href="docker.md#available-images">Docker
+images</a> with uv preinstalled. Select a variant that is suitable for
+your workflow.</p>
+<p>```yaml title=“.gitlab-ci.yml” variables: UV_VERSION: “0.12.7”
+PYTHON_VERSION: “3.12” BASE_LAYER: trixie-slim # GitLab CI creates a
+separate mountpoint for the build directory, # so we need to copy
+instead of using hard links. UV_LINK_MODE: copy</p>
+<p>uv: image: ghcr.io/astral-sh/uv:<span
+class="math inline"><em>U</em><em>V</em><sub><em>V</em></sub><em>E</em><em>R</em><em>S</em><em>I</em><em>O</em><em>N</em> − <em>p</em><em>y</em><em>t</em><em>h</em><em>o</em><em>n</em></span>PYTHON_VERSION-$BASE_LAYER
+script: # your <code>uv</code> commands</p>
+<pre><code>
+!!! note
+
+    If you are using a distroless image, you have to specify the entrypoint:
+    ```yaml
+    uv:
+      image:
+        name: ghcr.io/astral-sh/uv:$UV_VERSION
+        entrypoint: [&quot;&quot;]
+      # ...
+    ```
+
+## Caching
+
+Persisting the uv cache between workflow runs can improve performance.
+
+```yaml
+uv-install:
+  variables:
+    UV_CACHE_DIR: .uv-cache
+  cache:
+    - key:
+        files:
+          - uv.lock
+      paths:
+        - $UV_CACHE_DIR
+  script:
+    # Your `uv` commands
+  after_script:
+    - uv cache prune --ci</code></pre>
+<p>See the <a href="https://docs.gitlab.com/ee/ci/caching/">GitLab
+caching documentation</a> for more details on configuring caching.</p>
+<p>Using <code>uv cache prune --ci</code> at the end of the job is
+recommended to reduce cache size. See the <a
+href="../../concepts/cache.md#caching-in-continuous-integration">uv
+cache documentation</a> for more details.</p>
+<h2 id="using-uv-pip">Using <code>uv pip</code></h2>
+<p>If using the <code>uv pip</code> interface instead of the uv project
+interface, uv requires a virtual environment by default. To allow
+installing packages into the system environment, use the
+<code>--system</code> flag on all uv invocations or set the
+<code>UV_SYSTEM_PYTHON</code> variable.</p>
+<p>The <code>UV_SYSTEM_PYTHON</code> variable can be defined in at
+different scopes. You can read more about how <a
+href="https://docs.gitlab.com/ee/ci/variables/">variables and their
+precedence works in GitLab here</a></p>
+<p>Opt-in for the entire workflow by defining it at the top level:</p>
+<p>```yaml title=“.gitlab-ci.yml” variables: UV_SYSTEM_PYTHON: 1</p>
+<h1 id="section">[…]</h1>
+<p>```</p>
+<p>To opt-out again, the <code>--no-system</code> flag can be used in
+any uv invocation.</p>
+<p>When persisting the cache, you may want to use
+<code>requirements.txt</code> or <code>pyproject.toml</code> as your
+cache key files instead of <code>uv.lock</code>.</p>

@@ -17,7 +17,7 @@ exploratory and cannot satisfy a gate (spec 04 §7.5).
 
 ## The case sets
 
-Four of them: a **dev** and a **release** set per corpus (spec 04 §7.1, ADR-0027).
+Six of them: a **dev** and a **release** set per corpus (spec 04 §7.1, ADR-0027).
 
 | set | cases | corpus |
 |---|---:|---|
@@ -25,6 +25,15 @@ Four of them: a **dev** and a **release** set per corpus (spec 04 §7.1, ADR-002
 | [`release.jsonl`](release.jsonl) | 14 | this repository's documentation |
 | [`corpora/uv-docs/eval/dev.jsonl`](corpora/uv-docs/eval/dev.jsonl) | 12 | [`uv`'s documentation](corpora/uv-docs/README.md) |
 | [`corpora/uv-docs/eval/release.jsonl`](corpora/uv-docs/eval/release.jsonl) | 16 | the same |
+| [`corpora/uv-docs-ingested/eval/dev.jsonl`](corpora/uv-docs-ingested/eval/dev.jsonl) | 12 | [the same documents, ingested](corpora/uv-docs-ingested/README.md) |
+| [`corpora/uv-docs-ingested/eval/release.jsonl`](corpora/uv-docs-ingested/eval/release.jsonl) | 14 | the same |
+
+The third corpus is the second one **put through `mycelium ingest`** — the same 81 upstream
+documents rendered into DOCX, HTML and PDF, and scored as the evidence documents the
+projector wrote from them (roadmap 4.10). Its cases are not judged here: every query, grade
+and slice is copied from the `uv-docs` sets and only the anchor is recomputed, so the
+document is the only thing that varies. Two cases lose every anchor in the carry and are
+dropped by name, which is why its release set is 14 rather than 16.
 
 **The release set is what CI gates. The dev set is what tuning may look at.** A release run
 scores the dev set beside it and prints the gap — reported, never gated, because nobody has
@@ -40,8 +49,10 @@ product was fitted to and called it independent.
 Regenerate either corpus's sets with:
 
 ```bash
-python tools/build_eval_cases.py       # this repository's documentation
-python tools/build_uv_docs_cases.py    # the second corpus
+python tools/build_eval_cases.py           # this repository's documentation
+python tools/build_uv_docs_cases.py        # the second corpus
+python tools/build_ingested_corpus.py      # the third corpus's evidence documents
+python tools/build_ingested_cases.py       # ...and the judgements carried onto them
 ```
 
 The judgments live in those scripts as data, so every anchor is validated against a real
@@ -94,6 +105,31 @@ splits, which has nothing to do with retrieval — and because a chunk anchor ca
 so [ADR-0023](../docs/adr/0023-make-the-chunk-target-steer-size.md)'s chunking knob invalidates
 one and leaves the other standing.
 
+## What projection costs
+
+The third corpus exists to answer one question the other two cannot: **is an evidence
+document projected from a binary source as retrievable as the Markdown a human would have
+written?** `python tools/measure_projection_cost.py` scores both corpora over the cases they
+share and prints the difference per format. On the release set, the same 14 cases twice:
+
+| | n | nDCG@10 | MRR | R@10 | R@50 | judged passage |
+|---|---:|---|---|---|---|---|
+| overall | 14 | 0.327 → 0.385 | 0.266 → 0.387 | 0.583 → 0.583 | 0.958 → 0.958 | |
+| docx | 2 | 0.587 → 0.587 | 0.600 → 0.600 | 0.750 → 0.750 | 1.000 → 1.000 | 1.0× |
+| html | 3 | 0.167 → 0.167 | 0.135 → 0.136 | 0.333 → 0.333 | 1.000 → 1.000 | 1.0× |
+| pdf | 5 | 0.379 → 0.517 | 0.260 → 0.550 | 0.800 → 0.800 | 1.000 → 1.000 | **10.6×** |
+
+**Recall does not move.** Where structure survives — DOCX and HTML — the numbers are
+identical, not merely close. The one apparent gain is PDF's ranking, and the last column is
+why it is not one: a PDF has no headings, so its chunks are page-sized and the carried
+anchor is ten times the size of the Markdown chunk it came from. A bigger target is easier
+to rank highly. Reported, never gated: with two to five cases per format there is no
+threshold anyone could defend ([ADR-0039](../docs/adr/0039-measure-what-projection-costs.md)).
+
+The same run also found what projection costs that nobody was measuring: the Markdown corpus
+compiles **229 edges** and its ingested twin **10**. A relative link between two documents
+does not survive rendering and re-projection. Filed as roadmap 5.7.
+
 ## What this set is not
 
 - **The judgments are still not independent, and only half the problem moved.** Nobody here
@@ -107,7 +143,11 @@ one and leaves the other standing.
   corpus, where the judgments were not written by someone who knew where chunk boundaries
   fall. The cases are left as authored and the question is filed as roadmap 3.15: re-judging
   after seeing a ranking cannot be told apart from fitting the set to the result.
-- **62 cases is the floor the spec asks for at this phase, not a benchmark.** 1.0 wants
+- **The ingested corpus's anchors were carried, not judged — and the rule is not neutral.**
+  `build_ingested_cases.py` picks the twin chunk with the most word overlap with the judged
+  passage, which is mildly favourable to the ingested side. Every conclusion drawn from that
+  corpus is stated in the direction the bias does not help.
+- **88 cases is the floor the spec asks for at this phase, not a benchmark.** 1.0 wants
   ≥ 1 000. Small sets move a lot on single-case changes, so read differences of a few points
   as noise.
 - **Absolute numbers are not targets.** Pre-GA the discipline is relative (spec 04 §7.3):

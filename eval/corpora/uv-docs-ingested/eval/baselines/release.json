@@ -1,0 +1,19 @@
+{
+  "mycelium": {
+    "blessed_from_snapshot": "01M1GHYWDHK4YV3VQHB1XEECQH",
+    "corpus_digest": "sha256:3a2e0beb6aeb6a52efdab40c6b65c8821e39c8ad5ecd10b81a00b980fdcdf3a4",
+    "overall_ndcg_at_10": 0.384546,
+    "per_slice": {
+      "conceptual": 0.333333,
+      "exact": 0.25,
+      "fact": 0.551936,
+      "relationship": 0.571011,
+      "symbol": 0.0,
+      "unanswerable": 0.0
+    },
+    "toolchain": {
+      "mycelium": "0.3.0",
+      "python": "3.12.10"
+    }
+  }
+}

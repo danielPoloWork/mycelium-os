@@ -1,0 +1,210 @@
+<h1 id="working-on-projects">Working on projects</h1>
+<p>uv supports managing Python projects, which define their dependencies
+in a <code>pyproject.toml</code> file.</p>
+<h2 id="creating-a-new-project">Creating a new project</h2>
+<p>You can create a new Python project using the <code>uv init</code>
+command:</p>
+<pre class="console"><code>$ uv init hello-world
+$ cd hello-world</code></pre>
+<p>Alternatively, you can initialize a project in the working
+directory:</p>
+<pre class="console"><code>$ mkdir hello-world
+$ cd hello-world
+$ uv init</code></pre>
+<p>uv will create the following files and directories:</p>
+<pre class="text"><code>├── .git/
+├── .gitignore
+├── .python-version
+├── pyproject.toml
+├── README.md
+└── src
+    └── hello_world
+        └── __init__.py</code></pre>
+<p>The <code>pyproject.toml</code> defines a <code>hello-world</code>
+entrypoint referring to a simple “Hello world” program in
+<code>__init__.py</code>. Try it out with <code>uv run</code>:</p>
+<pre class="console"><code>$ uv run hello-world
+Hello from hello-world!</code></pre>
+<h2 id="project-structure">Project structure</h2>
+<p>A project consists of a few important parts that work together and
+allow uv to manage your project. In addition to the files created by
+<code>uv init</code>, uv will create a virtual environment and
+<code>uv.lock</code> file in the root of your project the first time you
+run a project command, i.e., <code>uv run</code>, <code>uv sync</code>,
+or <code>uv lock</code>.</p>
+<p>A complete listing would look like:</p>
+<pre class="text"><code>.
+├── .git/
+├── .venv/
+│   ├── bin
+│   ├── lib
+│   └── pyvenv.cfg
+├── .gitignore
+├── .python-version
+├── README.md
+├── src
+│   └── hello_world
+│       └── __init__.py
+├── pyproject.toml
+└── uv.lock</code></pre>
+<h3 id="pyproject.toml"><code>pyproject.toml</code></h3>
+<p>The <code>pyproject.toml</code> contains metadata about your
+project:</p>
+<p>```toml title=“pyproject.toml” [project] name = “hello-world” version
+= “0.1.0” description = “Add your description here” readme = “README.md”
+authors = [ { name = “ferris”, email = “ferris@example.org” }]
+requires-python = “&gt;=3.14” dependencies = []</p>
+<p>[project.scripts] hello-world = “hello_world:main”</p>
+<p>[build-system] requires = [“uv_build&gt;=0.12.7,&lt;0.13”]
+build-backend = “uv_build”</p>
+<pre><code>
+You&#39;ll use this file to specify dependencies, as well as details about the project such as its
+description or license. You can edit this file manually, or use commands like `uv add` and
+`uv remove` to manage your project from the terminal.
+
+!!! tip
+
+    See the official [`pyproject.toml` guide](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/)
+    for more details on getting started with the `pyproject.toml` format.
+
+You&#39;ll also use this file to specify uv [configuration options](../concepts/configuration-files.md)
+in a [`[tool.uv]`](../reference/settings.md) section.
+
+### `.python-version`
+
+The `.python-version` file contains the project&#39;s default Python version. This file tells uv which
+Python version to use when creating the project&#39;s virtual environment.
+
+### `.venv`
+
+The `.venv` folder contains your project&#39;s virtual environment, a Python environment that is
+isolated from the rest of your system. This is where uv will install your project&#39;s dependencies.
+
+See the [project environment](../concepts/projects/layout.md#the-project-environment) documentation
+for more details.
+
+### `uv.lock`
+
+`uv.lock` is a cross-platform lockfile that contains exact information about your project&#39;s
+dependencies. Unlike the `pyproject.toml` which is used to specify the broad requirements of your
+project, the lockfile contains the exact resolved versions that are installed in the project
+environment. This file should be checked into version control, allowing for consistent and
+reproducible installations across machines.
+
+`uv.lock` is a human-readable TOML file but is managed by uv and should not be edited manually.
+
+See the [lockfile](../concepts/projects/layout.md#the-lockfile) documentation for more details.
+
+## Managing dependencies
+
+You can add dependencies to your `pyproject.toml` with the `uv add` command. This will also update
+the lockfile and project environment:
+
+```console
+$ uv add requests</code></pre>
+<p>You can also specify version constraints or alternative sources:</p>
+<pre class="console"><code>$ # Specify a version constraint
+$ uv add &#39;requests==2.31.0&#39;
+
+$ # Add a git dependency
+$ uv add git+https://github.com/psf/requests</code></pre>
+<p>If you’re migrating from a <code>requirements.txt</code> file, you
+can use <code>uv add</code> with the <code>-r</code> flag to add all
+dependencies from the file:</p>
+<pre class="console"><code>$ # Add all dependencies from `requirements.txt`.
+$ uv add -r requirements.txt -c constraints.txt</code></pre>
+<p>To remove a package, you can use <code>uv remove</code>:</p>
+<pre class="console"><code>$ uv remove requests</code></pre>
+<p>To upgrade a package, run <code>uv lock</code> with the
+<code>--upgrade-package</code> flag:</p>
+<pre class="console"><code>$ uv lock --upgrade-package requests</code></pre>
+<p>The <code>--upgrade-package</code> flag will attempt to update the
+specified package to the latest compatible version, while keeping the
+rest of the lockfile intact.</p>
+<p>See the documentation on <a
+href="../concepts/projects/dependencies.md">managing dependencies</a>
+for more details.</p>
+<h2 id="viewing-your-version">Viewing your version</h2>
+<p>The <code>uv version</code> command can be used to read your
+package’s version.</p>
+<p>To get the version of your package, run <code>uv version</code>:</p>
+<pre class="console"><code>$ uv version
+hello-world 0.7.0</code></pre>
+<p>To get the version without the package name, use the
+<code>--short</code> option:</p>
+<pre class="console"><code>$ uv version --short
+0.7.0</code></pre>
+<p>To get version information in a JSON format, use the
+<code>--output-format json</code> option:</p>
+<pre class="console"><code>$ uv version --output-format json
+{
+    &quot;package_name&quot;: &quot;hello-world&quot;,
+    &quot;version&quot;: &quot;0.7.0&quot;,
+    &quot;commit_info&quot;: null
+}</code></pre>
+<p>See the <a href="./package.md#updating-your-version">publishing
+guide</a> for details on updating your package version.</p>
+<h2 id="running-commands">Running commands</h2>
+<p><code>uv run</code> can be used to run arbitrary scripts or commands
+in your project environment.</p>
+<p>Prior to every <code>uv run</code> invocation, uv will verify that
+the lockfile is up-to-date with the <code>pyproject.toml</code>, and
+that the environment is up-to-date with the lockfile, keeping your
+project in-sync without the need for manual intervention.
+<code>uv run</code> guarantees that your command is run in an
+environment with all required dependencies at their locked versions.</p>
+<p>!!! note</p>
+<pre><code>`uv run` does not remove extraneous packages (those not in the lockfile) from the environment
+by default. See [handling of extraneous packages](../concepts/projects/sync.md#handling-of-extraneous-packages)
+for details.</code></pre>
+<p>For example, to use <code>flask</code>:</p>
+<pre class="console"><code>$ uv add flask
+$ uv run -- flask run -p 3000</code></pre>
+<p>Or, to run a script:</p>
+<p>```python title=“example.py” # Require a project dependency import
+flask</p>
+<p>print(“hello world”)</p>
+<pre><code>
+```console
+$ uv run example.py</code></pre>
+<p>Alternatively, you can use <code>uv sync</code> to manually update
+the environment then activate it before executing a command:</p>
+<p>=== “macOS and Linux”</p>
+<pre><code>```console
+$ uv sync
+$ source .venv/bin/activate
+$ flask run -p 3000
+$ python example.py
+```</code></pre>
+<p>=== “Windows”</p>
+<pre><code>```pwsh-session
+PS&gt; uv sync
+PS&gt; .venv\Scripts\activate
+PS&gt; flask run -p 3000
+PS&gt; python example.py
+```</code></pre>
+<p>!!! note</p>
+<pre><code>The virtual environment must be active to run scripts and commands in the project without `uv run`. Virtual environment activation differs per shell and platform.</code></pre>
+<p>See the documentation on <a
+href="../concepts/projects/run.md">running commands and scripts</a> in
+projects for more details.</p>
+<h2 id="building-distributions">Building distributions</h2>
+<p><code>uv build</code> can be used to build source distributions and
+binary distributions (wheel) for your project.</p>
+<p>By default, <code>uv build</code> will build the project in the
+current directory, and place the built artifacts in a <code>dist/</code>
+subdirectory:</p>
+<pre class="console"><code>$ uv build
+$ ls dist/
+hello_world-0.1.0-py3-none-any.whl
+hello_world-0.1.0.tar.gz</code></pre>
+<p>See the documentation on <a
+href="../concepts/projects/build.md">building projects</a> for more
+details.</p>
+<h2 id="next-steps">Next steps</h2>
+<p>To learn more about working on projects with uv, see the <a
+href="../concepts/projects/index.md">projects concept</a> page and the
+<a href="../reference/cli.md#uv">command reference</a>.</p>
+<p>Or, read on to learn how to <a
+href="../concepts/projects/export.md">export a uv lockfile to different
+formats</a>.</p>

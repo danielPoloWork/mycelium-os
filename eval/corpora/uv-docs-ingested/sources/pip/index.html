@@ -1,0 +1,27 @@
+<h1 id="the-pip-interface">The pip interface</h1>
+<p>uv provides a drop-in replacement for common <code>pip</code>,
+<code>pip-tools</code>, and <code>virtualenv</code> commands. These
+commands work directly with the virtual environment, in contrast to uv’s
+primary interfaces where the virtual environment is managed
+automatically. The <code>uv pip</code> interface exposes the speed and
+functionality of uv to power users and projects that are not ready to
+transition away from <code>pip</code> and <code>pip-tools</code>.</p>
+<p>The following sections discuss the basics of using
+<code>uv pip</code>:</p>
+<ul>
+<li><a href="./environments.md">Creating and using environments</a></li>
+<li><a href="./packages.md">Installing and managing packages</a></li>
+<li><a href="./inspection.md">Inspecting environments and
+packages</a></li>
+<li><a href="./dependencies.md">Declaring package dependencies</a></li>
+<li><a href="./compile.md">Locking and syncing environments</a></li>
+</ul>
+<p>Please note these commands do not <em>exactly</em> implement the
+interfaces and behavior of the tools they are based on. The further you
+stray from common workflows, the more likely you are to encounter
+differences. Consult the <a href="./compatibility.md">pip-compatibility
+guide</a> for details.</p>
+<p>!!! important</p>
+<pre><code>uv does not rely on or invoke pip. The pip interface is named as such to highlight its dedicated
+purpose of providing low-level commands that match pip&#39;s interface and to separate it from the
+rest of uv&#39;s commands which operate at a higher level of abstraction.</code></pre>

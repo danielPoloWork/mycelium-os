@@ -1,0 +1,430 @@
+<h1 id="workspace-metadata">Workspace metadata</h1>
+<p><code>uv workspace metadata</code> exports the information uv has
+about your workspace or PEP 723 script as JSON so other tools can use
+it. In particular, if you want access to the information in a
+<code>uv.lock</code> or script lockfile, you should prefer this
+command’s output, as lockfiles are not a stable format we guarantee
+anything about. Pass <code>--script path/to/script.py</code> to request
+metadata for a script.</p>
+<p>Pass <code>--sync</code> to install the selected packages before
+collecting module ownership information. Synchronization preserves
+unrelated installed packages by default; add <code>--exact</code> to
+remove them.</p>
+<p>The primary structure is the “resolution” field which contains the
+dependency graph with exact package versions that a <code>uv.lock</code>
+encodes.</p>
+<p>The edges of the graph are the <code>dependencies</code> every node
+defines. These are the things that must also be installed for it to be
+installed (and their <code>dependencies</code> recursively, keeping in
+mind that cycles are perfectly normal to encounter in this graph). Each
+dependency entry will include an <code>id</code> for the node it refers
+to, and an optional <code>marker</code> that <a
+href="https://packaging.python.org/en/latest/specifications/dependency-specifiers/#dependency-specifiers">specifies
+on what platforms the dependency is required</a> (if there is no marker
+the dependency is always required).</p>
+<p>Package-derived nodes in the graph are uniquely identified by package
+<code>name</code>, <code>version</code>, <code>source</code>, and
+<code>kind</code>. Script and workspace nodes are identified by their
+path. Workspace-root dependency group nodes are identified by their
+group name and the workspace path. All node ids should be treated as
+opaque.</p>
+<p>There are 5 kinds of node in the graph:</p>
+<ul>
+<li><code>"script"</code> – a PEP 723 script and its direct
+dependencies</li>
+<li><code>"workspace"</code> – a workspace root and its
+workspace-exclusive dependency groups</li>
+<li><code>"package"</code> – the package itself</li>
+<li><code>{ "extra": "extraname" }</code> – an extra the package
+defines</li>
+<li><code>{ "group": "groupname" }</code> – a dependency group a package
+or workspace root defines</li>
+</ul>
+<p>(In the future we will add “build” nodes for the dependencies of <a
+href="../../concepts/projects/config.md#build-isolation">build
+environments</a>.)</p>
+<p>If you want to install <code>mypackage</code>, find its
+<code>"kind": "package"</code> node. This node will also include
+information on its sdist, its wheels, its extras
+(<code>optional_dependencies</code>), and dependency groups
+(<code>dependency_groups</code>).</p>
+<p>If you want to install <code>mypackage[myextra]</code> then find the
+node with <code>"kind": { "extra": "myextra" }</code> for
+<code>mypackage</code> (this node will always depend on
+<code>mypackage</code>). If you want to install
+<code>mypackage[extra1, extra2]</code>, find the two nodes for
+<code>mypackage[extra1]</code> and <code>mypackage[extra2]</code>.</p>
+<p>If you want to install the dependency group
+<code>mypackage:mygroup</code> then find the node with
+<code>"kind": { "group": "mygroup" }</code> for <code>mypackage</code>
+(this node will <em>not</em> depend on <code>mypackage</code>, as
+dependency groups are just lists of things you might want when working
+on the package itself).</p>
+<p>If the workspace root defines dependency groups but is not itself a
+package, its <code>"workspace"</code> node provides the corresponding
+group node ids through <code>dependency_groups</code>.</p>
+<h2 id="handling-multiple-versions-of-a-package">Handling multiple
+versions of a package</h2>
+<p>Two versions of a package cannot be installed into a python
+environment, but the dependency graph may still include multiple
+versions of a package. This can happen for two different reasons.</p>
+<p>The first way is for <a
+href="https://packaging.python.org/en/latest/specifications/dependency-specifiers/#dependency-specifiers">different
+platforms</a> to have conflicting requirements that force different
+versions of a package to be used.</p>
+<p>The second way is when a workspace has <a
+href="../../concepts/resolution.md#conflicting-dependencies">conflicts</a>,
+implying some workspace members or their extras are mutually exclusive,
+and only one of them can be installed at a time. Information about
+conflicts can be found in the top-level <code>conflicts</code>
+field.</p>
+<p>The specific guarantee we provide is that <strong>for any concrete
+choice of <a
+href="https://packaging.python.org/en/latest/specifications/dependency-specifiers/#dependency-specifiers">markers</a>,
+if you select a set of packages to install that has no <a
+href="../../concepts/resolution.md#conflicting-dependencies">conflicts</a>,
+then the resulting set of packages to install will not have multiple
+versions of a package</strong>.</p>
+<p>If you just want to get “every version of pydantic this workspace
+uses” you’re free to iterate through the list of nodes and collect up
+every instance. If however you want to specifically analyze the graph
+and get actual resolutions you will likely need to consult
+<code>conflicts</code> and need to understand how to resolve
+<code>markers</code> for a specific platform.</p>
+<p>The best way to avoid mistakes when working with multiple versions of
+a package is to keep your queries into the dependency graph rooted in
+operations on the workspace root, workspace members, or the requested
+script. These are the natural entry-points to the graph and can give
+coherent responses for operations such as “install the workspace
+<code>dev</code> group”, “install <code>member1</code> and
+<code>member2[extra]</code>”, or “install this script’s declared
+dependencies”.</p>
+<p>Another way to put this is that when possible <em>you should avoid
+iterating over the <code>resolution</code> object to find a node</em>.
+Only access <code>resolution</code> like a map using ids that were
+provided by another part of the metadata. For a workspace, the workspace
+root is <code>workspace.id</code> and package entry points are listed in
+the <code>members</code> array. For a script, the initial id is
+<code>script.id</code>. From there you may recursively discover other
+packages by following dependency edges.</p>
+<p>So rather than trying to find a node for anyio in the dependency
+graph directly, you should decide what workspace member(s) you’re
+interested in analyzing as if they were going to be installed. While
+traversing the <code>dependencies</code> of the things you want to
+install, you may visit an instance of anyio, which is the one you should
+use. If you visit multiple instances of anyio then that means you’ve
+selected a conflicting set of things to install which uv would never
+select.</p>
+<p>So if you wanted to analyze say, installing the <code>dev</code>
+dependency group of the workspace member <code>mypackage</code> it would
+look something like:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>member <span class="op">=</span> find_by_name(metadata.members, <span class="st">&quot;mypackage&quot;</span>)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>member_node <span class="op">=</span> metadata.resolution[member.<span class="bu">id</span>]</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>group <span class="op">=</span> find_by_name(member_node.dependency_groups, <span class="st">&quot;dev&quot;</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>group_node <span class="op">=</span> metadata.resolution[group.<span class="bu">id</span>]</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>visit(metadata, [group_node])</span></code></pre></div>
+<p>For a dependency group defined on the workspace root, look it up
+through the workspace node:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>workspace_node <span class="op">=</span> metadata.resolution[metadata.workspace.<span class="bu">id</span>]</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>group <span class="op">=</span> find_by_name(workspace_node.dependency_groups, <span class="st">&quot;dev&quot;</span>)</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>group_node <span class="op">=</span> metadata.resolution[group.<span class="bu">id</span>]</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>visit(metadata, [group_node])</span></code></pre></div>
+<p>If you wanted to analyze two particular workspace members installed
+together, it would look something like:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>to_analyze <span class="op">=</span> []</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> member_name <span class="kw">in</span> [<span class="st">&quot;package1&quot;</span>, <span class="st">&quot;package2&quot;</span>]:</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    member <span class="op">=</span> find_by_name(metadata.members, member_name)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    member_node <span class="op">=</span> metadata.resolution[member.<span class="bu">id</span>]</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    to_analyze.append(member_node)</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>visit(metadata, to_analyze)</span></code></pre></div>
+<p>For a script, start from its resolution node in exactly the same
+way:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>script_node <span class="op">=</span> metadata.resolution[metadata.script.<span class="bu">id</span>]</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>visit(metadata, [script_node])</span></code></pre></div>
+<p>Where <code>visit</code> is your favourite graph traversal algorithm
+like depth-first-search:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> visit(metadata: UvMetadata, to_analyze: <span class="bu">list</span>[Node]):</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    visited <span class="op">=</span> <span class="bu">set</span>()</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> <span class="bu">len</span>(to_analyze) <span class="op">&gt;</span> <span class="dv">0</span>:</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>        node <span class="op">=</span> to_analyze.pop()</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Handle cycles by avoiding revisiting nodes</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> node.<span class="bu">id</span> <span class="kw">in</span> visited:</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">continue</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>        visited.add(node.<span class="bu">id</span>)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>        <span class="co"># We also need to analyze its dependencies</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> dependency <span class="kw">in</span> node.dependencies:</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Only follow edges if they satisfy the desired platform&#39;s markers</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> dependency.marker <span class="kw">and</span> <span class="kw">not</span> satisfies(platform, dependency.marker):</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>                <span class="cf">continue</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>            to_analyze.append(metadata.resolution[dependency.<span class="bu">id</span>])</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Analyze any package node we encounter</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> node.kind <span class="op">==</span> <span class="st">&quot;package&quot;</span>:</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>            <span class="bu">print</span>(node.name, node.version, node.source)</span></code></pre></div>
+<h2 id="schema">Schema</h2>
+<p>A full JSON schema for the format will be provided when the format is
+finalized.</p>
+<p>Here is a human-readable annotated example:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>{</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Information about the schema of this output</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;schema&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The version of this output, currently &quot;preview&quot;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;version&quot;</span><span class="op">:</span> <span class="st">&quot;preview&quot;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="co">// The directory the uv.lock can be found in</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;workspace_root&quot;</span><span class="op">:</span> <span class="st">&quot;/workspace&quot;</span><span class="op">,</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Information about the environment, available when an environment exists or `--sync` is used</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;environment&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The absolute path to the environment root</span></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;root&quot;</span><span class="op">:</span> <span class="st">&quot;/workspace/.venv&quot;</span><span class="op">,</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    <span class="co">// Information about the Python interpreter in the environment</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;python&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The absolute path to the Python executable</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;path&quot;</span><span class="op">:</span> <span class="st">&quot;/workspace/.venv/bin/python&quot;</span><span class="op">,</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The full Python version</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;version&quot;</span><span class="op">:</span> <span class="st">&quot;3.12.12&quot;</span><span class="op">,</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The Python implementation name</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;implementation&quot;</span><span class="op">:</span> <span class="st">&quot;cpython&quot;</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Information about the script target, only present with `--script`.</span></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Workspace metadata uses `workspace` and `members` below as graph entry-points instead.</span></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;script&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The absolute path to the script</span></span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;path&quot;</span><span class="op">:</span> <span class="st">&quot;/workspace/script.py&quot;</span><span class="op">,</span></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The id of the script&#39;s node in the `resolution` map below</span></span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;script+/workspace/script.py&quot;</span></span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Information about the workspace target, omitted when `--script` is used.</span></span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;workspace&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The absolute path to the workspace root</span></span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;path&quot;</span><span class="op">:</span> <span class="st">&quot;/workspace&quot;</span><span class="op">,</span></span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The id of the workspace&#39;s node in the `resolution` map below</span></span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;workspace+/workspace&quot;</span></span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>  }<span class="op">,</span></span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Any requirements on the python version this workspace has</span></span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>  <span class="co">//</span></span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a>  <span class="co">// `marker` fields all have this as an implicit constraint that is omitted for cleanliness</span></span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;requires_python&quot;</span><span class="op">:</span> <span class="st">&quot;&gt;=3.12&quot;</span><span class="op">,</span></span>
+<span id="cb6-42"><a href="#cb6-42" aria-hidden="true" tabindex="-1"></a>  <span class="co">// A list of workspace members</span></span>
+<span id="cb6-43"><a href="#cb6-43" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;members&quot;</span><span class="op">:</span> [</span>
+<span id="cb6-44"><a href="#cb6-44" aria-hidden="true" tabindex="-1"></a>    {</span>
+<span id="cb6-45"><a href="#cb6-45" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The name of the package</span></span>
+<span id="cb6-46"><a href="#cb6-46" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;name&quot;</span><span class="op">:</span> <span class="st">&quot;mypackage&quot;</span><span class="op">,</span></span>
+<span id="cb6-47"><a href="#cb6-47" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The directory that contains its pyproject.toml</span></span>
+<span id="cb6-48"><a href="#cb6-48" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;path&quot;</span><span class="op">:</span> <span class="st">&quot;/workspace/packages/mypackage&quot;</span><span class="op">,</span></span>
+<span id="cb6-49"><a href="#cb6-49" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The id of this package&#39;s info in the `resolution` map below</span></span>
+<span id="cb6-50"><a href="#cb6-50" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;mypackage==0.1.0@editable+/workspace/packages/mypackage&quot;</span></span>
+<span id="cb6-51"><a href="#cb6-51" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb6-52"><a href="#cb6-52" aria-hidden="true" tabindex="-1"></a>  ]<span class="op">,</span></span>
+<span id="cb6-53"><a href="#cb6-53" aria-hidden="true" tabindex="-1"></a>  <span class="co">// A list-of-sets of workspace items that are mutually-exclusive to install,</span></span>
+<span id="cb6-54"><a href="#cb6-54" aria-hidden="true" tabindex="-1"></a>  <span class="co">// presumably because they need to install different versions of the same package.</span></span>
+<span id="cb6-55"><a href="#cb6-55" aria-hidden="true" tabindex="-1"></a>  <span class="co">//</span></span>
+<span id="cb6-56"><a href="#cb6-56" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Any attempt to install two things that belong to the same set must be rejected.</span></span>
+<span id="cb6-57"><a href="#cb6-57" aria-hidden="true" tabindex="-1"></a>  <span class="co">//</span></span>
+<span id="cb6-58"><a href="#cb6-58" aria-hidden="true" tabindex="-1"></a>  <span class="co">// There are 3 kinds of item:</span></span>
+<span id="cb6-59"><a href="#cb6-59" aria-hidden="true" tabindex="-1"></a>  <span class="co">//</span></span>
+<span id="cb6-60"><a href="#cb6-60" aria-hidden="true" tabindex="-1"></a>  <span class="co">// * Project -- &quot;kind&quot;: &quot;project&quot;</span></span>
+<span id="cb6-61"><a href="#cb6-61" aria-hidden="true" tabindex="-1"></a>  <span class="co">// * Extra   -- &quot;kind&quot;: { &quot;extra&quot;: &quot;extraname&quot; }</span></span>
+<span id="cb6-62"><a href="#cb6-62" aria-hidden="true" tabindex="-1"></a>  <span class="co">// * Group   -- &quot;kind&quot;: { &quot;group&quot;: &quot;groupname&quot; }</span></span>
+<span id="cb6-63"><a href="#cb6-63" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;conflicts&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-64"><a href="#cb6-64" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;sets&quot;</span><span class="op">:</span> [</span>
+<span id="cb6-65"><a href="#cb6-65" aria-hidden="true" tabindex="-1"></a>      {</span>
+<span id="cb6-66"><a href="#cb6-66" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;items&quot;</span><span class="op">:</span> [</span>
+<span id="cb6-67"><a href="#cb6-67" aria-hidden="true" tabindex="-1"></a>          {</span>
+<span id="cb6-68"><a href="#cb6-68" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;package&quot;</span><span class="op">:</span> <span class="st">&quot;mypackage&quot;</span><span class="op">,</span></span>
+<span id="cb6-69"><a href="#cb6-69" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;kind&quot;</span><span class="op">:</span> { <span class="st">&quot;extra&quot;</span><span class="op">:</span> <span class="st">&quot;myextra&quot;</span> }</span>
+<span id="cb6-70"><a href="#cb6-70" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;mypackage[myextra]==0.1.0@editable+/workspace/packages/mypackage&quot;</span><span class="op">,</span></span>
+<span id="cb6-71"><a href="#cb6-71" aria-hidden="true" tabindex="-1"></a>          }</span>
+<span id="cb6-72"><a href="#cb6-72" aria-hidden="true" tabindex="-1"></a>          {</span>
+<span id="cb6-73"><a href="#cb6-73" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;package&quot;</span><span class="op">:</span> <span class="st">&quot;mypackage&quot;</span><span class="op">,</span></span>
+<span id="cb6-74"><a href="#cb6-74" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;kind&quot;</span><span class="op">:</span> { <span class="st">&quot;group&quot;</span><span class="op">:</span> <span class="st">&quot;mygroup&quot;</span> }</span>
+<span id="cb6-75"><a href="#cb6-75" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;mypackage:mygroup==0.1.0@editable+/workspace/packages/mypackage&quot;</span><span class="op">,</span></span>
+<span id="cb6-76"><a href="#cb6-76" aria-hidden="true" tabindex="-1"></a>          }</span>
+<span id="cb6-77"><a href="#cb6-77" aria-hidden="true" tabindex="-1"></a>        ]</span>
+<span id="cb6-78"><a href="#cb6-78" aria-hidden="true" tabindex="-1"></a>      }</span>
+<span id="cb6-79"><a href="#cb6-79" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb6-80"><a href="#cb6-80" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb6-81"><a href="#cb6-81" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Resolved information about packages and dependencies.</span></span>
+<span id="cb6-82"><a href="#cb6-82" aria-hidden="true" tabindex="-1"></a>  <span class="co">//</span></span>
+<span id="cb6-83"><a href="#cb6-83" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Each entry in this map is a node in the dependency graph. There are currently</span></span>
+<span id="cb6-84"><a href="#cb6-84" aria-hidden="true" tabindex="-1"></a>  <span class="co">// 5 kinds of node in the dependency graph, although more are planned in the future.</span></span>
+<span id="cb6-85"><a href="#cb6-85" aria-hidden="true" tabindex="-1"></a>  <span class="co">//</span></span>
+<span id="cb6-86"><a href="#cb6-86" aria-hidden="true" tabindex="-1"></a>  <span class="co">// * Scripts  -- &quot;kind&quot;: &quot;script&quot;</span></span>
+<span id="cb6-87"><a href="#cb6-87" aria-hidden="true" tabindex="-1"></a>  <span class="co">// * Workspaces -- &quot;kind&quot;: &quot;workspace&quot;</span></span>
+<span id="cb6-88"><a href="#cb6-88" aria-hidden="true" tabindex="-1"></a>  <span class="co">// * Packages -- &quot;kind&quot;: &quot;package&quot;</span></span>
+<span id="cb6-89"><a href="#cb6-89" aria-hidden="true" tabindex="-1"></a>  <span class="co">// * Extras   -- &quot;kind&quot;: { &quot;extra&quot;: &quot;extraname&quot; }</span></span>
+<span id="cb6-90"><a href="#cb6-90" aria-hidden="true" tabindex="-1"></a>  <span class="co">// * Groups   -- &quot;kind&quot;: { &quot;group&quot;: &quot;groupname&quot; }</span></span>
+<span id="cb6-91"><a href="#cb6-91" aria-hidden="true" tabindex="-1"></a>  <span class="co">//</span></span>
+<span id="cb6-92"><a href="#cb6-92" aria-hidden="true" tabindex="-1"></a>  <span class="co">// Package nodes contain most of the metadata, while other nodes are mostly just a list</span></span>
+<span id="cb6-93"><a href="#cb6-93" aria-hidden="true" tabindex="-1"></a>  <span class="co">// of dependencies. The different kinds of node are included like this to encourage correct</span></span>
+<span id="cb6-94"><a href="#cb6-94" aria-hidden="true" tabindex="-1"></a>  <span class="co">// analysis of the graph. For instance, a node for `mypackage[someextra]` always depends on</span></span>
+<span id="cb6-95"><a href="#cb6-95" aria-hidden="true" tabindex="-1"></a>  <span class="co">// `mypackage`, while `mypackage:somegroup` does not (because dependency-groups are just a</span></span>
+<span id="cb6-96"><a href="#cb6-96" aria-hidden="true" tabindex="-1"></a>  <span class="co">// list of packages you might want to install while working on `mypackage`). Sugars like</span></span>
+<span id="cb6-97"><a href="#cb6-97" aria-hidden="true" tabindex="-1"></a>  <span class="co">// `mypackage[extra1, extra2]` are decomposed into separate dependencies on `mypackage[extra1]`</span></span>
+<span id="cb6-98"><a href="#cb6-98" aria-hidden="true" tabindex="-1"></a>  <span class="co">// and `mypackage[extra2]`.</span></span>
+<span id="cb6-99"><a href="#cb6-99" aria-hidden="true" tabindex="-1"></a>  <span class="co">//</span></span>
+<span id="cb6-100"><a href="#cb6-100" aria-hidden="true" tabindex="-1"></a>  <span class="co">// The ids used here are human-readable but should be handled as opaque (the nodes contain</span></span>
+<span id="cb6-101"><a href="#cb6-101" aria-hidden="true" tabindex="-1"></a>  <span class="co">// the same information in a more convenient form).</span></span>
+<span id="cb6-102"><a href="#cb6-102" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;resolution&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-103"><a href="#cb6-103" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-104"><a href="#cb6-104" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The script node is present when metadata was requested with `--script`. Its dependencies</span></span>
+<span id="cb6-105"><a href="#cb6-105" aria-hidden="true" tabindex="-1"></a>    <span class="co">// are the direct requirements declared by the script.</span></span>
+<span id="cb6-106"><a href="#cb6-106" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;script+/workspace/script.py&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-107"><a href="#cb6-107" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;kind&quot;</span><span class="op">:</span> <span class="st">&quot;script&quot;</span><span class="op">,</span></span>
+<span id="cb6-108"><a href="#cb6-108" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;path&quot;</span><span class="op">:</span> <span class="st">&quot;/workspace/script.py&quot;</span><span class="op">,</span></span>
+<span id="cb6-109"><a href="#cb6-109" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;dependencies&quot;</span><span class="op">:</span> [</span>
+<span id="cb6-110"><a href="#cb6-110" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb6-111"><a href="#cb6-111" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;iniconfig==2.0.0@registry+https://pypi.org/simple&quot;</span></span>
+<span id="cb6-112"><a href="#cb6-112" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb6-113"><a href="#cb6-113" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb6-114"><a href="#cb6-114" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb6-115"><a href="#cb6-115" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-116"><a href="#cb6-116" aria-hidden="true" tabindex="-1"></a>    <span class="co">// The workspace node owns metadata defined directly on the workspace root.</span></span>
+<span id="cb6-117"><a href="#cb6-117" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;workspace+/workspace&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-118"><a href="#cb6-118" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;kind&quot;</span><span class="op">:</span> <span class="st">&quot;workspace&quot;</span><span class="op">,</span></span>
+<span id="cb6-119"><a href="#cb6-119" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;path&quot;</span><span class="op">:</span> <span class="st">&quot;/workspace&quot;</span><span class="op">,</span></span>
+<span id="cb6-120"><a href="#cb6-120" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;dependencies&quot;</span><span class="op">:</span> []<span class="op">,</span></span>
+<span id="cb6-121"><a href="#cb6-121" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;dependency_groups&quot;</span><span class="op">:</span> [</span>
+<span id="cb6-122"><a href="#cb6-122" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb6-123"><a href="#cb6-123" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;name&quot;</span><span class="op">:</span> <span class="st">&quot;dev&quot;</span><span class="op">,</span></span>
+<span id="cb6-124"><a href="#cb6-124" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;workspace+/workspace:dev&quot;</span></span>
+<span id="cb6-125"><a href="#cb6-125" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb6-126"><a href="#cb6-126" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb6-127"><a href="#cb6-127" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb6-128"><a href="#cb6-128" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-129"><a href="#cb6-129" aria-hidden="true" tabindex="-1"></a>    <span class="co">// This node is a dependency group defined on the non-package workspace root.</span></span>
+<span id="cb6-130"><a href="#cb6-130" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;workspace+/workspace:dev&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-131"><a href="#cb6-131" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;kind&quot;</span><span class="op">:</span> { <span class="st">&quot;group&quot;</span><span class="op">:</span> <span class="st">&quot;dev&quot;</span> }<span class="op">,</span></span>
+<span id="cb6-132"><a href="#cb6-132" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;path&quot;</span><span class="op">:</span> <span class="st">&quot;/workspace&quot;</span><span class="op">,</span></span>
+<span id="cb6-133"><a href="#cb6-133" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;dependencies&quot;</span><span class="op">:</span> [</span>
+<span id="cb6-134"><a href="#cb6-134" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb6-135"><a href="#cb6-135" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;iniconfig==2.0.0@registry+https://pypi.org/simple&quot;</span></span>
+<span id="cb6-136"><a href="#cb6-136" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb6-137"><a href="#cb6-137" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb6-138"><a href="#cb6-138" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb6-139"><a href="#cb6-139" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-140"><a href="#cb6-140" aria-hidden="true" tabindex="-1"></a>    <span class="co">// This node is a workspace member</span></span>
+<span id="cb6-141"><a href="#cb6-141" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;mypackage==0.1.0@editable+/workspace/packages/mypackage&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-142"><a href="#cb6-142" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The name of the package</span></span>
+<span id="cb6-143"><a href="#cb6-143" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;name&quot;</span><span class="op">:</span> <span class="st">&quot;mypackage&quot;</span><span class="op">,</span></span>
+<span id="cb6-144"><a href="#cb6-144" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The version of the package (this may be missing, as source trees do not need versions)</span></span>
+<span id="cb6-145"><a href="#cb6-145" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;version&quot;</span><span class="op">:</span> <span class="st">&quot;0.1.0&quot;</span><span class="op">,</span></span>
+<span id="cb6-146"><a href="#cb6-146" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The source of the package, in this case it&#39;s an editable whose path relative to the</span></span>
+<span id="cb6-147"><a href="#cb6-147" aria-hidden="true" tabindex="-1"></a>      <span class="co">// `workspace_root` is `./packages/mypackage`</span></span>
+<span id="cb6-148"><a href="#cb6-148" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;source&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-149"><a href="#cb6-149" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;editable&quot;</span><span class="op">:</span> <span class="st">&quot;/workspace/packages/mypackage&quot;</span></span>
+<span id="cb6-150"><a href="#cb6-150" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb6-151"><a href="#cb6-151" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The kind of the node, in this case &quot;package&quot; (see the docs on `resolution` above for details)</span></span>
+<span id="cb6-152"><a href="#cb6-152" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;kind&quot;</span><span class="op">:</span> <span class="st">&quot;package&quot;</span><span class="op">,</span></span>
+<span id="cb6-153"><a href="#cb6-153" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The dependencies that must be installed to also install this node into an environment</span></span>
+<span id="cb6-154"><a href="#cb6-154" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;dependencies&quot;</span><span class="op">:</span> [</span>
+<span id="cb6-155"><a href="#cb6-155" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb6-156"><a href="#cb6-156" aria-hidden="true" tabindex="-1"></a>          <span class="co">// The id of the node to lookup for details</span></span>
+<span id="cb6-157"><a href="#cb6-157" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;iniconfig==2.0.0@registry+https://pypi.org/simple&quot;</span></span>
+<span id="cb6-158"><a href="#cb6-158" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;marker&quot;</span><span class="op">:</span> <span class="st">&quot;marker&quot;</span><span class="op">:</span> <span class="st">&quot;sys_platform == &#39;linux&#39;&quot;</span></span>
+<span id="cb6-159"><a href="#cb6-159" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb6-160"><a href="#cb6-160" aria-hidden="true" tabindex="-1"></a>      ]<span class="op">,</span></span>
+<span id="cb6-161"><a href="#cb6-161" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The extras that this package defines</span></span>
+<span id="cb6-162"><a href="#cb6-162" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;optional_dependencies&quot;</span><span class="op">:</span> [</span>
+<span id="cb6-163"><a href="#cb6-163" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb6-164"><a href="#cb6-164" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;name&quot;</span><span class="op">:</span> <span class="st">&quot;myextra&quot;</span><span class="op">,</span></span>
+<span id="cb6-165"><a href="#cb6-165" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;mypackage[myextra]==0.1.0@editable+/workspace/packages/mypackage&quot;</span></span>
+<span id="cb6-166"><a href="#cb6-166" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb6-167"><a href="#cb6-167" aria-hidden="true" tabindex="-1"></a>      ]<span class="op">,</span></span>
+<span id="cb6-168"><a href="#cb6-168" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The dependency groups this package defines</span></span>
+<span id="cb6-169"><a href="#cb6-169" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;dependency_groups&quot;</span><span class="op">:</span> [</span>
+<span id="cb6-170"><a href="#cb6-170" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb6-171"><a href="#cb6-171" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;name&quot;</span><span class="op">:</span> <span class="st">&quot;mygroup&quot;</span><span class="op">,</span></span>
+<span id="cb6-172"><a href="#cb6-172" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;mypackage:mygroup==0.1.0@editable+/workspace/packages/mypackage&quot;</span></span>
+<span id="cb6-173"><a href="#cb6-173" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb6-174"><a href="#cb6-174" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb6-175"><a href="#cb6-175" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb6-176"><a href="#cb6-176" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-177"><a href="#cb6-177" aria-hidden="true" tabindex="-1"></a>    <span class="co">// This node is an extra on a workspace member</span></span>
+<span id="cb6-178"><a href="#cb6-178" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;mypackage[myextra]==0.1.0@editable+/workspace/packages/mypackage&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-179"><a href="#cb6-179" aria-hidden="true" tabindex="-1"></a>      <span class="co">// These fields will match the package node above</span></span>
+<span id="cb6-180"><a href="#cb6-180" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;name&quot;</span><span class="op">:</span> <span class="st">&quot;mypackage&quot;</span><span class="op">,</span></span>
+<span id="cb6-181"><a href="#cb6-181" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;version&quot;</span><span class="op">:</span> <span class="st">&quot;0.1.0&quot;</span><span class="op">,</span></span>
+<span id="cb6-182"><a href="#cb6-182" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;source&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-183"><a href="#cb6-183" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;editable&quot;</span><span class="op">:</span> <span class="st">&quot;/workspace/packages/mypackage&quot;</span></span>
+<span id="cb6-184"><a href="#cb6-184" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb6-185"><a href="#cb6-185" aria-hidden="true" tabindex="-1"></a>      <span class="co">// But these two will differ from the package node above</span></span>
+<span id="cb6-186"><a href="#cb6-186" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;kind&quot;</span><span class="op">:</span> { <span class="st">&quot;extra&quot;</span><span class="op">:</span> <span class="st">&quot;myextra&quot;</span> }<span class="op">,</span></span>
+<span id="cb6-187"><a href="#cb6-187" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;dependencies&quot;</span><span class="op">:</span> [</span>
+<span id="cb6-188"><a href="#cb6-188" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb6-189"><a href="#cb6-189" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;mypackage==0.1.0@editable+/workspace/packages/mypackage&quot;</span></span>
+<span id="cb6-190"><a href="#cb6-190" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb6-191"><a href="#cb6-191" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb6-192"><a href="#cb6-192" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;anyio==2.0.0@registry+https://pypi.org/simple&quot;</span></span>
+<span id="cb6-193"><a href="#cb6-193" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb6-194"><a href="#cb6-194" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb6-195"><a href="#cb6-195" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb6-196"><a href="#cb6-196" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-197"><a href="#cb6-197" aria-hidden="true" tabindex="-1"></a>    <span class="co">// This node is a dependency-group on a workspace member</span></span>
+<span id="cb6-198"><a href="#cb6-198" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;mypackage:mygroup==0.1.0@editable+/workspace/packages/mypackage&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-199"><a href="#cb6-199" aria-hidden="true" tabindex="-1"></a>      <span class="co">// These fields will match the package node above</span></span>
+<span id="cb6-200"><a href="#cb6-200" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;name&quot;</span><span class="op">:</span> <span class="st">&quot;mypackage&quot;</span><span class="op">,</span></span>
+<span id="cb6-201"><a href="#cb6-201" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;version&quot;</span><span class="op">:</span> <span class="st">&quot;0.1.0&quot;</span><span class="op">,</span></span>
+<span id="cb6-202"><a href="#cb6-202" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;source&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-203"><a href="#cb6-203" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;editable&quot;</span><span class="op">:</span> <span class="st">&quot;/workspace/packages/mypackage&quot;</span></span>
+<span id="cb6-204"><a href="#cb6-204" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb6-205"><a href="#cb6-205" aria-hidden="true" tabindex="-1"></a>      <span class="co">// But these two will differ from the package node above</span></span>
+<span id="cb6-206"><a href="#cb6-206" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;kind&quot;</span><span class="op">:</span> { <span class="st">&quot;extra&quot;</span><span class="op">:</span> <span class="st">&quot;myextra&quot;</span> }<span class="op">,</span></span>
+<span id="cb6-207"><a href="#cb6-207" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;dependencies&quot;</span><span class="op">:</span> [</span>
+<span id="cb6-208"><a href="#cb6-208" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb6-209"><a href="#cb6-209" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;id&quot;</span><span class="op">:</span> <span class="st">&quot;anyio==1.0.0@registry+https://pypi.org/simple&quot;</span></span>
+<span id="cb6-210"><a href="#cb6-210" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb6-211"><a href="#cb6-211" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb6-212"><a href="#cb6-212" aria-hidden="true" tabindex="-1"></a>    }<span class="op">,</span></span>
+<span id="cb6-213"><a href="#cb6-213" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-214"><a href="#cb6-214" aria-hidden="true" tabindex="-1"></a>    <span class="co">// This node is a package on pypi</span></span>
+<span id="cb6-215"><a href="#cb6-215" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;iniconfig==2.0.0@registry+https://pypi.org/simple&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-216"><a href="#cb6-216" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;name&quot;</span><span class="op">:</span> <span class="st">&quot;iniconfig&quot;</span><span class="op">,</span></span>
+<span id="cb6-217"><a href="#cb6-217" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;version&quot;</span><span class="op">:</span> <span class="st">&quot;2.0.0&quot;</span><span class="op">,</span></span>
+<span id="cb6-218"><a href="#cb6-218" aria-hidden="true" tabindex="-1"></a>      <span class="co">// registry sources look like this</span></span>
+<span id="cb6-219"><a href="#cb6-219" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;source&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-220"><a href="#cb6-220" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;registry&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-221"><a href="#cb6-221" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;url&quot;</span><span class="op">:</span> <span class="st">&quot;https://pypi.org/simple&quot;</span></span>
+<span id="cb6-222"><a href="#cb6-222" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb6-223"><a href="#cb6-223" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb6-224"><a href="#cb6-224" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;kind&quot;</span><span class="op">:</span> <span class="st">&quot;package&quot;</span><span class="op">,</span></span>
+<span id="cb6-225"><a href="#cb6-225" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;dependencies&quot;</span><span class="op">:</span> []<span class="op">,</span></span>
+<span id="cb6-226"><a href="#cb6-226" aria-hidden="true" tabindex="-1"></a>      <span class="co">// Details on the package&#39;s source distribution</span></span>
+<span id="cb6-227"><a href="#cb6-227" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;sdist&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-228"><a href="#cb6-228" aria-hidden="true" tabindex="-1"></a>        <span class="co">// May alternatively be `path`</span></span>
+<span id="cb6-229"><a href="#cb6-229" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;url&quot;</span><span class="op">:</span> <span class="st">&quot;https://files.pythonhosted.org/packages/d7/4b/cbd8e699e64a6f16ca3a8220661b5f83792b3017d0f79807cb8708d33913/iniconfig-2.0.0.tar.gz&quot;</span><span class="op">,</span></span>
+<span id="cb6-230"><a href="#cb6-230" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;hashes&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-231"><a href="#cb6-231" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;sha256&quot;</span><span class="op">:</span> <span class="st">&quot;2d91e135bf72d31a410b17c16da610a82cb55f6b0477d1a902134b24a455b8b3&quot;</span></span>
+<span id="cb6-232"><a href="#cb6-232" aria-hidden="true" tabindex="-1"></a>        }<span class="op">,</span></span>
+<span id="cb6-233"><a href="#cb6-233" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;size&quot;</span><span class="op">:</span> <span class="dv">4646</span><span class="op">,</span></span>
+<span id="cb6-234"><a href="#cb6-234" aria-hidden="true" tabindex="-1"></a>        <span class="st">&quot;upload_time&quot;</span><span class="op">:</span> <span class="st">&quot;2023-01-07T11:08:11.254Z&quot;</span></span>
+<span id="cb6-235"><a href="#cb6-235" aria-hidden="true" tabindex="-1"></a>      }<span class="op">,</span></span>
+<span id="cb6-236"><a href="#cb6-236" aria-hidden="true" tabindex="-1"></a>      <span class="co">// The wheels we found for this package</span></span>
+<span id="cb6-237"><a href="#cb6-237" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;wheels&quot;</span><span class="op">:</span> [</span>
+<span id="cb6-238"><a href="#cb6-238" aria-hidden="true" tabindex="-1"></a>        {</span>
+<span id="cb6-239"><a href="#cb6-239" aria-hidden="true" tabindex="-1"></a>          <span class="co">// May alternatively be `path`</span></span>
+<span id="cb6-240"><a href="#cb6-240" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;url&quot;</span><span class="op">:</span> <span class="st">&quot;https://files.pythonhosted.org/packages/ef/a6/62565a6e1cf69e10f5727360368e451d4b7f58beeac6173dc9db836a5b46/iniconfig-2.0.0-py3-none-any.whl&quot;</span><span class="op">,</span></span>
+<span id="cb6-241"><a href="#cb6-241" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;hashes&quot;</span><span class="op">:</span> {</span>
+<span id="cb6-242"><a href="#cb6-242" aria-hidden="true" tabindex="-1"></a>            <span class="st">&quot;sha256&quot;</span><span class="op">:</span> <span class="st">&quot;b6a85871a79d2e3b22d2d1b94ac2824226a63c6b741c88f7ae975f18b6778374&quot;</span></span>
+<span id="cb6-243"><a href="#cb6-243" aria-hidden="true" tabindex="-1"></a>          }<span class="op">,</span></span>
+<span id="cb6-244"><a href="#cb6-244" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;size&quot;</span><span class="op">:</span> <span class="dv">5892</span><span class="op">,</span></span>
+<span id="cb6-245"><a href="#cb6-245" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;upload_time&quot;</span><span class="op">:</span> <span class="st">&quot;2023-01-07T11:08:09.864Z&quot;</span><span class="op">,</span></span>
+<span id="cb6-246"><a href="#cb6-246" aria-hidden="true" tabindex="-1"></a>          <span class="co">// Parsing this name is how you know what platform a wheel supports</span></span>
+<span id="cb6-247"><a href="#cb6-247" aria-hidden="true" tabindex="-1"></a>          <span class="st">&quot;filename&quot;</span><span class="op">:</span> <span class="st">&quot;iniconfig-2.0.0-py3-none-any.whl&quot;</span></span>
+<span id="cb6-248"><a href="#cb6-248" aria-hidden="true" tabindex="-1"></a>        }</span>
+<span id="cb6-249"><a href="#cb6-249" aria-hidden="true" tabindex="-1"></a>      ]</span>
+<span id="cb6-250"><a href="#cb6-250" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb6-251"><a href="#cb6-251" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-252"><a href="#cb6-252" aria-hidden="true" tabindex="-1"></a>    <span class="co">// ...and so on</span></span>
+<span id="cb6-253"><a href="#cb6-253" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;anyio==1.0.0@registry+https://pypi.org/simple&quot;</span><span class="op">:</span> { <span class="op">...</span> }</span>
+<span id="cb6-254"><a href="#cb6-254" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;anyio==2.0.0@registry+https://pypi.org/simple&quot;</span><span class="op">:</span> { <span class="op">...</span> }</span>
+<span id="cb6-255"><a href="#cb6-255" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb6-256"><a href="#cb6-256" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>

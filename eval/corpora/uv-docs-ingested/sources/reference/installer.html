@@ -1,0 +1,41 @@
+<h1 id="the-uv-installer">The uv installer</h1>
+<h2 id="changing-the-installation-path">Changing the installation
+path</h2>
+<p>By default, uv is installed in the user <a
+href="./storage.md#executable-directory">executable directory</a>.</p>
+<p>To change the installation path, use <code>UV_INSTALL_DIR</code>:</p>
+<p>=== “macOS and Linux”</p>
+<pre><code>```console
+$ curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=&quot;/custom/path&quot; sh
+```</code></pre>
+<p>=== “Windows”</p>
+<pre><code>```pwsh-session
+PS&gt; powershell -ExecutionPolicy ByPass -c {$env:UV_INSTALL_DIR = &quot;C:\Custom\Path&quot;;irm https://astral.sh/uv/install.ps1 | iex}
+```</code></pre>
+<p>!!! note</p>
+<pre><code>Changing the installation path only affects where the uv binary is installed. uv will still store
+its data (cache, Python installations, tools, etc.) in the default locations. See the
+[storage reference](./storage.md) for details on these locations and how to customize them.</code></pre>
+<h2 id="disabling-shell-modifications">Disabling shell
+modifications</h2>
+<p>The installer may also update your shell profiles to ensure the uv
+binary is on your <code>PATH</code>. To disable this behavior, use
+<code>UV_NO_MODIFY_PATH</code>. For example:</p>
+<pre class="console"><code>$ curl -LsSf https://astral.sh/uv/install.sh | env UV_NO_MODIFY_PATH=1 sh</code></pre>
+<p>If installed with <code>UV_NO_MODIFY_PATH</code>, subsequent
+operations, like <code>uv self update</code>, will not modify your shell
+profiles.</p>
+<h2 id="unmanaged-installations">Unmanaged installations</h2>
+<p>In ephemeral environments like CI, use
+<code>UV_UNMANAGED_INSTALL</code> to install uv to a specific path while
+preventing the installer from modifying shell profiles or environment
+variables:</p>
+<pre class="console"><code>$ curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=&quot;/custom/path&quot; sh</code></pre>
+<p>The use of <code>UV_UNMANAGED_INSTALL</code> will also disable
+self-updates (via <code>uv self update</code>).</p>
+<h2 id="passing-options-to-the-installation-script">Passing options to
+the installation script</h2>
+<p>Using environment variables is recommended because they are
+consistent across platforms. However, options can be passed directly to
+the installation script. For example, to see the available options:</p>
+<pre class="console"><code>$ curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --help</code></pre>

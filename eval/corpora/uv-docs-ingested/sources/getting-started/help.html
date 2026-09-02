@@ -1,0 +1,51 @@
+<h1 id="getting-help">Getting help</h1>
+<h2 id="help-menus">Help menus</h2>
+<p>The <code>--help</code> flag can be used to view the help menu for a
+command, e.g., for <code>uv</code>:</p>
+<pre class="console"><code>$ uv --help</code></pre>
+<p>To view the help menu for a specific command, e.g., for
+<code>uv init</code>:</p>
+<pre class="console"><code>$ uv init --help</code></pre>
+<p>When using the <code>--help</code> flag, uv displays a condensed help
+menu. To view a longer help menu for a command, use
+<code>uv help</code>:</p>
+<pre class="console"><code>$ uv help</code></pre>
+<p>To view the long help menu for a specific command, e.g., for
+<code>uv init</code>:</p>
+<pre class="console"><code>$ uv help init</code></pre>
+<p>When using the long help menu, uv will attempt to use
+<code>less</code> or <code>more</code> to “page” the output so it is not
+all displayed at once. To exit the pager, press <code>q</code>.</p>
+<h2 id="displaying-verbose-output">Displaying verbose output</h2>
+<p>The <code>-v</code> flag can be used to display verbose output for a
+command, e.g., for <code>uv sync</code>:</p>
+<pre class="console"><code>$ uv sync -v</code></pre>
+<p>The <code>-v</code> flag can be repeated to increase verbosity,
+e.g.:</p>
+<pre class="console"><code>$ uv sync -vv</code></pre>
+<p>Often, the verbose output will include additional information about
+why uv is behaving in a certain way.</p>
+<h2 id="viewing-the-version">Viewing the version</h2>
+<p>When seeking help, it’s important to determine the version of uv that
+you’re using — sometimes the problem is already solved in a newer
+version.</p>
+<p>To check the installed version:</p>
+<pre class="console"><code>$ uv self version</code></pre>
+<p>The following are also valid:</p>
+<pre class="console"><code>$ uv --version      # Same output as `uv self version`
+$ uv -V             # Will not include the build commit and date</code></pre>
+<p>!!! note</p>
+<pre><code>Before uv 0.7.0, `uv version` was used instead of `uv self version`.</code></pre>
+<h2 id="troubleshooting-issues">Troubleshooting issues</h2>
+<p>The reference documentation contains a <a
+href="../reference/troubleshooting/index.md">troubleshooting guide</a>
+for common issues.</p>
+<h2 id="open-an-issue-on-github">Open an issue on GitHub</h2>
+<p>The <a href="https://github.com/astral-sh/uv/issues">issue
+tracker</a> on GitHub is a good place to report bugs and request
+features. Make sure to search for similar issues first, as it is common
+for someone else to encounter the same problem.</p>
+<h2 id="chat-on-discord">Chat on Discord</h2>
+<p>Astral has a <a href="https://discord.com/invite/astral-sh">Discord
+server</a>, which is a great place to ask questions, learn more about
+uv, and engage with other community members.</p>

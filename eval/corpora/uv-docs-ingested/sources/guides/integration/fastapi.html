@@ -1,0 +1,83 @@
+<h1 id="using-uv-with-fastapi">Using uv with FastAPI</h1>
+<p><a href="https://github.com/fastapi/fastapi">FastAPI</a> is a modern,
+high-performance Python web framework. You can use uv to manage your
+FastAPI project, including installing dependencies, managing
+environments, running FastAPI applications, and more.</p>
+<p>!!! note</p>
+<pre><code>You can view the source code for this guide in the [uv-fastapi-example](https://github.com/astral-sh/uv-fastapi-example) repository.</code></pre>
+<h2 id="migrating-an-existing-fastapi-project">Migrating an existing
+FastAPI project</h2>
+<p>As an example, consider the sample application defined in the <a
+href="https://fastapi.tiangolo.com/tutorial/bigger-applications/">FastAPI
+documentation</a>, structured as follows:</p>
+<pre class="plaintext"><code>project
+└── app
+    ├── __init__.py
+    ├── main.py
+    ├── dependencies.py
+    ├── routers
+    │   ├── __init__.py
+    │   ├── items.py
+    │   └── users.py
+    └── internal
+        ├── __init__.py
+        └── admin.py</code></pre>
+<p>To use uv with this application, inside the <code>project</code>
+directory run:</p>
+<pre class="console"><code>$ uv init --no-package</code></pre>
+<p>This creates a <code>pyproject.toml</code> file for a <a
+href="../../concepts/projects/init.md#unpackaged-applications">flat,
+unpackaged project</a>.</p>
+<p>Then, add a dependency on FastAPI:</p>
+<pre class="console"><code>$ uv add fastapi --extra standard</code></pre>
+<p>You should now have the following structure:</p>
+<pre class="plaintext"><code>project
+├── pyproject.toml
+└── app
+    ├── __init__.py
+    ├── main.py
+    ├── dependencies.py
+    ├── routers
+    │   ├── __init__.py
+    │   ├── items.py
+    │   └── users.py
+    └── internal
+        ├── __init__.py
+        └── admin.py</code></pre>
+<p>And the contents of the <code>pyproject.toml</code> file should look
+something like this:</p>
+<p><code>toml title="pyproject.toml" [project] name = "uv-fastapi-example" version = "0.1.0" description = "FastAPI project" readme = "README.md" requires-python = "&gt;=3.12" dependencies = [     "fastapi[standard]", ]</code></p>
+<p>From there, you can run the FastAPI application with:</p>
+<pre class="console"><code>$ uv run fastapi dev</code></pre>
+<p><code>uv run</code> will automatically resolve and lock the project
+dependencies (i.e., create a <code>uv.lock</code> alongside the
+<code>pyproject.toml</code>), create a virtual environment, and run the
+command in that environment.</p>
+<p>Test the app by opening http://127.0.0.1:8000/?token=jessica in a web
+browser.</p>
+<h2 id="deployment">Deployment</h2>
+<p>To deploy the FastAPI application with Docker, you can use the
+following <code>Dockerfile</code>:</p>
+<p>```dockerfile title=“Dockerfile” FROM python:3.12-slim</p>
+<h1 id="install-uv.">Install uv.</h1>
+<p>COPY –from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/</p>
+<h1 id="copy-the-application-into-the-container.">Copy the application
+into the container.</h1>
+<p>COPY . /app</p>
+<h1 id="install-the-application-dependencies.">Install the application
+dependencies.</h1>
+<p>WORKDIR /app RUN uv sync –frozen –no-cache</p>
+<h1 id="run-the-application.">Run the application.</h1>
+<p>CMD [“/app/.venv/bin/fastapi”, “run”, “app/main.py”, “–port”, “80”,
+“–host”, “0.0.0.0”]</p>
+<pre><code>
+Build the Docker image with:
+
+```console
+$ docker build -t fastapi-app .</code></pre>
+<p>Run the Docker container locally with:</p>
+<pre class="console"><code>$ docker run -p 8000:80 fastapi-app</code></pre>
+<p>Navigate to http://127.0.0.1:8000/?token=jessica in your browser to
+verify that the app is running correctly.</p>
+<p>!!! tip</p>
+<pre><code>For more on using uv with Docker, see the [Docker guide](./docker.md).</code></pre>

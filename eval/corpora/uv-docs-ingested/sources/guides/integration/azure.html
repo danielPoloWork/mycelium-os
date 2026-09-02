@@ -1,0 +1,79 @@
+<h1 id="azure-artifacts">Azure Artifacts</h1>
+<p>uv can install packages from <a
+href="https://learn.microsoft.com/en-us/azure/devops/artifacts/start-using-azure-artifacts?view=azure-devops&amp;tabs=nuget%2Cnugetserver">Azure
+Artifacts</a>, either by using a <a
+href="https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&amp;tabs=Windows">Personal
+Access Token</a> (PAT), or using the <a
+href="https://github.com/jaraco/keyring"><code>keyring</code></a>
+package.</p>
+<p>To use Azure Artifacts, add the index to your project:</p>
+<p><code>toml title="pyproject.toml" [[tool.uv.index]] name = "private-registry" url = "https://pkgs.dev.azure.com/&lt;ORGANIZATION&gt;/&lt;PROJECT&gt;/_packaging/&lt;FEED&gt;/pypi/simple/"</code></p>
+<h2 id="authenticate-with-an-azure-access-token">Authenticate with an
+Azure access token</h2>
+<p>If there is a personal access token (PAT) available (e.g., <a
+href="https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&amp;tabs=yaml#systemaccesstoken"><code>$(System.AccessToken)</code>
+in an Azure pipeline</a>), credentials can be provided via “Basic” HTTP
+authentication scheme. Include the PAT in the password field of the URL.
+A username must be included as well, but can be any string.</p>
+<p>For example, with the token stored in the
+<code>$AZURE_ARTIFACTS_TOKEN</code> environment variable, set
+credentials for the index with:</p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">UV_INDEX_PRIVATE_REGISTRY_USERNAME</span><span class="op">=</span>dummy</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">UV_INDEX_PRIVATE_REGISTRY_PASSWORD</span><span class="op">=</span><span class="st">&quot;</span><span class="va">$AZURE_ARTIFACTS_TOKEN</span><span class="st">&quot;</span></span></code></pre></div>
+<p>!!! note</p>
+<pre><code>`PRIVATE_REGISTRY` should match the name of the index defined in your `pyproject.toml`.</code></pre>
+<h2 id="authenticate-with-keyring-and-artifacts-keyring">Authenticate
+with <code>keyring</code> and <code>artifacts-keyring</code></h2>
+<p>You can also authenticate to Artifacts using <a
+href="https://github.com/jaraco/keyring"><code>keyring</code></a>
+package with the <a
+href="https://github.com/Microsoft/artifacts-keyring"><code>artifacts-keyring</code>
+plugin</a>. Because these two packages are required to authenticate to
+Azure Artifacts, they must be pre-installed from a source other than
+Artifacts.</p>
+<p>The <code>artifacts-keyring</code> plugin wraps the <a
+href="https://github.com/microsoft/artifacts-credprovider">Azure
+Artifacts Credential Provider tool</a>. The credential provider supports
+a few different authentication modes including interactive login — see
+the <a href="https://github.com/microsoft/artifacts-credprovider">tool’s
+documentation</a> for information on configuration.</p>
+<p>uv only supports using the <code>keyring</code> package in <a
+href="../../reference/settings.md#keyring-provider">subprocess mode</a>.
+The <code>keyring</code> executable must be in the <code>PATH</code>,
+i.e., installed globally or in the active environment. The
+<code>keyring</code> CLI requires a username in the URL, and it must be
+<code>VssSessionToken</code>.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Pre-install keyring and the Artifacts plugin from the public PyPI</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> tool install keyring <span class="at">--with</span> artifacts-keyring</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Enable keyring authentication</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">UV_KEYRING_PROVIDER</span><span class="op">=</span>subprocess</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Set the username for the index</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">UV_INDEX_PRIVATE_REGISTRY_USERNAME</span><span class="op">=</span>VssSessionToken</span></code></pre></div>
+<p>!!! note</p>
+<pre><code>The [`tool.uv.keyring-provider`](../../reference/settings.md#keyring-provider)
+setting can be used to enable keyring in your `uv.toml` or `pyproject.toml`.
+
+Similarly, the username for the index can be added directly to the index URL.</code></pre>
+<h2 id="publishing-packages">Publishing packages</h2>
+<p>If you also want to publish your own packages to Azure Artifacts, you
+can use <code>uv publish</code> as described in the <a
+href="../package.md">Building and publishing guide</a>.</p>
+<p>First, add a <code>publish-url</code> to the index you want to
+publish packages to. For example:</p>
+<p><code>toml title="pyproject.toml" hl_lines="4" [[tool.uv.index]] name = "private-registry" url = "https://pkgs.dev.azure.com/&lt;ORGANIZATION&gt;/&lt;PROJECT&gt;/_packaging/&lt;FEED&gt;/pypi/simple/" publish-url = "https://pkgs.dev.azure.com/&lt;ORGANIZATION&gt;/&lt;PROJECT&gt;/_packaging/&lt;FEED&gt;/pypi/upload/"</code></p>
+<p>Then, configure credentials (if not using keyring):</p>
+<pre class="console"><code>$ export UV_PUBLISH_USERNAME=dummy
+$ export UV_PUBLISH_PASSWORD=&quot;$AZURE_ARTIFACTS_TOKEN&quot;</code></pre>
+<p>And publish the package:</p>
+<pre class="console"><code>$ uv publish --index private-registry</code></pre>
+<p>To use <code>uv publish</code> without adding the
+<code>publish-url</code> to the project, you can set
+<code>UV_PUBLISH_URL</code>:</p>
+<pre class="console"><code>$ export UV_PUBLISH_URL=https://pkgs.dev.azure.com/&lt;ORGANIZATION&gt;/&lt;PROJECT&gt;/_packaging/&lt;FEED&gt;/pypi/upload/
+$ uv publish</code></pre>
+<p>Note this method is not preferable because uv cannot check if the
+package is already published before uploading artifacts.</p>

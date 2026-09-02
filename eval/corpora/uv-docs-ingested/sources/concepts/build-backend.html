@@ -1,0 +1,221 @@
+<h1 id="the-uv-build-backend">The uv build backend</h1>
+<p>A build backend transforms a source tree (i.e., a directory) into a
+source distribution or a wheel.</p>
+<p>uv supports all build backends (as specified by <a
+href="https://peps.python.org/pep-0517/">PEP 517</a>), but also provides
+a native build backend (<code>uv_build</code>) that integrates tightly
+with uv to improve performance and user experience.</p>
+<h2 id="choosing-a-build-backend">Choosing a build backend</h2>
+<p>The uv build backend is a great choice for most Python projects. It
+has reasonable defaults, with the goal of requiring zero configuration
+for most users, but provides flexible configuration to accommodate most
+Python project structures. It integrates tightly with uv, to improve
+messaging and user experience. It validates project metadata and
+structures, preventing common mistakes. And, finally, it’s very
+fast.</p>
+<p>The uv build backend currently <strong>only supports pure Python
+code</strong>. An alternative backend is required to build a <a
+href="../concepts/projects/init.md#projects-with-extension-modules">library
+with extension modules</a>.</p>
+<p>!!! tip</p>
+<pre><code>While the backend supports a number of options for configuring your project structure, when build scripts or
+a more flexible project layout are required, consider using the
+[hatchling](https://hatch.pypa.io/latest/config/build/#build-system) build backend instead.</code></pre>
+<h2 id="using-the-uv-build-backend">Using the uv build backend</h2>
+<p>To use uv as a build backend in an existing project, add
+<code>uv_build</code> to the <a
+href="../concepts/projects/config.md#build-systems"><code>[build-system]</code></a>
+section in your <code>pyproject.toml</code>:</p>
+<p><code>toml title="pyproject.toml" [build-system] requires = ["uv_build&gt;=0.12.7,&lt;0.13"] build-backend = "uv_build"</code></p>
+<p>!!! note</p>
+<pre><code>The uv build backend follows the same [versioning policy](../reference/policies/versioning.md)
+as uv. Including an upper bound on the `uv_build` version ensures that your package continues to
+build correctly as new versions are released.</code></pre>
+<p>To create a new project that uses the uv build backend, use
+<code>uv init</code>:</p>
+<pre class="console"><code>$ uv init</code></pre>
+<p>When the project is built, e.g., with <a
+href="../guides/package.md"><code>uv build</code></a>, the uv build
+backend will be used to create the source distribution and wheel.</p>
+<h2 id="bundled-build-backend">Bundled build backend</h2>
+<p>The build backend is published as a separate package
+(<code>uv_build</code>) that is optimized for portability and small
+binary size. However, the <code>uv</code> executable also includes a
+copy of the build backend, which will be used during builds performed by
+uv, e.g., during <code>uv build</code>, if its version is compatible
+with the <code>uv_build</code> requirement. If it’s not compatible, a
+compatible version of the <code>uv_build</code> package will be used.
+Other build frontends, such as <code>python -m build</code>, will always
+use the <code>uv_build</code> package, typically choosing the latest
+compatible version.</p>
+<h2 id="modules">Modules</h2>
+<p>Python packages are expected to contain one or more Python modules,
+which are directories containing an <code>__init__.py</code>. By
+default, a single root module is expected at
+<code>src/&lt;package_name&gt;/__init__.py</code>.</p>
+<p>For example, the structure for a project named <code>foo</code> would
+be:</p>
+<pre class="text"><code>pyproject.toml
+src
+└── foo
+    └── __init__.py</code></pre>
+<p>uv normalizes the package name to determine the default module name:
+the package name is lowercased and dots and dashes are replaced with
+underscores, e.g., <code>Foo-Bar</code> would be converted to
+<code>foo_bar</code>.</p>
+<p>The <code>src/</code> directory is the default directory for module
+discovery.</p>
+<p>These defaults can be changed with the <code>module-name</code> and
+<code>module-root</code> settings. For example, to use a
+<code>FOO</code> module in the root directory, as in the project
+structure:</p>
+<pre class="text"><code>pyproject.toml
+FOO
+└── __init__.py</code></pre>
+<p>The correct build configuration would be:</p>
+<p><code>toml title="pyproject.toml" [tool.uv.build-backend] module-name = "FOO" module-root = ""</code></p>
+<h2 id="namespace-packages">Namespace packages</h2>
+<p>Namespace packages are intended for use-cases where multiple packages
+write modules into a shared namespace.</p>
+<p>Namespace package modules are identified by a <code>.</code> in the
+<code>module-name</code>. For example, to package the module
+<code>bar</code> in the shared namespace <code>foo</code>, the project
+structure would be:</p>
+<pre class="text"><code>pyproject.toml
+src
+└── foo
+    └── bar
+        └── __init__.py</code></pre>
+<p>And the <code>module-name</code> configuration would be:</p>
+<p><code>toml title="pyproject.toml" [tool.uv.build-backend] module-name = "foo.bar"</code></p>
+<p>!!! important</p>
+<pre><code>The `__init__.py` file is not included in `foo`, since it&#39;s the shared namespace module.</code></pre>
+<p>It’s also possible to have a complex namespace package with more than
+one root module, e.g., with the project structure:</p>
+<pre class="text"><code>pyproject.toml
+src
+├── foo
+│   └── __init__.py
+└── bar
+    └── __init__.py</code></pre>
+<p>While we do not recommend this structure (i.e., you should use a
+workspace with multiple packages instead), it is supported by setting
+<code>module-name</code> to a list of names:</p>
+<p><code>toml title="pyproject.toml" [tool.uv.build-backend] module-name = ["foo", "bar"]</code></p>
+<p>For packages with many modules or complex namespaces, the
+<code>namespace = true</code> option can be used to avoid explicitly
+declaring each module name, e.g.:</p>
+<p><code>toml title="pyproject.toml" [tool.uv.build-backend] namespace = true</code></p>
+<p>!!! warning</p>
+<pre><code>Using `namespace = true` disables safety checks. Using an explicit list of module names is
+strongly recommended outside of legacy projects.</code></pre>
+<p>The <code>namespace</code> option can also be used with
+<code>module-name</code> to explicitly declare the root, e.g., for the
+project structure:</p>
+<pre class="text"><code>pyproject.toml
+src
+└── foo
+    ├── bar
+    │   └── __init__.py
+    └── baz
+        └── __init__.py</code></pre>
+<p>The recommended configuration would be:</p>
+<p><code>toml title="pyproject.toml" [tool.uv.build-backend] module-name = "foo" namespace = true</code></p>
+<h2 id="stub-packages">Stub packages</h2>
+<p>The build backend also supports building type stub packages, which
+are identified by the <code>-stubs</code> suffix on the package or
+module name, e.g., <code>foo-stubs</code>. The module name for type stub
+packages must end in <code>-stubs</code>, so uv will not normalize the
+<code>-</code> to an underscore. Additionally, uv will search for a
+<code>__init__.pyi</code> file. For example, the project structure would
+be:</p>
+<pre class="text"><code>pyproject.toml
+src
+└── foo-stubs
+    └── __init__.pyi</code></pre>
+<p>Type stub modules are also supported for <a
+href="#namespace-packages">namespace packages</a>.</p>
+<h2 id="file-inclusion-and-exclusion">File inclusion and exclusion</h2>
+<p>The build backend is responsible for determining which files in a
+source tree should be packaged into the distributions.</p>
+<p>To determine which files to include in a source distribution, uv
+first adds the included files and directories, then removes the excluded
+files and directories. This means that exclusions always take precedence
+over inclusions.</p>
+<p>By default, uv excludes <code>__pycache__</code>, <code>*.pyc</code>,
+and <code>*.pyo</code>.</p>
+<p>When building a source distribution, the following files and
+directories are included:</p>
+<ul>
+<li>The <code>pyproject.toml</code>. If uv detects TOML 1.1-only syntax,
+it issues a warning and automatically enables the
+<code>toml-backwards-compatibility</code> preview feature: the
+<code>pyproject.toml</code> is reformatted for backwards compatibility,
+and the original file is preserved as <code>pyproject.toml.orig</code>.
+Pass <code>--preview-feature toml-backwards-compatibility</code> to
+enable the feature explicitly and suppress the warning.</li>
+<li>The <a href="#modules">module</a> under <a
+href="../reference/settings.md#build-backend_module-root"><code>tool.uv.build-backend.module-root</code></a>.</li>
+<li>The files referenced by <code>project.license-files</code> and
+<code>project.readme</code>.</li>
+<li>All directories under <a
+href="../reference/settings.md#build-backend_data"><code>tool.uv.build-backend.data</code></a>.</li>
+<li>All files matching patterns from <a
+href="../reference/settings.md#build-backend_source-include"><code>tool.uv.build-backend.source-include</code></a>.</li>
+</ul>
+<p>From these, items matching <a
+href="../reference/settings.md#build-backend_source-exclude"><code>tool.uv.build-backend.source-exclude</code></a>
+and the <a
+href="../reference/settings.md#build-backend_default-excludes">default
+excludes</a> are removed.</p>
+<p>When building a wheel, the following files and directories are
+included:</p>
+<ul>
+<li>The <a href="#modules">module</a> under <a
+href="../reference/settings.md#build-backend_module-root"><code>tool.uv.build-backend.module-root</code></a></li>
+<li>The files referenced by <code>project.license-files</code>, which
+are copied into the <code>.dist-info</code> directory.</li>
+<li>The <code>project.readme</code>, which is copied into the project
+metadata.</li>
+<li>All directories under <a
+href="../reference/settings.md#build-backend_data"><code>tool.uv.build-backend.data</code></a>,
+which are copied into the <code>.data</code> directory.</li>
+</ul>
+<p>From these, <a
+href="../reference/settings.md#build-backend_source-exclude"><code>tool.uv.build-backend.source-exclude</code></a>,
+<a
+href="../reference/settings.md#build-backend_wheel-exclude"><code>tool.uv.build-backend.wheel-exclude</code></a>
+and the default excludes are removed. The source dist excludes are
+applied to avoid source tree to wheel builds including more files than
+source tree to source distribution to wheel build.</p>
+<p>There are no specific wheel includes. There must only be one top
+level module, and all data files must either be under the module root or
+in the appropriate <a
+href="../reference/settings.md#build-backend_data">data directory</a>.
+Most packages store small data in the module root alongside the source
+code.</p>
+<p>!!! tip</p>
+<pre><code>When using the uv build backend through a frontend that is not uv, such as pip or
+`python -m build`, debug logging can be enabled through environment variables with
+`RUST_LOG=uv=debug` or `RUST_LOG=uv=verbose`. When used through uv, the uv build backend shares
+the verbosity level of uv.</code></pre>
+<h3 id="include-and-exclude-syntax">Include and exclude syntax</h3>
+<p>Includes are anchored, which means that <code>pyproject.toml</code>
+includes only <code>&lt;root&gt;/pyproject.toml</code> and not
+<code>&lt;root&gt;/bar/pyproject.toml</code>. To recursively include all
+files under a directory, use a <code>/**</code> suffix,
+e.g. <code>src/**</code>. Recursive inclusions are also anchored, e.g.,
+<code>assets/**/sample.csv</code> includes all <code>sample.csv</code>
+files in <code>&lt;root&gt;/assets</code> or any of its children.</p>
+<p>!!! note</p>
+<pre><code>For performance and reproducibility, avoid patterns without an anchor such as `**/sample.csv`.</code></pre>
+<p>Excludes are not anchored, which means that <code>__pycache__</code>
+excludes all directories named <code>__pycache__</code> regardless of
+its parent directory. All children of an exclusion are excluded as well.
+To anchor a directory, use a <code>/</code> prefix, e.g.,
+<code>/dist</code> will exclude only <code>&lt;root&gt;/dist</code>.</p>
+<p>All fields accepting patterns use the reduced portable glob syntax
+from <a
+href="https://peps.python.org/pep-0639/#add-license-FILES-key">PEP
+639</a>, with the addition that characters can be escaped with a
+backslash.</p>

@@ -210,6 +210,14 @@ jobs:
             tests/test_synthesis_wiki.py \
             tests/test_synthesis_lane.py \
             tests/test_synthesis_provider.py
+      - name: The third corpus still matches a fresh ingestion of its sources
+        shell: bash
+        # The judged corpus at eval/corpora/uv-docs-ingested is committed *evidence* —
+        # what the projector wrote from what the parsers read. This re-ingests the
+        # committed binaries and compares, so a change in docling, pandoc, PDFium or
+        # the projector shows up here rather than as a corpus that quietly stopped
+        # matching its own provenance (roadmap 4.10, ADR-0039).
+        run: uv run python tools/build_ingested_corpus.py --check
 
   # ---------------------------------------------------------------------------
   # The M4 exit gate — zero *silent* element loss on the ingestion corpus
@@ -291,6 +299,18 @@ jobs:
       - name: Gates G1-G6 on the frozen release set — the second corpus
         shell: bash
         run: uv run mycelium eval eval/corpora/uv-docs --set eval/release.jsonl --gate
+      - name: Compile the third corpus (the second one, ingested)
+        shell: bash
+        run: uv run mycelium build eval/corpora/uv-docs-ingested
+      - name: Gates G1-G6 on the frozen release set — the ingested corpus
+        shell: bash
+        run: uv run mycelium eval eval/corpora/uv-docs-ingested --set eval/release.jsonl --gate
+      - name: What projection costs, for the record (roadmap 4.10)
+        shell: bash
+        # Reported, never gated: with two to five cases per format there is no
+        # threshold anyone could defend, and a gate nobody believes is a gate
+        # everyone re-blesses (ADR-0039).
+        run: uv run python tools/measure_projection_cost.py || true
       - name: The grep baseline, for the record (D-010)
         shell: bash
         # Reported, never gated: the incumbent's numbers are evidence about the

@@ -1,0 +1,569 @@
+{
+  "docs/concepts/authentication/certificates.md": {
+    "evidence": "knowledge/evidence/certificates-docx-ea888d8c.md",
+    "format": "docx",
+    "parser": "docling",
+    "source": "sources/concepts/authentication/certificates.docx",
+    "source_digest": "sha256:ea888d8c1121cd87c402cb14734ec89864fc9fb70ed522d24b0feabcb472c984"
+  },
+  "docs/concepts/authentication/cli.md": {
+    "evidence": "knowledge/evidence/cli-html-cbfc86dd.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/authentication/cli.html",
+    "source_digest": "sha256:cbfc86ddea1b6c69fed7bf52cd062fee5f51c9dc9ac66ce5357ad9444ecc7d95"
+  },
+  "docs/concepts/authentication/git.md": {
+    "evidence": "knowledge/evidence/git-html-d2c3820e.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/authentication/git.html",
+    "source_digest": "sha256:d2c3820eae5b9f44e12d743a2cdf9cec1458574ea1e1da3878c57961f11ebbac"
+  },
+  "docs/concepts/authentication/http.md": {
+    "evidence": "knowledge/evidence/http-pdf-6ddd4d71.md",
+    "format": "pdf",
+    "parser": "pdf",
+    "source": "sources/concepts/authentication/http.pdf",
+    "source_digest": "sha256:6ddd4d71e70397a41f401929f0c3db44e8c739aef70fad6ebbdb898ed41674d5"
+  },
+  "docs/concepts/authentication/index.md": {
+    "evidence": "knowledge/evidence/index-html-29a0c1f7.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/authentication/index.html",
+    "source_digest": "sha256:29a0c1f77114de41da6745faf5077ba46032e74d48271e69cb90e0ab0606e778"
+  },
+  "docs/concepts/authentication/third-party.md": {
+    "evidence": "knowledge/evidence/third-party-html-ae4ff1a3.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/authentication/third-party.html",
+    "source_digest": "sha256:ae4ff1a344b6cef9892ccad43920a2cdcdfbe354fbec6de424470d77782f6186"
+  },
+  "docs/concepts/build-backend.md": {
+    "evidence": "knowledge/evidence/build-backend-html-f68e6615.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/build-backend.html",
+    "source_digest": "sha256:f68e661568675df14e705eeae774e52c8a1c828ba4c674aed92dd01c818b2c18"
+  },
+  "docs/concepts/cache.md": {
+    "evidence": "knowledge/evidence/cache-docx-c3426c17.md",
+    "format": "docx",
+    "parser": "docling",
+    "source": "sources/concepts/cache.docx",
+    "source_digest": "sha256:c3426c17f93fa9986303af8fa08914c0f71b98c3aeb4d24f0f6a88a7f9fb3faa"
+  },
+  "docs/concepts/configuration-files.md": {
+    "evidence": "knowledge/evidence/configuration-files-html-eafcabbb.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/configuration-files.html",
+    "source_digest": "sha256:eafcabbb820969353e3457e7a94934464ebc4c234cda197fc30eee784caa6ae6"
+  },
+  "docs/concepts/index.md": {
+    "evidence": "knowledge/evidence/index-html-34aeee8f.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/index.html",
+    "source_digest": "sha256:34aeee8f40de1f8f83565fd4b2bb6f15eb50392a7c9254a69446f2f447a0132e"
+  },
+  "docs/concepts/indexes.md": {
+    "evidence": "knowledge/evidence/indexes-pdf-9f8d98fc.md",
+    "format": "pdf",
+    "parser": "pdf",
+    "source": "sources/concepts/indexes.pdf",
+    "source_digest": "sha256:9f8d98fc705d4ce82aca119876c3bd5b80e2d0d4423d53854b12d6e6e8fd10ef"
+  },
+  "docs/concepts/preview.md": {
+    "evidence": "knowledge/evidence/preview-html-2aa1bffb.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/preview.html",
+    "source_digest": "sha256:2aa1bffb30632264b932a3de798222740a231dacd61f4c15573318e46ccb38d1"
+  },
+  "docs/concepts/projects/build.md": {
+    "evidence": "knowledge/evidence/build-html-a52e977c.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/projects/build.html",
+    "source_digest": "sha256:a52e977cd5261ce56451652e25b52de57f2a94e72430c9c135cf42c12a6c57da"
+  },
+  "docs/concepts/projects/config.md": {
+    "evidence": "knowledge/evidence/config-html-aaa8301d.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/projects/config.html",
+    "source_digest": "sha256:aaa8301df6c6f8ca5d91d146c5fa519ab826c87a98a286740df0c8a68a3c4c0b"
+  },
+  "docs/concepts/projects/dependencies.md": {
+    "evidence": "knowledge/evidence/dependencies-docx-d90e9be4.md",
+    "format": "docx",
+    "parser": "docling",
+    "source": "sources/concepts/projects/dependencies.docx",
+    "source_digest": "sha256:d90e9be4a640b66d7876f4b6f9449856c33016b7202b5076dae9d5fc54610c77"
+  },
+  "docs/concepts/projects/export.md": {
+    "evidence": "knowledge/evidence/export-html-cc390a0e.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/projects/export.html",
+    "source_digest": "sha256:cc390a0e4451823c746972ca1ef17bca2bf4aa44cf790155a01aae8b4f9aa1d2"
+  },
+  "docs/concepts/projects/index.md": {
+    "evidence": "knowledge/evidence/index-html-abed7d10.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/projects/index.html",
+    "source_digest": "sha256:abed7d106418c0dd776910ae1b05e59c2f49e1cb85dceb4f17c355fb5cd4fd42"
+  },
+  "docs/concepts/projects/init.md": {
+    "evidence": "knowledge/evidence/init-html-d328c8ca.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/projects/init.html",
+    "source_digest": "sha256:d328c8cac4525be6403efc826faf00347b6694371fcf28c491aee6829b2f83f1"
+  },
+  "docs/concepts/projects/layout.md": {
+    "evidence": "knowledge/evidence/layout-html-02831e81.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/projects/layout.html",
+    "source_digest": "sha256:02831e81cdd25425ac11ff1703eb626f730ff9342710daae94bfb4d048d938af"
+  },
+  "docs/concepts/projects/run.md": {
+    "evidence": "knowledge/evidence/run-html-2e847d14.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/projects/run.html",
+    "source_digest": "sha256:2e847d14bc37c811822a5f7dcc49185792eeb9eb9f239b25894d7d5f3aa41bbf"
+  },
+  "docs/concepts/projects/sync.md": {
+    "evidence": "knowledge/evidence/sync-html-9c97b88f.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/projects/sync.html",
+    "source_digest": "sha256:9c97b88f46e197c74235e9fc4d68f171049497c53be3cd94a7b79505827be523"
+  },
+  "docs/concepts/projects/workspaces.md": {
+    "evidence": "knowledge/evidence/workspaces-html-45cf0a84.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/projects/workspaces.html",
+    "source_digest": "sha256:45cf0a84c1b9b51ad9ee85521d5e0e9c2a1d154908fa6a95519b350eff226c60"
+  },
+  "docs/concepts/python-versions.md": {
+    "evidence": "knowledge/evidence/python-versions-pdf-ea39018d.md",
+    "format": "pdf",
+    "parser": "pdf",
+    "source": "sources/concepts/python-versions.pdf",
+    "source_digest": "sha256:ea39018db789cce7cc63f15c9982c35f644ab29de78faf5ee321e37ce3b3bf10"
+  },
+  "docs/concepts/resolution.md": {
+    "evidence": "knowledge/evidence/resolution-docx-0961b125.md",
+    "format": "docx",
+    "parser": "docling",
+    "source": "sources/concepts/resolution.docx",
+    "source_digest": "sha256:0961b1253430433d8589d8782d1fb1f0a1d799ce70dddf3c86ba7f4dbf0b8027"
+  },
+  "docs/concepts/tools.md": {
+    "evidence": "knowledge/evidence/tools-html-36b20d8c.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/concepts/tools.html",
+    "source_digest": "sha256:36b20d8c828620427db0ccc3cd7bd328adc8bd15ba47128dd2391ae62ba4f811"
+  },
+  "docs/getting-started/features.md": {
+    "evidence": "knowledge/evidence/features-html-b3a656a3.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/getting-started/features.html",
+    "source_digest": "sha256:b3a656a31d5b56d84e2d90e1bfc3e22c5f36b1320aee2e00591c23c56338250d"
+  },
+  "docs/getting-started/first-steps.md": {
+    "evidence": "knowledge/evidence/first-steps-html-8077758e.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/getting-started/first-steps.html",
+    "source_digest": "sha256:8077758e2ad0b31663b4edd021eeb9db93a3fe88d5f01465c4c5b459507eb2f5"
+  },
+  "docs/getting-started/help.md": {
+    "evidence": "knowledge/evidence/help-html-92a769a5.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/getting-started/help.html",
+    "source_digest": "sha256:92a769a54beca9b6f68d158ea64040b58d48b2c300592e7f008c9b59498ce0e1"
+  },
+  "docs/getting-started/index.md": {
+    "evidence": "knowledge/evidence/index-html-d6f12df1.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/getting-started/index.html",
+    "source_digest": "sha256:d6f12df133f19d78d1d8d0166139d2d520dfda90161c71a5afc63c9d883fad15"
+  },
+  "docs/getting-started/installation.md": {
+    "evidence": "knowledge/evidence/installation-html-d878dd85.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/getting-started/installation.html",
+    "source_digest": "sha256:d878dd85337fca347d5e8067b90c7d2ca5cb56ba45c78d0af4036c675ea5fe55"
+  },
+  "docs/guides/index.md": {
+    "evidence": "knowledge/evidence/index-html-72da7f1f.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/index.html",
+    "source_digest": "sha256:72da7f1f236a594d7d7c8fdbc405b2fbedcf07135aef2f13cafa6b678530a07b"
+  },
+  "docs/guides/install-python.md": {
+    "evidence": "knowledge/evidence/install-python-html-9553213e.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/install-python.html",
+    "source_digest": "sha256:9553213e8b4778f83365a4a66bb8741ad56b3b11858e55417e140e836ebd2f60"
+  },
+  "docs/guides/integration/aws-lambda.md": {
+    "evidence": "knowledge/evidence/aws-lambda-html-197ed834.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/aws-lambda.html",
+    "source_digest": "sha256:197ed834176274972ad95577ed11857863760f58b6646916839a638139ad4715"
+  },
+  "docs/guides/integration/aws.md": {
+    "evidence": "knowledge/evidence/aws-html-ea633568.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/aws.html",
+    "source_digest": "sha256:ea633568a3d9d51a2190b0c3935793eb4e31b38695064759bdd2b82028032e60"
+  },
+  "docs/guides/integration/azure.md": {
+    "evidence": "knowledge/evidence/azure-html-e250aea6.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/azure.html",
+    "source_digest": "sha256:e250aea685991b815394e32a6462f7c799f89fe8c107fc2f7f33474b15578d6e"
+  },
+  "docs/guides/integration/bazel.md": {
+    "evidence": "knowledge/evidence/bazel-html-8259472b.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/bazel.html",
+    "source_digest": "sha256:8259472bdfe2839e69b3d784a7f3cc193d31f7462e2520359b1a3a5f2a62f8df"
+  },
+  "docs/guides/integration/coiled.md": {
+    "evidence": "knowledge/evidence/coiled-html-73fef5ac.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/coiled.html",
+    "source_digest": "sha256:73fef5ac310eeb53950ca81888e58ed7486f03a0234697172da319014805b5cb"
+  },
+  "docs/guides/integration/dependabot.md": {
+    "evidence": "knowledge/evidence/dependabot-html-6fb301dc.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/dependabot.html",
+    "source_digest": "sha256:6fb301dc624b6ad9d9ec39b991a6114d5cf159ac40fa853318cfd0927478b1d8"
+  },
+  "docs/guides/integration/docker.md": {
+    "evidence": "knowledge/evidence/docker-html-12224bd7.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/docker.html",
+    "source_digest": "sha256:12224bd7b4707593ca5ec6b07d62e657ba7bb451f4bba3564afce362d6a03c67"
+  },
+  "docs/guides/integration/fastapi.md": {
+    "evidence": "knowledge/evidence/fastapi-html-6ebd5cba.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/fastapi.html",
+    "source_digest": "sha256:6ebd5cbaeb09ebd2f6d451e50a000a2947769a6cf440ca29fb4a70565e2a8ca0"
+  },
+  "docs/guides/integration/github.md": {
+    "evidence": "knowledge/evidence/github-html-100a68cb.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/github.html",
+    "source_digest": "sha256:100a68cbed8d48445e74d401bd726b34050e939b1cdddb3bf7187daf192eff5c"
+  },
+  "docs/guides/integration/gitlab.md": {
+    "evidence": "knowledge/evidence/gitlab-html-86d1e2d2.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/gitlab.html",
+    "source_digest": "sha256:86d1e2d2cc9432350c513fb4a06ecaa91a6c5ed0ca919fde4dd28859ca49efab"
+  },
+  "docs/guides/integration/google.md": {
+    "evidence": "knowledge/evidence/google-html-0bf8626f.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/google.html",
+    "source_digest": "sha256:0bf8626f3fc0caf746e0a52bbf861adc161fe328126ee9ed205e8998559f81dd"
+  },
+  "docs/guides/integration/index.md": {
+    "evidence": "knowledge/evidence/index-html-61c11527.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/index.html",
+    "source_digest": "sha256:61c11527bd2f0f6e022e1788587cbf3b331360e760dfa099ffc30828bb8857ea"
+  },
+  "docs/guides/integration/jfrog.md": {
+    "evidence": "knowledge/evidence/jfrog-html-90065f80.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/jfrog.html",
+    "source_digest": "sha256:90065f803cc0041bd4178e91adc0ac1e01183789021c1bf74b0b5bbee9aea806"
+  },
+  "docs/guides/integration/jupyter.md": {
+    "evidence": "knowledge/evidence/jupyter-html-ce0c25f3.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/jupyter.html",
+    "source_digest": "sha256:ce0c25f34cf9c31aa0b0101d0de77470455b8d163000dc1211d900e20bcbfcc4"
+  },
+  "docs/guides/integration/marimo.md": {
+    "evidence": "knowledge/evidence/marimo-html-c2257be8.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/marimo.html",
+    "source_digest": "sha256:c2257be8acd19395172e1255983075f744a6c257aaa916a1e5717bb957e4d003"
+  },
+  "docs/guides/integration/pre-commit.md": {
+    "evidence": "knowledge/evidence/pre-commit-html-fe4265b2.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/pre-commit.html",
+    "source_digest": "sha256:fe4265b224b98a072d1df04d195cc86fd8a33a1b098c900fff89d3f806987e0a"
+  },
+  "docs/guides/integration/pytorch.md": {
+    "evidence": "knowledge/evidence/pytorch-html-1809612c.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/pytorch.html",
+    "source_digest": "sha256:1809612cf294fbc966019687a227013bcde23e4536baf7f0bf63e9401bc8c685"
+  },
+  "docs/guides/integration/renovate.md": {
+    "evidence": "knowledge/evidence/renovate-html-816f8fa9.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/integration/renovate.html",
+    "source_digest": "sha256:816f8fa948afc8a341ac52f5638968813caabc9729b850ea62409e56f2b0a500"
+  },
+  "docs/guides/migration/index.md": {
+    "evidence": "knowledge/evidence/index-html-8a9e60db.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/migration/index.html",
+    "source_digest": "sha256:8a9e60db8e0a0863ed03245b77e7bce696c94cf11d6eb73c9ac23666c437c60d"
+  },
+  "docs/guides/migration/pip-to-project.md": {
+    "evidence": "knowledge/evidence/pip-to-project-html-4d22a1e3.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/migration/pip-to-project.html",
+    "source_digest": "sha256:4d22a1e3e75ba74d87c3852b0f4a274a481ce2f1fe30fc6ba8c83f71fa3ffb70"
+  },
+  "docs/guides/package.md": {
+    "evidence": "knowledge/evidence/package-html-a143e780.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/package.html",
+    "source_digest": "sha256:a143e7804013c1e314ad1c6012dd742071d044be04a3eb0e8e7280dc0d099884"
+  },
+  "docs/guides/projects.md": {
+    "evidence": "knowledge/evidence/projects-html-4de721b6.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/guides/projects.html",
+    "source_digest": "sha256:4de721b625ddbcabaf60cb0e6610aa9883dab25a5da3552399b94c33de7c941e"
+  },
+  "docs/guides/scripts.md": {
+    "evidence": "knowledge/evidence/scripts-pdf-5dcfc70b.md",
+    "format": "pdf",
+    "parser": "pdf",
+    "source": "sources/guides/scripts.pdf",
+    "source_digest": "sha256:5dcfc70b7d7f47e364c4264c573a346f46ee12d893f3eb3bbe306c15ec8180d8"
+  },
+  "docs/guides/tools.md": {
+    "evidence": "knowledge/evidence/tools-docx-cf7bdde6.md",
+    "format": "docx",
+    "parser": "docling",
+    "source": "sources/guides/tools.docx",
+    "source_digest": "sha256:cf7bdde6c1c1ecb1c0244695bcfc4504df3e88737ce3a6f90d1c4319da06ec31"
+  },
+  "docs/index.md": {
+    "evidence": "knowledge/evidence/index-html-31e2e131.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/index.html",
+    "source_digest": "sha256:31e2e1314f8c91010e3dd36e0798d6e246fc89fc00b545fdcf396c1c2abaecd8"
+  },
+  "docs/pip/compatibility.md": {
+    "evidence": "knowledge/evidence/compatibility-html-2dd53b8c.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/pip/compatibility.html",
+    "source_digest": "sha256:2dd53b8cd4a30bf7afd059d76a9cccea2203b0390931663dfc894ca804fd8e7c"
+  },
+  "docs/pip/compile.md": {
+    "evidence": "knowledge/evidence/compile-html-6d9dbd29.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/pip/compile.html",
+    "source_digest": "sha256:6d9dbd2949b52ada6843b810dbd979130c47ac66257a97d53ad6c43039e96913"
+  },
+  "docs/pip/dependencies.md": {
+    "evidence": "knowledge/evidence/dependencies-html-099fb776.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/pip/dependencies.html",
+    "source_digest": "sha256:099fb77622554b67e5532ac5e23f111d8b29d14bedad46fb67c8f518de741ad6"
+  },
+  "docs/pip/environments.md": {
+    "evidence": "knowledge/evidence/environments-html-2179e0a8.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/pip/environments.html",
+    "source_digest": "sha256:2179e0a86fc93558ceaf9a25cae929ea9ce8bedd02be4afcb2181066143b9bf1"
+  },
+  "docs/pip/index.md": {
+    "evidence": "knowledge/evidence/index-html-8c8bf8fb.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/pip/index.html",
+    "source_digest": "sha256:8c8bf8fbc7665e9ca95d8ba27a7c5f209a1c6782e8dd5fe2a629c90ee34e14e5"
+  },
+  "docs/pip/inspection.md": {
+    "evidence": "knowledge/evidence/inspection-html-2b11ce98.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/pip/inspection.html",
+    "source_digest": "sha256:2b11ce98260cba2b48527460e1be39fa57e10a1dcc66a138df5e01c5374d26cf"
+  },
+  "docs/pip/packages.md": {
+    "evidence": "knowledge/evidence/packages-html-8b2bcf3f.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/pip/packages.html",
+    "source_digest": "sha256:8b2bcf3f07699f625eca03349d0ec6b2b32a0e0d728f01f51ca0f0f5f4acb57f"
+  },
+  "docs/reference/benchmarks.md": {
+    "evidence": "knowledge/evidence/benchmarks-html-909d3258.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/benchmarks.html",
+    "source_digest": "sha256:909d325825b4b88d6959b3f396d25bc527aeb802932c746576eb15e3a0073b83"
+  },
+  "docs/reference/contributing.md": {
+    "evidence": "knowledge/evidence/contributing-html-f06f8238.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/contributing.html",
+    "source_digest": "sha256:f06f8238246ae51ffa2d56d617deca02a73fc4b0b1a8ebfc3aaf8640ed7a842d"
+  },
+  "docs/reference/index.md": {
+    "evidence": "knowledge/evidence/index-html-8d26074f.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/index.html",
+    "source_digest": "sha256:8d26074f6fab73edaab1807e0c59437319e07bbfdb615f356ccc24866b2cefc4"
+  },
+  "docs/reference/installer.md": {
+    "evidence": "knowledge/evidence/installer-html-4478da64.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/installer.html",
+    "source_digest": "sha256:4478da646f81136661c87a227cf34eae285724cd81266b22be55cd24bdc3ae09"
+  },
+  "docs/reference/internals/index.md": {
+    "evidence": "knowledge/evidence/index-html-70ca2aed.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/internals/index.html",
+    "source_digest": "sha256:70ca2aed20b1af5460ac25bd7b6bdc71babf9b81092e6d9b0e7667553c43e88c"
+  },
+  "docs/reference/internals/metadata.md": {
+    "evidence": "knowledge/evidence/metadata-html-65949bf9.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/internals/metadata.html",
+    "source_digest": "sha256:65949bf93122aef13f402906da17b51f5ea614df3f0e87b2aae591461116a7a9"
+  },
+  "docs/reference/internals/resolver.md": {
+    "evidence": "knowledge/evidence/resolver-html-3ae32eb4.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/internals/resolver.html",
+    "source_digest": "sha256:3ae32eb4b62faaf5c416b19964e6921f1555064ac419e322b04a54ec33a87d43"
+  },
+  "docs/reference/policies/index.md": {
+    "evidence": "knowledge/evidence/index-html-8b25da2a.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/policies/index.html",
+    "source_digest": "sha256:8b25da2ace3661d39d0cd5a18607d5885430bd28c91bb7f799095cba84af629a"
+  },
+  "docs/reference/policies/license.md": {
+    "evidence": "knowledge/evidence/license-html-657d93e6.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/policies/license.html",
+    "source_digest": "sha256:657d93e63d0b287d8245447f4840bd57398ec831f93e14450a444095c283d83d"
+  },
+  "docs/reference/policies/platforms.md": {
+    "evidence": "knowledge/evidence/platforms-pdf-2bd2cf2f.md",
+    "format": "pdf",
+    "parser": "pdf",
+    "source": "sources/reference/policies/platforms.pdf",
+    "source_digest": "sha256:2bd2cf2f371e701b2e56500aa3b6dfe903fbb05d5aa358f1953ddeaa3a1a998e"
+  },
+  "docs/reference/policies/python.md": {
+    "evidence": "knowledge/evidence/python-html-7d909f15.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/policies/python.html",
+    "source_digest": "sha256:7d909f15082a8a28e3c20f722f20918bab62d705b324f3a225cedb97368014ad"
+  },
+  "docs/reference/policies/rust.md": {
+    "evidence": "knowledge/evidence/rust-html-1e0840ac.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/policies/rust.html",
+    "source_digest": "sha256:1e0840ac6eed3fd8ed12b718241c7f7b1d8bfd74df221006d7a8ef3e2e7ae7f0"
+  },
+  "docs/reference/policies/versioning.md": {
+    "evidence": "knowledge/evidence/versioning-docx-fdece17e.md",
+    "format": "docx",
+    "parser": "docling",
+    "source": "sources/reference/policies/versioning.docx",
+    "source_digest": "sha256:fdece17e34a93cf9f9c3a81a938f4a302fbffb1874f2cbe3dddb2729d9fb0b7d"
+  },
+  "docs/reference/storage.md": {
+    "evidence": "knowledge/evidence/storage-html-07da213e.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/storage.html",
+    "source_digest": "sha256:07da213e3273a05dddbc725931e3bcbec8a35063b50802710f0cb68cfe5b148f"
+  },
+  "docs/reference/troubleshooting/build-failures.md": {
+    "evidence": "knowledge/evidence/build-failures-html-12249da9.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/troubleshooting/build-failures.html",
+    "source_digest": "sha256:12249da93ad8314ff3980c42ddc522404d390318bc9582f8eb4bffbeea2dd667"
+  },
+  "docs/reference/troubleshooting/index.md": {
+    "evidence": "knowledge/evidence/index-html-e50f6aea.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/troubleshooting/index.html",
+    "source_digest": "sha256:e50f6aea52a43c1769bc00e55a7ac363a745f6ae27bca1721f13b342995d882d"
+  },
+  "docs/reference/troubleshooting/reproducible-examples.md": {
+    "evidence": "knowledge/evidence/reproducible-examples-html-dc32fba8.md",
+    "format": "html",
+    "parser": "docling",
+    "source": "sources/reference/troubleshooting/reproducible-examples.html",
+    "source_digest": "sha256:dc32fba80de09163609c26e2896e1e42f580101a626c5a8b98ee759843a19fe1"
+  }
+}

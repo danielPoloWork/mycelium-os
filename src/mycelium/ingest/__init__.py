@@ -37,6 +37,7 @@ what happens to a document that fails (4.6). `ingest_source` raises a typed erro
 and leaves that decision to its caller.
 """
 
+from mycelium.ingest.connectors.file import FileConnector
 from mycelium.ingest.custody import Custody, CustodyIntegrity, custody_root
 from mycelium.ingest.errors import (
     ConnectorError,
@@ -94,6 +95,7 @@ __all__ = [
     "observe_inventory",
     "ConnectorError",
     "Custody",
+    "FileConnector",
     "GuardError",
     "LossBudgetError",
     "Quarantine",

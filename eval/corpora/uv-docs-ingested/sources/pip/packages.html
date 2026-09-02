@@ -1,0 +1,72 @@
+<h1 id="managing-packages">Managing packages</h1>
+<h2 id="installing-a-package">Installing a package</h2>
+<p>To install a package into the virtual environment, e.g., Flask:</p>
+<pre class="console"><code>$ uv pip install flask</code></pre>
+<p>To install a package with optional dependencies enabled, e.g., Flask
+with the “dotenv” extra:</p>
+<pre class="console"><code>$ uv pip install &quot;flask[dotenv]&quot;</code></pre>
+<p>To install multiple packages, e.g., Flask and Ruff:</p>
+<pre class="console"><code>$ uv pip install flask ruff</code></pre>
+<p>To install a package with a constraint, e.g., Ruff v0.2.0 or
+newer:</p>
+<pre class="console"><code>$ uv pip install &#39;ruff&gt;=0.2.0&#39;</code></pre>
+<p>To install a package at a specific version, e.g., Ruff v0.3.0:</p>
+<pre class="console"><code>$ uv pip install &#39;ruff==0.3.0&#39;</code></pre>
+<p>To install a package from the disk:</p>
+<pre class="console"><code>$ uv pip install &quot;ruff @ ./projects/ruff&quot;</code></pre>
+<p>To install a package from GitHub:</p>
+<pre class="console"><code>$ uv pip install &quot;git+https://github.com/astral-sh/ruff&quot;</code></pre>
+<p>To install a package from GitHub at a specific reference:</p>
+<pre class="console"><code>$ # Install a tag
+$ uv pip install &quot;git+https://github.com/astral-sh/ruff@v0.2.0&quot;
+
+$ # Install a commit
+$ uv pip install &quot;git+https://github.com/astral-sh/ruff@1fadefa67b26508cc59cf38e6130bde2243c929d&quot;
+
+$ # Install a branch
+$ uv pip install &quot;git+https://github.com/astral-sh/ruff@main&quot;</code></pre>
+<p>See the <a href="../concepts/authentication/git.md">Git
+authentication</a> documentation for installation from a private
+repository.</p>
+<h2 id="editable-packages">Editable packages</h2>
+<p>Editable packages do not need to be reinstalled for changes to their
+source code to be active.</p>
+<p>To install the current project as an editable package</p>
+<pre class="console"><code>$ uv pip install -e .</code></pre>
+<p>To install a project in another directory as an editable package:</p>
+<pre class="console"><code>$ uv pip install -e &quot;ruff @ ./project/ruff&quot;</code></pre>
+<h2 id="installing-packages-from-files">Installing packages from
+files</h2>
+<p>Multiple packages can be installed at once from standard file
+formats.</p>
+<p>Install from a <code>requirements.txt</code> file:</p>
+<pre class="console"><code>$ uv pip install -r requirements.txt</code></pre>
+<p>See the <a href="./compile.md"><code>uv pip compile</code></a>
+documentation for more information on <code>requirements.txt</code>
+files.</p>
+<p>Install from a <code>pyproject.toml</code> file:</p>
+<pre class="console"><code>$ uv pip install -r pyproject.toml</code></pre>
+<p>Install from a <code>pyproject.toml</code> file with optional
+dependencies enabled, e.g., the “foo” extra:</p>
+<pre class="console"><code>$ uv pip install -r pyproject.toml --extra foo</code></pre>
+<p>Install from a <code>pyproject.toml</code> file with all optional
+dependencies enabled:</p>
+<pre class="console"><code>$ uv pip install -r pyproject.toml --all-extras</code></pre>
+<p>To install dependency groups in the current project directory’s
+<code>pyproject.toml</code>, for example the group <code>foo</code>:</p>
+<pre class="console"><code>$ uv pip install --group foo</code></pre>
+<p>To specify the project directory where groups should be sourced
+from:</p>
+<pre class="console"><code>$ uv pip install --project some/path/ --group foo --group bar</code></pre>
+<p>Alternatively, you can specify a path to a
+<code>pyproject.toml</code> for each group:</p>
+<pre class="console"><code>$ uv pip install --group some/path/pyproject.toml:foo --group other/pyproject.toml:bar</code></pre>
+<p>!!! note</p>
+<pre><code>As in pip, `--group` flags do not apply to other sources specified with flags like `-r` or `-e`.
+For instance, `uv pip install -r some/path/pyproject.toml --group foo` sources `foo`
+from `./pyproject.toml` and **not** `some/path/pyproject.toml`.</code></pre>
+<h2 id="uninstalling-a-package">Uninstalling a package</h2>
+<p>To uninstall a package, e.g., Flask:</p>
+<pre class="console"><code>$ uv pip uninstall flask</code></pre>
+<p>To uninstall multiple packages, e.g., Flask and Ruff:</p>
+<pre class="console"><code>$ uv pip uninstall flask ruff</code></pre>

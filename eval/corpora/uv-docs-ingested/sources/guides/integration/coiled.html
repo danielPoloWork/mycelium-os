@@ -1,0 +1,104 @@
+<h1 id="using-uv-with-coiled">Using uv with Coiled</h1>
+<p><a href="https://coiled.io?utm_source=uv-docs">Coiled</a> is a
+serverless, UX-focused cloud computing platform that makes it easy to
+run code on cloud hardware (AWS, GCP, and Azure).</p>
+<p>This guide shows how to run Python scripts on the cloud using uv for
+dependency management and Coiled for cloud deployment.</p>
+<h2 id="managing-script-dependencies-with-uv">Managing script
+dependencies with uv</h2>
+<p>!!! note</p>
+<pre><code>We&#39;ll use this concrete example throughout this guide, but any Python script can be used with
+uv and Coiled.</code></pre>
+<p>We’ll use the following script as an example:</p>
+<p>```python title=“process.py” hl_lines=“1-8” # /// script #
+requires-python = “&gt;=3.12” # dependencies = [ # “pandas”, #
+“pyarrow”, # “s3fs”, # ] # ///</p>
+<p>import pandas as pd</p>
+<p>df = pd.read_parquet( “s3://coiled-data/uber/part.0.parquet”,
+storage_options={“anon”: True}, ) print(df.head())</p>
+<pre><code>
+The script uses [`pandas`](https://pandas.pydata.org/docs/) to load a Parquet file hosted in a
+public bucket on S3, then prints the first few rows. It uses
+[inline script metadata](https://peps.python.org/pep-0723/) to enumerate its dependencies.
+
+When running this script locally, e.g., with:
+
+```bash
+$ uv run process.py</code></pre>
+<p>uv will automatically create a virtual environment and installs its
+dependencies.</p>
+<p>To learn more about using inline script metadata with uv, see the <a
+href="../scripts.md#declaring-script-dependencies">script guide</a>.</p>
+<h2 id="running-scripts-on-the-cloud-with-coiled">Running scripts on the
+cloud with Coiled</h2>
+<p>Using inline script metadata makes the script fully self-contained:
+it includes the information that is needed to run it. This makes it
+easier to run on other machines, like a machine in the cloud.</p>
+<p>There are many use cases where resources beyond what’s available on a
+local workstation are needed, e.g.:</p>
+<ul>
+<li>Processing large amounts of cloud-hosted data</li>
+<li>Needing accelerated hardware like GPUs or a big machine with more
+memory</li>
+<li>Running the same script with hundreds or thousands of different
+inputs, in parallel</li>
+</ul>
+<p>Coiled makes it simple to run code on cloud hardware.</p>
+<p>First, authenticate with Coiled using <a
+href="https://docs.coiled.io/user_guide/api.html?utm_source=uv-docs#coiled-login"><code>coiled login</code></a>
+:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> uvx coiled login</span></code></pre></div>
+<p>You’ll be prompted to create a Coiled account if you don’t already
+have one — it’s free to start using Coiled.</p>
+<p>To instruct Coiled to run the script on a virtual machine on AWS, add
+two comments to the top:</p>
+<p>```python title=“process.py” hl_lines=“1-2” # COILED container
+ghcr.io/astral-sh/uv:debian-slim # COILED region us-east-2</p>
+<h1 id="script">/// script</h1>
+<h1 id="requires-python-3.12">requires-python = “&gt;=3.12”</h1>
+<h1 id="dependencies">dependencies = [</h1>
+<h1 id="pandas">“pandas”,</h1>
+<h1 id="pyarrow">“pyarrow”,</h1>
+<h1 id="s3fs">“s3fs”,</h1>
+<h1 id="section">]</h1>
+<h1 id="section-1">///</h1>
+<p>import pandas as pd</p>
+<p>df = pd.read_parquet( “s3://coiled-data/uber/part.0.parquet”,
+storage_options={“anon”: True}, ) print(df.head())</p>
+<pre><code>
+!!! tip
+
+    While Coiled supports AWS, GCP, and Azure, this example assumes AWS is being used
+    (see the `region` option above). If you&#39;re new to Coiled, you&#39;ll automatically have
+    access to a free account running on AWS. If you&#39;re not running on AWS, you can either use
+    a valid `region` for your cloud provider or remove the `region` line above.
+
+The comments tell Coiled to use the official [uv Docker image](../integration/docker.md) when
+running the script (ensuring uv is available) and to run in the `us-east-2` region on AWS (where
+this example data file happens to live) to avoid any data egress.
+
+To submit a batch job for Coiled to run, use
+[`coiled batch run`](https://docs.coiled.io/user_guide/api.html?utm_source=uv-docs#coiled-batch-run)
+to execute the `uv run` command in the cloud:
+
+```bash hl_lines=&quot;1&quot;
+$ uvx coiled batch run \
+    uv run process.py</code></pre>
+<p>The same process that previously ran locally is now running on a
+remote cloud VM on AWS.</p>
+<p>You can monitor the progress of the batch job in the UI at <a
+href="https://cloud.coiled.io">cloud.coiled.io</a> or from the terminal
+using the <code>coiled batch status</code>,
+<code>coiled batch wait</code>, and <code>coiled batch logs</code>
+commands.</p>
+<p>Coiled UI</p>
+<p>Note there’s additional configuration we could have specified, e.g.,
+the instance type (the default is a 4-core virtual machine with 16 GiB
+of memory), disk size, whether to use spot instance, and more. See the
+<a
+href="https://docs.coiled.io/user_guide/batch.html?utm_source=uv-docs">Coiled
+Batch documentation</a> for more details.</p>
+<p>For more details on Coiled, and how it can help with other use cases,
+see the <a href="https://docs.coiled.io?utm_source=uv-docs">Coiled
+documentation</a>.</p>

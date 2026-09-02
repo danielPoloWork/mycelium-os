@@ -56,6 +56,7 @@ from mycelium.export import DEFAULT_EXPORT_DIRNAME, ExportError, export_bundle
 from mycelium.graph import MAX_DEPTH
 from mycelium.graph import neighbours as graph_neighbours
 from mycelium.ingest import (
+    FileConnector,
     Ingested,
     IngestError,
     Quarantine,
@@ -487,16 +488,17 @@ def ingest(
         settings = load_config(path)
     except ConfigError as error:
         raise fail(str(error), code=ExitCode.USAGE) from error
-    if forget:
-        _forget(path, sources, as_json=as_json)
-        return
     scope = CorpusScope.of(settings.project)
-    roots = [path, path / settings.project.sources_dir]
+    roots = [root for root in (path, path / settings.project.sources_dir) if root.is_dir()]
+    declared = roots or [path]
+    if forget:
+        _forget(path, sources, connector=FileConnector(declared), as_json=as_json)
+        return
     try:
         registry = Registry.resolve(
             parsers=settings.ingest.parsers,
             connectors=settings.ingest.connectors,
-            roots=[root for root in roots if root.is_dir()] or [path],
+            roots=declared,
         )
     except IngestError as error:
         raise fail(str(error), code=ExitCode.USAGE) from error
@@ -600,7 +602,7 @@ def ingest(
         raise fail(f"{failures} of {len(sources)} source(s) could not be ingested")
 
 
-def _forget(root: Path, sources: list[Path], *, as_json: bool) -> None:
+def _forget(root: Path, sources: list[Path], *, connector: FileConnector, as_json: bool) -> None:
     """Drop the named sources' quarantine records (`mycelium ingest --forget`).
 
     The escape hatch for a source that is never coming back — deleted, replaced,
@@ -614,10 +616,11 @@ def _forget(root: Path, sources: list[Path], *, as_json: bool) -> None:
     quarantine = Quarantine(root / STORE_DIRNAME)
     results = []
     for source in sources:
-        # The record is keyed by the URI the connector resolved, which is what a
-        # quarantine record stores — so the same normalisation has to happen here
-        # or `--forget` would miss every record it was asked to drop.
-        uri = source.resolve().as_uri() if source.exists() else str(source)
+        # The record is keyed by the URI the connector produced, so the key is
+        # asked *of the connector* rather than rebuilt here. A second copy of
+        # that rule is exactly how `--forget` stopped finding records the day the
+        # URI became relative (BUG-0017).
+        uri = connector.uri_of(source) if source.exists() else str(source)
         dropped = quarantine.clear(uri) or quarantine.clear(str(source))
         results.append({"source": str(source), "forgotten": dropped})
         if not as_json:
