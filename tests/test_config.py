@@ -123,6 +123,26 @@ def test_the_specs_connector_list_is_refused_by_name(tmp_path: Path) -> None:
         load_config(write(tmp_path, body))
 
 
+def test_pack_atomic_reaches_the_chunker(tmp_path: Path) -> None:
+    """`[chunking] pack_atomic` is a real setting, not a documented intention.
+
+    It moves every chunk boundary in the corpus, so the one thing worth asserting
+    is that the file reaches the policy the compiler runs (roadmap 4.11).
+    """
+    config = load_config(write(tmp_path, "[chunking]\npack_atomic = true\n"))
+    assert config.chunking.pack_atomic is True
+    assert config.chunking.to_policy().pack_atomic is True
+    # And the default is the behaviour ADR-0007 shipped.
+    assert MyceliumConfig().chunking.to_policy().pack_atomic is False
+
+
+def test_pack_atomic_changes_the_config_digest(tmp_path: Path) -> None:
+    """A setting that moves chunk boundaries must invalidate the build."""
+    off = load_config(write(tmp_path / "off", "[chunking]\npack_atomic = false\n"))
+    on = load_config(write(tmp_path / "on", "[chunking]\npack_atomic = true\n"))
+    assert off.digest() != on.digest()
+
+
 def test_a_missing_file_is_not_an_error(tmp_path: Path) -> None:
     """`mycelium build` works in a bare directory; init writes the file for convenience."""
     config = load_config(tmp_path)

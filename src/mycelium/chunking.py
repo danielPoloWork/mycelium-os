@@ -98,6 +98,12 @@ class ChunkingPolicy:
     max_tokens: int = 800
     overlap_tokens: int = 0
     count_tokens: TokenCounter = estimate_tokens
+    pack_atomic: bool = False
+    """Whether a table or code block may share a chunk with the prose around it.
+
+    Measured at roadmap 4.11 (ADR-0042); the default stays what ADR-0007 shipped
+    until roadmap 4.15 flips it.
+    """
 
     def __post_init__(self) -> None:
         if self.target_tokens <= 0 or self.max_tokens <= 0:
@@ -268,6 +274,19 @@ def _sections(kir: KirDocument) -> list[_Section]:
     return [section for section in sections if section.heading is not None or section.units]
 
 
+def _kind_of(units: Sequence[_Unit]) -> ChunkKind:
+    """The kind of a packed run: its own when homogeneous, `prose` when mixed.
+
+    A chunk carrying a paragraph and the command it introduces is prose that
+    contains a code block — which is what a reader would call it — while a section
+    whose only content is a table is still a table (spec 03 §5's `kind` field).
+    """
+    kinds = {unit.kind for unit in units}
+    if len(kinds) == 1:
+        return next(iter(kinds))
+    return ChunkKind.PROSE
+
+
 def _pack(section: _Section, policy: ChunkingPolicy) -> list[tuple[list[_Unit], ChunkKind]]:
     """Group a section's units into chunk-sized runs.
 
@@ -288,9 +307,9 @@ def _pack(section: _Section, policy: ChunkingPolicy) -> list[tuple[list[_Unit], 
     pending_tokens = 0
 
     for unit in section.units:
-        if unit.kind is not ChunkKind.PROSE:
+        if unit.kind is not ChunkKind.PROSE and not policy.pack_atomic:
             if pending:
-                packed.append((pending, ChunkKind.PROSE))
+                packed.append((pending, _kind_of(pending)))
                 pending, pending_tokens = [], 0
             packed.append(([unit], unit.kind))
             continue
@@ -298,13 +317,13 @@ def _pack(section: _Section, policy: ChunkingPolicy) -> list[tuple[list[_Unit], 
         reached_target = pending_tokens >= policy.target_tokens
         would_breach_ceiling = pending_tokens + tokens > policy.max_tokens
         if pending and (reached_target or would_breach_ceiling):
-            packed.append((pending, ChunkKind.PROSE))
+            packed.append((pending, _kind_of(pending)))
             pending, pending_tokens = [], 0
         pending.append(unit)
         pending_tokens += tokens
 
     if pending:
-        packed.append((pending, ChunkKind.PROSE))
+        packed.append((pending, _kind_of(pending)))
     if not packed and section.heading is not None:
         # A heading with no content of its own is still citable, and its text is
         # document text that must survive.

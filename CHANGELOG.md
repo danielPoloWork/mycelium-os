@@ -12,6 +12,24 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`[chunking] pack_atomic`** — lets a table or code block share a chunk with the prose
+  around it instead of standing alone (roadmap 4.11). Atomicity keeps its real meaning: a block
+  is never *split*, packing never crosses a heading, and a section whose only content is code
+  still yields a code chunk. **Off by default**, and measured on two corpora: on task
+  documentation full of command blocks it is worth **+61 % nDCG@10** (0.280 → 0.451, no slice
+  regressed, R@10 0.500 → 0.679) and collapses 2244 chunks to 568 with the under-25-token share
+  falling from 47 % to 9 %; on long-form prose it is roughly neutral. It is off because moving a
+  chunk boundary deletes an anchor, and five judged cases need re-anchoring before the default can
+  flip — roadmap 4.12, with the flip itself as 4.15. See
+  [ADR-0042](docs/adr/0042-let-an-atomic-block-share-its-chunk.md).
+- **`tools/measure_chunking.py`** — shape, retrieval and **judged-anchor survival** in one
+  command. The third axis is one no re-ranking ever needed: a chunking change can invalidate the
+  benchmark it is measured by, so the cases that stopped measuring the change are counted and
+  named rather than averaged in.
+- **Roadmap 4.12** (re-anchor five cases), **4.15** (then flip the default) and **4.13** (gate G3 cannot
+  see a chunking change — its corpus digest is folded from chunk digests, so any chunker change
+  trips the "reported, not enforced" branch), and **4.14** (let a build compile without pinning
+  `mycelium_id` into the tree, so measuring on a corpus is a read-only act).
 - **`tools/measure_ranking.py` grew the section index, `--release` and `--oracle`** — the
   instrument behind roadmap 4.8's *second* refusal. It now carries **ten** candidate
   strategies and all ten are refused: the section-level indexing hypothesis

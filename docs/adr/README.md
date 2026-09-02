@@ -57,3 +57,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0039](0039-measure-what-projection-costs.md) | Measure what projection costs, by judging the same document twice | Accepted |
 | [0040](0040-refuse-the-pdf-layout-pipeline-on-its-merits.md) | Refuse the PDF layout pipeline on its merits, not on its constraints | Accepted |
 | [0041](0041-bound-the-section-unit-and-refuse-six-more.md) | Bound the section unit, and refuse six more re-rankings | Accepted |
+| [0042](0042-let-an-atomic-block-share-its-chunk.md) | Let an atomic block share its chunk, and ship it switched off | Accepted |

@@ -152,6 +152,12 @@ redact_secrets = true          # replace credentials found in an ingested source
 max_tokens = 800               # hard ceiling: prose splits at the paragraph before it
 # target_tokens = 400         # aim smaller than the ceiling; measure before you do
 atomic = ["table", "code"]     # tables and code blocks are never split
+# pack_atomic = true          # let a table or code block share a chunk with the prose
+                               # around it, instead of standing alone. Measured on two
+                               # corpora (ADR-0042): on task documentation full of command
+                               # blocks it is worth +61% nDCG@10, on long-form prose it is
+                               # roughly neutral. Off by default because it moves every
+                               # chunk boundary, which re-anchors judged eval cases.
 
 [verification]                 # gate G7: what a synthesized document must clear
 cites_coverage_min = 0.95      # of claim-bearing blocks must cite the evidence

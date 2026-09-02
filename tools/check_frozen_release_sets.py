@@ -34,12 +34,20 @@ rule is about: moving the retriever and the judgements in one change."""
 TUNING_PATHS = (
     "src/mycelium/retrieval.py",
     "src/mycelium/chunking.py",
+    "src/mycelium/config.py",
     "src/mycelium/store/",
     "src/mycelium/embedding/",
     "src/mycelium/eval/retrievers.py",
     "src/mycelium/eval/metrics.py",
 )
-"""Everything that can change what a query returns or how it is scored."""
+"""Everything that can change what a query returns or how it is scored.
+
+`config.py` is here because a shipped *default* changes the retriever as surely as
+the algorithm does: `[chunking] pack_atomic` moves every chunk boundary, and its
+default lives in `ChunkingConfig` rather than in the chunker (roadmap 4.11,
+ADR-0042). Without this line a single change could flip that default and re-judge
+a release set unrefused, which is precisely the conjunction this script exists to
+catch."""
 
 
 def changed_files(base: str) -> list[str]:
