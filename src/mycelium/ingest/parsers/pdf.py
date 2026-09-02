@@ -43,7 +43,8 @@ __all__ = ["PARSER_ID", "PdfParser", "plugin"]
 PARSER_ID: Final = "pdf"
 
 _STRUCTURE_NOTICE: Final = (
-    "PDF text layer only: no headings, tables or reading-order analysis (ADR-0032)"
+    "PDF text layer only: no headings, tables or reading-order analysis "
+    "(ADR-0032, and ADR-0040 for what the alternative was measured to cost)"
 )
 
 

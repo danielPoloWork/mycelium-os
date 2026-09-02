@@ -163,11 +163,15 @@ PDF's apparent ranking gain is refused as an artefact of a target ten times the 
 ([ADR-0039](docs/adr/0039-measure-what-projection-costs.md)). What projection *does* cost is
 the graph: 229 edges become 10, which is open as roadmap 5.7.
 
-What v1 does *not* do is read PDF structure: that
-needs docling's ML pipeline, which wants `torch` and downloads model weights on first use,
-against this project's offline default and its cross-platform determinism gate. The reasons,
-measured, are in [ADR-0032](docs/adr/0032-adapt-four-engines-and-pin-which-one-runs.md); the
-work is roadmap 4.9.
+What v1 does *not* do is read PDF structure, and that was **re-tested rather than assumed**.
+docling's ML pipeline recovers 82 % of a PDF's headings where the text layer recovers none —
+and costs ~2.4 GB and three seconds a page to retrieve *worse* than the Markdown the document
+came from, because it restores section boundaries while degrading what is inside them. Refused
+on the measurements, with the one benefit it does deliver — citing a section instead of an
+ordinal — named as the thing no metric here can score yet
+([ADR-0040](docs/adr/0040-refuse-the-pdf-layout-pipeline-on-its-merits.md), roadmap 6.7). The
+earlier reasoning is in [ADR-0032](docs/adr/0032-adapt-four-engines-and-pin-which-one-runs.md), and
+`tools/measure_pdf_structure.py` re-runs every number.
 
 ### An ingested source becomes a document you can read
 

@@ -194,7 +194,7 @@
         },
         "opaque": [],
         "policies": [
-          "PDF text layer only: no headings, tables or reading-order analysis (ADR-0032)"
+          "PDF text layer only: no headings, tables or reading-order analysis (ADR-0032, and ADR-0040 for what the alternative was measured to cost)"
         ]
       },
       "parser": "pdf",
@@ -355,7 +355,7 @@
           "page 2 has no text layer (lost)"
         ],
         "policies": [
-          "PDF text layer only: no headings, tables or reading-order analysis (ADR-0032)",
+          "PDF text layer only: no headings, tables or reading-order analysis (ADR-0032, and ADR-0040 for what the alternative was measured to cost)",
           "page 2 has no text layer kept as an opaque node (lost)"
         ]
       },

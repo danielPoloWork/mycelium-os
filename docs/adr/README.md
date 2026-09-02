@@ -55,3 +55,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0037](0037-record-what-was-refused-and-redact-what-was-found.md) | Record what was refused, and redact what was found | Accepted |
 | [0038](0038-declare-the-corpus-then-compare-it.md) | Declare what the corpus contains, then compare it — a report cannot corroborate itself | Accepted |
 | [0039](0039-measure-what-projection-costs.md) | Measure what projection costs, by judging the same document twice | Accepted |
+| [0040](0040-refuse-the-pdf-layout-pipeline-on-its-merits.md) | Refuse the PDF layout pipeline on its merits, not on its constraints | Accepted |
