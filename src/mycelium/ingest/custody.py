@@ -26,9 +26,10 @@ unchanged document record — an amended timestamp would break incremental build
 by hand.
 
 **Amendments only grow.** A record's identity fields (digest, size, kind) are
-fixed at first write; ``sources`` and ``kir_digest`` may be added to, and the
-sources are stored sorted so two machines that acquired the same bytes from the
-same two URIs hold byte-identical records whatever order they did it in.
+fixed at first write; ``sources``, ``kir_digest``, ``fidelity_digest`` and
+``secret_flags`` may be added to, and every collection is stored sorted so two
+machines that met the same bytes hold byte-identical records whatever order they
+did it in.
 
 **Reads verify.** Every read re-hashes, and a blob that no longer matches its own
 name is reported as missing rather than returned. Unlike the build cache, it is
@@ -173,7 +174,21 @@ class Custody:
         """Record which fidelity report accounts for this original's projection."""
         return self._amend(original, "fidelity_digest", fidelity_digest)
 
-    def _amend(self, original: Sha256Digest, field: str, value: Sha256Digest) -> CustodyRecord:
+    def record_secrets(self, original: Sha256Digest, flags: Sequence[str]) -> CustodyRecord:
+        """Record which secret-scan rules matched this original's content (roadmap 4.6).
+
+        Stored sorted and de-duplicated for the reason `sources` is: the record
+        must be the same bytes on two machines that scanned the same document, and
+        a set rendered in match order would not be.
+
+        The flags are what the compiler reads back into `Document.secret_flags`
+        (ADR-0034's mechanism), and they are recorded whether or not
+        `[ingest] redact_secrets` acted on them — the scan is the observation, the
+        redaction is the action (ADR-0037).
+        """
+        return self._amend(original, "secret_flags", tuple(sorted(set(flags))))
+
+    def _amend(self, original: Sha256Digest, field: str, value: object) -> CustodyRecord:
         """Add one derived-artefact link to an original's record, idempotently."""
         record = self.record(original)
         if record is None:

@@ -27,6 +27,7 @@ from mycelium.sdk.types import (
     EvalRunManifest,
     FidelityReport,
     KirDocument,
+    QuarantineRecord,
     Record,
     SnapshotManifest,
     Symbol,
@@ -54,6 +55,7 @@ RECORD_MODELS: Mapping[str, type[Record]] = {
     "manifest": SnapshotManifest,
     "custody": CustodyRecord,
     "fidelity": FidelityReport,
+    "quarantine": QuarantineRecord,
     "eval-case": EvalCase,
     "eval-run": EvalRunManifest,
 }

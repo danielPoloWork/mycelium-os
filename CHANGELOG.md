@@ -12,6 +12,32 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Ingestion quarantine** (roadmap 4.6) — a source the evidence lane refuses now leaves a
+  `mycelium/quarantine/v0` record under `.mycelium/quarantine/` naming the stage that
+  refused it (`acquire`, `dispatch`, `guard`, `parse`, `budget`), the reason, and the
+  **custody digest of the bytes that caused it** — so a quarantined file can be opened
+  again rather than only counted. Ingesting it successfully clears the record; `mycelium gc`
+  never sweeps it. See
+  [ADR-0037](docs/adr/0037-record-what-was-refused-and-redact-what-was-found.md).
+- **`mycelium ingest --forget <source>…`** — drop a quarantine record without ingesting, for
+  a source that is never coming back.
+- **Secret scanning at ingestion**, and `[ingest] redact_secrets` is honoured. Eleven
+  structural rules — vendor key prefixes, PEM armour, credentials in a URL's authority —
+  and deliberately **no entropy heuristic**, because a scanner that fires on base64 images,
+  digests and UUIDs is one an operator switches off. A match is redacted **before the KIR
+  is stored**, so the credential survives in exactly one artifact — the tier-1 original,
+  which is what a citation is checked against — while the compiled document, its
+  projection, its chunks and the index carry `[redacted: <rule-id>]`.
+- **`Document.secret_flags` is populated**, through the ingested document's custody record
+  (ADR-0034's mechanism), and **whether or not redaction acted**: flagging is the
+  observation, redaction is the action, and switching redaction off should not silently
+  also remove the record that a credential is there.
+- **`mycelium doctor` reports two new conditions** — what is quarantined (as a warning: a
+  recorded refusal is the system working), and, when `redact_secrets = false`, that
+  credentials found in an ingested source are being written to the authored tree verbatim.
+- **`GuardError` and `LossBudgetError`** join `mycelium.ingest.errors` as subclasses of
+  `ParseError`, so a quarantine record can name its stage from the exception's type instead
+  of parsing its message. Every existing handler is unaffected.
 - **Verification: `mycelium verify`, `promote`, `demote`** (roadmap 4.5) — gate G7 as a
   per-document decision (D-021). `verify` recomputes citation coverage against the corpus
   *as it is*, which is what catches a candidate whose evidence has been edited,

@@ -58,7 +58,9 @@ from mycelium.graph import neighbours as graph_neighbours
 from mycelium.ingest import (
     Ingested,
     IngestError,
+    Quarantine,
     Registry,
+    describe_secrets,
     ingest_source,
     write_projection,
 )
@@ -142,7 +144,8 @@ parsers = ["markdown"]         # add "docling", "pandoc", "pdf" to ingest those 
 connectors = ["file"]          # v1 acquires from the local tree only
 max_failed_elements = 0.05     # fidelity loss budget: refuse a projection that lost
                                # more than this fraction of a document's elements
-# redact_secrets = true       # not honoured yet (roadmap 4.6)
+redact_secrets = true          # replace credentials found in an ingested source with
+                               # a placeholder; the scan runs and flags either way
 
 [chunking]
 max_tokens = 800               # hard ceiling: prose splits at the paragraph before it
@@ -447,6 +450,13 @@ def ingest(
             help="Skip the LLM synthesis lane even when a provider is configured.",
         ),
     ] = False,
+    forget: Annotated[
+        bool,
+        typer.Option(
+            "--forget",
+            help="Drop the named sources' quarantine records instead of ingesting them.",
+        ),
+    ] = False,
 ) -> None:
     """Acquire, compile and project sources into `knowledge/evidence/` (spec 05 §1).
 
@@ -462,6 +472,13 @@ def ingest(
     fails never fails the ingestion that carried it: the evidence is already on
     disk, and the second lane is the additional one.
 
+    A source that fails is **quarantined**: the failure is written to
+    `.mycelium/quarantine/` with the stage that refused it and the custody digest
+    of the bytes that caused it, so it can be looked at later rather than
+    scrolling past (spec 02 §5). Ingesting it successfully clears the record;
+    `--forget` clears it without ingesting, for a source that is simply never
+    coming back. `mycelium doctor` reports what is quarantined.
+
     Nothing is indexed here. Both a projected document and a candidate are
     compiled by `mycelium build` like any other file in the authored tree — the
     lane writes Markdown only (D-020).
@@ -470,6 +487,9 @@ def ingest(
         settings = load_config(path)
     except ConfigError as error:
         raise fail(str(error), code=ExitCode.USAGE) from error
+    if forget:
+        _forget(path, sources, as_json=as_json)
+        return
     scope = CorpusScope.of(settings.project)
     roots = [path, path / settings.project.sources_dir]
     try:
@@ -499,6 +519,7 @@ def ingest(
                 str(source),
                 doc_id=new_ulid(),
                 max_failed_elements=settings.ingest.max_failed_elements,
+                redact_secrets=settings.ingest.redact_secrets,
                 knowledge_dir=scope.knowledge_dir,
                 # Trust is a property of where the bytes came from, so it is
                 # stamped once, here, and travels with the document (D-021). The
@@ -508,9 +529,17 @@ def ingest(
             )
         except IngestError as error:
             failures += 1
-            results.append({"source": str(source), "ok": False, "error": str(error)})
+            results.append(
+                {
+                    "source": str(source),
+                    "ok": False,
+                    "error": str(error),
+                    "quarantined": True,
+                }
+            )
             if not as_json:
                 warn(f"{source}: {error}")
+                detail("  quarantined; `mycelium doctor` lists what is waiting")
             continue
 
         written = None if dry_run else write_projection(path, ingested)
@@ -529,6 +558,8 @@ def ingest(
             "degraded": report.degraded,
             "lost": report.lost,
             "warnings": list(report.warnings),
+            "secret_flags": list(ingested.secret_flags),
+            "redacted": ingested.redacted,
         }
         if synthesizer is not None:
             entry["synthesis"] = _synthesize(
@@ -551,6 +582,15 @@ def ingest(
             )
             for warning in report.warnings:
                 detail(f"  note: {warning}")
+            if ingested.secret_flags:
+                found = describe_secrets(ingested.secret_flags)
+                if ingested.redacted:
+                    warn(f"  secrets redacted from the projection: {found}")
+                else:
+                    warn(
+                        f"  secrets found and NOT redacted ([ingest] redact_secrets "
+                        f"= false): {found}"
+                    )
 
     if as_json:
         emit_json({"root": str(path), "dry_run": dry_run, "sources": results})
@@ -558,6 +598,35 @@ def ingest(
         detail("run `mycelium build` to compile what was written")
     if failures:
         raise fail(f"{failures} of {len(sources)} source(s) could not be ingested")
+
+
+def _forget(root: Path, sources: list[Path], *, as_json: bool) -> None:
+    """Drop the named sources' quarantine records (`mycelium ingest --forget`).
+
+    The escape hatch for a source that is never coming back — deleted, replaced,
+    or simply not worth ingesting. Everything else clears itself by succeeding,
+    which is the lifecycle that keeps the list honest; this is for the case where
+    there is nothing left to succeed.
+
+    A source that was not quarantined is not an error. The operator asked for it
+    to be absent from the list, and it is.
+    """
+    quarantine = Quarantine(root / STORE_DIRNAME)
+    results = []
+    for source in sources:
+        # The record is keyed by the URI the connector resolved, which is what a
+        # quarantine record stores — so the same normalisation has to happen here
+        # or `--forget` would miss every record it was asked to drop.
+        uri = source.resolve().as_uri() if source.exists() else str(source)
+        dropped = quarantine.clear(uri) or quarantine.clear(str(source))
+        results.append({"source": str(source), "forgotten": dropped})
+        if not as_json:
+            if dropped:
+                success(f"{source}: quarantine record dropped")
+            else:
+                detail(f"{source}: was not quarantined")
+    if as_json:
+        emit_json({"root": str(root), "forgotten": results})
 
 
 def _synthesize(

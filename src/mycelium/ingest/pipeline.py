@@ -13,12 +13,20 @@ place they are ordered:
 4. **Parse** with the pinned parser for the media type.
 5. **Store the KIR** and link it to the original, so the compiled form is
    recoverable without re-running the engine.
-6. **Account** for every element in a fidelity report, store it, and refuse the
+6. **Scan** the compiled text for credentials, and redact them before the KIR is
+   stored when `[ingest] redact_secrets` says so (roadmap 4.6).
+7. **Account** for every element in a fidelity report, store it, and refuse the
    projection when its loss exceeds `[ingest] max_failed_elements` (roadmap 4.3).
-7. **Project** the KIR as an evidence document under `knowledge/evidence/`, which
+8. **Project** the KIR as an evidence document under `knowledge/evidence/`, which
    the compiler then treats like any other authored file.
 
-Steps 6 and 7 are in that order for the same reason 2 precedes 3: the report is
+Step 6 sits where it does because everything downstream of it is derived: redact
+the KIR before it is stored and the verbatim credential exists in exactly one
+artifact — the tier-1 original — while the compiled document, its projection, its
+chunks and the index all carry a placeholder. Redacting later would mean choosing
+which outputs to clean and remembering the list forever (ADR-0037).
+
+Steps 7 and 8 are in that order for the same reason 2 precedes 3: the report is
 written whether or not the projection is, so a document refused for losing too
 much still leaves an account of *what* it lost. A refusal with no evidence behind
 it is not a diagnosis.
@@ -31,11 +39,17 @@ and re-examining quarantined files is the whole point of quarantining them
 rather than dropping them (roadmap 4.6). Ingestion is custody first, compilation
 second.
 
-What this module deliberately does not do is *decide what to do about a failure*.
-It raises the typed errors :mod:`mycelium.ingest.errors` defines and lets the
-caller choose: `mycelium ingest` will quarantine and carry on (roadmap 4.6), a
-test asserts the type, and a future build stage records it in the manifest. A
-seam that swallowed failures would take that choice away from all three.
+A failure is **recorded here and decided elsewhere**. Spec 02 §5 asks for three
+verbs — recorded, skipped, reported — and only the first belongs to this module,
+because only this module knows the media type and the custody digest at the
+moment things went wrong; a caller reconstructing them from an exception message
+would be guessing. So a refusal writes a quarantine record and *re-raises*, and
+what to do about it stays with the caller: `mycelium ingest` reports and carries
+on, a test asserts the type. A seam that swallowed the exception would take that
+choice away from both.
+
+Success clears the quarantine, which is why the clearing lives here too: a source
+that has been repaired should leave the list by working, not by being remembered.
 """
 
 from collections.abc import Callable
@@ -43,10 +57,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from mycelium.ingest.custody import Custody
+from mycelium.ingest.errors import IngestError
 from mycelium.ingest.fidelity import build_report, check_budget, encode_report
 from mycelium.ingest.projection import Projection, project
+from mycelium.ingest.quarantine import Quarantine
 from mycelium.ingest.registry import Registry
 from mycelium.ingest.safety import DEFAULT_LIMITS, Limits, guard
+from mycelium.ingest.secrets import scan_kir
 from mycelium.sdk.identity import canonical_json
 from mycelium.sdk.protocols import Blob
 from mycelium.sdk.types import (
@@ -74,6 +91,12 @@ class Ingested:
     parser_version: str
     report: FidelityReport
     fidelity_digest: Sha256Digest
+    secret_flags: tuple[str, ...]
+    """Secret-scan rules that matched, recorded whether or not they were redacted."""
+
+    redacted: bool
+    """Whether the stored KIR and its projection carry placeholders instead."""
+
     projection: Projection
 
 
@@ -96,6 +119,7 @@ def ingest_source(
     scheme: str = "",
     limits: Limits = DEFAULT_LIMITS,
     max_failed_elements: float = 0.05,
+    redact_secrets: bool = True,
     knowledge_dir: str = "knowledge",
     source_trust: SourceTrust | None = None,
     trust_for: Callable[[str], SourceTrust | None] | None = None,
@@ -109,13 +133,24 @@ def ingest_source(
     parser reads it. The original is in custody by the time any of the last two
     can be raised, and the fidelity report by the time the budget one can.
 
+    Every one of those failures also writes a quarantine record naming the stage,
+    the reason, and the custody digest of the bytes that caused it — then
+    re-raises, so the caller still decides what to do (spec 02 §5, roadmap 4.6).
+
     Returns the projection **without writing it** — see :func:`write_projection`.
     The split is deliberate: everything up to here writes only into `.mycelium/`,
     and putting a file into someone's Git working tree is a decision for the
     caller that knows about their repository.
     """
     custody = Custody(mycelium_dir)
-    blob = registry.acquire(source, scheme=scheme)
+    quarantine = Quarantine(mycelium_dir)
+    try:
+        blob = registry.acquire(source, scheme=scheme)
+    except IngestError as error:
+        # Nothing was acquired, so there is no media type and no custody digest —
+        # the one quarantine record that can only say what was asked for.
+        quarantine.record(source, error)
+        raise
     # `[sources]` classifies an *origin*, and the origin is only known once the
     # connector has resolved the source into a URI — so the caller passes the
     # resolver, not a resolved answer. An explicit `source_trust` still wins: it
@@ -125,7 +160,11 @@ def ingest_source(
         if source_trust is not None
         else (trust_for(blob.source_uri) if trust_for else None)
     )
-    parser = registry.parser_for(blob.media_type)
+    try:
+        parser = registry.parser_for(blob.media_type)
+    except IngestError as error:
+        quarantine.record(blob.source_uri, error, media_type=blob.media_type)
+        raise
 
     original = custody.put_blob(
         blob,
@@ -133,8 +172,25 @@ def ingest_source(
         version=registry.connector_for(scheme).meta.version,
     )
 
-    guard(blob.data, blob.media_type, limits=limits)
-    kir = registry.parse(blob, doc_id=doc_id)
+    # From here the bytes are in custody, so every quarantine record can name the
+    # blob that caused it — which is what makes a quarantined file re-examinable
+    # rather than merely counted (ADR-0033's ordering, spent here).
+    try:
+        guard(blob.data, blob.media_type, limits=limits)
+        kir = registry.parse(blob, doc_id=doc_id)
+    except IngestError as error:
+        quarantine.record(
+            blob.source_uri, error, media_type=blob.media_type, source_digest=original.digest
+        )
+        raise
+
+    scanned, secret_flags, _ = scan_kir(kir)
+    if secret_flags:
+        # Recorded on the *original*, so the compiler reads them back through the
+        # one frontmatter key a projected document carries (ADR-0034).
+        custody.record_secrets(original.digest, secret_flags)
+    if redact_secrets:
+        kir = scanned
 
     encoded = encode_kir(kir)
     stored = custody.put(
@@ -168,7 +224,17 @@ def ingest_source(
 
     # After the report is stored, so a document refused for losing too much still
     # leaves an account of what it lost.
-    check_budget(report, max_lost_fraction=max_failed_elements)
+    try:
+        check_budget(report, max_lost_fraction=max_failed_elements)
+    except IngestError as error:
+        quarantine.record(
+            blob.source_uri, error, media_type=blob.media_type, source_digest=original.digest
+        )
+        raise
+
+    # The source got all the way through, so whatever it used to fail at, it does
+    # not any more.
+    quarantine.clear(blob.source_uri)
 
     return Ingested(
         blob=blob,
@@ -179,6 +245,8 @@ def ingest_source(
         parser_version=parser.meta.version,
         report=report,
         fidelity_digest=fidelity.digest,
+        secret_flags=secret_flags,
+        redacted=bool(secret_flags) and redact_secrets,
         projection=project(
             kir,
             source_uri=blob.source_uri,

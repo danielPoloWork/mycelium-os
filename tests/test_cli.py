@@ -1156,3 +1156,128 @@ def test_doctor_warns_when_the_gate_has_no_judge(
     check = next(item for item in payload["checks"] if item["name"] == "verification")
     assert check["status"] == "warn"
     assert "no credential here" in check["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Quarantine and secrets on the command line (roadmap 4.6)
+# ---------------------------------------------------------------------------
+
+
+def test_ingest_quarantines_a_failure_and_doctor_lists_it(tmp_path: Path) -> None:
+    """The operator-visible half of spec 02 §5.
+
+    A warning scrolls past; a quarantine record is still there an hour later, and
+    `doctor` is where an operator goes to find it.
+    """
+    seeded(tmp_path)
+    hostile = _ingestable(tmp_path, "no-text-layer.pdf", subdir="hostile")
+
+    ingested = invoke("ingest", str(hostile), "--root", str(tmp_path), "--json")
+    assert ingested.exit_code == ExitCode.FAILED
+    (entry,) = json.loads(ingested.stdout)["sources"]
+    assert entry["quarantined"] is True
+
+    result = invoke("doctor", str(tmp_path), "--json")
+    payload = json.loads(result.stdout)
+    check = next(item for item in payload["checks"] if item["name"] == "quarantine")
+    # `warn`, not `fail`: a recorded refusal is the system working, and a red exit
+    # code for one unreadable PDF teaches an operator to stop running `doctor`.
+    assert check["status"] == "warn"
+    assert "no-text-layer.pdf" in check["detail"]
+    assert "budget" in check["detail"]
+
+
+def test_doctor_says_nothing_about_quarantine_when_there_is_none(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    payload = json.loads(invoke("doctor", str(tmp_path), "--json").stdout)
+    assert not any(item["name"] == "quarantine" for item in payload["checks"])
+
+
+def test_ingest_forget_drops_a_record_without_ingesting_anything(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    hostile = _ingestable(tmp_path, "no-text-layer.pdf", subdir="hostile")
+    invoke("ingest", str(hostile), "--root", str(tmp_path), "--json")
+
+    forgotten = invoke("ingest", str(hostile), "--root", str(tmp_path), "--forget", "--json")
+    assert forgotten.exit_code == ExitCode.OK
+    (entry,) = json.loads(forgotten.stdout)["forgotten"]
+    assert entry["forgotten"] is True
+
+    payload = json.loads(invoke("doctor", str(tmp_path), "--json").stdout)
+    assert not any(item["name"] == "quarantine" for item in payload["checks"])
+
+
+def test_forgetting_a_source_that_was_never_quarantined_is_not_a_failure(
+    tmp_path: Path,
+) -> None:
+    seeded(tmp_path)
+    source = _ingestable(tmp_path, "source.docx")
+    result = invoke("ingest", str(source), "--root", str(tmp_path), "--forget", "--json")
+    assert result.exit_code == ExitCode.OK
+    (entry,) = json.loads(result.stdout)["forgotten"]
+    assert entry["forgotten"] is False
+
+
+def test_ingest_reports_the_secrets_it_redacted(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    (tmp_path / "mycelium.toml").write_text(INGEST_CONFIG, encoding="utf-8")
+    source = tmp_path / "sources" / "runbook.md"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text(
+        "# Runbook\n\nThe key is AKIAIOSFODNN7EXAMPLE and it rotates monthly.\n",
+        encoding="utf-8",
+    )
+
+    result = invoke("ingest", str(source), "--root", str(tmp_path), "--json")
+    assert result.exit_code == ExitCode.OK
+    (entry,) = json.loads(result.stdout)["sources"]
+    assert entry["secret_flags"] == ["aws-access-key-id"]
+    assert entry["redacted"] is True
+
+    projected = (tmp_path / entry["document"]).read_text(encoding="utf-8")
+    assert "AKIAIOSFODNN7EXAMPLE" not in projected
+    assert "[redacted: aws-access-key-id]" in projected
+
+
+def test_doctor_warns_when_redaction_is_switched_off(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    (tmp_path / "mycelium.toml").write_text(
+        INGEST_CONFIG + "\nredact_secrets = false\n", encoding="utf-8"
+    )
+    payload = json.loads(invoke("doctor", str(tmp_path), "--json").stdout)
+    check = next(item for item in payload["checks"] if item["name"] == "secrets")
+    assert check["status"] == "warn"
+    assert "verbatim" in check["detail"]
+
+
+def test_doctor_says_nothing_about_secrets_in_the_default_configuration(
+    tmp_path: Path,
+) -> None:
+    seeded(tmp_path)
+    payload = json.loads(invoke("doctor", str(tmp_path), "--json").stdout)
+    assert not any(item["name"] == "secrets" for item in payload["checks"])
+
+
+def test_a_redacted_document_is_indexed_with_its_flags(tmp_path: Path) -> None:
+    """The end of the chain: scan → custody → compiler → store.
+
+    `secret_flags` reaches the document record through the custody record its
+    frontmatter points at (ADR-0034's mechanism), so a query that surfaces this
+    document can say a credential was found in its source — and cannot surface the
+    credential, because it is not in the index.
+    """
+    seeded(tmp_path)
+    (tmp_path / "mycelium.toml").write_text(INGEST_CONFIG, encoding="utf-8")
+    source = tmp_path / "sources" / "runbook.md"
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("# Runbook\n\nid AKIAIOSFODNN7EXAMPLE\n", encoding="utf-8")
+    invoke("ingest", str(source), "--root", str(tmp_path))
+
+    assert invoke("build", str(tmp_path)).exit_code == ExitCode.OK
+    store = SqliteStore.open(tmp_path, read_only=True)
+    try:
+        documents = [store.get_document(doc_id) for doc_id in store.document_ids()]
+        (ingested,) = [item for item in documents if item.path.startswith("knowledge/evidence/")]
+        assert ingested.secret_flags == ("aws-access-key-id",)
+    finally:
+        store.close()

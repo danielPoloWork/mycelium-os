@@ -31,9 +31,10 @@ linear scan before any engine is handed anything:
     The default depth ceiling is 256; the deepest document in this repository's
     own corpora nests 8.
 
-A breach is a :class:`~mycelium.ingest.errors.ParseError` naming the limit and
-the measured value — the per-document failure ingestion quarantines, never an
-abort of the whole build (spec 02 §5).
+A breach is a :class:`~mycelium.ingest.errors.GuardError` — a `ParseError`, so
+every caller handles it identically — naming the limit and the measured value.
+It is the per-document failure ingestion quarantines, never an abort of the whole
+build (spec 02 §5).
 """
 
 import io
@@ -41,7 +42,7 @@ import zipfile
 from dataclasses import dataclass
 from typing import Final
 
-from mycelium.ingest.errors import ParseError
+from mycelium.ingest.errors import GuardError
 from mycelium.ingest.media import DOCX, EPUB, HTML, LATEX, ODT, RST
 
 __all__ = ["DEFAULT_LIMITS", "Limits", "guard", "guard_archive", "guard_markup"]
@@ -106,7 +107,7 @@ def guard_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> None:
 
     if len(infos) > limits.max_members:
         msg = f"archive declares {len(infos)} members, above the {limits.max_members} limit"
-        raise ParseError(msg)
+        raise GuardError(msg)
 
     uncompressed = sum(info.file_size for info in infos)
     compressed = sum(info.compress_size for info in infos) or len(data) or 1
@@ -115,20 +116,20 @@ def guard_archive(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> None:
             f"archive declares {uncompressed} uncompressed bytes, above the "
             f"{limits.max_uncompressed_bytes}-byte limit"
         )
-        raise ParseError(msg)
+        raise GuardError(msg)
     ratio = uncompressed / compressed
     if ratio > limits.max_compression_ratio:
         msg = (
             f"archive expands {ratio:.0f}x ({compressed} to {uncompressed} bytes), above the "
             f"{limits.max_compression_ratio:.0f}x limit — a decompression bomb looks like this"
         )
-        raise ParseError(msg)
+        raise GuardError(msg)
 
     for info in infos:
         name = info.filename.replace("\\", "/")
         if name.startswith("/") or ".." in name.split("/") or (len(name) > 1 and name[1] == ":"):
             msg = f"archive member {info.filename!r} escapes the container"
-            raise ParseError(msg)
+            raise GuardError(msg)
 
 
 def guard_markup(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> None:
@@ -164,13 +165,13 @@ def guard_markup(data: bytes, *, limits: Limits = DEFAULT_LIMITS) -> None:
         index += 1
         if tags > limits.max_tags:
             msg = f"document carries more than {limits.max_tags} markup tags"
-            raise ParseError(msg)
+            raise GuardError(msg)
         if deepest > limits.max_depth:
             msg = (
                 f"markup nests deeper than {limits.max_depth} levels; no document needs that, "
                 "and parsing it costs superlinear time (ADR-0033)"
             )
-            raise ParseError(msg)
+            raise GuardError(msg)
 
 
 _VOID_TAGS: Final = frozenset(

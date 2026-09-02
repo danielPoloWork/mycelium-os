@@ -202,8 +202,10 @@ class IngestConfig(_Section):
     keys are declared here, digested like everything else, and
     :attr:`unhonoured_keys` names the ones an operator has set that still do
     nothing — the same promise ADR-0014 makes, one level finer. `parsers` and
-    `connectors` were honoured at 4.1, `max_failed_elements` at 4.3;
-    `redact_secrets` is the last one waiting (4.6).
+    `connectors` were honoured at 4.1, `max_failed_elements` at 4.3, and
+    `redact_secrets` at 4.6 — **the section is now honoured in full**, and
+    :attr:`unhonoured_keys` is empty by construction. It stays because the shape
+    is the one a partially-built section needs, and `[ingest]` will grow again.
 
     `parsers` is *ordered* and *pinned*. The order is the dispatch policy —
     `["docling", "pandoc"]` is architecture §5's "docling first, pandoc
@@ -218,7 +220,15 @@ class IngestConfig(_Section):
     connectors: tuple[str, ...] = ("file",)
 
     redact_secrets: bool = True
-    """Accepted, digested, not honoured yet — the secret scan lands at roadmap 4.6."""
+    """Whether a credential found in an ingested source is replaced by a placeholder
+    before the KIR is stored (spec 02 §8, ADR-0037).
+
+    The **scan** runs either way and the matched rule ids always reach
+    `Document.secret_flags`: flagging is the observation, redaction is the action,
+    and an operator who wants the verbatim text should not also lose the record
+    that a secret is in it. Setting this to `false` is a deliberate choice to put
+    the credential into the authored tree and the index — which is why it defaults
+    to `true`, and why `mycelium doctor` says so when it is off."""
 
     max_failed_elements: float = Field(default=0.05, ge=0.0, le=1.0)
     """The fidelity loss budget: the fraction of a document's elements whose content
@@ -266,8 +276,13 @@ class IngestConfig(_Section):
 
     @property
     def unhonoured_keys(self) -> tuple[str, ...]:
-        """The keys this file *sets* that nothing reads yet, in file order."""
-        pending = ("redact_secrets",)
+        """The keys this file *sets* that nothing reads yet, in file order.
+
+        Empty since roadmap 4.6 completed the section. Kept rather than deleted:
+        the next key `[ingest]` grows will arrive before the feature behind it,
+        and this is the shape that says so honestly (ADR-0014).
+        """
+        pending: tuple[str, ...] = ()
         return tuple(name for name in pending if name in self.model_fields_set)
 
 

@@ -7,7 +7,10 @@ The distinctions are not decoration — each one is answered differently:
 - :class:`ConnectorError` — custody failed. The build refuses; nothing about the
   source is trustworthy enough to record.
 - :class:`ParseError` — one document could not be represented. Ingestion
-  quarantines it, reports it, and carries on (roadmap 4.6).
+  quarantines it, reports it, and carries on (roadmap 4.6). Two subclasses name
+  *where* it happened, because a quarantine record has to say: :class:`GuardError`
+  refused the bytes before an engine saw them, :class:`LossBudgetError` accepted
+  them and refused the projection.
 - :class:`UnsupportedMediaTypeError` — no *configured* parser declares the type.
   Also a quarantine, but the remedy is a configuration edit, so the message names
   the media type and what is pinned.
@@ -24,7 +27,9 @@ The distinctions are not decoration — each one is answered differently:
 __all__ = [
     "ConnectorError",
     "CustodyError",
+    "GuardError",
     "IngestError",
+    "LossBudgetError",
     "ParseError",
     "PluginError",
     "PluginUnavailableError",
@@ -62,6 +67,27 @@ class CustodyError(IngestError):
 
 class ParseError(IngestError):
     """The acquired bytes could not be compiled into KIR."""
+
+
+class GuardError(ParseError):
+    """The bytes were refused *before* an engine was asked to read them.
+
+    A subclass rather than a sibling because every caller that quarantines a
+    parse failure quarantines this one identically — the distinction exists so a
+    quarantine record can say which step refused (roadmap 4.6), and a
+    hand-written check of the error's *message* would be a stage classifier one
+    reworded sentence away from being wrong.
+    """
+
+
+class LossBudgetError(ParseError):
+    """The document parsed, and lost more than `[ingest] max_failed_elements` allows.
+
+    Also a `ParseError`: the outcome is the same per-document quarantine. The
+    separate type is what lets a quarantine record distinguish "this file cannot
+    be read" from "this file was read and arrived too damaged to project", which
+    are different problems with different answers (ADR-0034).
+    """
 
 
 class UnsupportedMediaTypeError(IngestError):
