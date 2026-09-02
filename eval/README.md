@@ -79,6 +79,16 @@ achieves. Nothing realisable can beat it, so when its ceiling sits 3 % above the
 the family is closed — which is how roadmap 4.8 stopped being a search for one more re-rank
 and became a chunking item (4.11).
 
+**A judgment must be true under every configuration the set is scored under.** The rule
+above assumes one chunker. When a chunking change is pending — `[chunking] pack_atomic`, off
+today and flipped at roadmap 4.15 — a judgment naming a chunk that the change deletes scores
+zero however good the retrieval was. So the unit a judgment names is the smallest one holding
+the answer under *both* settings: still the chunk where the chunk survives, the section where
+the change merges it away. Five cases were re-anchored on that basis at 4.12 and nothing else
+was widened; the reasoning, and the one case where it overrides ADR-0029's caution with the
+cost measured, is in
+[ADR-0043](../docs/adr/0043-judge-across-the-configurations-a-set-is-scored-under.md).
+
 **Freezing is a conjunction, not an immutability.** Sets have to grow, so
 `tools/check_frozen_release_sets.py` refuses a change that edits a release set *and* touches
 retrieval, chunking, the store or the metrics. One change may move the retriever, or move

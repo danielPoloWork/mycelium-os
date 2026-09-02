@@ -10,6 +10,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **Six judged anchors were re-judged** (roadmap 4.12), and no code changed with them. Five
+  name a chunk that `[chunking] pack_atomic` deletes, so they now name the section that chunk
+  merges into — the smallest unit holding the answer under both settings; every judgment in
+  all four sets now survives the flip (33/33, 17/17, 12/12, 18/18). The sixth, `r-0003`
+  *Conventional Commits*, gained **AGENTS.md §6.3**: the rule is documented in three places
+  and the judgment named two, omitting the one this repository calls its source of truth.
+  Release baselines are re-blessed, so **every comparison across this change is invalid**.
+  Measured cost, one build, shipped default: ours/dev +0.000, ours/release +0.002, uv/release
+  +0.025 — the last from one case whose section anchor is satisfied by a chunk that does not
+  answer it, accepted and explained in
+  [ADR-0043](docs/adr/0043-judge-across-the-configurations-a-set-is-scored-under.md).
+
 ### Added
 
 - **`[chunking] pack_atomic`** — lets a table or code block share a chunk with the prose

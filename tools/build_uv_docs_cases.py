@@ -251,10 +251,13 @@ RELEASE: tuple[Judgment, ...] = (
         "how do I keep credentials out of my shell history when logging in to an index",
         (EvalSlice.CONCEPTUAL,),
         (
-            ("docs/concepts/authentication/cli.md#logging-in-to-a-service/3", 3),
+            ("docs/concepts/authentication/cli.md#logging-in-to-a-service/", 3),
             ("docs/concepts/authentication/http.md#/0", 1),
         ),
-        "A motivation-shaped question; the corpus answers the mechanism, not the motive.",
+        "A motivation-shaped question; the corpus answers the mechanism, not the motive. "
+        "Scoped to the section at 4.12: the stdin recommendation is one paragraph of a "
+        "six-chunk section that packing makes a single 204-token chunk, so no chunk "
+        "anchor here is true under both settings.",
     ),
 )
 

@@ -58,10 +58,14 @@ DEV: tuple[Judgment, ...] = (
         "BEGIN IMMEDIATE transaction",
         (EvalSlice.EXACT, EvalSlice.SYMBOL),
         (
-            ("docs/adr/0009-adopt-build-publication-semantics.md#decision/1", 3),
+            ("docs/adr/0009-adopt-build-publication-semantics.md#decision/", 3),
             ("docs/adr/0008-adopt-sqlite-store-behind-a-store-protocol.md#consequences/0", 2),
         ),
-        "An identifier-like phrase from SQL, not prose.",
+        "An identifier-like phrase from SQL, not prose. Scoped to the section at 4.12: "
+        "the Decision is one argument in three parts - the lead-in, the publication "
+        "sequence the phrase belongs to, and the crash windows that sequence creates - "
+        "and packing merges all three into one chunk, so the section is the smallest "
+        "unit that holds the answer under every configuration this set is scored on.",
     ),
     (
         "q-0003",
@@ -109,10 +113,12 @@ DEV: tuple[Judgment, ...] = (
         "which Python version does the project require",
         (EvalSlice.FACT,),
         (
-            ("README.md#build-test-run/1", 3),
+            ("README.md#build-test-run/", 3),
             ("docs/adr/0003-adopt-flat-python-src-layout.md#context/0", 1),
         ),
-        "The answer is in the README, with supporting context in an ADR.",
+        "The answer is in the README, with supporting context in an ADR. Scoped to the "
+        "section at 4.12: the version is stated in the toolchain paragraph that follows "
+        "the install commands, and packing joins the two into one chunk.",
     ),
     (
         "q-0009",
@@ -160,10 +166,12 @@ DEV: tuple[Judgment, ...] = (
         "why does the build write mycelium_id into frontmatter",
         (EvalSlice.CONCEPTUAL,),
         (
-            ("docs/adr/0009-adopt-build-publication-semantics.md#decision/2", 3),
+            ("docs/adr/0009-adopt-build-publication-semantics.md#decision/", 3),
             ("docs/adr/0009-adopt-build-publication-semantics.md#alternatives-considered/0", 2),
         ),
-        "The spec contradicts itself here; the ADR is the only place the answer exists.",
+        "The spec contradicts itself here; the ADR is the only place the answer exists - "
+        "the 'identity pinning is the build's only tier-2 write' paragraph of the "
+        "Decision. Scoped to the section at 4.12, which packing makes a single chunk.",
     ),
     (
         "q-0014",
@@ -193,10 +201,12 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.INJECTION,),
         (
             ("docs/adr/0011-implement-mcp-stdio-in-repo.md#decision/0", 3),
-            ("README.md#try-it/1", 2),
+            ("README.md#try-it/", 2),
             ("docs/adr/0010-adopt-cli-output-conventions.md#context/0", 1),
         ),
-        "The injection doctrine (D-017). The adversarial corpus proper is milestone 6.3.",
+        "The injection doctrine (D-017). The adversarial corpus proper is milestone 6.3. "
+        "The README anchor is scoped to its section at 4.12: the notice is the closing "
+        "paragraph of a two-chunk section that packing makes one.",
     ),
     (
         "q-0017",
@@ -249,10 +259,17 @@ RELEASE: tuple[Judgment, ...] = (
         "Conventional Commits",
         (EvalSlice.EXACT,),
         (
+            ("AGENTS.md#6-git-workflow/6-3-commit-messages-conventional-commits/", 3),
             ("docs/workflow/git-workflow.md#3-commit-messages-conventional-commits/", 3),
             ("CONTRIBUTING.md#making-a-change/0", 1),
         ),
-        "A literal term naming a section; the easiest lexical case, kept as a floor.",
+        "A literal term naming a section; the easiest lexical case, kept as a floor. "
+        "AGENTS.md was added at 4.12, and not because a ranking wanted it: the rule is "
+        "documented in three places and the judgment named two, omitting the one this "
+        "repository calls its source of truth (CLAUDE.md: 'read it first'). Both AGENTS.md "
+        "6.3 and git-workflow.md 3 are titled with the term and state the template, so "
+        "both grade 3; CONTRIBUTING.md mentions it in passing among the branch and PR "
+        "steps, which is what grade 1 is for.",
     ),
     (
         "r-0004",
