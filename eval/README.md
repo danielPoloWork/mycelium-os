@@ -64,6 +64,30 @@ python tools/build_ingested_cases.py       # ...and the judgements carried onto 
 The judgments live in those scripts as data, so every anchor is validated against a real
 build before a set is written.
 
+## Did the retriever get worse, or did the corpus get bigger?
+
+```bash
+python tools/measure_slice_decay.py <git-ref> [--set release]
+```
+
+Gate G3 refuses to enforce across a corpus change ([BUG-0014](../docs/bugs/2026/08/BUG-0014-g3-compares-incomparable-corpora.md)),
+which is right — this repository's documentation *is* its corpus, so every PR moves the
+numbers — and the cost is that a slow decay can cross several milestones unremarked. That is
+what happened to `relationship` on our own release set: 0.304 to 0.106, unnoticed
+(roadmap 4.17).
+
+This tool asks the question the gate cannot. It holds the judgments and the compiler fixed and
+varies only the corpus — the named ref goes into a throwaway worktree, today's judged sets are
+copied in, both sides are compiled with today's compiler — then prints per-slice deltas and,
+for the slices that moved, the per-case ranks behind them. A slice that moves here moved
+because documents arrived; one that does not is telling you to look at the code.
+
+**Read the per-case lines, not the slice mean.** Of the eleven gated release-set rows G3 can
+actually fail, five hold two cases or fewer — one holds a single case — so a slice mean cannot
+distinguish a regression from one case's luck
+— which is a finding about the sets, not a caveat about the tool
+([ADR-0044](../docs/adr/0044-name-what-a-two-case-slice-can-and-cannot-say.md), roadmap 4.20).
+
 ## Candidate re-rankings, and why none of them shipped
 
 ```bash

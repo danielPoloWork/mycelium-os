@@ -26,6 +26,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`tools/measure_slice_decay.py`** — the instrument gate G3 cannot be. G3 refuses to enforce
+  across a corpus change ([BUG-0014](docs/bugs/2026/08/BUG-0014-g3-compares-incomparable-corpora.md))
+  — correctly, because on a self-hosting corpus every PR moves the numbers — and the cost is
+  that a slow decay can cross several milestones unremarked. This holds the judgments and the
+  compiler fixed and varies only the corpus, checking any git ref out into a throwaway worktree
+  and scoring both sides per slice and then per case. Roadmap 4.17's whole diagnosis is one
+  command: `python tools/measure_slice_decay.py 9adad70 --set release`. See
+  [ADR-0044](docs/adr/0044-name-what-a-two-case-slice-can-and-cannot-say.md).
+- **Roadmap 4.19, 4.20 and 4.21**, filed out of that diagnosis: stem the lexical index without
+  paying for it in `exact` (measured at +32 % on both release sets *and* failing gate G3 as a
+  straight swap); give the thin judged slices enough cases to carry a gate, or state which ones
+  G3 reports rather than enforces; and have `mycelium_explain` say when a query term matched no
+  document at all.
 - **`[chunking] pack_atomic`** — lets a table or code block share a chunk with the prose
   around it instead of standing alone (roadmap 4.11). Atomicity keeps its real meaning: a block
   is never *split*, packing never crosses a heading, and a section whose only content is code
