@@ -48,6 +48,12 @@ product was fitted to and called it independent.
 
 Regenerate either corpus's sets with:
 
+`tools/build_ingested_cases.py --check` regenerates the carried set and compares instead of
+writing; it runs in CI, because a derived artifact whose generator no longer reproduces it is
+a defect rather than a cue to regenerate ([BUG-0018](../docs/bugs/2026/09/BUG-0018-carried-ingested-cases-do-not-reproduce.md)).
+`eval/corpora/uv-docs-ingested/eval/carry.json` is that carry's receipt: every mapped anchor's
+twin and its coverage, committed so drift reads as a diff of numbers.
+
 ```bash
 python tools/build_eval_cases.py           # this repository's documentation
 python tools/build_uv_docs_cases.py        # the second corpus

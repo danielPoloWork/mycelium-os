@@ -284,7 +284,10 @@ def main() -> int:
         return 1
 
     dev, release = cases_of(DEV), cases_of(RELEASE)
-    build(CORPUS)
+    # Clean for the reason [BUG-0018] records: this corpus is compiled in place,
+    # so an incremental build would validate the judgements against whatever
+    # chunking the local store already held.
+    build(CORPUS, clean=True)
     with SqliteStore.open(CORPUS, read_only=True) as store:
         errors, warnings = validate_judged_set(dev + release, store)
 

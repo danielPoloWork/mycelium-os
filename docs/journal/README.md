@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-02 — the suspect was wrong, and the real one was the ruled-out line (roadmap 4.16)](2026/09/2026-09-02-reproducible-ingested-carry.md)
 - [2026-09-02 — judging across two chunkers (roadmap 4.12)](2026/09/2026-09-02-re-anchor-for-packing.md)
 - [2026-09-02 — the unit was the bug (roadmap 4.11)](2026/09/2026-09-02-pack-atomic-blocks.md)
 - [2026-09-02 — ten refusals, and a ceiling (roadmap 4.8)](2026/09/2026-09-02-bound-the-section-unit.md)

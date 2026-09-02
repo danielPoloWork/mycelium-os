@@ -1,0 +1,94 @@
+{
+  "anchors": {
+    "docs/concepts/authentication/certificates.md#custom-certificates/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/certificates-docx-ea888d8c.md#custom-certificates/0"
+    },
+    "docs/concepts/authentication/http.md#/0": {
+      "coverage": 0.9792,
+      "twin": "knowledge/evidence/http-pdf-6ddd4d71.md#/0"
+    },
+    "docs/concepts/cache.md#cache-directory/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/cache-docx-c3426c17.md#cache-directory/0"
+    },
+    "docs/concepts/cache.md#cache-versioning/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/cache-docx-c3426c17.md#cache-versioning/0"
+    },
+    "docs/concepts/cache.md#clearing-the-cache/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/cache-docx-c3426c17.md#clearing-the-cache/0"
+    },
+    "docs/concepts/cache.md#dependency-caching/0": {
+      "coverage": 0.7468,
+      "twin": "knowledge/evidence/cache-docx-c3426c17.md#for-local-dependencies-uv-caches-based-on-the-last-modified-time-of-the-source-archive-i-e-the-local-whl-or-tar-gz-file-for-directories-uv-caches-based-on-the-last-modified-time-of-the-pyproject-toml-setup-py-or-setup-cfg-file/0"
+    },
+    "docs/concepts/configuration-files.md#/": {
+      "coverage": 0.5302,
+      "twin": "knowledge/evidence/configuration-files-html-eafcabbb.md#/10"
+    },
+    "docs/concepts/indexes.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/indexes-pdf-9f8d98fc.md#/0"
+    },
+    "docs/concepts/indexes.md#defining-an-index/": {
+      "coverage": 0.8783,
+      "twin": "knowledge/evidence/indexes-pdf-9f8d98fc.md#required-url-for-the-index/0"
+    },
+    "docs/concepts/indexes.md#pinning-a-package-to-an-index/": {
+      "coverage": 0.8972,
+      "twin": "knowledge/evidence/indexes-pdf-9f8d98fc.md#via-an-environment-variable/1"
+    },
+    "docs/concepts/projects/workspaces.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/workspaces-html-45cf0a84.md#/0"
+    },
+    "docs/concepts/python-versions.md#managed-and-system-python-installations/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/python-versions-pdf-ea39018d.md#/0"
+    },
+    "docs/concepts/python-versions.md#requesting-a-version/": {
+      "coverage": 0.927,
+      "twin": "knowledge/evidence/python-versions-pdf-ea39018d.md#/0"
+    },
+    "docs/concepts/resolution.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/resolution-docx-0961b125.md#/0"
+    },
+    "docs/concepts/tools.md#the-uv-tool-interface/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/tools-html-36b20d8c.md#the-uv-tool-interface/0"
+    },
+    "docs/guides/scripts.md#/": {
+      "coverage": 0.9697,
+      "twin": "knowledge/evidence/scripts-pdf-5dcfc70b.md#/0"
+    },
+    "docs/guides/tools.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/tools-docx-cf7bdde6.md#using-tools/0"
+    },
+    "docs/pip/compatibility.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/compatibility-html-2dd53b8c.md#/0"
+    },
+    "docs/reference/policies/platforms.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/platforms-pdf-2bd2cf2f.md#/0"
+    },
+    "docs/reference/policies/versioning.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/versioning-docx-fdece17e.md#/0"
+    },
+    "docs/reference/policies/versioning.md#cache-versioning/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/versioning-docx-fdece17e.md#cache-versioning/0"
+    },
+    "docs/reference/storage.md#storage-directories/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/storage-html-07da213e.md#storage-directories/0"
+    }
+  },
+  "min_coverage": 0.5,
+  "schema_version": "mycelium/eval-carry/v0"
+}
