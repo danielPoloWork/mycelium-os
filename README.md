@@ -394,10 +394,16 @@ The evaluation now spans three corpora, two of them documentation this project d
 write, with a frozen dev/release split gating CI. The five stable contracts freeze at 1.0.
 
 The honest part of that paragraph is what is missing from it: on the second corpus a plain
-`grep` loop still ranks better than we do, which is measured, diagnosed, and open as roadmap
-4.8 — carried into the next milestone rather than closed to make this one look finished.
-Milestone 4 brings ingestion, and has started: the connector and parser contracts are in
-place with four engines behind them.
+`grep` loop still ranks better than we do, and roadmap 4.8 is open a second time because of
+it. Ten candidate fixes have been measured and all ten refused
+([ADR-0031](docs/adr/0031-refuse-three-rerankings.md),
+[ADR-0041](docs/adr/0041-bound-the-section-unit-and-refuse-six-more.md)) — including one that
+*passed* the release gate and was refused anyway, because the dev set the gate does not read
+showed it returning a 14-token lead-in in place of the paragraph that answered. Beating that
+incumbent is not the hard part: three of the ten strategies do. Beating it without paying for
+it on the corpus we already win is, and the ceiling of the whole family — with per-case
+foresight no planner can have — is 3 % above grep. The evidence re-runs with
+`python tools/measure_ranking.py --release --oracle`.
 
 | # | Title | Status |
 |---|---|---|

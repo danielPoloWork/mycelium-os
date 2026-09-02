@@ -58,6 +58,27 @@ python tools/build_ingested_cases.py       # ...and the judgements carried onto 
 The judgments live in those scripts as data, so every anchor is validated against a real
 build before a set is written.
 
+## Candidate re-rankings, and why none of them shipped
+
+```bash
+python tools/measure_ranking.py                     # the dev sets - what tuning may read
+python tools/measure_ranking.py --release           # the gate view, per slice
+python tools/measure_ranking.py --oracle            # the ceiling no planner can beat
+```
+
+Ten candidate strategies live in that tool and **all ten are refused** — four rows by
+[ADR-0031](../docs/adr/0031-refuse-three-rerankings.md) (a length prior at two floors,
+coverage-first, section aggregation) and six by
+[ADR-0041](../docs/adr/0041-bound-the-section-unit-and-refuse-six-more.md) (five more ways to
+make a section the unit, plus the incumbent's own ranking function). They are kept rather
+than deleted, because a refusal nobody can re-run is a claim, and the next attempt should
+start from the numbers.
+
+`--oracle` is the instrument worth knowing about: it scores, per case, the best any strategy
+achieves. Nothing realisable can beat it, so when its ceiling sits 3 % above the incumbent
+the family is closed — which is how roadmap 4.8 stopped being a search for one more re-rank
+and became a chunking item (4.11).
+
 **Freezing is a conjunction, not an immutability.** Sets have to grow, so
 `tools/check_frozen_release_sets.py` refuses a change that edits a release set *and* touches
 retrieval, chunking, the store or the metrics. One change may move the retriever, or move

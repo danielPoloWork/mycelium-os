@@ -12,6 +12,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`tools/measure_ranking.py` grew the section index, `--release` and `--oracle`** — the
+  instrument behind roadmap 4.8's *second* refusal. It now carries **ten** candidate
+  strategies and all ten are refused: the section-level indexing hypothesis
+  [ADR-0031](docs/adr/0031-refuse-three-rerankings.md) named as the next thing to try, in six
+  forms, plus the incumbent's own ranking function. `--release` prints the per-slice deltas
+  gate G3 reads; `--oracle` prints the ceiling of the whole family — the per-case best of
+  every strategy, which no planner can beat, and which sits **3 % above grep** on the corpus
+  the item is about. One candidate *passed* G3 on both release sets and was refused anyway,
+  because the dev set the gate does not read showed it returning a 14-token lead-in in place
+  of the paragraph containing the queried phrase. Nothing in the query path changed. See
+  [ADR-0041](docs/adr/0041-bound-the-section-unit-and-refuse-six-more.md).
+- **Roadmap 4.11** — *make the chunk a comparable unit*. The hypothesis left standing after
+  ten refused re-rankings: every failure traces to chunks of wildly unequal size, and no
+  ranking rule repairs a unit that was already wrong when ranking saw it.
 - **`tools/measure_pdf_structure.py`** — the harness behind roadmap 4.9's decision *not* to
   read PDF structure in v1. It measures what docling's ML pipeline would recover (82 % of
   headings, 43 % of code blocks, `src.bbox`, section-named anchors), what it costs (~2.4 GB
