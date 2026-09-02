@@ -12,6 +12,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`tools/measure_pdf_structure.py`** — the harness behind roadmap 4.9's decision *not* to
+  read PDF structure in v1. It measures what docling's ML pipeline would recover (82 % of
+  headings, 43 % of code blocks, `src.bbox`, section-named anchors), what it costs (~2.4 GB
+  and 3 s/page), whether it is reproducible (byte-identical on repeat, same machine), and what
+  it buys in retrieval (a regression against the Markdown control). It needs ~2.4 GB that no
+  CI runner should carry, states so, and refuses cleanly without it. See
+  [ADR-0040](docs/adr/0040-refuse-the-pdf-layout-pipeline-on-its-merits.md).
+- **Roadmap 6.7** — *score citation precision, not only rank*. Every metric the harness
+  computes ranks chunks; none asks whether the anchor a reader is handed names the right
+  thing. That gap is why 4.9 could not weigh the one benefit the ML pipeline does deliver.
+
 - **A third judged corpus — the second one, ingested** (roadmap 4.10). The same 81 upstream
   documents as `eval/corpora/uv-docs`, rendered into DOCX, HTML and PDF and put back through
   `mycelium ingest`; what is scored is the evidence documents the projector wrote. It is
@@ -133,6 +144,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   and `mycelium doctor` reports the lane's state once one is.
 
 ### Changed
+
+- The `pdf` parser's per-document warning now names
+  [ADR-0040](docs/adr/0040-refuse-the-pdf-layout-pipeline-on-its-merits.md) beside ADR-0032,
+  so an operator meeting "no headings, no tables" is one link from the measurements behind
+  that limitation rather than from a decision they have to take on trust.
 
 - **`[verification]` and `[sources]` are honoured**, leaving `eval` as the only section
   `mycelium.toml` accepts and nothing reads — and it may stay that way, since the harness
