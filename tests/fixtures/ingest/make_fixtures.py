@@ -19,6 +19,12 @@ churned.
 renderings of it, so the same document reaches four parsers and the differences
 between their KIR are the adapters' own, not the corpus's.
 
+`corpus/` extends that to the kinds `source.md` never reaches, and every file
+here is declared in `inventory.json` — the hand-written count of what each source
+contains, which the M4 exit gate compares each engine's output against
+(ADR-0038). Adding a fixture means adding its declaration: an undeclared file
+fails the gate, because a fixture nobody declared is a fixture nobody checks.
+
 `hostile/` is the suite the M4 exit gate names: malformed, bomb-shaped and
 mislabelled files that must each produce **one typed failure**, fast, and never a
 hang, a crash, or an unhandled exception. Every one of them is generated here, so
@@ -199,6 +205,214 @@ def write_hostile() -> None:
     (HOSTILE / "mislabelled.md").write_bytes(b"%PDF-1.4\nnot markdown at all\n")
 
 
+CORPUS = HERE / "corpus"
+
+ELEMENTS = """\
+# Element Coverage
+
+This paragraph carries an ![architecture diagram](diagram.png) and a footnote.[^note]
+
+## Ordered steps
+
+1. first step
+2. second step
+   - a nested detail
+   - another nested detail
+
+### A level-three heading
+
+Prose beneath a level-three heading.
+
+#### A level-four heading
+
+Prose beneath a level-four heading.
+
+## Code and quotation
+
+```
+a code block with no language
+```
+
+```sql
+SELECT count(*) FROM deliveries;
+```
+
+> A quotation that stands on its own.
+
+---
+
+## After the break
+
+The thematic break above is dropped by policy: it carries no content at all.
+
+[^note]: Footnotes belong to pandoc's Markdown, not to CommonMark.
+"""
+"""The kinds `source.md` does not reach.
+
+Deliberately built from constructs the four routes can be *compared* on — deeper
+headings, an ordered list with a nested one inside it, a code block with a
+language and one without, an image, a quotation, a thematic break. The footnote
+is the exception, and it is here on purpose: CommonMark has none and the Mycelium
+Markdown Profile adds none, so the Markdown route sees the definition as prose
+while pandoc and docling see a footnote. That is a real, durable difference
+between the routes, and a corpus that avoided it would be avoiding the thing the
+inventories exist to record.
+"""
+
+PROFILE = """\
+# Profile Constructs
+
+The Mycelium Markdown Profile (D-022) adds syntax no other format has, so this
+family has one route and makes no claim about the others.
+
+See [[retry-policy]] and [[retry-policy#Backoff|the backoff section]].
+
+![[architecture-diagram]]
+
+Tagged #ingestion and #profile/v1.
+
+> [!warning] An embed links, it never inlines
+> Transclusion would copy a document into another document's chunks, and the
+> citation would then point at the wrong one.
+"""
+"""Wikilinks, an embed, tags and a callout — the vocabulary only `markdown` reads."""
+
+TWO_PAGE_LINES = [
+    [
+        ("/F2 18 Tf", 72, 720, "Quarterly Report"),
+        ("/F1 11 Tf", 72, 690, "Deliveries rose by eleven per cent this quarter."),
+        ("/F1 11 Tf", 72, 672, "The retry budget was not exhausted in any region."),
+    ],
+    [],
+]
+"""Two pages: one with a text layer, one without.
+
+The second page is what a scanned sheet looks like to a text extractor — a valid
+page PDFium opens and finds nothing in. Having both in one document is the point:
+it produces a page locator and an opaque `lost` node from the same parse, which is
+the pair the loss accounting has to get right (ADR-0034).
+"""
+
+
+def write_two_page_pdf(path: Path) -> None:
+    """Write a two-page uncompressed PDF, one page with text and one without.
+
+    Deliberately not a generalisation of :func:`write_pdf`. Threading a page list
+    through that function would renumber its PDF objects, which would rewrite
+    `text-layer.pdf` and `hostile/no-text-layer.pdf` byte for byte — churning two
+    committed binaries to avoid twenty lines here.
+    """
+
+    def escape(text: str) -> str:
+        return text.replace("\\", r"\\").replace("(", r"\(").replace(")", r"\)")
+
+    streams = [
+        (
+            "BT\n"
+            + "".join(
+                f"{font}\n1 0 0 1 {x} {y} Tm\n({escape(text)}) Tj\n" for font, x, y, text in page
+            )
+            + "ET\n"
+        ).encode("ascii")
+        for page in TWO_PAGE_LINES
+    ]
+
+    # 1 catalog, 2 pages, 3..4 page objects, 5..6 contents, 7..8 fonts.
+    page_ids = [3, 4]
+    content_ids = [5, 6]
+    kids = " ".join(f"{number} 0 R" for number in page_ids)
+    objects: list[bytes] = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        f"<< /Type /Pages /Kids [{kids}] /Count {len(page_ids)} >>".encode(),
+    ]
+    for content_id in content_ids:
+        objects.append(
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            b"/Resources << /Font << /F1 7 0 R /F2 8 0 R >> >> /Contents "
+            + str(content_id).encode()
+            + b" 0 R >>"
+        )
+    for stream in streams:
+        objects.append(
+            b"<< /Length " + str(len(stream)).encode() + b" >>\nstream\n" + stream + b"endstream"
+        )
+    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+    objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>")
+
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for number, body in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out += f"{number} 0 obj\n".encode() + body + b"\nendobj\n"
+    xref = len(out)
+    out += f"xref\n0 {len(objects) + 1}\n".encode()
+    out += b"0000000000 65535 f \n"
+    for offset in offsets:
+        out += f"{offset:010d} 00000 n \n".encode()
+    out += f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n".encode()
+    out += b"%%EOF\n"
+    path.write_bytes(bytes(out))
+
+
+DIAGRAM_PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d4948445200000001000000010806000000"
+    "1f15c4890000000b4944415478da636000020000050001e9fadcd80000"
+    "000049454e44ae426082"
+)
+"""A 1×1 transparent PNG, 68 bytes, written out literally.
+
+It exists because pandoc *embeds* an image when it writes DOCX, and cannot embed
+one it cannot open: without a real file beside the source, the DOCX would arrive
+with no picture and the corpus would record a generator accident as a parser
+difference. A fixture must never make a tool look worse than it is.
+"""
+
+
+def write_corpus(pandoc: str | None) -> list[str]:
+    """Write the inventory corpus and return the paths written, for the log."""
+    CORPUS.mkdir(exist_ok=True)
+    (CORPUS / "diagram.png").write_bytes(DIAGRAM_PNG)
+    (CORPUS / "elements.md").write_text(ELEMENTS, encoding="utf-8", newline="\n")
+    (CORPUS / "profile.md").write_text(PROFILE, encoding="utf-8", newline="\n")
+    write_two_page_pdf(CORPUS / "two-pages.pdf")
+    if pandoc is not None:
+        render(pandoc, CORPUS / "elements.md", CORPUS, "elements")
+    return [f"corpus/{p.name}" for p in sorted(CORPUS.glob("*")) if p.is_file()]
+
+
+def render(pandoc: str, source: Path, into: Path, stem: str) -> None:
+    """Render one Markdown source into the three formats pandoc writes for us.
+
+    ``--resource-path`` is not optional here: pandoc resolves an image relative to
+    its *working directory*, so without it the DOCX writer silently omits a
+    picture it could not open, and the corpus would record where the script was
+    run from as a difference between parsers.
+
+    ``--sandbox`` is deliberately **absent**, which is the opposite of the rule
+    the pandoc *parser* follows (ADR-0032). The sandbox exists to fence an engine
+    reading untrusted bytes at build time; this script reads a source in this
+    repository, by hand, and the sandbox would stop it opening the image it is
+    supposed to embed — leaving a DOCX with no picture and an inventory recording
+    a generator restriction as a parser difference.
+    """
+    for target, suffix in (("docx", "docx"), ("html5", "html"), ("rst", "rst")):
+        subprocess.run(  # fixed argument vector, no shell
+            [
+                pandoc,
+                "--resource-path",
+                str(into),
+                "--from",
+                "markdown",
+                "--to",
+                target,
+                "--output",
+                str(into / f"{stem}.{suffix}"),
+                str(source),
+            ],
+            check=True,
+        )
+
+
 def main() -> int:
     write_hostile()
     source = HERE / "source.md"
@@ -206,8 +420,10 @@ def main() -> int:
     write_pdf(HERE / "text-layer.pdf")
 
     pandoc = shutil.which("pandoc")
+    corpus = write_corpus(pandoc)
     if pandoc is None:
-        print("pandoc is not installed; source.md and text-layer.pdf were written")
+        print("pandoc is not installed; only the files it does not render were written")
+        print("wrote " + ", ".join(corpus))
         return 1
     # No `--standalone`: a standalone HTML file gets a `<title>` from the input
     # filename, which docling reads as the document's title and emits as a
@@ -231,6 +447,7 @@ def main() -> int:
         )
     written = [p.name for p in sorted(HERE.glob("*")) if p.suffix != ".py" and p.is_file()]
     written += [f"hostile/{p.name}" for p in sorted(HOSTILE.glob("*"))]
+    written += write_corpus(pandoc)
     print("wrote " + ", ".join(written))
     return 0
 

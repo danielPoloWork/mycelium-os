@@ -156,6 +156,36 @@ def test_docling_keeps_the_code_block_atomic(registry: Registry) -> None:
     assert "delay = 2 ** attempt" in texts(parse(registry, "source.docx"), NodeKind.CODE_BLOCK)
 
 
+def test_docling_records_a_docx_note_its_backend_cannot_see(registry: Registry) -> None:
+    """BUG-0016: the part docling does not read is accounted for, not ignored.
+
+    `word/footnotes.xml` never reaches docling's DOCX backend, so the note's body
+    reaches no KIR node — and the fidelity report, being a pure function of the
+    KIR, reported the document as complete. The loss is now an opaque `lost`
+    element, which is what makes it countable.
+    """
+    document = parse(registry, "corpus/elements.docx")
+    notes = [
+        node
+        for node in document.nodes
+        if node.kind is NodeKind.OPAQUE and "note" in (node.note or "")
+    ]
+    assert len(notes) == 1, "the fixture carries exactly one footnote"
+    assert notes[0].variant == "lost"
+    assert any("does not surface" in warning for warning in document.warnings)
+
+
+def test_a_docx_without_notes_reports_none(registry: Registry) -> None:
+    """The separator furniture every DOCX carries must not be counted as content.
+
+    Word declares `separator` and `continuationSeparator` notes whether or not the
+    document has any real ones, and the parts are full of `<w:footnoteRef/>`. The
+    first version of this count reported three footnotes for a document with none.
+    """
+    document = parse(registry, "source.docx")
+    assert not [node for node in document.nodes if node.kind is NodeKind.OPAQUE]
+
+
 def test_docling_reports_the_engine_version_not_ours() -> None:
     meta = docling_parser.plugin().meta
     assert meta.id == "docling"

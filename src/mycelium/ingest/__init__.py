@@ -21,6 +21,9 @@ is both halves of it plus the resolution that pins which implementation runs:
   KIR, kept, and never garbage-collected.
 - :mod:`mycelium.ingest.fidelity` — the loss accounting, and the budget it is
   measured against.
+- :mod:`mycelium.ingest.inventory` — the other half of that accounting: what a
+  person declared the source contains, against what a parser produced. A report
+  computed from the KIR cannot see an element that never became a node.
 - :mod:`mycelium.ingest.projection` — KIR back to Markdown, under
   `knowledge/evidence/`, where the compiler picks it up like any authored file.
 - :mod:`mycelium.ingest.pipeline` — the evidence lane end to end: acquire, store,
@@ -49,6 +52,14 @@ from mycelium.ingest.errors import (
     UnsupportedMediaTypeError,
 )
 from mycelium.ingest.fidelity import build_report, check_budget, encode_report
+from mycelium.ingest.inventory import (
+    INVENTORY_SCHEMA_VERSION,
+    ElementInventory,
+    InventoryDifference,
+    InventoryFile,
+)
+from mycelium.ingest.inventory import compare as compare_inventories
+from mycelium.ingest.inventory import observe as observe_inventory
 from mycelium.ingest.media import EXTENSIONS, MEDIA_TYPES, MediaTypeClaim, classify
 from mycelium.ingest.pipeline import Ingested, encode_kir, ingest_source, write_projection
 from mycelium.ingest.projection import EVIDENCE_DIRNAME, Projection, evidence_path, project
@@ -75,6 +86,12 @@ __all__ = [
     "EXTENSIONS",
     "MEDIA_TYPES",
     "DEFAULT_LIMITS",
+    "INVENTORY_SCHEMA_VERSION",
+    "ElementInventory",
+    "InventoryDifference",
+    "InventoryFile",
+    "compare_inventories",
+    "observe_inventory",
     "ConnectorError",
     "Custody",
     "GuardError",

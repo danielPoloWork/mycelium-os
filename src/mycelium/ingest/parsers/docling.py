@@ -25,6 +25,8 @@ shape :mod:`mycelium.ingest.parsers.builder` fixes, mapping what maps and making
 what does not into an ``opaque`` node rather than a hole.
 """
 
+import re
+import zipfile
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO
@@ -35,7 +37,13 @@ from mycelium.ingest.media import DOCX, HTML
 from mycelium.ingest.parsers.builder import KirBuilder
 from mycelium.sdk.identity import digest_bytes
 from mycelium.sdk.protocols import Blob, PluginMeta
-from mycelium.sdk.types import KirDocument, NodeKind, SrcLocator, Ulid
+from mycelium.sdk.types import (
+    KirDocument,
+    NodeKind,
+    OpaqueDisposition,
+    SrcLocator,
+    Ulid,
+)
 
 __all__ = ["PARSER_ID", "DoclingParser", "plugin"]
 
@@ -118,12 +126,86 @@ class DoclingParser:
         state = _Nesting()
         for ref in document.body.children or ():
             _item(builder, ref.resolve(document), document, state, parent=None)
+        if blob.media_type == DOCX:
+            _account_for_notes(builder, blob.data)
         return KirDocument(
             doc_id=doc_id,
             source_digest=digest_bytes(blob.data),
             nodes=tuple(builder.nodes),
             warnings=(*blob.warnings, *builder.warnings),
         )
+
+
+# ---------------------------------------------------------------------------
+# The part of a DOCX docling does not read (BUG-0016)
+# ---------------------------------------------------------------------------
+
+_NOTE_PARTS: Final = ("word/footnotes.xml", "word/endnotes.xml")
+
+_CONTENT_NOTE: Final = re.compile(rb"<w:(?:foot|end)note(?=[\s/>])(?![^>]*\bw:type=)[^>]*>")
+"""A foot- or endnote carrying content.
+
+Every DOCX with notes enabled also declares `separator` and
+`continuationSeparator` notes, which are layout furniture with no text. They are
+told apart by the presence of a ``w:type`` attribute, so the pattern matches an
+opening tag that has none.
+
+The lookahead for whitespace, ``/`` or ``>`` after the tag name is what keeps
+this a count of *notes*: the same parts are full of `<w:footnoteRef/>` and
+`<w:footnotePr>`, and without the boundary a document with no footnotes at all
+reports three of them — which is how this pattern was first written, and what its
+test now pins.
+
+A regular expression rather than an XML parse, deliberately: the part is
+untrusted input, and `xml.etree` expands internal entities — the billion-laughs
+shape `hostile/laughs.docx` exists for (ADR-0033). Counting opening tags needs no
+parser, so none is exposed.
+"""
+
+
+def _account_for_notes(builder: KirBuilder, data: bytes) -> None:
+    """Record DOCX foot- and endnotes docling's backend never surfaces.
+
+    Word keeps note bodies in `word/footnotes.xml`, a part docling's DOCX backend
+    does not read: a document whose footnote says something arrives with that
+    sentence nowhere in the KIR, and — because the fidelity report is computed
+    *from* the KIR — reported as 100 % represented (BUG-0016). That is silent
+    loss, which is the one thing ingestion promises not to do.
+
+    The engine's blind spot is not ours to fix; making it *visible* is. Each
+    unsurfaced note becomes one opaque `lost` node, so it is counted by the
+    report, charged to the loss budget, and named in the projection — the same
+    treatment a PDF page with no text layer gets, for the same reason.
+
+    Counted from the container rather than asked of docling because the container
+    is the only place the fact exists. The bytes have already passed the archive
+    guard by the time this runs (ADR-0033), so reading one member is bounded.
+    """
+    already = sum(1 for node in builder.nodes if node.kind is NodeKind.FOOTNOTE)
+    unsurfaced = _count_notes(data) - already
+    for _ in range(max(0, unsurfaced)):
+        builder.opaque(
+            "a DOCX note whose body docling's backend does not surface",
+            disposition=OpaqueDisposition.LOST,
+            media_type=DOCX,
+        )
+
+
+def _count_notes(data: bytes) -> int:
+    """How many foot- and endnotes with content the container declares."""
+    try:
+        with zipfile.ZipFile(BytesIO(data)) as archive:
+            names = set(archive.namelist())
+            return sum(
+                len(_CONTENT_NOTE.findall(archive.read(part)))
+                for part in _NOTE_PARTS
+                if part in names
+            )
+    except (OSError, zipfile.BadZipFile, RuntimeError):
+        # The document parsed, so its container is readable enough; a failure
+        # here is a surprise, and guessing zero is the honest answer — it claims
+        # nothing rather than inventing a loss that may not exist.
+        return 0
 
 
 # ---------------------------------------------------------------------------

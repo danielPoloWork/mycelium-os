@@ -147,7 +147,14 @@ install (`pip install mycelium-os[ingest]`, plus [pandoc](https://pandoc.org/ins
 for that one), and the default `parsers = ["markdown"]` needs none of them.
 
 What an engine emits that KIR cannot model becomes an `opaque` node carrying the construct's
-name — visible loss, never silent loss. What v1 does *not* do is read PDF structure: that
+name — visible loss, never silent loss. That is a claim, so it is a gate: the fixture corpus
+carries a hand-written **declaration** of what each source document contains, and CI fails if
+any engine's output differs from it without a recorded reason. It has to be hand-written,
+because the fidelity report is computed from the parse and so cannot notice an element that
+never arrived — which is exactly how a DOCX footnote was disappearing until the corpus asked
+([BUG-0016](docs/bugs/2026/09/BUG-0016-docx-footnotes-vanish-unreported.md)).
+
+What v1 does *not* do is read PDF structure: that
 needs docling's ML pipeline, which wants `torch` and downloads model weights on first use,
 against this project's offline default and its cross-platform determinism gate. The reasons,
 measured, are in [ADR-0032](docs/adr/0032-adapt-four-engines-and-pin-which-one-runs.md); the

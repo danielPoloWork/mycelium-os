@@ -53,3 +53,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0035](0035-let-an-llm-write-only-what-a-machine-can-check.md) | Let an LLM write only what a machine can check | Accepted |
 | [0036](0036-measure-what-can-be-measured-and-let-a-human-outrank-the-gate.md) | Measure what can be measured, and let a human outrank the gate | Accepted |
 | [0037](0037-record-what-was-refused-and-redact-what-was-found.md) | Record what was refused, and redact what was found | Accepted |
+| [0038](0038-declare-the-corpus-then-compare-it.md) | Declare what the corpus contains, then compare it — a report cannot corroborate itself | Accepted |
