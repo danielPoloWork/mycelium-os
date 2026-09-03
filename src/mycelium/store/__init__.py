@@ -14,6 +14,7 @@ lawful repair.
 from mycelium.store.base import CacheEntry, DocState, SnapshotState, Store
 from mycelium.store.schema import SCHEMA_VERSION
 from mycelium.store.sqlite import (
+    STEM_WEIGHT,
     STORE_DIRNAME,
     STORE_FILENAME,
     SearchFilters,
@@ -21,6 +22,7 @@ from mycelium.store.sqlite import (
     SqliteStore,
     StoreError,
     StoreVersionError,
+    expanded_query,
     fts_query,
 )
 
@@ -37,5 +39,7 @@ __all__ = [
     "Store",
     "StoreError",
     "StoreVersionError",
+    "STEM_WEIGHT",
+    "expanded_query",
     "fts_query",
 ]

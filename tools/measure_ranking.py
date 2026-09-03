@@ -13,13 +13,24 @@ reads the **dev** sets by default on purpose: the release sets are what gate G3
 judges the outcome with, and a change developed against them cannot be told apart
 from a change fitted to them (spec 04 §7.1).
 
-Ten candidate strategies live here, and **all ten are refused**. Four rows by
+Ten *re-ranking* candidates live here and **all ten are refused** — four rows by
 ADR-0031 (a length prior at two floors, coverage-first, section aggregation) and
-six more by ADR-0041 — the section-level *indexing* hypothesis ADR-0031 named as
-the next thing to try, in every form it has, plus the incumbent's own ranking
-function. `--release` prints the per-slice deltas gate G3 reads, and
-`--oracle` prints the ceiling of the whole family: the per-case best of every
-section-unit strategy, which no planner can beat.
+six more by ADR-0041, the section-level indexing hypothesis in every form it has,
+plus the incumbent's own ranking function. `--release` prints the per-slice deltas
+gate G3 reads, and `--oracle` prints the ceiling of the whole section family: the
+per-case best of every strategy in it, which no planner can beat.
+
+The eleventh family is the *index* rather than the ranking (roadmap 4.19), and it
+is the one that shipped: `index: expand-pre` is what the store now does, and the
+rows beside it are the variants it beat or was refused in favour of. `index:
+plain` is the control — an in-memory rebuild of the pre-4.19 index, which is why
+it now scores *below* `baseline (ships)`.
+
+**One thing this file cannot see**: it scores answerable cases only, so gate G4
+is outside its view. Open expansion wins three of four sets here and answers a
+question the corpus cannot answer, which only the real `mycelium eval --gate`
+reports (ADR-0048). A candidate that wins in this file is not a candidate that
+ships.
 
 The strategies are kept rather than deleted. A refusal nobody can re-run is a
 claim, and the next attempt should start from the numbers instead of from prose.
@@ -45,7 +56,8 @@ from mycelium.eval.metrics import (  # noqa: E402
 )
 from mycelium.eval.retrievers import build_retriever, terms_of  # noqa: E402
 from mycelium.store import SearchHit, SqliteStore  # noqa: E402
-from mycelium.store.sqlite import _BM25_WEIGHTS, fts_query  # noqa: E402
+from mycelium.store.sqlite import _FTS_TERM, _SURFACE_WEIGHTS, fts_query  # noqa: E402
+from mycelium.store.stemming import stem_text  # noqa: E402
 
 DEPTH = 50
 """Candidate depth, matching the harness's retrieval limit."""
@@ -182,11 +194,148 @@ def _section_ranking(store: SqliteStore, query: str, depth: int) -> list[str]:
         FROM sections_fts WHERE sections_fts MATCH ?
         ORDER BY score LIMIT ?
         """,
-            [*_BM25_WEIGHTS, match, depth],
+            [*_SURFACE_WEIGHTS, match, depth],
         )
         .fetchall()
     )
     return [str(row["section"]) for row in rows]
+
+
+# ---------------------------------------------------------------------------
+# The tokenizer family (roadmap 4.19) — same chunk unit, different index
+#
+# ADR-0044 measured the straight swap to `porter` and recorded that it wins
+# overall and fails gate G3. The item that followed says to measure *expansion*
+# first: keep the surface form and add the stem beside it, so a literal match
+# keeps its edge instead of being replaced by an inflected one. All three live
+# here over the same chunks, so the only variable is the index.
+# ---------------------------------------------------------------------------
+
+_TOKEN_INDEX: dict[tuple[int, str, float], sqlite3.Connection] = {}
+
+_SURFACE_COLUMNS: Final = "{text title heading_path}"
+_STEM_COLUMNS: Final = "{text_stem title_stem heading_path_stem}"
+
+
+def _chunk_rows(store: SqliteStore) -> list[tuple[str, str, str, str]]:
+    """`(anchor, text, document title, heading path)` for every published chunk."""
+    rows = []
+    for doc_id in store.document_ids():
+        document = store.get_document(doc_id)
+        if document is None:  # pragma: no cover - ids come from the same store
+            continue
+        for chunk in store.chunks_of(doc_id):
+            rows.append((chunk.anchor, chunk.text, document.title, " / ".join(chunk.heading_path)))
+    return rows
+
+
+def _token_index(store: SqliteStore, variant: str, stem_weight: float) -> sqlite3.Connection:
+    """An in-memory chunk index built the way `variant` says."""
+    key = (id(store), variant, stem_weight)
+    cached = _TOKEN_INDEX.get(key)
+    if cached is not None:
+        return cached
+
+    memory = sqlite3.connect(":memory:")
+    memory.row_factory = sqlite3.Row
+    rows = _chunk_rows(store)
+    if variant.startswith("expand"):
+        memory.execute(
+            """
+            CREATE VIRTUAL TABLE chunks_fts USING fts5(
+                anchor UNINDEXED, text, title, heading_path,
+                text_stem, title_stem, heading_path_stem,
+                tokenize='unicode61', prefix='2 3 4'
+            )
+            """
+        )
+        memory.executemany(
+            "INSERT INTO chunks_fts(anchor, text, title, heading_path,"
+            " text_stem, title_stem, heading_path_stem) VALUES(?,?,?,?,?,?,?)",
+            [(anchor, *fields, *(_stemmed(field) for field in fields)) for anchor, *fields in rows],
+        )
+    else:
+        tokenizer = "porter unicode61" if variant == "porter" else "unicode61"
+        memory.execute(
+            f"""
+            CREATE VIRTUAL TABLE chunks_fts USING fts5(
+                anchor UNINDEXED, text, title, heading_path,
+                tokenize='{tokenizer}', prefix='2 3 4'
+            )
+            """
+        )
+        memory.executemany(
+            "INSERT INTO chunks_fts(anchor, text, title, heading_path) VALUES(?,?,?,?)",
+            rows,
+        )
+    memory.commit()
+    _TOKEN_INDEX[key] = memory
+    return memory
+
+
+def _stemmed(text: str) -> str:
+    return " ".join(stem_text(_FTS_TERM.findall(text)))
+
+
+def _tokenizer_ranking(
+    store: SqliteStore, query: str, variant: str, stem_weight: float
+) -> list[str]:
+    terms = terms_of(query)
+    if not terms:
+        return []
+    if variant.startswith("expand"):
+        surface = " OR ".join(f'"{term}"' for term in terms)
+        stems = " OR ".join(f'"{term}"' for term in dict.fromkeys(stem_text(terms)))
+        both = f"{_SURFACE_COLUMNS} : ({surface}) OR {_STEM_COLUMNS} : ({stems})"
+        # `expand-pre` requires a surface hit before the stems may speak, which is
+        # ADR-0025's precondition one layer down: a stem may reorder what the
+        # surface index found and may not introduce a document of its own.
+        match = (
+            f"{_SURFACE_COLUMNS} : ({surface}) AND ({both})" if variant.endswith("pre") else both
+        )
+        weights = [*_SURFACE_WEIGHTS, *(stem_weight * w for w in _SURFACE_WEIGHTS[1:])]
+    else:
+        match = fts_query(" ".join(terms))
+        weights = list(_SURFACE_WEIGHTS)
+    placeholders = ", ".join("?" for _ in weights)
+    rows = (
+        _token_index(store, variant, stem_weight)
+        .execute(
+            f"""
+            SELECT anchor, bm25(chunks_fts, {placeholders}) AS score
+            FROM chunks_fts WHERE chunks_fts MATCH ?
+            ORDER BY score LIMIT ?
+            """,
+            [*weights, match, DEPTH],
+        )
+        .fetchall()
+    )
+    return [str(row["anchor"]) for row in rows]
+
+
+def tokenizer(variant: str, stem_weight: float = 0.0) -> Ranking:
+    """One index variant, as a ranking the scorer can drive."""
+
+    def rank(store: SqliteStore, query: str) -> list[str]:
+        return _tokenizer_ranking(store, query, variant, stem_weight)
+
+    return rank
+
+
+TOKENIZER_FAMILY: Final[list[tuple[str, Ranking]]] = [
+    ("index: plain", tokenizer("plain")),
+    ("index: porter", tokenizer("porter")),
+    ("index: expand 0.1", tokenizer("expand", 0.1)),
+    ("index: expand 0.5", tokenizer("expand", 0.5)),
+    ("index: expand-pre 0.1", tokenizer("expand-pre", 0.1)),
+    ("index: expand-pre 0.5", tokenizer("expand-pre", 0.5)),
+    ("index: expand-pre 1.0", tokenizer("expand-pre", 1.0)),
+]
+"""`plain` is the control: an in-memory rebuild of what ships, which must score
+exactly what `baseline (ships)` scores or the harness is measuring the wrong
+thing. The `expand` rows differ only in how much weight the stem columns carry
+relative to the surface ones — the single free parameter this family has, chosen
+on the dev sets and read off the release sets."""
 
 
 def _best_chunk_per_section(store: SqliteStore, query: str) -> dict[str, str]:
@@ -418,6 +567,7 @@ def _report(
     slices: dict[str, dict[str, float]] = {}
     for name, rank in strategies:
         _SECTION_INDEX.clear()
+        _TOKEN_INDEX.clear()
         (ndcg, mrr, recall), means = score(root, set_name, rank)
         slices[name] = means
         print(f"{label:<13} {name:<18} {ndcg:8.3f} {mrr:7.3f} {recall:7.3f}")
@@ -445,6 +595,7 @@ def main() -> int:
     corpora = [("ours", ours), ("uv", ROOT / "eval" / "corpora" / "uv-docs")]
     strategies: list[tuple[str, Ranking]] = [
         ("baseline (ships)", baseline),
+        *TOKENIZER_FAMILY,
         *SECTION_FAMILY,
         ("length>=60", length_prior(60)),
         ("length>=120", length_prior(120)),
@@ -466,6 +617,7 @@ def main() -> int:
         for corpus, root in corpora:
             for set_name in ("dev", "release"):
                 _SECTION_INDEX.clear()
+                _TOKEN_INDEX.clear()
                 chunk, family, best = oracle(root, set_name)
                 (theirs, _, _), _ = score(root, set_name, grep)
                 print(

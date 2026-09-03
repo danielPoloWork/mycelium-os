@@ -28,7 +28,7 @@ from mycelium.config import RetrievalConfig
 from mycelium.embedding import Embedder
 from mycelium.retrieval import RRF_K, VECTOR_CANDIDATES
 from mycelium.retrieval import search as run_search
-from mycelium.store import SqliteStore
+from mycelium.store import STEM_WEIGHT, SqliteStore
 
 __all__ = [
     "GrepRetriever",
@@ -118,6 +118,10 @@ class MyceliumRetriever:
         return {
             "engine": "fts5-bm25",
             "weights": "title=3.0,heading_path=2.0,body=1.0",
+            # Recorded because it is part of what produced the numbers: the run
+            # manifest is how a reader of an old result knows which index it was
+            # measured on (roadmap 4.19, ADR-0048).
+            "stem_weight": STEM_WEIGHT,
             "hybrid": False,
         }
 

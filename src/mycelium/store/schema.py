@@ -16,13 +16,16 @@ two stores built from the same sources hold byte-identical column values.
 
 from typing import Final
 
-SCHEMA_VERSION: Final = "mycelium/store/v3"
+SCHEMA_VERSION: Final = "mycelium/store/v4"
 """Bumped whenever the DDL below changes. v1 migration policy is rebuild (D-016):
 a *writer* that meets a foreign version recreates the file (the store is derived
 data, D-005 — ADR-0015); a *reader* refuses and points at `mycelium build`.
 History: v0 → v1 added `doc_state` (roadmap 3.1, incremental builds);
 v1 → v2 added `snapshot_state` (roadmap 3.2, restorable snapshots);
-v2 → v3 added `doc_state.graph_json` (roadmap 3.4, the authored link graph)."""
+v2 → v3 added `doc_state.graph_json` (roadmap 3.4, the authored link graph);
+v3 → v4 added the stem columns to `chunks_fts` (roadmap 4.19, ADR-0048) — a
+tokenization change is not migratable, so this is exactly the case the rebuild
+policy exists for."""
 
 META_SCHEMA_VERSION: Final = "schema_version"
 META_VECTORS_GENERATION: Final = "vectors_generation"
@@ -86,11 +89,24 @@ CREATE INDEX IF NOT EXISTS chunks_digest ON chunks(chunk_digest);
 -- Field-weighted lexical index (spec 04 §3). `anchor` is stored but not indexed,
 -- so a hit maps back to its chunk without polluting the term statistics. The
 -- prefix index serves identifier-like queries; unicode61 keeps CJK terms intact.
+--
+-- The three `_stem` columns hold the same text reduced to Porter stems, so a
+-- query that inflects a word differently from the document still reaches it —
+-- `signs` finds `signed` (roadmap 4.19). They are *additional* columns rather
+-- than a `porter` tokenizer on the existing ones, because replacing the surface
+-- form costs the literal match its edge: a document containing the query's exact
+-- word matches both a surface column and a stem column, one containing only an
+-- inflection matches a stem column alone, and the field weights do the rest
+-- (ADR-0048). The stems live in this table rather than a second one so there is
+-- one BM25 computation and no fusion stage to tune.
 CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
     anchor UNINDEXED,
     text,
     title,
     heading_path,
+    text_stem,
+    title_stem,
+    heading_path_stem,
     tokenize='unicode61',
     prefix='2 3 4'
 );

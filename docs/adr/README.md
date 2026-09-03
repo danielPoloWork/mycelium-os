@@ -63,3 +63,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0044](0044-name-what-a-two-case-slice-can-and-cannot-say.md) | Name what a two-case slice can and cannot say | Accepted |
 | [0046](0046-derive-an-identity-rather-than-mint-one-when-a-build-may-not-write.md) | Derive an identity rather than mint one, when a build may not write | Accepted |
 | [0047](0047-flip-the-packed-chunker-on-and-let-the-gate-say-so.md) | Flip the packed chunker on, and let the gate say so | Accepted |
+| [0048](0048-index-the-stem-beside-the-surface-form.md) | Index the stem beside the surface form, and let the surface gate it | Accepted |

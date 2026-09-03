@@ -12,6 +12,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **The lexical index now matches inflections** (roadmap 4.19,
+  [ADR-0048](docs/adr/0048-index-the-stem-beside-the-surface-form.md)). `signs` did not
+  match `signed` and `contributed` did not match `contribution`, because FTS5's
+  `unicode61` tokenizer does no stemming — one judged case was reaching its answer through
+  a single unrelated word. Each indexed field now carries a **stem column beside** the
+  surface one at a tenth of its weight, so a document spelling the query's word exactly
+  matches two columns where an inflection matches one: reach without giving up the literal
+  match, which is what a `porter` tokenizer would have cost (it fails gate G3 on both
+  release sets). Measured: ours/release nDCG@10 0.463 → **0.508**, uv/release 0.492 →
+  **0.548**, the ingested corpus **0.647**, `relationship` on our own set 0.169 → **0.346**,
+  and **no slice regresses on any release set**.
+  **A surface hit is the precondition for a stem hit**, so stems reorder what the surface
+  index found and never introduce a document — without that, Porter's conflation of
+  `escapement` with `escape` answered a watchmaking query out of a corpus that has none,
+  and gate G4 failed. The cost is that a query *none* of whose words the corpus spells
+  literally still misses; that is roadmap 4.23.
+
 - **The watcher's infinite-rebuild guard was covered by a test that passed with the guard
   deleted** ([BUG-0020](docs/bugs/2026/09/BUG-0020-the-rebuild-loop-guard-was-covered-by-a-vacuous-test.md),
   roadmap 4.18). No behaviour changes — the filter and the watch scoping both work — but the
@@ -72,6 +89,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   guards nothing, silently.
 
 ### Changed
+
+- **Store schema `mycelium/store/v4`.** The stem columns are a tokenization change, which
+  is not migratable, so an existing store is recreated on the next build under the D-016
+  rebuild policy and an older binary refuses a v4 store rather than reinterpreting it.
+- `mycelium.store` exports `STEM_WEIGHT` and `expanded_query`; the new
+  `mycelium.store.stemming` carries an in-repo Porter (1980) implementation, checked
+  against SQLite's own C implementation over a real corpus vocabulary rather than against a
+  transcription of the paper. No new runtime dependency.
+- An evaluation run manifest records `stem_weight`, because a number measured on one index
+  cannot be compared with one measured on another.
 
 - **`[chunking] pack_atomic` is on by default** (roadmap 4.15). A table or code block may
   share a chunk with the prose around it instead of ending the run on both sides; it is
