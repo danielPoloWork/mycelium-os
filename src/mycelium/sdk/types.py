@@ -992,6 +992,16 @@ class EvalRunManifest(Record):
     created_at: UtcDatetime
     config_digest: Sha256Digest
     case_set: NonEmptyStr
+    cases_digest: Sha256Digest | None = Field(
+        default=None,
+        description=(
+            "Identity of the judgements this run was scored against (roadmap 4.24). "
+            "Gate G3's comparability test needs the *case set* held fixed as well as "
+            "the corpus: adding or re-grading cases moves a slice's score without "
+            "anything about retrieval having changed, and a gate that cannot tell "
+            "the two apart reports population as regression (ADR-0051)."
+        ),
+    )
     retriever: NonEmptyStr
     retriever_config: dict[str, JsonValue] = Field(default_factory=dict)
     toolchain: Toolchain
