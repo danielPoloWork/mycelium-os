@@ -248,6 +248,7 @@ def run_watch(
     on_failure: Callable[[Exception], None] | None = None,
     reload_config: bool = True,
     scope: CorpusScope | None = None,
+    pin_identity: bool = True,
 ) -> WatchStats:
     """Build whenever `source` reports a *real* change, until it reports :data:`STOP`.
 
@@ -290,7 +291,7 @@ def run_watch(
                 continue
 
         try:
-            result = run_build(root, config=settings)
+            result = run_build(root, config=settings, pin_identity=pin_identity)
         except (BuildLockedError, Exception) as error:  # noqa: BLE001 - the loop outlives one build
             failures += 1
             if on_failure is not None:
@@ -311,6 +312,7 @@ def watch(
     on_result: Callable[[BuildResult], None] | None = None,
     on_failure: Callable[[Exception], None] | None = None,
     build_first: bool = True,
+    pin_identity: bool = True,
 ) -> WatchStats:
     """Watch `root` and rebuild on change, until interrupted.
 
@@ -321,13 +323,19 @@ def watch(
     `build_first` compiles once before waiting, because a watcher started after
     an edit hears nothing about it: without that first build, the session would
     begin by serving a stale snapshot and look like it was working.
+
+    `pin_identity=False` carries `mycelium build --no-pin` into the loop. Unlike
+    `--clean` and `--require-vectors`, which are single-shot intents the loop
+    refuses, "do not write into the corpus" is a property of the whole session:
+    an operator watching a tree they are not ready to modify means it for every
+    build, not the first (roadmap 4.14).
     """
     settings = config if config is not None else load_config(root)
     scope = CorpusScope.of(settings.project)
 
     if build_first:
         try:
-            result = run_build(root, config=config)
+            result = run_build(root, config=config, pin_identity=pin_identity)
         except Exception as error:  # noqa: BLE001 - reported, and the session still starts
             if on_failure is not None:
                 on_failure(error)
@@ -347,6 +355,7 @@ def watch(
             on_result=on_result,
             on_failure=on_failure,
             scope=scope,
+            pin_identity=pin_identity,
         )
     except KeyboardInterrupt:
         return WatchStats(builds=0, failures=0, changes=0)

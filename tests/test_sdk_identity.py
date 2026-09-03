@@ -23,6 +23,7 @@ from mycelium.sdk.identity import (
     canonical_json,
     citation_uri,
     decode_ulid,
+    derived_ulid,
     digest_bytes,
     digest_json,
     digest_text,
@@ -31,6 +32,7 @@ from mycelium.sdk.identity import (
     encode_ulid,
     entity_ref,
     heading_slug,
+    is_derived_ulid,
     new_ulid,
     normalize_text,
     parse_anchor,
@@ -243,6 +245,54 @@ def test_new_ulid_uses_the_process_factory() -> None:
     for ulid in minted:
         ULID_ADAPTER.validate_python(ulid)
     assert abs((ulid_timestamp(minted[0]) - datetime.now(tz=UTC)).total_seconds()) < 60
+
+
+# ---------------------------------------------------------------------------
+# Derived ULIDs (roadmap 4.14) — identity without a clock, entropy, or a write
+# ---------------------------------------------------------------------------
+
+
+def test_a_derived_ulid_is_a_valid_ulid() -> None:
+    ULID_ADAPTER.validate_python(derived_ulid("knowledge/retries.md"))
+
+
+@given(st.text(min_size=1, max_size=200))
+@settings(max_examples=100)
+def test_derivation_is_total_and_reproducible(name: str) -> None:
+    first = derived_ulid(name)
+    assert first == derived_ulid(name)
+    ULID_ADAPTER.validate_python(first)
+
+
+def test_different_names_derive_different_ids() -> None:
+    ids = {derived_ulid(f"docs/{index}.md") for index in range(500)}
+    assert len(ids) == 500
+
+
+def test_a_derived_ulid_carries_no_timestamp() -> None:
+    # Zero is what marks it: no clock reports the Unix epoch, so a derived id is
+    # recognisable, sorts before every minted one, and needs no extra field to
+    # say what it is.
+    derived = derived_ulid("a.md")
+    assert ulid_timestamp(derived) == datetime(1970, 1, 1, tzinfo=UTC)
+    assert derived < new_ulid()
+
+
+def test_is_derived_ulid_separates_derived_from_minted() -> None:
+    assert is_derived_ulid(derived_ulid("a.md"))
+    assert not is_derived_ulid(new_ulid())
+
+
+def test_is_derived_ulid_says_no_to_something_that_is_not_a_ulid() -> None:
+    # A predicate that raises on bad input would make every caller wrap it.
+    assert not is_derived_ulid("not-a-ulid")
+    assert not is_derived_ulid("")
+
+
+def test_derivation_folds_the_same_way_normalisation_does() -> None:
+    # The name is normalized before it is digested, so a path that differs only
+    # by how its characters are composed is one document, not two.
+    assert derived_ulid("café.md") == derived_ulid("café.md")
 
 
 # ---------------------------------------------------------------------------

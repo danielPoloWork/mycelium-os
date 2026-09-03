@@ -269,9 +269,13 @@ jobs:
   # tree's Markdown is documentation; without that the corpus would include test
   # fixtures and gate G4 would fail against a fixture (BUG-0007).
   #
-  # The build pins `mycelium_id` into the checked-out documents. That is the
-  # documented behaviour of a first build and it is what makes anchors stable; the
-  # runner's checkout is thrown away, so nothing is committed.
+  # Every build here is `--no-pin` (roadmap 4.14). A pinning build writes a
+  # `mycelium_id` into each document that has none and mints a *fresh* one each
+  # run, so the two unpinned corpora on this job — this repository (105 documents)
+  # and `uv-docs-ingested` (82) — folded a different manifest on every run. That
+  # the checkout is thrown away made it harmless, not reproducible. Path-derived
+  # identities make a CI build of an unpinned corpus repeatable, which is what
+  # comparing two runs requires (ADR-0046).
   # ---------------------------------------------------------------------------
   eval:
     name: eval / gates G1-G6
@@ -297,12 +301,18 @@ jobs:
         run: |
           git fetch --no-tags origin "${{ github.event.pull_request.base.sha }}"
           uv run python tools/check_frozen_release_sets.py "${{ github.event.pull_request.base.sha }}"
+      # `--no-pin` (roadmap 4.14) rather than a thrown-away checkout. Two reasons,
+      # and the second is the important one: a pinning build would write a
+      # `mycelium_id` into every document that lacks one — 105 of them in this
+      # repository — and it would mint a *fresh* one on every run, so two CI runs
+      # would measure two different corpora. Path-derived identities make the
+      # build reproducible, which is the precondition for comparing anything.
       - name: Compile this repository's own documentation
         shell: bash
-        run: uv run mycelium build .
+        run: uv run mycelium build . --no-pin
       - name: Compile the second corpus (documentation we did not write)
         shell: bash
-        run: uv run mycelium build eval/corpora/uv-docs
+        run: uv run mycelium build eval/corpora/uv-docs --no-pin
       - name: Gates G1-G6 on the frozen release set — this corpus
         shell: bash
         run: uv run mycelium eval . --gate
@@ -311,7 +321,7 @@ jobs:
         run: uv run mycelium eval eval/corpora/uv-docs --set eval/release.jsonl --gate
       - name: Compile the third corpus (the second one, ingested)
         shell: bash
-        run: uv run mycelium build eval/corpora/uv-docs-ingested
+        run: uv run mycelium build eval/corpora/uv-docs-ingested --no-pin
       - name: Gates G1-G6 on the frozen release set — the ingested corpus
         shell: bash
         run: uv run mycelium eval eval/corpora/uv-docs-ingested --set eval/release.jsonl --gate

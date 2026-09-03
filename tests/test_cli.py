@@ -193,6 +193,27 @@ def test_build_reports_pinned_files_to_commit(tmp_path: Path) -> None:
     assert payload["pinned"] == []  # already pinned; a second build touches nothing
 
 
+def test_build_no_pin_writes_nothing_and_says_so(tmp_path: Path) -> None:
+    """Roadmap 4.14: measuring a corpus must not modify it."""
+    seeded(tmp_path)
+    source = tmp_path / "knowledge" / "verified" / "retries.md"
+    before = source.read_bytes()
+
+    result = invoke("build", str(tmp_path), "--no-pin")
+    assert result.exit_code == ExitCode.OK
+    assert source.read_bytes() == before
+    assert "path-derived mycelium_id" in result.stdout
+    assert "commit them" not in result.stdout
+    assert "identity not pinned" in result.stderr  # the manifest warning, surfaced
+
+
+def test_build_no_pin_json_names_the_derived_documents(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    payload = json.loads(invoke("build", str(tmp_path), "--no-pin", "--json").stdout)
+    assert payload["pinned"] == []
+    assert payload["derived"] == ["knowledge/verified/retries.md"]
+
+
 def test_build_surfaces_quarantine_warnings_on_stderr(tmp_path: Path) -> None:
     seeded(tmp_path)
     (tmp_path / "knowledge" / "broken.md").write_text(

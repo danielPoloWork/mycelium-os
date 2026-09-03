@@ -303,6 +303,15 @@ def build(
             help="Fail instead of publishing a snapshot without vectors.",
         ),
     ] = False,
+    no_pin: Annotated[
+        bool,
+        typer.Option(
+            "--no-pin",
+            help="Compile without writing a mycelium_id into any document. "
+            "Documents that have none take an id derived from their path, so the "
+            "snapshot still reproduces - measurement without touching the corpus.",
+        ),
+    ] = False,
     watch_mode: Annotated[
         bool,
         typer.Option("--watch", help="Rebuild whenever a document changes, until Ctrl-C."),
@@ -319,11 +328,13 @@ def build(
                 "and a watch session emits one per build",
                 code=ExitCode.USAGE,
             )
-        _watch(path, clean=clean, require_vectors=require_vectors)
+        _watch(path, clean=clean, require_vectors=require_vectors, pin_identity=not no_pin)
         return
 
     try:
-        result = run_build(path, clean=clean, require_vectors=require_vectors)
+        result = run_build(
+            path, clean=clean, require_vectors=require_vectors, pin_identity=not no_pin
+        )
     except EmbeddingError as error:
         # Only reachable under --require-vectors: otherwise a missing embedder
         # degrades the snapshot instead of failing the build.
@@ -340,6 +351,7 @@ def build(
     manifest = result.manifest
     stats = result.stats
     pinned = [str(item.relative_to(path).as_posix()) for item in result.pinned]
+    derived = [str(item.relative_to(path).as_posix()) for item in result.derived]
 
     if as_json:
         emit_json(
@@ -360,6 +372,7 @@ def build(
                 "timings_ms": manifest.timings_ms,
                 "warnings": list(manifest.warnings),
                 "pinned": pinned,
+                "derived": derived,
             }
         )
         return
@@ -369,6 +382,14 @@ def build(
         typer.echo(f"Pinned mycelium_id into {len(pinned)} file(s) - commit them:")
         for item in pinned:
             detail(f"  {item}")
+    if derived:
+        # The opposite report, and it has to be as loud: an operator who forgot
+        # `--no-pin` was on would otherwise never learn that the identities in
+        # this snapshot are not the ones a normal build would have produced.
+        typer.echo(
+            f"Compiled {len(derived)} file(s) with a path-derived mycelium_id - "
+            "nothing was written, and nothing survives a rename."
+        )
 
 
 def _report_build(result: BuildResult, *, clean: bool = False) -> None:
@@ -393,7 +414,7 @@ def _report_build(result: BuildResult, *, clean: bool = False) -> None:
         warn(reason)
 
 
-def _watch(path: Path, *, clean: bool, require_vectors: bool) -> None:
+def _watch(path: Path, *, clean: bool, require_vectors: bool, pin_identity: bool = True) -> None:
     """Run a watch session, reporting each build as an ordinary one."""
     if clean or require_vectors:
         # Both are single-shot intents: `--clean` says "distrust the cache once",
@@ -410,6 +431,7 @@ def _watch(path: Path, *, clean: bool, require_vectors: bool) -> None:
     try:
         stats = run_watch_session(
             path,
+            pin_identity=pin_identity,
             on_change=lambda paths: detail(
                 f"  changed: {', '.join(sorted(p.name for p in paths)[:4])}"
                 f"{' ...' if len(paths) > 4 else ''}"

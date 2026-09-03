@@ -26,6 +26,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`mycelium build --no-pin`** (roadmap 4.14) — compile, publish and serve while leaving
+  the authored tree byte-identical. Pinning a `mycelium_id` is the build's only write into
+  your documents, and this switches it off; a document that has none takes an identity
+  **derived from its path** instead of a minted one, so two builds of the same corpus
+  produce the same snapshot. That second half matters more than the first: a pinning build
+  of an unpinned corpus mints fresh ULIDs, so it never published the same corpus twice —
+  which is what CI had been doing for two of the three corpora it scores. Works with
+  `--watch`. See
+  [ADR-0046](docs/adr/0046-derive-an-identity-rather-than-mint-one-when-a-build-may-not-write.md).
+- `mycelium.sdk.identity.derived_ulid` and `is_derived_ulid` — a reproducible identity for
+  a document whose id cannot be recorded, and the exact test for one.
+- `mycelium build --json` reports a `derived` list beside `pinned`, and a snapshot whose
+  documents took derived identities carries a manifest warning naming the count.
 - **`tools/stamp_baseline_fingerprints.py`** — arms that comparison on baselines blessed
   before it existed, by adding `content_digest` and **moving no score**, so roadmap 4.15's
   flip is measured against the line already drawn rather than one moved in the same change.
@@ -43,6 +56,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- A build that *does* pin now re-pins a document whose recorded identity was derived
+  (roadmap 4.14). The plan's fast path skips the frontmatter parse for an unchanged digest
+  on the premise that a pinned id lives in the file; a derived id makes that false, so
+  without this the first `--no-pin` build would have silently turned every later build into
+  a no-pin build.
+- CI's three evaluation builds use `--no-pin`, and `tools/measure_slice_decay.py` — which
+  compiled the operator's own working tree — does too.
 - **`mycelium eval --bless` records both fingerprints.** A baseline written before this
   change keeps the comparison it was written for and the G3 verdict says so, naming
   `--bless` as what arms the stronger one: treating the absent field as a match would let a

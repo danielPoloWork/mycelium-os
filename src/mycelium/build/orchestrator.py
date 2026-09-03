@@ -84,7 +84,14 @@ from mycelium.ingest.custody import Custody
 from mycelium.ingest.errors import CustodyError
 from mycelium.markdown import Frontmatter, MarkdownDocument, parse_markdown
 from mycelium.markdown.frontmatter import parse_frontmatter, upsert
-from mycelium.sdk.identity import digest_json, digest_text, heading_slug, new_ulid
+from mycelium.sdk.identity import (
+    derived_ulid,
+    digest_json,
+    digest_text,
+    heading_slug,
+    is_derived_ulid,
+    new_ulid,
+)
 from mycelium.sdk.schema import (
     RECORD_MODELS,
     SNAPSHOT_ARTIFACT_CLASSES,
@@ -161,6 +168,12 @@ class BuildResult:
     pinned: tuple[Path, ...]
     """Source files that received a ``mycelium_id`` this build (commit them)."""
     stats: BuildStats
+    derived: tuple[Path, ...] = ()
+    """Published files whose identity is derived from their path, not committed.
+
+    The counterpart of :attr:`pinned` for a build that declined to write: same
+    documents, opposite fact — nothing needs committing, and nothing survives a
+    rename until something does (roadmap 4.14)."""
     degraded_reasons: tuple[str, ...] = ()
     """Why each ``manifest.degraded`` flag is set — operator-facing, and actionable."""
 
@@ -235,7 +248,7 @@ def _discover(root: Path, scope: CorpusScope) -> list[Path]:
 # ---------------------------------------------------------------------------
 
 
-def _ensure_identity(text: str) -> tuple[str, str, bool]:
+def _ensure_identity(text: str, doc_path: str, *, pin: bool) -> tuple[str, str, bool]:
     """Return ``(text, doc_id, pinned)``, minting and inserting an id if needed.
 
     The insert goes through :func:`~mycelium.markdown.frontmatter.upsert`, which
@@ -248,10 +261,22 @@ def _ensure_identity(text: str) -> tuple[str, str, bool]:
 
     ``position="top"`` because `mycelium_id` is the document's name and reads
     first.
+
+    ``pin=False`` suppresses the write, and therefore has to replace what the
+    write was *for*. A document with no id still needs one, and minting would
+    hand it a different id on every run — which is not a smaller problem than
+    dirtying the tree, it is a larger one: two builds of one corpus would fold
+    different manifests and two measurements of it would not be comparable. So
+    the id is **derived from the document's path** instead
+    (:func:`~mycelium.sdk.identity.derived_ulid`): reproducible, machine-
+    independent, and honest about what it gives up — a derived id does not
+    survive a rename, which is the whole reason pinning exists (ADR-0046).
     """
     parsed = parse_frontmatter(text)
     if parsed.frontmatter.mycelium_id is not None:
         return text, parsed.frontmatter.mycelium_id, False
+    if not pin:
+        return text, derived_ulid(doc_path), False
 
     doc_id = new_ulid()
     return upsert(text, {"mycelium_id": doc_id}, position="top"), doc_id, True
@@ -658,6 +683,7 @@ def build(
     stale_after_s: float = DEFAULT_STALE_AFTER_S,
     clean: bool = False,
     require_vectors: bool = False,
+    pin_identity: bool = True,
 ) -> BuildResult:
     """Compile the repository at `root` and publish one snapshot.
 
@@ -679,6 +705,14 @@ def build(
     (spec 02 §4.3) — which is right for a laptop that has not fetched a model and
     wrong for a release pipeline that promised hybrid retrieval.
 
+    `pin_identity=False` makes the build a **read-only act on tier 2**. Pinning
+    a `mycelium_id` into a document that lacks one is the build's only write into
+    the authored tree (ADR-0009), so suppressing it is the whole of "compile
+    without touching the corpus" — and a document with no id then takes one
+    derived from its path instead of a minted one, so the snapshot is still
+    reproducible (ADR-0046). Use it to measure a corpus you do not own, or your
+    own before you are ready to commit its identities.
+
     Raises :class:`~mycelium.config.ConfigError` when the file exists and is
     invalid, and :class:`~mycelium.build.lock.BuildLockedError` when a live build
     holds the lock; store and filesystem failures propagate typed. Per-document
@@ -690,7 +724,9 @@ def build(
     mycelium_dir = root / STORE_DIRNAME
     timer = _Timer()
     with BuildLock.acquire(mycelium_dir, stale_after_s=stale_after_s) as lock:
-        append_journal(mycelium_dir, "build.started", root=str(root), clean=clean)
+        append_journal(
+            mycelium_dir, "build.started", root=str(root), clean=clean, pinning=pin_identity
+        )
         try:
             result = _build_locked(
                 root,
@@ -701,6 +737,7 @@ def build(
                 config=settings,
                 clean=clean,
                 require_vectors=require_vectors,
+                pin_identity=pin_identity,
             )
         except BaseException as error:
             append_journal(mycelium_dir, "build.failed", error=f"{type(error).__name__}: {error}")
@@ -731,6 +768,8 @@ def _plan(
     lock: BuildLock,
     pinned: list[Path],
     prev_by_path: dict[str, DocState],
+    *,
+    pin_identity: bool = True,
 ) -> list[_Entry]:
     """Read, pin, and digest every discovered file — the spec's `plan` step.
 
@@ -760,10 +799,21 @@ def _plan(
             raw = path.read_bytes().decode("utf-8")
             digest = digest_text(raw)
             prev = prev_by_path.get(doc_path)
+            # The fast path rests on "an indexed document was pinned, and its
+            # pinned identity is frontmatter, so an unchanged digest proves the
+            # id is still in the file". A derived id breaks that premise: it was
+            # never written anywhere, so a pinning build meeting one must fall
+            # through and actually pin, or the first `--no-pin` build would
+            # silently make every later build a no-pin build too (roadmap 4.14).
+            recorded: str | None = None
             if prev is not None and prev.source_digest == digest:
-                doc_id = prev.doc_id
+                # `None` here means "fall through and pin it for real".
+                pin_it = pin_identity and is_derived_ulid(prev.doc_id)
+                recorded = None if pin_it else prev.doc_id
+            if recorded is not None:
+                doc_id = recorded
             else:
-                raw, doc_id, was_pinned = _ensure_identity(raw)
+                raw, doc_id, was_pinned = _ensure_identity(raw, doc_path, pin=pin_identity)
                 if was_pinned:
                     with path.open("w", encoding="utf-8", newline="") as handle:
                         handle.write(raw)
@@ -810,6 +860,7 @@ def _build_locked(
     config: MyceliumConfig,
     clean: bool,
     require_vectors: bool,
+    pin_identity: bool,
 ) -> BuildResult:
     snapshot_id = new_ulid()
     parent_id = read_current(mycelium_dir)
@@ -832,7 +883,7 @@ def _build_locked(
         prev_by_path = {state.path: state for state in prev_states}
 
         pinned: list[Path] = []
-        entries = _plan(root, sources, lock, pinned, prev_by_path)
+        entries = _plan(root, sources, lock, pinned, prev_by_path, pin_identity=pin_identity)
         timer.lap("plan")
 
         # -- dirty detection ------------------------------------------------
@@ -936,6 +987,20 @@ def _build_locked(
         live_states = {entry.doc_path: _state_of(entry, env_digest) for entry in live}
         restorable, unrestorable = _restorability(mycelium_dir, tuple(live_states.values()))
         manifest_warnings = [w for entry in entries for w in entry.warnings]
+        derived = tuple(entry.path for entry in live if is_derived_ulid(entry.doc_id))
+        if derived:
+            # A build must be explainable from its manifest alone (spec 05 §4.2),
+            # and "these documents have no committed identity" is exactly the kind
+            # of fact a reader of this manifest a year from now needs. Counted
+            # from the ids themselves rather than from the flag: a derived id can
+            # also arrive from a `doc_state` row an earlier unpinned build wrote,
+            # and the manifest should describe the corpus it published, not the
+            # command line that produced it.
+            manifest_warnings.append(
+                f"identity not pinned: {len(derived)} document(s) took a path-derived "
+                "mycelium_id, which does not survive a rename; run `mycelium build` "
+                "without --no-pin and commit the result to make it permanent"
+            )
         degraded: list[str] = []
         reasons: list[str] = []
         if embed_reason is not None:
@@ -1049,6 +1114,7 @@ def _build_locked(
         manifest=manifest,
         manifest_path=manifest_file,
         pinned=tuple(pinned),
+        derived=derived,
         stats=stats,
         degraded_reasons=tuple(reasons),
     )

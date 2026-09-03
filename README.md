@@ -40,6 +40,7 @@ The design of record is [RFC-0001](docs/rfc/0001-mycelium-os-v1.md); the specifi
 ```bash
 mycelium init              # scaffold knowledge/, mycelium.toml, the gitignore entries
 mycelium build             # compile what changed into a published snapshot
+mycelium build --no-pin    # ...without writing anything into your documents
 mycelium build --watch     # ...and keep doing it as you edit (needs the `watch` extra)
 mycelium ingest doc.pdf    # acquire, keep, compile, project into knowledge/evidence/
                            # ...and, with an LLM configured, write a cited candidate doc
@@ -60,8 +61,13 @@ mycelium serve             # read-only MCP server over stdio, for your agent
 
 Write Markdown under `knowledge/` and build. The first build writes a `mycelium_id` into
 each document's frontmatter — that pinned identity is what makes rebuilds deterministic and
-citations survive renames, so commit those files. Every read command takes `--json`, exits
-0/1/2 (ok / failed / usage), and honours `NO_COLOR`.
+citations survive renames, so commit those files. It is the only thing a build ever writes
+into your tree, and `--no-pin` switches it off: the corpus is compiled, published and
+searchable, your files are byte-identical afterwards, and a document with no id takes one
+derived from its path so the snapshot still reproduces exactly
+([ADR-0046](docs/adr/0046-derive-an-identity-rather-than-mint-one-when-a-build-may-not-write.md)).
+Reach for it when you are measuring a corpus rather than authoring one. Every read command
+takes `--json`, exits 0/1/2 (ok / failed / usage), and honours `NO_COLOR`.
 
 Point an MCP-capable agent at `mycelium serve` and it gets four read-only tools —
 `mycelium_search`, `mycelium_fetch`, `mycelium_neighbors` (the graph of links your documents
