@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 4.15 — flip `pack_atomic` on by default.
 - **PR:** #67 (`feat/pack-atomic-by-default`). Follows #66 (4.14), merged as `5a8fa6a`.
-- **Milestone 4:** 4.15 done; 4.8, 4.18–4.23 open.
+- **Milestone 4:** 4.15 and 4.23 done; 4.8, 4.18–4.22 and 4.24 open.
 
 ## The one-line change had a precondition nobody had checked
 
@@ -47,14 +47,16 @@ Release sets, before → after:
 |---|---|---:|---|
 | ours | 0.450 → 0.463 | 946 → 745 | reported (4.22) |
 | uv | 0.306 → **0.492** | 2244 → 568 | enforced |
-| uv-ingested | 0.385 → **0.647** | 2073 → 624 | enforced |
+| uv-ingested † | 0.385 → **0.647** | 2073 → 624 | enforced |
+
+† on the 14-case set both sides; the set itself then changed — see below.
 
 ## The number the flip does not earn
 
 grep moves with the chunker — it maps its hits onto the same chunks — so the D-010 comparison
 had to be re-taken rather than carried over. Re-measured: grep 0.519 against our 0.492 on
 `uv`'s documentation. **We are still behind on the corpus 4.8 is about**, by 5 % where it was
-35 %. We lead on the other two (0.463 vs 0.271, 0.647 vs 0.610).
+35 %. We lead on the other two (0.463 vs 0.271, and 0.591 vs 0.566 on the regenerated ingested set).
 
 Reporting "+61 % and two corpora won" without that line would have been the exact move D-010
 exists to forbid. 4.8 stays open.
@@ -69,16 +71,56 @@ asymmetry is recorded rather than smoothed, because the only honest thing to do 
 leave it visible.
 
 **One anchor did die**, and it is in a derived set: `u-0012` in the ingested dev sets names an
-ordinal packing deletes. Those sets are generated, so the fix is to re-run their generator —
-a judgment change, in a change that moves the retriever. Filed as 4.23 rather than slipped in.
+ordinal packing deletes. I filed that as 4.23 and moved on — and CI proved the deferral
+impossible about twenty minutes later.
 
-**The golden nearly lost a chunk kind.** `test_the_corpus_still_covers_the_profile` asserts
-`{prose, table, code}`, and after packing the six-document fixture corpus had no `code` chunk
-left: every block had prose beside it. The tempting fix is to relax the assertion, which is
-exactly what that assertion exists to prevent. The corpus gained a section whose only content
-is a block instead — which also puts ADR-0007's preserved constraint (a solitary block is
-still its own chunk) into the golden, where it is checked on every run.
+## The deferral that could not be deferred
+
+`ingest / lanes` runs `tools/build_ingested_cases.py --check`: the derived sets must reproduce
+byte-for-byte from the tree. A derived set is a function of the chunker, so a chunking change
+that does not regenerate them is red — and a regeneration *without* the chunking change has
+nothing to write, because before the flip the generator reproduces exactly what is committed.
+No ordering of two pull requests satisfies both guards. The two changes are inseparable, which
+is not a preference for bundling but a property of a derived artifact.
+
+The other guard, `check_frozen_release_sets.py`, then refused the regeneration. That rule was a
+category error rather than a rule under strain: **nothing in a derived set is judged** — every
+query, grade, slice and note is copied verbatim from the frozen source, only the anchor is
+computed. So it is replaced rather than relaxed. A derived set may not move in the same change
+as *its source*, and reproduction is byte-checked on every run — which is a better guarantee
+than "nobody edited this file", and one the old rule never gave.
+
+Regenerating turned out to be good news: `u-1008` and `u-1013` — the two cases BUG-0018 named
+as dropped — now clear the coverage floor at 0.87 and 1.00, because packing makes their twin
+chunks large enough to cover the judged text. The release set grows 14 → 16.
+
+And then G3 went red: `fact` 0.632 → 0.494. Two restored cases had joined a five-case slice.
+Nothing had regressed — scored on the same build, the old 14-case set still gives exactly its
+old number — but **G3 cannot see a case-set change**: its comparability test asks about the
+corpus, not the judgements. The only available response was to re-bless, which is precisely
+the response a gate exists to make unnecessary. Filed as 4.24, and argued by hand here in the
+meantime.
+
+## The golden nearly lost a chunk kind
+
+`test_the_corpus_still_covers_the_profile` asserts `{prose, table, code}`, and after packing
+the six-document fixture corpus had no `code` chunk left: every block had prose beside it. The
+tempting fix is to relax the assertion, which is exactly what that assertion exists to prevent.
+The corpus gained a section whose only content is a block instead — which also puts ADR-0007's
+preserved constraint (a solitary block is still its own chunk) into the golden, where it is
+checked on every run.
 
 The golden diff is 24 lines, not the "every chunk moves" this item forecast. The forecast was
 written from the vendored corpora, where the effect is 2244 → 568; the fixture corpus has few
 atomic blocks.
+
+## The generator was dirtying the tree
+
+While chasing that, 81 evidence documents turned up modified. `build_ingested_cases.py` builds
+both committed corpora, and it built them *pinning* — so every run wrote a `mycelium_id` into
+81 tracked files. Harmless on CI, where the checkout is discarded; corrosive locally, and it
+would have made the next `--check` fail for a reason unrelated to anything.
+
+The fix is the flag 4.14 shipped one item ago. Four tools that build a committed corpus now
+pass `pin_identity=False`. Two items in a row have now found the same shape of defect: work
+that writes where it only meant to read.

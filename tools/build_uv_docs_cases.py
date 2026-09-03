@@ -287,7 +287,7 @@ def main() -> int:
     # Clean for the reason [BUG-0018] records: this corpus is compiled in place,
     # so an incremental build would validate the judgements against whatever
     # chunking the local store already held.
-    build(CORPUS, clean=True)
+    build(CORPUS, clean=True, pin_identity=False)  # a committed corpus (ADR-0046)
     with SqliteStore.open(CORPUS, read_only=True) as store:
         errors, warnings = validate_judged_set(dev + release, store)
 

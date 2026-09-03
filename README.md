@@ -423,7 +423,7 @@ chunking change it could see ([ADR-0042](docs/adr/0042-let-an-atomic-block-share
 It does not close the gap it narrows. grep moves with the chunker too — the same corpus,
 re-measured, gives grep 0.519 against our 0.492 — so on `uv`'s documentation the product is
 still behind, by 5 % where it was behind by 35 %. On our own corpus and on the ingested one it
-is ahead (0.463 against 0.271, and 0.647 against 0.610). Roadmap 4.8 stays open on the corpus
+is ahead (0.463 against 0.271, and 0.591 against 0.566). Roadmap 4.8 stays open on the corpus
 it was filed about, which is what D-010 asks for. Set `pack_atomic = false` to get the v0.3
 boundaries back.
 

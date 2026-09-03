@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 Daniel Polo
-"""The frozen-release-set guard (spec 04 §7.1, ADR-0027), and the gap 4.13 keeps closed.
+"""The frozen-release-set guard (spec 04 §7.1, ADR-0027), and the two gaps it has closed.
 
 `tools/check_frozen_release_sets.py` refuses one thing: a change that tunes retrieval and
 re-judges a frozen release set at once. Roadmap 4.15 recorded that the guard *would not*
@@ -9,8 +9,14 @@ shipped default lives in `src/mycelium/config.py` and that path was not in `TUNI
 PR #61 added it, and this file is what stops it being removed again by someone who reads
 `config.py` as configuration plumbing rather than as the retriever's shipped defaults.
 
-The two path lists are checked against the filesystem for the same reason: a guard naming
-a file that has since moved guards nothing, silently, and the failure mode is that a
+The second gap ran the other way: the rule was applied to a set in which **nothing is
+judged**. A derived set's queries, grades and slices are copied verbatim from a frozen
+source and only its anchor is computed (ADR-0039), so it is a function of the chunker and
+a chunking change *must* move it — while the conjunction rule forbade exactly that. What
+replaces the rule is narrower and stronger, and is tested below (roadmap 4.15, ADR-0047).
+
+Every path list is checked against the filesystem for the same reason: a guard naming a
+file that has since moved guards nothing, silently, and the failure mode is that a
 conjunction it was written to refuse sails through.
 """
 
@@ -63,13 +69,54 @@ def test_flipping_a_shipped_default_counts_as_tuning(changed: list[str]) -> None
     assert guard.main() == 1
 
 
-def test_every_derived_release_set_is_guarded_too(changed: list[str]) -> None:
-    """The ingested twin's judgments are carried, not written — but they are still a set
-    a retrieval change may not move in the same breath (roadmap 4.10)."""
+def test_a_derived_set_may_move_with_the_machinery(changed: list[str]) -> None:
+    """Roadmap 4.15 replaced the rule this used to assert, and the reason is a bind.
+
+    A derived set is a function of the chunker, so a chunking change *must* move it —
+    the `ingest / lanes` reproducibility check fails otherwise ([BUG-0018]) — while the
+    conjunction rule *forbade* moving it. Both guards could not be satisfied, and no
+    ordering of two PRs helped: the set only changes once the chunker does.
+
+    So the conjunction rule no longer applies to a set in which nothing is judged
+    (ADR-0039, ADR-0047). What replaces it is the test below, plus a byte-for-byte
+    reproduction check on every CI run — a stronger guarantee than "nobody edited it".
+    """
+    changed.extend(["src/mycelium/chunking.py", "eval/corpora/uv-docs-ingested/eval/release.jsonl"])
+    assert guard.main() == 0
+
+
+def test_a_derived_set_may_not_move_with_its_source(changed: list[str]) -> None:
+    """The invariant that actually protects a carried set.
+
+    Its queries, grades and slices are copied verbatim from the frozen source, so a
+    change moving both cannot be told apart from re-fitting the source and carrying the
+    fit across — which is precisely what ADR-0027 refuses.
+    """
     changed.extend(
-        ["src/mycelium/eval/metrics.py", "eval/corpora/uv-docs-ingested/eval/release.jsonl"]
+        [
+            "eval/corpora/uv-docs-ingested/eval/release.jsonl",
+            "eval/corpora/uv-docs/eval/release.jsonl",
+        ]
     )
     assert guard.main() == 1
+
+
+def test_the_derived_dev_set_is_covered_by_the_same_rule(changed: list[str]) -> None:
+    changed.extend(
+        [
+            "eval/corpora/uv-docs-ingested/eval/dev.jsonl",
+            "eval/corpora/uv-docs/eval/dev.jsonl",
+        ]
+    )
+    assert guard.main() == 1
+
+
+def test_every_derived_set_names_a_source_that_exists() -> None:
+    """A mapping naming a file that moved guards nothing, silently — the same reason
+    the path lists are checked against the filesystem."""
+    for derived, source in guard.DERIVED_SETS.items():
+        assert (ROOT / derived).is_file(), derived
+        assert (ROOT / source).is_file(), source
 
 
 def test_an_unrelated_change_is_not_refused(changed: list[str]) -> None:

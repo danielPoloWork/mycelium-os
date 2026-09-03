@@ -52,12 +52,30 @@ Release sets, `mycelium` retriever, before → after:
 |---|---|---|---|---:|---|
 | ours/release | 0.450 → **0.463** | 0.667 → 0.667 | 0.442 → 0.492 | 946 → 745 | reported (stale baseline, 4.22) |
 | uv/release | 0.306 → **0.492** | 0.536 → 0.714 | 0.238 → 0.438 | 2244 → 568 | **enforced**, no slice regressed |
-| uv-ingested/release | 0.385 → **0.647** | 0.583 → 0.833 | 0.386 → 0.645 | 2073 → 624 | **enforced**, no slice regressed |
+| uv-ingested/release † | 0.385 → **0.647** | 0.583 → 0.833 | 0.386 → 0.645 | 2073 → 624 | **enforced**, no slice regressed |
+
+† on the 14-case set both sides — see immediately below, where the set itself changes.
 
 Per slice, nothing regresses on any release set. The largest movements are `relationship`
 (uv 0.571 → 0.852, ingested 0.571 → 0.852), `conceptual` (uv 0.495 → 0.755, ingested
 0.333 → 0.687) and `exact` (uv 0.000 → 0.500, ingested 0.250 → 0.815). `symbol` and
 `unanswerable` are flat at 0.000 on both.
+
+**The ingested row measures a case set that then changed.** Its judgements are *derived* —
+carried from the second corpus's frozen sets by `tools/build_ingested_cases.py`, which
+computes only the anchor (ADR-0039) — and a chunking change necessarily moves them. Under
+packing the carry improves: two judgements the coverage floor had been dropping now clear it
+(`u-1008` at 0.87, `u-1013` at 1.00 — the two BUG-0018 named), one re-anchors from an ordinal
+packing deletes (`u-0012`, `#/10` → `#/0`), and one gains a second carried anchor (`u-1016`).
+The release set therefore grows **14 → 16 cases**, and its score on the set the tree now
+carries is **0.591**, not 0.647.
+
+Those two figures are not comparable and neither is a regression: scored on the *same packed
+build*, the pre-regeneration 14-case set still gives exactly 0.647, and the difference is the
+two restored cases joining the population. That is checked rather than asserted — and it is
+also why gate G3 went red on the first attempt at re-blessing, with `fact` 0.632 → 0.494 over
+a slice that went from five cases to seven. **G3 cannot see a case-set change**: its
+comparability test asks about the corpus, not the judgements. Filed as roadmap 4.24.
 
 **Against the incumbent (D-010).** The grep baseline moves too — it maps its hits onto the
 same chunks — so the comparison has to be re-taken rather than assumed:
@@ -66,7 +84,10 @@ same chunks — so the comparison has to be re-taken rather than assumed:
 |---|---:|---:|---|
 | ours/release | 0.463 | 0.271 | mycelium ahead, +71 % |
 | uv/release | 0.492 | 0.519 | **still behind, −5.2 %** (was −35 %) |
-| uv-ingested/release | 0.647 | 0.610 | mycelium ahead, +6.1 % |
+| uv-ingested/release | 0.591 | 0.566 | mycelium ahead, +4.4 % |
+
+Both ingested figures are on the regenerated 16-case set, scored against each other — the
+only pairing that means anything once the case population moves.
 
 Roadmap **4.8 stays open**. On the corpus that item is about, the product still loses; what
 changed is the size of the loss, from 35 % to 5 %. Reporting that as a win because two other
@@ -85,18 +106,47 @@ published chunks), so a dev set that tuning is allowed to see got genuinely wors
 frozen set it must not see got better. That is the honest asymmetry, recorded rather than
 smoothed.
 
-One anchor does not survive, and it is in a derived set: `u-0012` in
-`uv-docs-ingested/eval/dev.jsonl` names an ordinal the packed chunker deletes, so one of its
-twelve cases scores zero for bookkeeping. Those sets are *generated* (ADR-0039, BUG-0018), so
-the fix is to re-run their generator — which is a judgment change, and this change moves the
-retriever. Filed as roadmap 4.23.
+The derived ingested sets are regenerated here rather than deferred, because they cannot be
+deferred: `tools/build_ingested_cases.py --check` is a CI job, a derived set is a function of
+the chunker, and no ordering of two pull requests helps — the set only changes once the
+chunker does. See *A guard that had to change* below.
+
+## A guard that had to change
+
+Two CI guards could not both be satisfied, and the first chunking change after both existed
+is what surfaced it:
+
+- `ingest / lanes` runs `tools/build_ingested_cases.py --check`: the derived sets must
+  reproduce byte-for-byte from the tree ([BUG-0018], roadmap 4.16).
+- `tools/check_frozen_release_sets.py` listed the derived release set among the frozen ones,
+  so moving it while touching `chunking.py` or `config.py` was refused.
+
+A derived set is a function of the chunker. A chunking change must move it and was forbidden
+from moving it, and splitting into two pull requests does not help in either order: before
+the flip the generator reproduces what is already committed, so there is nothing to commit;
+after the flip CI is already red. The two changes are genuinely inseparable.
+
+The rule was a category error rather than a rule under strain. **Nothing in a derived set is
+judged** — every query, grade, slice and note is copied verbatim from the frozen source, and
+only the anchor is computed (ADR-0039) — so "you may not re-judge while tuning" never applied
+to it. It is replaced, not relaxed:
+
+1. A derived set may **not** move in the same change as **the source it is carried from**.
+   That is the invariant that actually protects it: moving both is indistinguishable from
+   re-fitting the source and carrying the fit across.
+2. Its contents are byte-checked against the generator on every CI run — a stronger
+   guarantee than "nobody edited this file", and one the conjunction rule never gave.
+
+Both are tests (`tests/test_frozen_release_sets.py`). The source sets are untouched by this
+change.
 
 ## Alternatives Considered
 
-- **Re-anchor `u-0012` here**, since dev sets are not frozen and the guard would allow it.
-  Rejected for the reason ADR-0042 rejected the same offer for the four `ours/dev` cases: the
-  guard covers release sets because that is what a machine can check, not because dev
-  judgments are fair game. One change moves the retriever or the judgments.
+- **Leave the derived sets alone and let `ingest / lanes` stay red.** Not an option: a
+  derived artifact whose generator no longer reproduces it is the defect BUG-0018 recorded,
+  and shipping one deliberately would retire the check that found it.
+- **Regenerate the derived sets in a follow-up PR.** Impossible in either order, for the
+  reason above. This was the plan until CI proved it could not work.
 - **Re-bless this repository's own baseline while re-blessing the others.** Rejected: it
   cannot be stamped (4.13 established that), so re-blessing it would silently answer 4.22's
   question — *should ours be gated at all, on a corpus that grows every PR* — in the middle of
@@ -141,7 +191,8 @@ retriever. Filed as roadmap 4.23.
 ## References
 
 - ROADMAP 4.15 (this item), 4.11 (the measurement), 4.12 (the re-anchoring), 4.13 (the gate),
-  4.8 (the incumbent gap this narrows and does not close), 4.22 and 4.23 (what it defers).
+  4.16 (the reproducibility check that caught the derived sets), 4.8 (the incumbent gap this
+  narrows and does not close), 4.22 and 4.24 (what it defers).
 - Spec 03 §5 (chunking policy), spec 04 §7.1 (frozen release sets), §7.3 (the gates).
 - Measured this session on three corpora, `--no-pin` builds throughout (ADR-0046), with the
   G3 verdict read before any baseline was re-blessed.

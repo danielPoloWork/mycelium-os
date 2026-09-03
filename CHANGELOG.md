@@ -77,6 +77,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   and a consumer holding one should expect `ANCHOR_GONE` and re-resolve.
 - Spec 03 §5's chunking sentence is updated rather than deviated from: tables and code
   blocks are never split, and may now share.
+- **The derived ingested judgement sets are regenerated** with the chunker (roadmap 4.23).
+  They are carried mechanically from the second corpus's frozen sets, so a chunking change
+  necessarily moves them; under packing the carry improves and the release set grows 14 → 16
+  cases, because two judgements the coverage floor had been dropping now clear it. Queries,
+  grades and slices are untouched.
+- `tools/check_frozen_release_sets.py` no longer treats a *derived* set as a judged one —
+  nothing in it is judged. Replaced by a stronger rule, not relaxed: a derived set may not
+  move in the same change as the source it is carried from, and its contents are byte-checked
+  against the generator on every CI run.
+- The tools that build a committed corpus now build it with `--no-pin`, so running a
+  generator no longer leaves 81 modified files behind.
 
 - A build that *does* pin now re-pins a document whose recorded identity was derived
   (roadmap 4.14). The plan's fast path skips the frontmatter parse for an unchanged digest

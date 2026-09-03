@@ -24,12 +24,29 @@ ROOT = Path(__file__).resolve().parent.parent
 RELEASE_SETS = (
     "eval/release.jsonl",
     "eval/corpora/uv-docs/eval/release.jsonl",
-    "eval/corpora/uv-docs-ingested/eval/release.jsonl",
 )
-"""Every frozen release set. The third one is *derived* — its judgements are carried
-from the second, not written — so an ingestion change may legitimately move it, and
-ingestion is deliberately not in `TUNING_PATHS`. What stays refused is the thing the
-rule is about: moving the retriever and the judgements in one change."""
+"""Every *judged* frozen release set — the ones a human wrote and could re-fit."""
+
+DERIVED_SETS = {
+    "eval/corpora/uv-docs-ingested/eval/release.jsonl": "eval/corpora/uv-docs/eval/release.jsonl",
+    "eval/corpora/uv-docs-ingested/eval/dev.jsonl": "eval/corpora/uv-docs/eval/dev.jsonl",
+}
+"""Derived set → the judged set it is carried from (`tools/build_ingested_cases.py`).
+
+Nothing in a derived set is judged: every query, grade, slice and note is copied
+verbatim from the source, and only the *anchor* is computed (ADR-0039). So the
+conjunction rule below does not apply to it, and applying it was a category error
+that only became visible at roadmap 4.15 — the first chunking change after both
+guards existed.
+
+The bind is that a derived set is a function of the chunker. A chunking change
+*must* move it (the `ingest / lanes` job fails otherwise, [BUG-0018]) and the
+conjunction rule *forbade* moving it, so the two guards could not both be
+satisfied and no ordering of two PRs helped: the set only changes once the
+chunker does. Nothing weaker replaces the rule — what replaces it is stronger.
+A derived set may not move in the same change as **its source**, and its contents
+are byte-checked against the generator on every CI run, which is a better
+guarantee than "nobody edited this file" (roadmap 4.15, ADR-0047)."""
 
 TUNING_PATHS = (
     "src/mycelium/retrieval.py",
@@ -70,6 +87,20 @@ def main() -> int:
 
     judged = [path for path in changed if path in RELEASE_SETS]
     tuned = [path for path in changed if path.startswith(TUNING_PATHS)]
+    derived = [path for path in changed if path in DERIVED_SETS]
+
+    refitted = [(path, DERIVED_SETS[path]) for path in derived if DERIVED_SETS[path] in changed]
+    if refitted:
+        print("This change moves a derived set *and* the judgements it is carried from:")
+        for path, source in refitted:
+            print(f"  derived: {path}")
+            print(f"  source:  {source}")
+        print(
+            "\nA derived set may move with the machinery — it is regenerated, not written. "
+            "It may not move in the same change as the judgements it copies, because then "
+            "nothing distinguishes a carry from a re-fit (ADR-0039, ADR-0047)."
+        )
+        return 1
 
     if judged and tuned:
         print("This change re-judges a frozen release set *and* tunes retrieval:")
@@ -84,9 +115,11 @@ def main() -> int:
         )
         return 1
 
+    if derived:
+        print(f"derived set(s) regenerated, source judgements untouched: {', '.join(derived)}")
     if judged:
         print(f"release set(s) changed, no retrieval change alongside: {', '.join(judged)}")
-    else:
+    elif not derived:
         print("release sets untouched")
     return 0
 
