@@ -21,6 +21,9 @@ G2      **Enforced when the hybrid retriever runs** (roadmap 3.3). Hybrid must
 G3      **Enforced against a committed baseline** (roadmap 3.7). No slice may
         regress more than 2 % against `eval/baselines/<set>.json`. Without one
         the gate says so rather than passing silently; `--bless` writes it.
+        Comparability is judged on the *documents*, not on where their chunk
+        boundaries fall, so a chunking change is gated rather than excused —
+        the blindness roadmap 4.13 removed (ADR-0045).
 G4      **Enforced.** False-answer rate on `unanswerable` cases ≤ 5 %: a query
         whose vocabulary the corpus does not contain must return nothing rather
         than confident noise.
@@ -44,6 +47,7 @@ import platform
 import time
 from collections.abc import Sequence
 from contextlib import suppress
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Final
@@ -60,7 +64,7 @@ from mycelium.eval.metrics import (
     reciprocal_rank,
 )
 from mycelium.eval.retrievers import Retriever, build_retriever, resolvable_anchors
-from mycelium.sdk.identity import digest_json, new_ulid
+from mycelium.sdk.identity import digest_json, digest_text, new_ulid
 from mycelium.sdk.types import (
     CaseResult,
     EvalCase,
@@ -75,8 +79,9 @@ __all__ = [
     "BASELINES_DIRNAME",
     "EVAL_DIRNAME",
     "QUERY_BUDGET_P95_MS",
+    "CorpusFingerprint",
     "baseline_path",
-    "corpus_digest_of",
+    "corpus_fingerprint_of",
     "read_baseline",
     "write_baseline",
     "write_run",
@@ -206,35 +211,82 @@ def _relative(after: float, before: float) -> float:
     return (after - before) / before
 
 
-def corpus_digest_of(root: Path, snapshot_id: str = "") -> str:
-    """A content fingerprint of the published corpus — what makes two runs comparable.
+@dataclass(frozen=True, slots=True)
+class CorpusFingerprint:
+    """Two questions about a published corpus, deliberately kept apart.
 
-    Folded from the chunks' own content digests, deliberately *not* from the
-    manifest's `artifact_digests`. Those are folded over chunk *records*, which
-    carry `doc_id`, and a repository whose documents are not yet pinned mints
-    fresh ULIDs on every build — so the manifest's digest differs between two
-    builds of identical text, and a gate keyed on it would never enforce
-    anywhere it matters, CI first among them (ADR-0021).
+    Gate G3 needs a controlled variable, and until roadmap 4.13 it had only one
+    fingerprint to ask about — the fold of chunk digests — which conflated *what
+    the corpus says* with *where its boundaries fall*. That made the gate meant
+    to catch a bad chunking change blind to chunking changes by construction: any
+    change to boundaries moved the digest, so the gate took its
+    "not comparable, reported not enforced" branch and said nothing about the one
+    class of change it was best placed to judge (ADR-0045).
 
-    Chunk digests are digests of text. Same documents, same fingerprint, whatever
-    identities the build happened to assign.
+    ``content``
+        What the corpus says: per document, a digest of its text as the published
+        chunks carry it, with whitespace collapsed so the *placement* of the
+        boundaries cannot reach it. Two builds of the same documents agree
+        whether or not the chunker moved between them. This is what decides
+        whether G3 enforces.
+
+    ``chunks``
+        How the corpus was cut: the fold of the chunks' own content digests —
+        exactly the fingerprint BUG-0014 introduced, unchanged in meaning so a
+        baseline blessed before this split still means what it said. Now it is
+        *reported* rather than gated on, which is how a reviewer learns that
+        boundaries moved and that G3 enforced across the move on purpose.
+
+    Neither carries identity. Chunk digests are digests of text, and the content
+    fold is built from those same texts, so a repository whose documents are not
+    yet pinned — minting a fresh ULID per document on every build — produces the
+    same fingerprints twice. A fold over anything identity-bearing would never
+    match in CI, where every run starts from an empty store (ADR-0021).
+    """
+
+    content: str
+    chunks: str
+
+    def __bool__(self) -> bool:
+        """Whether a fingerprint was taken at all — an unreadable store gives none."""
+        return bool(self.content or self.chunks)
+
+
+def corpus_fingerprint_of(root: Path, snapshot_id: str = "") -> CorpusFingerprint:
+    """Fingerprint the published corpus at `root` — see :class:`CorpusFingerprint`.
+
+    Both folds come from one pass over the published chunks, deliberately *not*
+    from the manifest's `artifact_digests`: those fold chunk *records*, which
+    carry `doc_id` (ADR-0021, BUG-0014).
+
+    Chunks are folded per document **in document order**, taken from each chunk's
+    line span rather than from its anchor. Anchors sort lexicographically, so
+    `…/10` precedes `…/2`, and the order in which a document's chunks concatenate
+    would then depend on how many there are — which is the very thing the content
+    fold must not be able to see.
     """
     try:
         with SqliteStore.open(root, read_only=True) as store:
-            digests = sorted(
-                chunk.chunk_digest
-                for doc_id in store.document_ids()
-                for chunk in store.chunks_of(doc_id)
-            )
+            chunk_digests: list[str] = []
+            documents: list[list[str]] = []
+            for doc_id in store.document_ids():
+                chunks = sorted(store.chunks_of(doc_id), key=lambda chunk: chunk.lines)
+                chunk_digests.extend(chunk.chunk_digest for chunk in chunks)
+                record = store.get_document(doc_id)
+                body = " ".join(" ".join(chunk.text.split()) for chunk in chunks)
+                documents.append([record.path if record else doc_id, digest_text(body)])
     except Exception:  # noqa: BLE001 - a fingerprint is never worth failing a run for
-        return ""
-    return digest_json(digests)
+        return CorpusFingerprint(content="", chunks="")
+    return CorpusFingerprint(
+        content=digest_json(sorted(documents)),
+        chunks=digest_json(sorted(chunk_digests)),
+    )
 
 
 def _gate_g3(
     per_slice: dict[str, MetricSummary],
     baseline: dict[str, object] | None,
-    corpus_digest: str,
+    fingerprint: CorpusFingerprint,
 ) -> GateResult:
     """Gate G3 — no release may regress a protected slice by more than 2 % (spec 04 §7.3).
 
@@ -246,8 +298,19 @@ def _gate_g3(
     rather than failing on it. Anything else makes G3 fire on documentation and
     trains everyone to re-bless, which is how a gate becomes decoration.
 
-    "The same corpus" is the snapshot manifest's own chunk digest, so the test is
-    exact rather than a heuristic over counts.
+    "The same corpus" means *the same documents*, and it stopped meaning that
+    when it was defined as the fold of chunk digests: a chunking change moves
+    every boundary, so the gate best placed to judge one took its
+    not-comparable branch and abstained (roadmap 4.13, ADR-0045). Enforcement now
+    keys on :attr:`CorpusFingerprint.content`, which the placement of the
+    boundaries cannot reach, and the chunk fold is *reported* — so a chunking
+    change is gated and visibly named, rather than silently excused.
+
+    A baseline blessed before that split carries no content fingerprint. Rather
+    than guess, the gate falls back to the comparison that baseline was written
+    for and says so, naming `--bless` as what arms the stronger one. Silently
+    treating a missing field as a match would let a stale baseline enforce
+    against a corpus nobody checked.
 
     The baseline is a committed file, not the previous run in `.mycelium/`: a
     gate comparing against whatever happens to be on this machine compares
@@ -281,8 +344,19 @@ def _gate_g3(
         if delta < -0.02:
             regressions.append(f"{name} {before:.4f} -> {summary.ndcg_at_10:.4f} ({delta:+.1%})")
 
-    baseline_corpus = baseline.get("corpus_digest")
-    same_corpus = baseline_corpus == corpus_digest
+    baseline_content = baseline.get("content_digest")
+    baseline_chunks = baseline.get("corpus_digest")
+    recut = baseline_chunks != fingerprint.chunks
+
+    if isinstance(baseline_content, str) and baseline_content:
+        same_corpus = baseline_content == fingerprint.content
+        legacy = False
+    else:
+        # Blessed before the content fingerprint existed: compare on what that
+        # baseline actually recorded, and say which comparison ran.
+        same_corpus = not recut
+        legacy = True
+
     fresh = sorted(set(per_slice) - set(slices))
 
     detail = f"{len(slices)} slice(s) compared"
@@ -297,8 +371,22 @@ def _gate_g3(
             "`mycelium eval --bless` once the corpus is the one you mean to measure"
         )
         return GateResult(gate="G3 No regression", passed=True, detail=detail)
-    if not regressions:
-        detail += "; same corpus, no slice regressed"
+    if legacy:
+        detail += (
+            "; this baseline predates the content fingerprint, so comparability was "
+            "judged on chunk boundaries - re-bless with `mycelium eval --bless` to "
+            "enforce across a chunking change (roadmap 4.13)"
+        )
+    elif recut:
+        # The case roadmap 4.13 exists for: same documents, different boundaries.
+        detail += (
+            "; the same documents cut differently - a chunking change, enforced rather "
+            "than excused (ADR-0045)"
+        )
+    else:
+        detail += "; same corpus, same boundaries"
+    if not regressions and not legacy:
+        detail += ", no slice regressed"
     return GateResult(gate="G3 No regression", passed=not regressions, detail=detail)
 
 
@@ -411,12 +499,21 @@ def read_baseline(root: Path, case_set: str, retriever: str) -> dict[str, object
     return entry if isinstance(entry, dict) else None
 
 
-def write_baseline(root: Path, manifest: EvalRunManifest, corpus_digest: str = "") -> Path:
+def write_baseline(
+    root: Path,
+    manifest: EvalRunManifest,
+    fingerprint: CorpusFingerprint | None = None,
+) -> Path:
     """Freeze this run's per-slice scores as the baseline gate G3 compares against.
 
     Committed to the repository rather than left in `.mycelium/`, because a
     baseline nobody can see is a baseline nobody can challenge — and because CI
     starts from an empty derived store every time (spec 04 §7.5).
+
+    Both fingerprints are recorded. `content_digest` is what G3 keys enforcement
+    on; `corpus_digest` keeps the name and the meaning it has had since
+    BUG-0014 — the fold of chunk boundaries — so a reviewer reading two baselines
+    side by side can tell a re-cut corpus from a changed one.
     """
     path = baseline_path(root, manifest.case_set)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -426,12 +523,19 @@ def write_baseline(root: Path, manifest: EvalRunManifest, corpus_digest: str = "
             loaded = json.loads(path.read_text(encoding="utf-8"))
             if isinstance(loaded, dict):
                 data = loaded
+    # Explicit `is None` rather than truthiness: an unreadable store yields a
+    # falsy fingerprint, and "we looked and found nothing" must be recorded as
+    # such rather than silently replaced by a default that says the same thing.
+    taken = CorpusFingerprint(content="", chunks="") if fingerprint is None else fingerprint
     data[manifest.retriever] = {
         "blessed_from_snapshot": manifest.snapshot_id,
         # What makes the comparison apples-to-apples: two runs over the same
-        # documents share this digest, and two runs over different corpora do
-        # not, whatever their counts happen to be (ADR-0021).
-        "corpus_digest": corpus_digest,
+        # documents share this digest, whatever their chunk counts or their
+        # assigned identities happen to be (ADR-0021, ADR-0045).
+        "content_digest": taken.content,
+        # How those documents were cut. Reported by G3, never gated on — the
+        # distinction roadmap 4.13 exists to draw.
+        "corpus_digest": taken.chunks,
         "toolchain": manifest.toolchain.model_dump(mode="json"),
         "overall_ndcg_at_10": round(manifest.overall.ndcg_at_10, 6),
         "per_slice": {
@@ -488,10 +592,10 @@ def run_evaluation(
         retriever_config = dict(retriever.config)
 
         chunks = store.counts()["chunks"]
-        corpus_digest = corpus_digest_of(root, snapshot)
+        fingerprint = corpus_fingerprint_of(root, snapshot)
         gates = list(_gates(overall, sum(1 for case in cases if not case.answerable)))
         gates.append(
-            _gate_g3(per_slice, read_baseline(root, case_set, retriever_name), corpus_digest)
+            _gate_g3(per_slice, read_baseline(root, case_set, retriever_name), fingerprint)
         )
         gates.append(_gate_g5(overall, chunks))
         gates.append(_gate_g6())

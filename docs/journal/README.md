@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-02 — the gate that could not see the change it was for (roadmap 4.13)](2026/09/2026-09-02-g3-sees-a-chunking-change.md)
 - [2026-09-02 — the case that was answered by the word "off" (roadmap 4.17)](2026/09/2026-09-02-relationship-slice-decay.md)
 - [2026-09-02 — the suspect was wrong, and the real one was the ruled-out line (roadmap 4.16)](2026/09/2026-09-02-reproducible-ingested-carry.md)
 - [2026-09-02 — judging across two chunkers (roadmap 4.12)](2026/09/2026-09-02-re-anchor-for-packing.md)

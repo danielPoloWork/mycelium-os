@@ -16,6 +16,7 @@ import pytest
 
 from mycelium.build import build
 from mycelium.eval import (
+    CorpusFingerprint,
     EvaluationError,
     GrepRetriever,
     MyceliumRetriever,
@@ -367,8 +368,12 @@ def test_g3_enforces_only_on_a_comparable_corpus(corpus: Path) -> None:
             latency_p95_ms=1,
         )
 
-    here = "sha256:same"
-    baseline = {"per_slice": {"fact": 0.80}, "corpus_digest": here}
+    here = CorpusFingerprint(content="sha256:docs", chunks="sha256:cuts")
+    baseline = {
+        "per_slice": {"fact": 0.80},
+        "content_digest": here.content,
+        "corpus_digest": here.chunks,
+    }
 
     assert _gate_g3({"fact": summary(0.80)}, baseline, here).passed
     # Inside the 2 % the spec allows.
@@ -377,23 +382,148 @@ def test_g3_enforces_only_on_a_comparable_corpus(corpus: Path) -> None:
     regressed = _gate_g3({"fact": summary(0.60)}, baseline, here)
     assert not regressed.passed
     assert "fact" in regressed.detail
+    assert "same corpus, same boundaries" in regressed.detail
 
     # The same drop, measured over a corpus the baseline never saw: reported, not
     # enforced, and the detail says which it is.
-    elsewhere = _gate_g3({"fact": summary(0.60)}, baseline, "sha256:different")
+    elsewhere = _gate_g3(
+        {"fact": summary(0.60)},
+        baseline,
+        CorpusFingerprint(content="sha256:other-docs", chunks="sha256:other-cuts"),
+    )
     assert elsewhere.passed
     assert "not comparable" in elsewhere.detail
     assert "--bless" in elsewhere.detail
 
 
+def test_g3_enforces_across_a_chunking_change() -> None:
+    """The gap roadmap 4.13 exists to close (ADR-0045).
+
+    Comparability used to be the fold of chunk digests, so moving a boundary took
+    G3's not-comparable branch — and the gate best placed to judge a chunking
+    change was the one change it could never see. Enforcement now keys on the
+    documents, which moving a boundary cannot change.
+    """
+    from mycelium.eval.harness import _gate_g3
+    from mycelium.sdk.types import MetricSummary
+
+    def summary(score: float) -> MetricSummary:
+        return MetricSummary(
+            cases=1,
+            ndcg_at_10=score,
+            recall_at_10=1.0,
+            recall_at_50=1.0,
+            mrr=1.0,
+            citation_coverage=1.0,
+            false_answer_rate=0.0,
+            latency_p50_ms=1,
+            latency_p95_ms=1,
+        )
+
+    baseline = {
+        "per_slice": {"fact": 0.80},
+        "content_digest": "sha256:docs",
+        "corpus_digest": "sha256:before",
+    }
+    recut = CorpusFingerprint(content="sha256:docs", chunks="sha256:after")
+
+    verdict = _gate_g3({"fact": summary(0.60)}, baseline, recut)
+    assert not verdict.passed, "a chunking change that regresses a slice must fail"
+    assert "cut differently" in verdict.detail, "and the report must say why it moved"
+
+    held = _gate_g3({"fact": summary(0.81)}, baseline, recut)
+    assert held.passed
+    assert "cut differently" in held.detail
+
+
+def test_g3_falls_back_and_says_so_on_a_baseline_blessed_before_the_split() -> None:
+    """A baseline with no content fingerprint gets the comparison it was written for.
+
+    Treating the missing field as a match would let a stale baseline enforce
+    against a corpus nobody checked; treating it as a mismatch would silently
+    stop enforcing everywhere. It gets the old comparison, and the detail names
+    what arms the new one.
+    """
+    from mycelium.eval.harness import _gate_g3
+    from mycelium.sdk.types import MetricSummary
+
+    def summary(score: float) -> MetricSummary:
+        return MetricSummary(
+            cases=1,
+            ndcg_at_10=score,
+            recall_at_10=1.0,
+            recall_at_50=1.0,
+            mrr=1.0,
+            citation_coverage=1.0,
+            false_answer_rate=0.0,
+            latency_p50_ms=1,
+            latency_p95_ms=1,
+        )
+
+    legacy = {"per_slice": {"fact": 0.80}, "corpus_digest": "sha256:cuts"}
+
+    same = _gate_g3(
+        {"fact": summary(0.60)},
+        legacy,
+        CorpusFingerprint(content="sha256:docs", chunks="sha256:cuts"),
+    )
+    assert not same.passed, "the old comparison still enforces where it applied"
+    assert "predates the content fingerprint" in same.detail
+    assert "--bless" in same.detail
+
+    recut = _gate_g3(
+        {"fact": summary(0.60)},
+        legacy,
+        CorpusFingerprint(content="sha256:docs", chunks="sha256:moved"),
+    )
+    assert recut.passed, "and it still abstains where it did before - no silent change"
+    assert "not comparable" in recut.detail
+
+
+def test_the_content_fingerprint_survives_a_chunking_change(tmp_path: Path) -> None:
+    """The property the gate now rests on, measured rather than asserted.
+
+    One corpus, compiled twice — once with `pack_atomic` off, once on. The chunk
+    fold has to move, because that is what packing does; the content fold has to
+    hold, because the documents did not change (ADR-0042, ADR-0045).
+    """
+    from mycelium.build import build
+    from mycelium.eval.harness import corpus_fingerprint_of
+
+    source = (
+        "# Retries\n\nDeliveries are retried five times.\n\n"
+        "| attempt | delay |\n|---|---|\n| 1 | 1 s |\n\n"
+        "```python\ndelay = 2 ** attempt\n```\n\nBackoff doubles each time.\n"
+    )
+    taken = {}
+    for packed in (False, True):
+        root = tmp_path / ("on" if packed else "off")
+        (root / "knowledge").mkdir(parents=True)
+        (root / "knowledge" / "a.md").write_text(source, encoding="utf-8", newline="\n")
+        (root / "mycelium.toml").write_text(
+            f"[chunking]\npack_atomic = {str(packed).lower()}\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        build(root)
+        with SqliteStore.open(root, read_only=True) as store:
+            count = store.counts()["chunks"]
+        taken[packed] = (corpus_fingerprint_of(root), count)
+
+    (off, off_chunks), (on, on_chunks) = taken[False], taken[True]
+    assert on_chunks < off_chunks, "the fixture has to actually be re-cut by packing"
+    assert off.chunks != on.chunks, "the chunk fold is what moves"
+    assert off.content == on.content, "the content fold is what holds"
+
+
 def test_the_corpus_fingerprint_ignores_document_identity(tmp_path: Path) -> None:
-    """It is folded from chunk *content* digests, not the manifest's record digests:
+    """Both folds are built from chunk *text*, not from the manifest's record digests:
     those carry `doc_id`, and an unpinned repository mints fresh ULIDs every build —
     so a gate keyed on them would never enforce in CI, the one place it must."""
     from mycelium.build import build
-    from mycelium.eval.harness import corpus_digest_of
+    from mycelium.eval.harness import corpus_fingerprint_of
 
-    digests = []
+    taken = []
     for name in ("one", "two"):
         root = tmp_path / name
         (root / "knowledge").mkdir(parents=True)
@@ -403,10 +533,12 @@ def test_the_corpus_fingerprint_ignores_document_identity(tmp_path: Path) -> Non
             newline="\n",
         )
         build(root)
-        digests.append(corpus_digest_of(root))
+        taken.append(corpus_fingerprint_of(root))
 
-    assert digests[0] == digests[1]
-    assert digests[0].startswith("sha256:")
+    assert taken[0] == taken[1]
+    assert taken[0].content.startswith("sha256:")
+    assert taken[0].chunks.startswith("sha256:")
+    assert taken[0].content != taken[0].chunks, "two questions, two answers"
 
 
 def test_g5_reports_the_corpus_it_measured(corpus: Path) -> None:
@@ -423,16 +555,20 @@ def test_g6_is_delegated_not_silently_dropped(corpus: Path) -> None:
 
 
 def test_blessing_writes_a_baseline_that_g3_then_reads(tmp_path: Path, corpus: Path) -> None:
-    from mycelium.eval.harness import read_baseline, write_baseline
+    from mycelium.eval.harness import corpus_fingerprint_of, read_baseline, write_baseline
 
     manifest = run_evaluation(corpus, load_cases(CASES), case_set="cases.jsonl")
-    written = write_baseline(tmp_path, manifest)
+    written = write_baseline(tmp_path, manifest, corpus_fingerprint_of(corpus))
 
     assert written.is_file()
     baseline = read_baseline(tmp_path, "cases.jsonl", "mycelium")
     assert baseline is not None
     assert set(baseline["per_slice"]) == set(manifest.per_slice)  # type: ignore[index]
-    assert "corpus_digest" in baseline  # what makes the comparison comparable
+    # Both fingerprints: the first decides whether G3 enforces, the second is what
+    # it reports so a reviewer can tell a re-cut corpus from a changed one (ADR-0045).
+    assert baseline["content_digest"]
+    assert baseline["corpus_digest"]
+    assert baseline["content_digest"] != baseline["corpus_digest"]
 
 
 def test_the_committed_baseline_covers_the_gated_case_set() -> None:
@@ -450,6 +586,25 @@ def test_the_committed_baseline_covers_the_gated_case_set() -> None:
     slices = {slice_.value for case in load_cases(RELEASE) for slice_ in case.slices}
     assert set(per_slice) >= slices - {"unanswerable"}
     assert baseline["corpus_digest"]  # blessed against a named corpus, not a mood
+
+
+def test_the_vendored_corpora_carry_the_fingerprint_g3_enforces_on() -> None:
+    """Roadmap 4.13: without this field G3 falls back to comparing chunk boundaries and
+    abstains on a chunking change, which is exactly the abstention 4.15 needs not to
+    happen. The vendored corpora are stamped because their documents do not move.
+
+    This repository's own baseline is deliberately *not* asserted here. Its corpus grows
+    with every PR, so it was already stale when 4.13 arrived and stamping it would have
+    attached today's corpus to yesterday's scores; the tool refuses, and re-blessing it is
+    a decision filed as roadmap 4.22 (ADR-0045)."""
+    from mycelium.eval.harness import read_baseline
+
+    for corpus_root in (UV_CORPUS, INGESTED_CORPUS):
+        baseline = read_baseline(corpus_root, "release.jsonl", "mycelium")
+        assert baseline is not None, corpus_root
+        content = baseline.get("content_digest")
+        assert isinstance(content, str) and content.startswith("sha256:"), corpus_root
+        assert content != baseline.get("corpus_digest"), "two questions, two answers"
 
 
 def test_every_corpus_carries_a_dev_and_a_release_set() -> None:
