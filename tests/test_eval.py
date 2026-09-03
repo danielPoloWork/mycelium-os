@@ -9,12 +9,15 @@ comparison D-010 insists on: Mycelium against the agent's grep loop.
 """
 
 import json
+import re
 import sys
 from pathlib import Path
 
 import pytest
 
 from mycelium.build import build
+from mycelium.config import load_config
+from mycelium.corpus import CorpusScope, discover
 from mycelium.eval import (
     CorpusFingerprint,
     EvaluationError,
@@ -714,3 +717,39 @@ def test_the_sets_use_both_notations_deliberately() -> None:
     chunks = [anchor for anchor in anchors if not anchor.endswith("/")]
     assert sections, "no section judgments: 3.17 did not happen"
     assert chunks, "every judgment is section-scoped: that is a sweep, not a judgment"
+
+
+def test_no_corpus_document_answers_an_unanswerable_case() -> None:
+    """An `unanswerable` query's words may not appear in the corpus (roadmap 4.19).
+
+    This repository's documentation *is* its corpus, which makes the judged
+    `unanswerable` cases fragile in a way no other corpus's are: writing one of
+    their words into a document makes that case answerable, and gate G4 then
+    fails on the prose rather than on the retriever. It is BUG-0007's family, and
+    it happened while ADR-0048 was being written — the first draft quoted the
+    query it was explaining, CI failed G4, and the ADR now names the case by id.
+
+    Roadmap 4.19 made it easier to trip: stemming means a *near* word is enough,
+    so the assertion is on every term rather than on the whole query.
+    """
+    root = Path(__file__).parent.parent
+    documents = discover(root, CorpusScope.of(load_config(root).project))
+    bodies = {path: path.read_text(encoding="utf-8").lower() for path in documents}
+
+    leaked: dict[str, list[str]] = {}
+    for name in ("dev.jsonl", "release.jsonl"):
+        for case in load_cases(EVAL / name):
+            if case.answerable:
+                continue
+            for term in re.findall(r"\w{4,}", case.query.lower()):
+                found = [
+                    path.relative_to(root).as_posix()
+                    for path, body in bodies.items()
+                    if re.search(rf"\b{re.escape(term)}\b", body)
+                ]
+                if found:
+                    leaked[f"{case.case_id}/{term}"] = found
+    assert leaked == {}, (
+        "these words belong to an unanswerable judged query and are now in the corpus, "
+        "which makes the case answerable and gate G4 red"
+    )

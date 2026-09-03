@@ -141,11 +141,11 @@ regresses the `exact` slice on one corpus and `conceptual` on the other, and it 
 G3 on both.
 
 A stem can **reorder** the documents your words found and can never introduce one of its
-own. That is not a detail: Porter's algorithm conflates `escapement` with `escape`, so
-without the rule a question about watchmaking gets answered out of a corpus that has no
-watchmaking in it — and answering what you cannot answer is worse than missing it. The
-price is that a query *none* of whose words appear as you spelled them still misses. The
-numbers, the two variants refused, and the price are in
+own. That is not a detail: Porter's algorithm over-stems — `organization` and `organ`
+collapse to the same token — so without the rule a question about something this corpus
+does not contain gets answered anyway, and answering what you cannot answer is worse than
+missing it. The price is that a query *none* of whose words appear as you spelled them
+still misses. The numbers, the two variants refused, and the price are in
 [ADR-0048](docs/adr/0048-index-the-stem-beside-the-surface-form.md).
 
 ### Ingestion picks its parser, and you pick which one

@@ -24,10 +24,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   **0.548**, the ingested corpus **0.647**, `relationship` on our own set 0.169 → **0.346**,
   and **no slice regresses on any release set**.
   **A surface hit is the precondition for a stem hit**, so stems reorder what the surface
-  index found and never introduce a document — without that, Porter's conflation of
-  `escapement` with `escape` answered a watchmaking query out of a corpus that has none,
-  and gate G4 failed. The cost is that a query *none* of whose words the corpus spells
-  literally still misses; that is roadmap 4.23.
+  index found and never introduce a document — without that, Porter's over-stemming
+  (`organization` and `organ` collapse to one token) answered a judged `unanswerable` case
+  out of a corpus that does not contain its subject, and gate G4 failed. The cost is that a
+  query *none* of whose words the corpus spells literally still misses; that is roadmap
+  4.23.
 
 - **The watcher's infinite-rebuild guard was covered by a test that passed with the guard
   deleted** ([BUG-0020](docs/bugs/2026/09/BUG-0020-the-rebuild-loop-guard-was-covered-by-a-vacuous-test.md),

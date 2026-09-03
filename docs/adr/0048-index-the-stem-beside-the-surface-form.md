@@ -56,10 +56,18 @@ so stems *reorder* the documents the surface index already found and can never i
 one of their own. That is [ADR-0025](0025-make-lexical-evidence-the-vector-legs-precondition.md)'s
 rule one layer down — the weaker signal is gated by the stronger — and it is not a
 refinement, it is what makes the change shippable. Without it the change **fails gate
-G4**, and it fails it for a real reason rather than a metric artefact: Porter conflates
-`escapement` with `escape`, so a query for `escapement tourbillon mainspring` retrieves
-five documents about escape hatches out of a corpus with no watchmaking in it. G4 counts
-that as a false answer because it is one.
+G4**, and it fails it for a real reason rather than a metric artefact: Porter over-stems.
+`organization` and `organ` reduce to the same token, and so do one word of judged case
+`u-0010` and a word this repository uses on nearly every page. Without the precondition
+that case retrieved five documents about something else entirely, and G4 counted it as a
+false answer because it is one.
+
+**That case's query is named by id and not quoted here**, and the reason is worth a
+sentence: this repository's documentation *is* its corpus. The first draft of this ADR
+spelled the three words out, which put them in the index, which made an `unanswerable`
+case answerable — and CI failed G4 on the *documentation* rather than on the retriever.
+It is BUG-0007's family, and `test_no_corpus_document_answers_an_unanswerable_case` now
+keeps it from happening quietly.
 
 Everything else stays: one virtual table, one BM25 computation, no fusion stage, no
 re-ranking pass, and `unicode61` still the tokenizer. Adding columns is a store-schema
@@ -97,6 +105,11 @@ Per slice on the release sets, against what ships today — **no slice regresses
 `relationship` on our own release set doubles — 4.17's case is retrieved again — and the
 third corpus (`uv-docs-ingested`) reaches 0.647 with G3 enforcing and no slice regressed.
 
+Every row above is measured on the corpus as it stood when this change began, before and
+after, so the comparison holds one thing at a time. The gate run on the corpus this change
+actually commits — fifteen documents larger, four of them its own — reads 0.504 on
+ours/release, with every gate green.
+
 **The stem weight is not tuned to a gate.** The dev sets were swept first, and every value
 from 0.05 to 0.25 clears G3 on both release sets while 0.35 and above fails it on
 `conceptual` by −12 %. The dev curve is a plateau over that whole region — 1.15 to 1.22 as
@@ -121,8 +134,8 @@ rather than approximated with a heuristic here.
   (uv, −18.5 %), because it deletes the surface form the `exact` slice is about. Refused
   once by ADR-0044 and re-refused here against a corpus and chunker that have both moved.
 - **Expansion without the precondition.** Better than the shipped variant on three of four
-  sets and it **fails gate G4**: `escapement` → `escap` answers a watchmaking query out of
-  this corpus. G4 is enforced, not comparability-dependent (NFR-5), and a retriever that
+  sets and it **fails gate G4**: an over-stemmed query term answers judged case `u-0010`
+  out of this corpus. G4 is enforced, not comparability-dependent (NFR-5), and a retriever that
   invents an answer is worse than one that misses it. The numbers are in the table above so
   the cost of the precondition is visible rather than asserted.
 - **A second FTS table with the `porter` tokenizer, fused with the first.** No stemmer to
@@ -139,9 +152,9 @@ rather than approximated with a heuristic here.
   determinism corpus both ways and requires agreement.
 - **Porter2 / Snowball English** instead of Porter (1980). Rejected: it would forfeit that
   cross-check for a stemmer whose known improvements are in areas this corpus does not
-  exercise, and `escapement`/`escape` conflates under both.
+  exercise, and the conflation that broke G4 here happens under both.
 - **Expand only query terms whose stem is unambiguous in the corpus** — a document-frequency
-  test that would let `signs` through and stop `escapement`. Rejected: it is a new heuristic
+  test that would let `signs` through and stop the over-stemmed term. Rejected: it is a new heuristic
   with a new threshold, decided on the same thin slices 4.20 is open about, and the
   precondition achieves the safety property with no parameter at all.
 - **Re-bless the release baselines here.** Rejected: 4.22 owns that decision explicitly and
