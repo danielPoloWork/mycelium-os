@@ -32,7 +32,7 @@ from typing import Final
 
 from mycelium.config import RetrievalConfig
 from mycelium.embedding import Embedder
-from mycelium.store import SearchFilters, SearchHit, SqliteStore
+from mycelium.store import SearchFilters, SearchHit, SqliteStore, TermHits
 
 __all__ = [
     "DEFAULT_LIMIT",
@@ -85,6 +85,13 @@ class SearchOutcome:
     timings_ms: dict[str, int] = field(default_factory=dict)
     """Per-stage wall time. `mycelium_explain` promises it (spec 05 §3.4), and a
     leg that has quietly become the slow one should be visible without a profiler."""
+    terms: tuple[TermHits, ...] = ()
+    """What each query word reached in the lexical index — empty unless asked for.
+
+    Ranking is silent about what it did *not* find, so a query carried by one of
+    its five words looks exactly like a query carried by all five (roadmap 4.21,
+    ADR-0044). This is that silence, ended. Populated only when `search` is
+    called with `explain=True`, because it costs two index queries per term."""
 
     def explain(self) -> dict[str, object]:
         return {
@@ -92,7 +99,13 @@ class SearchOutcome:
             "degraded": list(self.degraded),
             "notes": list(self.notes),
             "timings_ms": dict(self.timings_ms),
+            "terms": [item.as_dict() for item in self.terms],
         }
+
+    @property
+    def dead_terms(self) -> tuple[TermHits, ...]:
+        """Query words this corpus contains in no form at all."""
+        return tuple(item for item in self.terms if item.unmatched)
 
 
 def reciprocal_rank_fusion(
@@ -167,6 +180,7 @@ def search(
     config: RetrievalConfig | None = None,
     embedder: Embedder | None = None,
     prefix: bool = False,
+    explain: bool = False,
 ) -> SearchOutcome:
     """Run the configured candidate generators and fuse them.
 
@@ -184,6 +198,11 @@ def search(
     Both legs are generated `vector_candidates` deep regardless of `limit`,
     because fusion needs depth to work with: fusing two top-10 lists throws away
     precisely the agreement that makes RRF worth doing.
+
+    `explain=True` additionally counts what each query word reaches, which is the
+    one question ranking cannot answer about itself (roadmap 4.21). It is off by
+    default because it costs two index queries per term and the harness that
+    measures p95 latency runs thousands of queries.
     """
     settings = config or RetrievalConfig()
     filters, policy_note = _serve_only(filters, settings)
@@ -246,6 +265,18 @@ def search(
     started = time.perf_counter()
     fused = reciprocal_rank_fusion(lists, k=RRF_K, limit=limit)
     timings["fusion"] = _elapsed_ms(started)
+
+    terms: tuple[TermHits, ...] = ()
+    if explain:
+        started = time.perf_counter()
+        terms = store.term_hits(query, filters=filters)
+        timings["terms"] = _elapsed_ms(started)
+        dead = [item.term for item in terms if item.unmatched]
+        if dead:
+            notes.append(
+                f"{len(dead)} query term(s) match nothing in this corpus, in any "
+                f"inflection: {', '.join(dead)}"
+            )
     timings["total"] = sum(timings.values())
 
     return SearchOutcome(
@@ -254,6 +285,7 @@ def search(
         degraded=tuple(degraded),
         notes=tuple(notes),
         timings_ms=timings,
+        terms=terms,
     )
 
 

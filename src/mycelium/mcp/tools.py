@@ -153,9 +153,10 @@ TOOL_SCHEMAS: Final[list[dict[str, Any]]] = [
         "name": "mycelium_explain",
         "description": (
             "Explain how this snapshot would answer a query: the retrieval plan, "
-            "which candidate generators ran, what each contributed, per-stage "
-            "timings, and the configuration behind the answer. The debugging and "
-            "trust surface — it returns no passage text."
+            "which candidate generators ran, what each contributed, what each query "
+            "term reached in the index (including terms that reached nothing), "
+            "per-stage timings, and the configuration behind the answer. The "
+            "debugging and trust surface — it returns no passage text."
         ),
         "inputSchema": {
             "type": "object",
@@ -513,6 +514,7 @@ def handle_explain(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
             limit=limit,
             config=settings.retrieval,
             embedder=_query_embedder(settings),
+            explain=True,
         )
         candidates = [
             {
@@ -543,6 +545,11 @@ def handle_explain(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
                 "raw scores from different backends are never added (spec 04 §3)"
             ),
         },
+        # What each query word reached in the lexical index (roadmap 4.21). An
+        # agent whose answer looks wrong needs to know whether the query even
+        # touched the corpus, and ranking cannot say: a term matching nothing
+        # contributes nothing and is indistinguishable from a term that lost.
+        "terms": [item.as_dict() for item in outcome.terms],
         "fusion": {"method": "rrf", "k": RRF_K, "vector_candidates": VECTOR_CANDIDATES},
         "timings_ms": dict(outcome.timings_ms),
         "config": {

@@ -356,6 +356,20 @@ def test_explain_accounts_for_each_candidate_without_returning_its_text(repo: Pa
         assert "text" not in candidate
 
 
+def test_explain_reports_what_each_query_term_reached(repo: Path) -> None:
+    """Roadmap 4.21. An agent whose answer looks wrong needs to know whether the
+    query touched the corpus at all, and ranking cannot tell it: a term that
+    matches nothing contributes nothing and looks exactly like a term that lost."""
+    payload = handle_explain(repo, {"query": "retry kubernetes"})
+
+    terms = {item["term"]: item for item in payload["terms"]}
+    assert set(terms) == {"retry", "kubernetes"}
+    assert terms["kubernetes"]["unmatched"] is True
+    assert terms["kubernetes"]["documents"] == 0
+    assert terms["retry"]["matched"] is True
+    assert any("match nothing" in note for note in payload["plan"]["notes"])
+
+
 def test_explain_respects_k(repo: Path) -> None:
     assert len(handle_explain(repo, {"query": "retry", "k": 1})["candidates"]) == 1
 

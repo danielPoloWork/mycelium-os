@@ -54,6 +54,7 @@ __all__ = [
     "SqliteStore",
     "StoreError",
     "StoreVersionError",
+    "TermHits",
 ]
 
 STORE_DIRNAME: Final = ".mycelium"
@@ -148,6 +149,62 @@ class SearchHit:
     title: str
     trust_class: TrustClass
     verification_status: VerificationStatus
+
+
+@dataclass(frozen=True, slots=True)
+class TermHits:
+    """What one word of a query reaches in the lexical index (roadmap 4.21).
+
+    Retrieval ranks; it never reports what it *failed* to find, and a term that
+    matches nothing simply contributes nothing to the ranking. That silence is
+    expensive: on this repository a judged case scored 0.395 for two milestones
+    because the only one of its five words present in the corpus was `off`, and
+    finding that out took a leave-one-out script (roadmap 4.17, ADR-0044).
+
+    Surface and stem are counted apart because they answer different questions.
+    `documents` is "did the author write this word", `stem_documents` is "did the
+    author write something that inflects to it" — and since roadmap 4.19 the
+    index carries both, so a term with `documents == 0` and `stem_documents > 0`
+    is a term the stemmer rescued. Collapsing the two would hide exactly the
+    before/after that change is judged on (ADR-0048).
+    """
+
+    term: str
+    """The word as the query's tokenizer found it."""
+    stem: str
+    """Its stem — equal to `term` when the stemmer leaves it alone."""
+    documents: int
+    chunks: int
+    stem_documents: int
+    stem_chunks: int
+
+    @property
+    def matched(self) -> bool:
+        """Whether the corpus contains this word as written."""
+        return self.documents > 0
+
+    @property
+    def stem_only(self) -> bool:
+        """Whether only the stemmer reached anything — the 4.19 rescue case."""
+        return self.documents == 0 and self.stem_documents > 0
+
+    @property
+    def unmatched(self) -> bool:
+        """Whether the word reaches nothing at all: it is not in this corpus."""
+        return self.documents == 0 and self.stem_documents == 0
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "term": self.term,
+            "stem": self.stem,
+            "documents": self.documents,
+            "chunks": self.chunks,
+            "stem_documents": self.stem_documents,
+            "stem_chunks": self.stem_chunks,
+            "matched": self.matched,
+            "stem_only": self.stem_only,
+            "unmatched": self.unmatched,
+        }
 
 
 def fts_query(text: str, *, prefix: bool = False, match_all: bool = False) -> str:
@@ -1116,6 +1173,65 @@ class SqliteStore:
             clauses.append("d.path LIKE ? ESCAPE '\\'")
             params.append(_like_prefix(filters.path_prefix))
         return clauses, params
+
+    def term_hits(
+        self, query: str, *, filters: SearchFilters | None = None
+    ) -> tuple[TermHits, ...]:
+        """Count what each word of `query` reaches, surface and stem apart.
+
+        One row per *distinct* word, in the order the query wrote them: a query
+        that repeats a word is not standing on two pieces of evidence, and the
+        report should not suggest it is.
+
+        The same filters the search ran under are applied, because the question
+        this answers is "why did *my* query return that", not "what does the
+        corpus contain in general" — a term that matches fifty documents none of
+        which survive a `--collection` filter has told the operator nothing until
+        the filter is in the count.
+
+        Deliberately not part of :meth:`search_chunks`. It costs two index
+        queries per term, the evaluation harness runs thousands of queries and
+        measures p95, and a diagnostic that taxes the number it is meant to
+        explain is a bad diagnostic (spec 04 §1).
+        """
+        terms = list(dict.fromkeys(_FTS_TERM.findall(query)))
+        if not terms:
+            return ()
+        clauses, params = self._filter_sql(filters or SearchFilters())
+        where = "".join(f" AND {clause}" for clause in clauses)
+        counted: list[TermHits] = []
+        for term, stem in zip(terms, stem_text(terms), strict=True):
+            documents, chunks = self._count_matching(
+                f'{_SURFACE_FIELDS} : ("{term}")', where, params
+            )
+            stem_documents, stem_chunks = self._count_matching(
+                f'{_STEM_FIELDS} : ("{stem}")', where, params
+            )
+            counted.append(
+                TermHits(
+                    term=term,
+                    stem=stem,
+                    documents=documents,
+                    chunks=chunks,
+                    stem_documents=stem_documents,
+                    stem_chunks=stem_chunks,
+                )
+            )
+        return tuple(counted)
+
+    def _count_matching(self, match: str, where: str, params: Sequence[Any]) -> tuple[int, int]:
+        """``(documents, chunks)`` reached by one MATCH expression."""
+        row = self._connection.execute(
+            f"""
+            SELECT COUNT(DISTINCT c.doc_id) AS documents, COUNT(*) AS chunks
+            FROM chunks_fts
+            JOIN chunks c ON c.anchor = chunks_fts.anchor
+            JOIN documents d ON d.doc_id = c.doc_id
+            WHERE chunks_fts MATCH ?{where}
+            """,
+            [match, *params],
+        ).fetchone()
+        return int(row["documents"]), int(row["chunks"])
 
     def search_chunks(
         self,
