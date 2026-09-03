@@ -193,6 +193,19 @@ def test_build_reports_pinned_files_to_commit(tmp_path: Path) -> None:
     assert payload["pinned"] == []  # already pinned; a second build touches nothing
 
 
+def test_eval_offers_the_incumbent_comparison(tmp_path: Path) -> None:
+    """Roadmap 4.8: `--against` is the surface D-010's doctrine is checked through.
+
+    The behaviour is asserted in `tests/test_eval.py`, where the harness computes
+    it; what this guards is the wiring — an option that quietly disappears from
+    the CLI takes the comparison out of CI with it.
+    """
+    result = invoke("eval", "--help")
+    assert result.exit_code == ExitCode.OK
+    assert "--against" in result.stdout
+    assert "--retriever" in result.stdout
+
+
 def test_build_no_pin_writes_nothing_and_says_so(tmp_path: Path) -> None:
     """Roadmap 4.14: measuring a corpus must not modify it."""
     seeded(tmp_path)

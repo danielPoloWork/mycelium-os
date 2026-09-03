@@ -7,8 +7,13 @@
     python tools/measure_ranking.py --release              # ...and the gate view
     python tools/measure_ranking.py --oracle               # the family's ceiling
 
-Roadmap 4.8 is open because the grep incumbent beats the product on the second
-corpus. This is where a candidate fix is measured before it is proposed, and it
+Roadmap 4.8 was open because the grep incumbent beat the product on the second
+corpus. **It no longer does** (ADR-0049): measured after packing (4.15) and
+stemming (4.19), uv/release reads 0.548 against the incumbent's 0.519, and the
+product leads on all four sets. Nothing in this file is what closed it — every
+re-ranking below is still refused — which is the finding worth keeping.
+
+This is still where a candidate fix is measured before it is proposed, and it
 reads the **dev** sets by default on purpose: the release sets are what gate G3
 judges the outcome with, and a change developed against them cannot be told apart
 from a change fitted to them (spec 04 §7.1).
@@ -34,6 +39,11 @@ ships.
 
 The strategies are kept rather than deleted. A refusal nobody can re-run is a
 claim, and the next attempt should start from the numbers instead of from prose.
+
+The standing comparison has moved out of this file: `mycelium eval --against grep`
+records the incumbent inside the run manifest, on every corpus CI scores, so the
+question "are we still ahead" is answered by the product rather than by a tool an
+operator has to remember to run (ADR-0049).
 """
 
 import re

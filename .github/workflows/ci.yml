@@ -313,29 +313,36 @@ jobs:
       - name: Compile the second corpus (documentation we did not write)
         shell: bash
         run: uv run mycelium build eval/corpora/uv-docs --no-pin
+      # `--against grep` on every corpus (roadmap 4.8). The incumbent's numbers are
+      # computed inside the run — same snapshot, same cases, same anchor space — and
+      # land in the run manifest spec 04 §7.5 already requires. Reported, never
+      # gated: §7.4 quantifies the gate at 1.0 (roadmap 6.4), and a baseline that
+      # could fail the build is a baseline nobody dares improve. On *every* corpus
+      # because the finding 4.8 recorded lived on the second one, which this job
+      # never compared — which is why nobody saw the gap close (ADR-0049).
       - name: Gates G1-G6 on the frozen release set — this corpus
         shell: bash
-        run: uv run mycelium eval . --gate
+        run: uv run mycelium eval . --gate --against grep
       - name: Gates G1-G6 on the frozen release set — the second corpus
         shell: bash
-        run: uv run mycelium eval eval/corpora/uv-docs --set eval/release.jsonl --gate
+        run: uv run mycelium eval eval/corpora/uv-docs --set eval/release.jsonl --gate --against grep
       - name: Compile the third corpus (the second one, ingested)
         shell: bash
         run: uv run mycelium build eval/corpora/uv-docs-ingested --no-pin
       - name: Gates G1-G6 on the frozen release set — the ingested corpus
         shell: bash
-        run: uv run mycelium eval eval/corpora/uv-docs-ingested --set eval/release.jsonl --gate
+        run: uv run mycelium eval eval/corpora/uv-docs-ingested --set eval/release.jsonl --gate --against grep
       - name: What projection costs, for the record (roadmap 4.10)
         shell: bash
         # Reported, never gated: with two to five cases per format there is no
         # threshold anyone could defend, and a gate nobody believes is a gate
         # everyone re-blesses (ADR-0039).
         run: uv run python tools/measure_projection_cost.py || true
-      - name: The grep baseline, for the record (D-010)
+      - name: The grep baseline in full, for the record (D-010)
         shell: bash
-        # Reported, never gated: the incumbent's numbers are evidence about the
-        # product, and a baseline that could fail the build would be a baseline
-        # nobody dares improve.
+        # The comparison above is one line per corpus; this is the incumbent's own
+        # run with its per-slice table, which is what a reader needs when that line
+        # says a slice is still conceded.
         run: uv run mycelium eval . --retriever grep || true
       - name: Agent-task suite against the grep loop
         shell: bash

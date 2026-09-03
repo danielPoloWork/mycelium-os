@@ -45,7 +45,7 @@ retrievers; it does not assert that nDCG must exceed some invented threshold.
 import json
 import platform
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -88,6 +88,9 @@ __all__ = [
     "MAX_FALSE_ANSWER_RATE",
     "RETRIEVAL_LIMIT",
     "EvaluationError",
+    "IncumbentComparison",
+    "compare_to_incumbent",
+    "incumbent_comparison",
     "run_evaluation",
 ]
 
@@ -481,6 +484,88 @@ def _score(
     return results, _summarise(cases, results), per_slice
 
 
+@dataclass(frozen=True, slots=True)
+class IncumbentComparison:
+    """What a run says about the incumbent it was measured against (D-010).
+
+    Spec 04 §7.4 names the real incumbent — the agent's own `grep`/`glob`/`read`
+    loop — and states the doctrine in one line: *if Mycelium OS does not visibly
+    beat grep, the correct response is to fix the product, not the benchmark.*
+    Roadmap 4.8 was that finding, and it stayed open for three milestones. What
+    kept it open was not the difficulty of the fix; it was that the comparison
+    lived in an ADR table and in one CI step on one corpus, so nobody could see
+    the gap close, and nobody would see it reopen.
+
+    This is the comparison as a *record*: computed on the run's own snapshot,
+    over the same cases and the same anchor space, and written into the manifest
+    that spec 04 §7.5 already requires. It is **reported, never gated** — spec
+    04 §7.4 quantifies the gate at 1.0 (roadmap 6.4), and a baseline that could
+    fail the build is a baseline nobody dares improve.
+
+    :attr:`conceded` is the part worth reading. An overall lead can hide a slice
+    the incumbent still owns, and that slice is where the next hypothesis comes
+    from.
+    """
+
+    retriever: str
+    lead: float
+    """`ours - theirs` on nDCG@10 overall. Negative means the incumbent leads."""
+    conceded: tuple[str, ...]
+    """Slices where the incumbent scores strictly higher, worst first."""
+    detail: str
+
+    @property
+    def ahead(self) -> bool:
+        """Whether the product leads overall. Slices may still be conceded."""
+        return self.lead > 0.0
+
+
+def compare_to_incumbent(
+    retriever: str,
+    ours: MetricSummary,
+    theirs: MetricSummary,
+    ours_slices: Mapping[str, MetricSummary],
+    theirs_slices: Mapping[str, MetricSummary],
+) -> IncumbentComparison:
+    """Summarise one run against its incumbent, and name what it still concedes."""
+    lead = ours.ndcg_at_10 - theirs.ndcg_at_10
+    conceded = sorted(
+        (
+            name
+            for name, summary in theirs_slices.items()
+            if summary.ndcg_at_10 > ours_slices.get(name, summary).ndcg_at_10
+        ),
+        key=lambda name: ours_slices[name].ndcg_at_10 - theirs_slices[name].ndcg_at_10,
+    )
+    verdict = "ahead of" if lead > 0 else ("level with" if lead == 0 else "BEHIND")
+    detail = (
+        f"nDCG@10 {ours.ndcg_at_10:.3f} against {retriever}'s {theirs.ndcg_at_10:.3f} "
+        f"({lead:+.3f}) - {verdict} the incumbent"
+    )
+    if conceded:
+        losses = ", ".join(
+            f"{name} {ours_slices[name].ndcg_at_10:.3f} vs {theirs_slices[name].ndcg_at_10:.3f}"
+            for name in conceded
+        )
+        detail += f"; still conceded: {losses}"
+    return IncumbentComparison(
+        retriever=retriever, lead=lead, conceded=tuple(conceded), detail=detail
+    )
+
+
+def incumbent_comparison(manifest: EvalRunManifest) -> IncumbentComparison | None:
+    """The comparison a run recorded, or ``None`` when it was measured alone."""
+    if manifest.incumbent is None or manifest.incumbent_overall is None:
+        return None
+    return compare_to_incumbent(
+        manifest.incumbent,
+        manifest.overall,
+        manifest.incumbent_overall,
+        manifest.per_slice,
+        manifest.incumbent_per_slice,
+    )
+
+
 def baseline_path(root: Path, case_set: str) -> Path:
     """Where a set's committed baseline lives: `eval/baselines/<set>.json`."""
     return root / EVAL_DIRNAME / BASELINES_DIRNAME / f"{Path(case_set).stem}.json"
@@ -556,6 +641,7 @@ def run_evaluation(
     case_set: str = "cases.jsonl",
     companion: Sequence[EvalCase] | None = None,
     companion_set: str | None = None,
+    against: str | None = None,
 ) -> EvalRunManifest:
     """Score `cases` against the published snapshot at `root`.
 
@@ -571,6 +657,12 @@ def run_evaluation(
     "did this change make the set we tuned against better than the one we did
     not" (spec 04 §7.1, ADR-0027). No threshold ships, because nobody has the
     evidence to set one; the number is put where a reviewer sees it.
+
+    `against` names a second retriever — in practice `grep`, spec 04 §7.4's real
+    incumbent — and scores it the same way G2 already scores the lexical leg
+    beside the hybrid one: same store, same cases, same anchor space, so the two
+    numbers are a comparison rather than two runs a reader has to trust were
+    taken alike. Reported, never gated (ADR-0049).
     """
     if not cases:
         msg = "no evaluation cases to run"
@@ -605,6 +697,18 @@ def run_evaluation(
             )
             gates.append(_gate_g2(overall, lexical, per_slice, lexical_slices))
 
+        incumbent_overall = None
+        incumbent_slices: dict[str, MetricSummary] = {}
+        if against is not None:
+            if against == retriever_name:
+                msg = f"cannot compare {retriever_name!r} against itself"
+                raise EvaluationError(msg)
+            try:
+                incumbent = build_retriever(against, store, _embedder_for(root, against))
+            except ValueError as error:
+                raise EvaluationError(str(error)) from error
+            _, incumbent_overall, incumbent_slices = _score(cases, incumbent, resolvable)
+
         companion_overall = None
         if companion:
             _, companion_overall, _ = _score(companion, retriever, resolvable)
@@ -626,6 +730,9 @@ def run_evaluation(
         gates=tuple(gates),
         companion_set=companion_set if companion_overall is not None else None,
         companion_overall=companion_overall,
+        incumbent=against if incumbent_overall is not None else None,
+        incumbent_overall=incumbent_overall,
+        incumbent_per_slice=incumbent_slices,
     )
 
 

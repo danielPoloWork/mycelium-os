@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-03 — the gap closed, and nobody saw it (roadmap 4.8)](2026/09/2026-09-03-the-gap-closed-and-nobody-saw-it.md)
 - [2026-09-03 — the gate the instrument could not see (roadmap 4.19)](2026/09/2026-09-03-stem-the-index.md)
 - [2026-09-03 — the test that could not fail (roadmap 4.18)](2026/09/2026-09-03-vacuous-watch-test.md)
 - [2026-09-03 — the flip, and the cache that would have swallowed it (roadmap 4.15)](2026/09/2026-09-03-pack-atomic-by-default.md)

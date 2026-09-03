@@ -61,6 +61,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`mycelium eval --against <retriever>`** (roadmap 4.8,
+  [ADR-0049](docs/adr/0049-close-the-grep-gap-and-keep-the-incumbent-in-the-manifest.md)) —
+  score a second retriever over the same cases, on the same snapshot, in the same anchor
+  space, and record it in the run manifest (`incumbent`, `incumbent_overall`,
+  `incumbent_per_slice`). `--against grep` is spec 04 §7.4's real incumbent. The report
+  names the slices the incumbent still leads, which is the half an overall number hides:
+
+  ```text
+  vs grep: nDCG@10 0.548 against grep's 0.519 (+0.029) - ahead of the incumbent;
+           still conceded: fact 0.403 vs 0.497
+  ```
+
+  Reported, never gated — §7.4 quantifies the gate at 1.0. CI runs it on all three corpora.
 - **`mycelium build --no-pin`** (roadmap 4.14) — compile, publish and serve while leaving
   the authored tree byte-identical. Pinning a `mycelium_id` is the build's only write into
   your documents, and this switches it off; a document that has none takes an identity
@@ -91,6 +104,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **Mycelium OS now beats the `grep` incumbent on every corpus, including the one roadmap
+  4.8 was filed about.** Measured on the release sets: `uv`'s documentation **0.548 against
+  0.519**, this repository **0.504 against 0.271**. Neither of the two changes that closed
+  it came from the thirteen re-rankings measured and refused along the way — it was the
+  packed chunker (4.15) and the stemmed index (4.19), both changes to what gets *indexed*.
+  `fact` on the second corpus is still the incumbent's and is filed as roadmap 4.25.
 - **Store schema `mycelium/store/v4`.** The stem columns are a tokenization change, which
   is not migratable, so an existing store is recreated on the next build under the D-016
   rebuild policy and an older binary refuses a v4 store rather than reinterpreting it.

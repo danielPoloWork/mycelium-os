@@ -418,33 +418,43 @@ with hybrid retrieval *switched off*, because gate G2 said it had not earned the
 The evaluation now spans three corpora, two of them documentation this project did not
 write, with a frozen dev/release split gating CI. The five stable contracts freeze at 1.0.
 
-The honest part of that paragraph is what is missing from it: on the second corpus a plain
-`grep` loop still ranks better than we do, and roadmap 4.8 is open a second time because of
-it. Ten candidate fixes have been measured and all ten refused
+For two milestones the honest part of that paragraph was what was missing from it: on the
+second corpus a plain `grep` loop ranked better than we did. **It no longer does.** Measured
+on the release sets — the ones nobody develops against — the product now leads every corpus:
+
+| release set | Mycelium OS | the `grep` loop |
+|---|---:|---:|
+| `uv`'s documentation (the corpus this was filed about) | **0.548** | 0.519 |
+| this repository | **0.504** | 0.271 |
+
+Thirteen candidate re-rankings were measured on the way there and **all thirteen refused**
 ([ADR-0031](docs/adr/0031-refuse-three-rerankings.md),
 [ADR-0041](docs/adr/0041-bound-the-section-unit-and-refuse-six-more.md)) — including one that
 *passed* the release gate and was refused anyway, because the dev set the gate does not read
-showed it returning a 14-token lead-in in place of the paragraph that answered. Beating that
-incumbent is not the hard part: three of the ten strategies do. Beating it without paying for
-it on the corpus we already win is, and the ceiling of the whole family — with per-case
-foresight no planner can have — is 3 % above grep. The evidence re-runs with
+showed it returning a 14-token lead-in in place of the paragraph that answered. Nothing in
+that family is what closed the gap. Two changes to what gets *indexed* did: a chunker that
+lets a code block share a chunk with the prose it belongs to (`pack_atomic`, on by default
+since roadmap 4.15), and a lexical index that carries each word's stem beside its surface
+form, with the surface hit as the precondition (roadmap 4.19). The evidence re-runs with
 `python tools/measure_ranking.py --release --oracle`.
 
-What did move the number was the *unit*, not the ranking. `[chunking] pack_atomic` lets a code
-block share a chunk with the prose it belongs to instead of ending it. It shipped **off** while
-the judged cases a moved boundary invalidates were re-anchored, and it is **on by default**
-since roadmap 4.15: on that corpus the frozen release set goes **0.306 → 0.492** nDCG@10 with
-no slice regressed, and gate G3 *enforced* that verdict rather than abstaining — the first
-chunking change it could see ([ADR-0042](docs/adr/0042-let-an-atomic-block-share-its-chunk.md),
-[ADR-0045](docs/adr/0045-ask-the-documents-whether-two-runs-are-comparable.md),
-[ADR-0047](docs/adr/0047-flip-the-packed-chunker-on-and-let-the-gate-say-so.md)).
+The overall lead still hides a slice, and the harness prints it rather than rounding it off:
 
-It does not close the gap it narrows. grep moves with the chunker too — the same corpus,
-re-measured, gives grep 0.519 against our 0.492 — so on `uv`'s documentation the product is
-still behind, by 5 % where it was behind by 35 %. On our own corpus and on the ingested one it
-is ahead (0.463 against 0.271, and 0.591 against 0.566). Roadmap 4.8 stays open on the corpus
-it was filed about, which is what D-010 asks for. Set `pack_atomic = false` to get the v0.3
-boundaries back.
+```text
+vs grep: nDCG@10 0.548 against grep's 0.519 (+0.029) - ahead of the incumbent;
+         still conceded: fact 0.403 vs 0.497
+```
+
+`fact` on that corpus — seven cases of "how do I do X", the shape the corpus is made of — is
+still the incumbent's, and it is roadmap 4.25. `mycelium eval --against grep` is how any run
+answers the question, and CI runs it on all three corpora so the answer cannot go stale
+unnoticed again ([ADR-0049](docs/adr/0049-close-the-grep-gap-and-keep-the-incumbent-in-the-manifest.md)).
+
+One number in that table is worth reading twice: the incumbent went **up** as well, 0.409 to
+0.519, because the corpus was re-judged and the chunker moved underneath both of us. That is
+why the comparison is now computed inside a single run — same snapshot, same cases, same
+anchor space — instead of by diffing two runs and hoping nothing else changed. Set
+`[chunking] pack_atomic = false` to get the v0.3 boundaries back.
 
 | # | Title | Status |
 |---|---|---|
