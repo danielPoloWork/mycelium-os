@@ -1010,3 +1010,24 @@ class EvalRunManifest(Record):
             "overfitting signal spec 04 §7.1's dev/release split exists to expose."
         ),
     )
+    incumbent: str | None = Field(
+        default=None,
+        description="The baseline retriever this run was compared against (D-010).",
+    )
+    incumbent_overall: MetricSummary | None = Field(
+        default=None,
+        description=(
+            "The incumbent's metrics on the same cases, the same snapshot, and the "
+            "same anchor space. Spec 04 §7.4 makes the agent's own grep loop the "
+            "real incumbent; recording its numbers beside ours is what keeps "
+            "'fix the product, not the benchmark' checkable rather than remembered."
+        ),
+    )
+    incumbent_per_slice: dict[str, MetricSummary] = Field(
+        default_factory=dict,
+        description=(
+            "The incumbent's per-slice metrics. An overall lead can hide a slice "
+            "the incumbent still owns, and that slice is the useful part of the "
+            "comparison."
+        ),
+    )

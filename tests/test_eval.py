@@ -25,6 +25,8 @@ from mycelium.eval import (
     MyceliumRetriever,
     build_retriever,
     citation_coverage,
+    compare_to_incumbent,
+    incumbent_comparison,
     load_cases,
     ndcg_at_k,
     recall_at_k,
@@ -33,7 +35,13 @@ from mycelium.eval import (
     write_cases,
     write_run,
 )
-from mycelium.sdk.types import EvalCase, EvalSlice, RelevantAnchor
+from mycelium.sdk.types import (
+    EvalCase,
+    EvalRunManifest,
+    EvalSlice,
+    MetricSummary,
+    RelevantAnchor,
+)
 from mycelium.store import SqliteStore
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
@@ -53,6 +61,25 @@ def corpus(tmp_path_factory: pytest.TempPathFactory) -> Path:
     stage_corpus(root)
     build(root)
     return root
+
+
+def summary(*, ndcg: float) -> MetricSummary:
+    """A metric summary carrying one interesting number.
+
+    The comparison tests are about arithmetic and ordering, not about today's
+    scores, so they build their inputs rather than measure them.
+    """
+    return MetricSummary(
+        cases=1,
+        ndcg_at_10=ndcg,
+        recall_at_10=1.0,
+        recall_at_50=1.0,
+        mrr=1.0,
+        citation_coverage=1.0,
+        false_answer_rate=0.0,
+        latency_p50_ms=1,
+        latency_p95_ms=1,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -231,6 +258,149 @@ def test_mycelium_beats_the_grep_baseline(corpus: Path) -> None:
     assert mycelium.ndcg_at_10 > grep.ndcg_at_10
     assert mycelium.mrr > grep.mrr
     assert mycelium.latency_p95_ms <= grep.latency_p95_ms
+
+
+def test_mycelium_beats_the_grep_baseline_on_the_release_set_too(corpus: Path) -> None:
+    """The set the dev one is held out from (roadmap 4.8).
+
+    `test_mycelium_beats_the_grep_baseline` scores the dev set, which is the set
+    tuning is allowed to read — so a product that had quietly fitted itself to it
+    would pass that test and still lose where it counts. The release set is the
+    one nobody develops against, and it is the one this item was filed about.
+    """
+    cases = load_cases(RELEASE)
+    mycelium = run_evaluation(corpus, cases, retriever_name="mycelium").overall
+    grep = run_evaluation(corpus, cases, retriever_name="grep").overall
+
+    assert mycelium.ndcg_at_10 > grep.ndcg_at_10
+    assert mycelium.mrr > grep.mrr
+
+
+@pytest.fixture(scope="module")
+def compared(corpus: Path) -> EvalRunManifest:
+    """One release run that recorded the incumbent beside itself.
+
+    Module-scoped because scoring the grep loop over a real corpus is the
+    expensive part of this file, and four assertions want the same run.
+    """
+    return run_evaluation(corpus, load_cases(RELEASE), against="grep")
+
+
+@pytest.fixture(scope="module")
+def alone(corpus: Path) -> EvalRunManifest:
+    """The same run without a comparison — the control for what `--against` adds."""
+    return run_evaluation(corpus, load_cases(RELEASE))
+
+
+def test_a_run_can_record_the_incumbent_beside_itself(compared: EvalRunManifest) -> None:
+    """`--against` (roadmap 4.8): one snapshot, one case set, two retrievers.
+
+    The comparison is computed the way gate G2 already computes hybrid against
+    lexical — inside one run — so the two numbers cannot have been taken under
+    different corpora, which is the failure mode a hand-diffed pair of runs has.
+    """
+    manifest = compared
+    assert manifest.incumbent == "grep"
+    assert manifest.incumbent_overall is not None
+    assert manifest.incumbent_per_slice.keys() == manifest.per_slice.keys()
+    # Same cases on both sides, or the comparison is not one.
+    assert manifest.incumbent_overall.cases == manifest.overall.cases
+
+    comparison = incumbent_comparison(manifest)
+    assert comparison is not None
+    assert comparison.ahead
+    assert comparison.lead == pytest.approx(
+        manifest.overall.ndcg_at_10 - manifest.incumbent_overall.ndcg_at_10
+    )
+
+
+def test_the_comparison_adds_no_gate(compared: EvalRunManifest, alone: EvalRunManifest) -> None:
+    """Reported, never gated — spec 04 §7.4 quantifies the gate at 1.0 (roadmap 6.4).
+
+    A baseline that could fail the build is a baseline nobody dares improve.
+    """
+    assert [g.gate for g in compared.gates] == [g.gate for g in alone.gates]
+    # Our own score is untouched by having measured someone else beside it.
+    # Latency is deliberately excluded: it is wall time, and two runs of the same
+    # work do not agree on it.
+    assert compared.overall.ndcg_at_10 == alone.overall.ndcg_at_10
+    assert compared.overall.mrr == alone.overall.mrr
+    assert compared.overall.recall_at_50 == alone.overall.recall_at_50
+
+
+def test_a_run_measured_alone_records_no_comparison(alone: EvalRunManifest) -> None:
+    assert alone.incumbent is None
+    assert alone.incumbent_overall is None
+    assert incumbent_comparison(alone) is None
+
+
+def test_comparing_a_retriever_against_itself_is_refused(corpus: Path) -> None:
+    with pytest.raises(EvaluationError, match="against itself"):
+        run_evaluation(corpus, load_cases(RELEASE), against="mycelium")
+
+
+def test_an_unknown_incumbent_is_refused_by_name(corpus: Path) -> None:
+    with pytest.raises(EvaluationError, match="unknown retriever"):
+        run_evaluation(corpus, load_cases(RELEASE), against="nonesuch")
+
+
+def test_the_comparison_names_the_slices_still_conceded() -> None:
+    """The useful half: an overall lead can hide a slice the incumbent owns.
+
+    Built from summaries rather than from a corpus, so the arithmetic is checkable
+    by hand and the test does not depend on today's scores.
+    """
+    ours = summary(ndcg=0.55)
+    theirs = summary(ndcg=0.50)
+    comparison = compare_to_incumbent(
+        "grep",
+        ours,
+        theirs,
+        {"conceptual": summary(ndcg=0.90), "fact": summary(ndcg=0.40)},
+        {"conceptual": summary(ndcg=0.70), "fact": summary(ndcg=0.50)},
+    )
+    assert comparison.ahead
+    assert comparison.conceded == ("fact",)
+    assert "still conceded: fact 0.400 vs 0.500" in comparison.detail
+
+
+def test_conceded_slices_come_worst_first() -> None:
+    comparison = compare_to_incumbent(
+        "grep",
+        summary(ndcg=0.5),
+        summary(ndcg=0.4),
+        {"a": summary(ndcg=0.40), "b": summary(ndcg=0.10)},
+        {"a": summary(ndcg=0.45), "b": summary(ndcg=0.90)},
+    )
+    # `b` loses by 0.80, `a` by 0.05 — the reader wants the worst one first.
+    assert comparison.conceded == ("b", "a")
+
+
+def test_a_run_behind_the_incumbent_says_so_in_words() -> None:
+    """The sentence roadmap 4.8 existed to make impossible to miss."""
+    comparison = compare_to_incumbent(
+        "grep",
+        summary(ndcg=0.25),
+        summary(ndcg=0.41),
+        {"fact": summary(ndcg=0.25)},
+        {"fact": summary(ndcg=0.41)},
+    )
+    assert not comparison.ahead
+    assert comparison.lead < 0
+    assert "BEHIND" in comparison.detail
+
+
+def test_a_slice_neither_retriever_answers_is_not_conceded() -> None:
+    # `symbol` on the second corpus is 0.0 for both. Reporting it as conceded
+    # would point the next reader at a slice nobody leads.
+    comparison = compare_to_incumbent(
+        "grep",
+        summary(ndcg=0.5),
+        summary(ndcg=0.4),
+        {"symbol": summary(ndcg=0.0)},
+        {"symbol": summary(ndcg=0.0)},
+    )
+    assert comparison.conceded == ()
 
 
 def test_the_grep_baseline_is_fair(corpus: Path) -> None:

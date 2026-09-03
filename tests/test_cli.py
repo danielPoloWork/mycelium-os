@@ -193,6 +193,29 @@ def test_build_reports_pinned_files_to_commit(tmp_path: Path) -> None:
     assert payload["pinned"] == []  # already pinned; a second build touches nothing
 
 
+def test_eval_offers_the_incumbent_comparison(tmp_path: Path) -> None:
+    """Roadmap 4.8: `--against` is the surface D-010's doctrine is checked through.
+
+    The behaviour is asserted in `tests/test_eval.py`, where the harness computes
+    it; what this guards is the wiring — an option that quietly disappears from
+    the CLI takes the comparison out of CI with it.
+
+    Asserted by *accepting* the option rather than by reading `--help`: the help
+    goes through Rich, which wraps to the terminal width and paints ANSI, so a
+    text assertion passes on a wide developer terminal and fails on an 80-column
+    runner (it did, on this PR's first CI run).
+    """
+    accepted = invoke("eval", str(tmp_path), "--against", "grep")
+    rejected = invoke("eval", str(tmp_path), "--nonsense", "grep")
+
+    # The option is understood: the command gets as far as looking for the case
+    # set, which this empty directory does not have.
+    assert accepted.exit_code == ExitCode.FAILED
+    assert "cannot read" in accepted.stderr
+    # The control — an option the command really does not have.
+    assert rejected.exit_code == ExitCode.USAGE
+
+
 def test_build_no_pin_writes_nothing_and_says_so(tmp_path: Path) -> None:
     """Roadmap 4.14: measuring a corpus must not modify it."""
     seeded(tmp_path)

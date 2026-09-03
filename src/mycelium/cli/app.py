@@ -45,6 +45,7 @@ from mycelium.embedding import Embedder, EmbeddingError, build_embedder
 from mycelium.eval import (
     EvaluationError,
     corpus_fingerprint_of,
+    incumbent_comparison,
     load_cases,
     load_tasks,
     run_evaluation,
@@ -1488,6 +1489,15 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
     retriever: Annotated[
         str, typer.Option("--retriever", help="mycelium | grep (the D-010 baseline).")
     ] = "mycelium",
+    against: Annotated[
+        str | None,
+        typer.Option(
+            "--against",
+            help="Also score this retriever on the same cases and report the "
+            "comparison. `--against grep` is spec 04 §7.4's incumbent. Reported, "
+            "never gated.",
+        ),
+    ] = None,
     tasks: Annotated[
         bool,
         typer.Option("--tasks", help="Run the agent-task suite against the grep loop."),
@@ -1534,6 +1544,7 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
             case_set=resolved.name,
             companion=companion,
             companion_set=companion_path.name if companion else None,
+            against=against,
         )
     except ValueError as error:  # unknown retriever
         raise fail(str(error), code=ExitCode.USAGE) from error
@@ -1559,6 +1570,14 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
         )
         for name, summary in sorted(manifest.per_slice.items()):
             detail(f"  {name:<14} nDCG@10 {summary.ndcg_at_10:.3f}  ({summary.cases} cases)")
+        comparison = incumbent_comparison(manifest)
+        if comparison is not None:
+            # D-010's doctrine is "fix the product, not the benchmark", which is
+            # only actionable if the product's standing against the incumbent is
+            # visible. `conceded` is the useful half: an overall lead can hide a
+            # slice the incumbent still owns.
+            report = success if comparison.ahead else warn
+            report(f"vs {comparison.retriever}: {comparison.detail}")
         if manifest.companion_overall is not None:
             beside = manifest.companion_overall
             gap = beside.ndcg_at_10 - overall.ndcg_at_10
