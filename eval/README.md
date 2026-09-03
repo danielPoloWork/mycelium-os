@@ -89,6 +89,14 @@ distinguish a regression from one case's luck
 — which is a finding about the sets, not a caveat about the tool
 ([ADR-0044](../docs/adr/0044-name-what-a-two-case-slice-can-and-cannot-say.md), roadmap 4.20).
 
+**The committed baselines predate roadmap 4.19's index.** Stemming moved every release set
+up by nine to eleven points with no slice regressing, and the baselines were deliberately
+*not* re-blessed with it: how this repository's baseline is re-blessed at all is roadmap
+4.22's open decision, and it says it cannot ride along with a retrieval change. Until it
+does, G3 has that much headroom on the vendored sets — a change that gave the gain back
+would pass it — and 4.22 should now re-bless against the retriever that actually ships
+([ADR-0048](../docs/adr/0048-index-the-stem-beside-the-surface-form.md)).
+
 ## Candidate re-rankings, and why none of them shipped
 
 ```bash

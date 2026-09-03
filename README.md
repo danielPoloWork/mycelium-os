@@ -129,6 +129,25 @@ Embeddings are an optional install — `pip install mycelium-os[embeddings]` —
 without them publishes normally, marked `degraded: ["vectors"]`, with lexical search intact.
 Nothing is ever downloaded unless `[embedding] allow_download` says so.
 
+### The lexical index matches inflections, and still prefers your exact word
+
+`signs` used to find nothing in a corpus that says `signed`: FTS5's tokenizer does no
+stemming, so a query that inflects a word differently from the document simply missed it.
+Each indexed field now carries a **stem column beside** the surface one, at a tenth of its
+weight — so a document that spells your word exactly matches two columns where one that
+only inflects it matches one. You get the reach without losing the literal match, which is
+what swapping in a stemming tokenizer would have cost: measured, that swap wins overall and
+regresses the `exact` slice on one corpus and `conceptual` on the other, and it fails gate
+G3 on both.
+
+A stem can **reorder** the documents your words found and can never introduce one of its
+own. That is not a detail: Porter's algorithm over-stems — `organization` and `organ`
+collapse to the same token — so without the rule a question about something this corpus
+does not contain gets answered anyway, and answering what you cannot answer is worse than
+missing it. The price is that a query *none* of whose words appear as you spelled them
+still misses. The numbers, the two variants refused, and the price are in
+[ADR-0048](docs/adr/0048-index-the-stem-beside-the-surface-form.md).
+
 ### Ingestion picks its parser, and you pick which one
 
 Non-Markdown sources are compiled by adapters over engines that already exist — Mycelium OS

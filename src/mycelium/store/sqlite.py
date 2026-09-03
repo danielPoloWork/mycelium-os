@@ -43,6 +43,7 @@ from mycelium.store.schema import (
     PRAGMAS,
     SCHEMA_VERSION,
 )
+from mycelium.store.stemming import stem_text
 from mycelium.store.vectorpack import VectorPack, prune_packs, write_pack
 
 __all__ = [
@@ -59,8 +60,35 @@ STORE_DIRNAME: Final = ".mycelium"
 STORE_FILENAME: Final = "store.db"
 
 _FTS_TERM: Final = re.compile(r"\w+", re.UNICODE)
-_BM25_WEIGHTS: Final = (0.0, 1.0, 3.0, 2.0)
+
+_SURFACE_WEIGHTS: Final = (0.0, 1.0, 3.0, 2.0)
 """Column order is (anchor, text, title, heading_path); spec 04 §3 sets the weights."""
+
+STEM_WEIGHT: Final = 0.1
+"""How much a stem match counts against a surface match of the same field.
+
+The stem columns exist to reach a document that inflects a word differently from
+the query (roadmap 4.19). They must not be able to *outrank* the surface signal
+on their own: a stem is a weaker piece of evidence than the word the author
+actually wrote, and the slice that pays when it stops being weaker is
+`conceptual`, whose queries share many stems with many documents.
+
+An order of magnitude below the weakest surface field (`text`, 1.0) is therefore
+the shape of the answer, and 0.1 is that with a measured margin. Every value from
+0.05 to 0.25 clears gate G3 on both release sets; 0.35 and above fails it, on
+`conceptual`, by −12 % (ADR-0048). Shipping at 0.25 would have sat against that
+cliff for a gain of a third of a percent."""
+
+_BM25_WEIGHTS: Final = (
+    *_SURFACE_WEIGHTS,
+    *(STEM_WEIGHT * weight for weight in _SURFACE_WEIGHTS[1:]),
+)
+"""The seven columns `chunks_fts` declares: the surface fields, then their stems
+at :data:`STEM_WEIGHT` of the same field's weight — so the relative importance of
+title over heading over body is stated once and holds on both sides."""
+
+_SURFACE_FIELDS: Final = "{text title heading_path}"
+_STEM_FIELDS: Final = "{text_stem title_stem heading_path_stem}"
 
 
 class StoreError(RuntimeError):
@@ -143,6 +171,59 @@ def fts_query(text: str, *, prefix: bool = False, match_all: bool = False) -> st
     suffix = "*" if prefix else ""
     quoted = [f'"{term}"{suffix}' for term in terms]
     return (" " if match_all else " OR ").join(quoted)
+
+
+def _stemmed(text: str) -> str:
+    """The stem stream that indexes beside `text`.
+
+    Tokenized with the same expression the query builder uses, so a term the
+    index stems is a term a query can stem back to. The result is a plain string
+    because FTS5 tokenizes what it is given: stems separated by spaces are
+    exactly the token sequence `unicode61` will produce from them.
+    """
+    return " ".join(stem_text(_FTS_TERM.findall(text)))
+
+
+def expanded_query(text: str, *, prefix: bool = False, match_all: bool = False) -> str:
+    """The MATCH expression the shipped index is searched with (roadmap 4.19).
+
+    Surface terms are matched against the surface columns and their stems against
+    the stem columns, so a document that spells the word the way the query does
+    matches *both* sides while one that only inflects it matches the stem side
+    alone. Nothing is re-ranked and nothing is fused: the edge is in how many
+    weighted columns a hit accumulates, which is the mechanism spec 04 §3 already
+    uses to prefer a title over a body (ADR-0048).
+
+    **A surface hit is the precondition.** The expression requires at least one
+    query word to appear as the author wrote it before any stem is allowed to
+    speak, so stems *reorder* the documents the surface index found and can never
+    introduce one of their own. That is ADR-0025's rule a layer down — lexical
+    evidence gates the weaker signal — and here it is what keeps abstention
+    intact: Porter conflates `escapement` with `escape`, so without the
+    precondition a query about watchmaking retrieves five documents about escape
+    hatches, and gate G4 counts that as a false answer because it is one
+    (ADR-0048).
+
+    `prefix=True` returns the surface expression unchanged. A prefix query already
+    generalises across suffixes — `sign*` reaches `signs`, `signed` and
+    `signature` — so stemming it would add candidates the caller did not ask for
+    while removing the precision that made them ask for a prefix.
+
+    `match_all=True` conjoins *within* each side and still disjoins across them:
+    a conjunctive query is satisfied either literally or by stems, never by half
+    of each.
+    """
+    surface = fts_query(text, prefix=prefix, match_all=match_all)
+    if not surface or prefix:
+        return surface
+    terms = _FTS_TERM.findall(text)
+    # `dict.fromkeys` rather than a set: two query words can share one stem, and
+    # the expression must stay deterministic for the same query.
+    stems = dict.fromkeys(stem_text(terms))
+    joiner = " " if match_all else " OR "
+    stemmed = joiner.join(f'"{stem}"' for stem in stems)
+    on_surface = f"{_SURFACE_FIELDS} : ({surface})"
+    return f"{on_surface} AND ({on_surface} OR {_STEM_FIELDS} : ({stemmed}))"
 
 
 class SqliteStore:
@@ -441,6 +522,7 @@ class SqliteStore:
         written = 0
         for chunk in chunks:
             title = self._document_title(chunk.doc_id)
+            heading_path = " / ".join(chunk.heading_path)
             self._connection.execute("DELETE FROM chunks_fts WHERE anchor = ?", (chunk.anchor,))
             self._connection.execute(
                 """
@@ -469,8 +551,17 @@ class SqliteStore:
                 ),
             )
             self._connection.execute(
-                "INSERT INTO chunks_fts(anchor, text, title, heading_path) VALUES(?,?,?,?)",
-                (chunk.anchor, chunk.text, title, " / ".join(chunk.heading_path)),
+                "INSERT INTO chunks_fts(anchor, text, title, heading_path,"
+                " text_stem, title_stem, heading_path_stem) VALUES(?,?,?,?,?,?,?)",
+                (
+                    chunk.anchor,
+                    chunk.text,
+                    title,
+                    heading_path,
+                    _stemmed(chunk.text),
+                    _stemmed(title),
+                    _stemmed(heading_path),
+                ),
             )
             written += 1
         return written
@@ -1036,10 +1127,16 @@ class SqliteStore:
     ) -> tuple[SearchHit, ...]:
         """Field-weighted BM25 search over the lexical index (spec 04 §3).
 
+        The query is expanded with the stems of its terms
+        (:func:`expanded_query`), so a document that inflects a word differently
+        is reachable while one that spells it exactly still ranks above it. A
+        surface hit is the precondition: stems reorder what the query's own words
+        found and never introduce a document of their own (ADR-0048).
+
         Scores are returned positive and descending — SQLite's ``bm25()`` is
         negated so that "better" is larger, which is what every consumer expects.
         """
-        match = fts_query(query, prefix=prefix)
+        match = expanded_query(query, prefix=prefix)
         if not match:
             return ()
         clauses, params = self._filter_sql(filters or SearchFilters())
@@ -1049,7 +1146,7 @@ class SqliteStore:
             f"""
             SELECT c.*, d.path AS doc_path, d.title AS doc_title,
                    d.trust_class AS doc_trust, d.verification_status AS doc_status,
-                   bm25(chunks_fts, ?, ?, ?, ?) AS score
+                   bm25(chunks_fts, ?, ?, ?, ?, ?, ?, ?) AS score
             FROM chunks_fts
             JOIN chunks c ON c.anchor = chunks_fts.anchor
             JOIN documents d ON d.doc_id = c.doc_id
