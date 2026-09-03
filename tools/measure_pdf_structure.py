@@ -315,7 +315,7 @@ def target_size(corpus: Path, cases: Sequence[EvalCase]) -> float:
 def measure_retrieval(destination: Path, parsed: dict[str, KirDocument]) -> None:
     replaced = write_variant(destination, parsed)
     manifest = json.loads((destination / "provenance.json").read_text(encoding="utf-8"))
-    build(TWIN)
+    build(TWIN, pin_identity=False)  # a committed corpus (ADR-0046)
     build(destination)
     carry(destination, manifest)
     build(destination)

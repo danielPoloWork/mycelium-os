@@ -168,8 +168,11 @@ def main() -> int:  # noqa: C901 - a report is a sequence of stated steps
     # Clean, not incremental: see the module docstring and [BUG-0018]. A derived
     # artifact that inherits whatever the local store happens to hold records the
     # machine it was generated on, not the corpus it claims to describe.
-    build(MARKDOWN_CORPUS, clean=True)
-    build(INGESTED_CORPUS, clean=True)
+    # `pin_identity=False`: both corpora are committed, and a generator that
+    # dirties 81 tracked files every time it runs is a generator nobody can run
+    # from a clean tree (roadmap 4.14/4.15, ADR-0046).
+    build(MARKDOWN_CORPUS, clean=True, pin_identity=False)
+    build(INGESTED_CORPUS, clean=True, pin_identity=False)
 
     dropped_anchors: list[str] = []
     dropped_cases: list[str] = []

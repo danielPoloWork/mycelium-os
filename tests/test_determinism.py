@@ -152,7 +152,15 @@ def test_the_corpus_still_covers_the_profile() -> None:
     anchors = [str(chunk["anchor"]) for chunk in chunks]
 
     assert len(documents) == 6
+    # All three kinds, and since packing became the default (ADR-0047) `code` is
+    # only reachable through a section whose *only* content is a block — the
+    # constraint ADR-0007 argued and packing preserves. The corpus carries one on
+    # purpose: without it the flip would have quietly narrowed this gate's
+    # coverage to two kinds, which is exactly what this assertion is here to stop.
     assert {str(chunk["kind"]) for chunk in chunks} == {"prose", "table", "code"}
+    solitary = [c for c in chunks if str(c["kind"]) == "code"]
+    assert len(solitary) == 1
+    assert str(solitary[0]["anchor"]).endswith("#worked-example/0")
     assert {str(doc["verification_status"]) for doc in documents} == {
         "verified",
         "candidate",

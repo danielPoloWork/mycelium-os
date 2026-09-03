@@ -36,3 +36,4 @@ a `fixed` record names its `fixed-in`) is enforced by the consistency lint's `bu
 | [BUG-0016](2026/09/BUG-0016-docx-footnotes-vanish-unreported.md) | a DOCX footnote's body vanishes, and the fidelity report calls the document complete | medium | fixed | 0.4.0 |
 | [BUG-0017](2026/09/BUG-0017-evidence-frontmatter-carries-an-absolute-path.md) | a projected evidence document records the absolute path of the machine that ingested it | medium | fixed | 0.4.0 |
 | [BUG-0018](2026/09/BUG-0018-carried-ingested-cases-do-not-reproduce.md) | the carried ingested judgements do not reproduce from their own generator | medium | fixed | 0.4.0 |
+| [BUG-0019](2026/09/BUG-0019-pack-atomic-does-not-invalidate-the-chunk-cache.md) | turning `pack_atomic` on against an existing store changes nothing, and the build reports success | high | fixed | 0.4.0 |

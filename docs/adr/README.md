@@ -62,3 +62,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0045](0045-ask-the-documents-whether-two-runs-are-comparable.md) | Ask the documents whether two runs are comparable, not the boundaries | Accepted |
 | [0044](0044-name-what-a-two-case-slice-can-and-cannot-say.md) | Name what a two-case slice can and cannot say | Accepted |
 | [0046](0046-derive-an-identity-rather-than-mint-one-when-a-build-may-not-write.md) | Derive an identity rather than mint one, when a build may not write | Accepted |
+| [0047](0047-flip-the-packed-chunker-on-and-let-the-gate-say-so.md) | Flip the packed chunker on, and let the gate say so | Accepted |

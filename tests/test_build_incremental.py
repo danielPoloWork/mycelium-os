@@ -74,6 +74,14 @@ CORPUS = {
 }
 
 
+PACKABLE = (
+    f"---\nmycelium_id: {_IDS['guide']}\n---\n\n"
+    "# Guide\n\nRun the command below to start.\n\n"
+    "```bash\nmycelium build\n```\n\nThen read the output.\n"
+)
+"""One section, prose around an atomic block: three chunks unpacked, one packed."""
+
+
 def repo(tmp_path: Path, files: dict[str, str] | None = None, name: str = "repo") -> Path:
     root = tmp_path / name
     for relative, text in (files or CORPUS).items():
@@ -271,6 +279,43 @@ def test_flipping_config_back_restores_full_cache_hits(tmp_path: Path) -> None:
     assert third.stats.chunked == 0
     assert third.stats.chunk_hits == 4
     assert third.manifest.artifact_digests == first.manifest.artifact_digests
+
+
+def test_turning_pack_atomic_off_recompiles_every_document(tmp_path: Path) -> None:
+    """[BUG-0019]. `pack_atomic` moves every chunk boundary, so it belongs in the
+    chunk slice — and it was missing from it, which meant changing the setting on
+    an existing store changed *nothing*: identical key, cache hit, the previous
+    boundaries served under the new configuration, and a build that reported
+    success.
+
+    Written against the *off* direction on purpose: the default is on since
+    roadmap 4.15, so this is the edit an operator who wants v0.3's boundaries
+    actually makes.
+    """
+    root = repo(tmp_path, {"knowledge/guide.md": PACKABLE})
+    packed = build(root)
+    edit(root, "mycelium.toml", "[chunking]\npack_atomic = false\n")
+
+    result = build(root)
+    assert result.stats.rebuilt == 1  # the chunk key moved with the slice
+    assert result.stats.parsed == 0
+    assert result.stats.parse_hits == 1  # …and the parse stage was untouched
+    assert result.manifest.artifact_digests != packed.manifest.artifact_digests
+    with SqliteStore.open(root, read_only=True) as store:
+        kinds = [chunk.kind.value for doc in store.document_ids() for chunk in store.chunks_of(doc)]
+    assert kinds == ["prose", "code", "prose"], "the block stands alone again"
+    assert_equal_to_clean(tmp_path, root)
+
+
+def test_the_shipped_default_packs_an_atomic_block(tmp_path: Path) -> None:
+    """Roadmap 4.15: a section of prose-around-a-block is one chunk, not three."""
+    root = repo(tmp_path, {"knowledge/guide.md": PACKABLE})
+    build(root)
+    with SqliteStore.open(root, read_only=True) as store:
+        chunks = [chunk for doc in store.document_ids() for chunk in store.chunks_of(doc)]
+    assert len(chunks) == 1
+    assert chunks[0].kind.value == "prose", "prose carrying a command is prose"
+    assert "mycelium build" in chunks[0].text, "and the block is inside it, unsplit"
 
 
 def test_editing_the_target_recompiles_every_document(tmp_path: Path) -> None:

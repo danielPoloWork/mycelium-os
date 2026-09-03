@@ -149,11 +149,12 @@ class ChunkingConfig(_Section):
     max_tokens: int = Field(default=800, gt=0)
     atomic: tuple[str, ...] = ("table", "code")
 
-    pack_atomic: bool = False
+    pack_atomic: bool = True
     """Whether a table or code block may share a chunk with the prose around it.
 
-    Measured at roadmap 4.11 (ADR-0042) and off by default until 4.15; `atomic`
-    still forbids *splitting* a block either way.
+    The shipped default, on since roadmap 4.15 (ADR-0047) after ADR-0042 measured
+    it and deliberately shipped it off. `atomic` still forbids *splitting* a
+    block either way; this is only about whether it may share.
     """
 
     @model_validator(mode="after")

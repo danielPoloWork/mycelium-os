@@ -142,8 +142,8 @@ def main() -> int:
         print("no cases in common; run tools/build_ingested_cases.py")
         return 1
 
-    build(MARKDOWN_CORPUS)
-    build(INGESTED_CORPUS)
+    build(MARKDOWN_CORPUS, pin_identity=False)  # a committed corpus (ADR-0046)
+    build(INGESTED_CORPUS, pin_identity=False)  # a committed corpus (ADR-0046)
 
     by_document = formats_by_document()
     attribution = {case.case_id: format_of(case, by_document) for case in ingested}
