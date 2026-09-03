@@ -128,10 +128,15 @@ def main() -> int:
             if source.exists():
                 shutil.copy2(source, before / "eval" / name)
 
+        # `pin_identity=False` on both sides (roadmap 4.14). `here` is the
+        # operator's actual working tree, and a measurement that modifies the
+        # thing it measures is not one; on `before` it is the same choice for the
+        # same reason — the two corpora must be compiled the same way or the
+        # comparison acquires a second free variable.
         print(f"compiling {ref} with today's compiler ...")
-        build(before, config=load_config(before))
+        build(before, config=load_config(before), pin_identity=False)
         print(f"compiling {here} ...")
-        build(here, config=load_config(here))
+        build(here, config=load_config(here), pin_identity=False)
 
         print(f"\nbefore  {ref}: {_corpus_size(before)}")
         print(f"after   {here.name or here}: {_corpus_size(here)}")

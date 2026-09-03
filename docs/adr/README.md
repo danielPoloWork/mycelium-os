@@ -61,3 +61,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0043](0043-judge-across-the-configurations-a-set-is-scored-under.md) | Judge across the configurations a set is scored under | Accepted |
 | [0045](0045-ask-the-documents-whether-two-runs-are-comparable.md) | Ask the documents whether two runs are comparable, not the boundaries | Accepted |
 | [0044](0044-name-what-a-two-case-slice-can-and-cannot-say.md) | Name what a two-case slice can and cannot say | Accepted |
+| [0046](0046-derive-an-identity-rather-than-mint-one-when-a-build-may-not-write.md) | Derive an identity rather than mint one, when a build may not write | Accepted |

@@ -364,6 +364,28 @@ def test_pinning_no_longer_costs_an_extra_build(tmp_path: Path) -> None:
     assert stats.builds == 0
 
 
+def test_a_watch_session_can_decline_to_write_to_the_corpus(tmp_path: Path) -> None:
+    """`--no-pin` is a property of the session, not of one build (roadmap 4.14).
+
+    `--clean` and `--require-vectors` are refused with `--watch` because they are
+    single-shot intents. "Do not touch this tree" is not: an operator watching a
+    corpus they are not ready to modify means it for every build in the loop.
+    """
+    root = repo(tmp_path / "unpinned", {"knowledge/fresh.md": "# Fresh\n\nNo identity yet.\n"})
+    document = root / "knowledge" / "fresh.md"
+    before = document.read_bytes()
+
+    build(root, config=LEXICAL, pin_identity=False)
+    assert document.read_bytes() == before
+
+    document.write_text("# Fresh\n\nEdited, still no identity.\n", encoding="utf-8")
+    edited = document.read_bytes()
+    stats = run_watch(root, source(document), config=LEXICAL, debounce_s=0.05, pin_identity=False)
+
+    assert stats.builds == 1  # the edit was compiled
+    assert document.read_bytes() == edited  # and the loop wrote nothing back
+
+
 # ---------------------------------------------------------------------------
 # The loop
 # ---------------------------------------------------------------------------

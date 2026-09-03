@@ -51,6 +51,7 @@ __all__ = [
     "canonical_json",
     "citation_uri",
     "decode_ulid",
+    "derived_ulid",
     "digest_bytes",
     "digest_json",
     "digest_text",
@@ -59,6 +60,7 @@ __all__ = [
     "encode_ulid",
     "entity_ref",
     "heading_slug",
+    "is_derived_ulid",
     "new_ulid",
     "normalize_text",
     "parse_anchor",
@@ -281,6 +283,50 @@ _DEFAULT_FACTORY: Final = UlidFactory()
 def new_ulid() -> Ulid:
     """Mint a ULID from the process-wide monotonic factory."""
     return _DEFAULT_FACTORY.new()
+
+
+def derived_ulid(name: str) -> Ulid:
+    """A ULID *derived* from `name` — same name, same id, on every machine.
+
+    A minted ULID answers "when was this first seen"; a derived one answers
+    "which thing is this", and the two are not interchangeable. This exists for
+    the one case where identity must be reproducible without being *recorded*:
+    a build that compiles a corpus whose documents carry no pinned
+    ``mycelium_id`` and is not allowed to write one (``mycelium build --no-pin``,
+    roadmap 4.14). Minting there would give the same document a different id on
+    every run, and two measurements of one corpus would not be comparable.
+
+    The timestamp field is **zero**, which is deliberate and load-bearing in two
+    ways. It makes the derivation total — no clock, no entropy, no state — and it
+    marks the result: :func:`ulid_timestamp` reports the Unix epoch, which is not
+    a time any document was authored, and a derived id therefore sorts before
+    every minted one. :func:`is_derived_ulid` is the readable form of that test.
+
+    The 80 randomness bits are the leading 80 bits of the SHA-256 of the
+    normalized name. Collision resistance is 2^40 by the birthday bound — about a
+    million names before a one-in-a-million chance — which is comfortable for the
+    10^2-10^5 documents v1 targets (D-002) and is *not* a claim that derived ids
+    are safe as a permanent identity. They are not: a derived id is a function of
+    the name, so renaming the document renames the document. Surviving a rename
+    is exactly what pinning buys, and what a run that declines to pin gives up.
+    """
+    randomness = digest_bytes(normalize_text(name).encode("utf-8"))
+    raw = bytes.fromhex(randomness.removeprefix("sha256:"))[:_RANDOMNESS_BYTES]
+    return encode_ulid(0, raw)
+
+
+def is_derived_ulid(ulid: str) -> bool:
+    """Whether `ulid` was derived from a name rather than minted from a clock.
+
+    True exactly when the timestamp field is zero. A minted ULID could carry a
+    zero timestamp only if it were minted at the Unix epoch, which no clock this
+    program runs on reports.
+    """
+    try:
+        timestamp_ms, _ = decode_ulid(ulid)
+    except IdentityError:
+        return False
+    return timestamp_ms == 0
 
 
 # ---------------------------------------------------------------------------
