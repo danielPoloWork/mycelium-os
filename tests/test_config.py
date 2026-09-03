@@ -132,8 +132,10 @@ def test_pack_atomic_reaches_the_chunker(tmp_path: Path) -> None:
     config = load_config(write(tmp_path, "[chunking]\npack_atomic = true\n"))
     assert config.chunking.pack_atomic is True
     assert config.chunking.to_policy().pack_atomic is True
-    # And the default is the behaviour ADR-0007 shipped.
-    assert MyceliumConfig().chunking.to_policy().pack_atomic is False
+    # And it is now the default, so `false` is the edit that must also arrive.
+    assert MyceliumConfig().chunking.to_policy().pack_atomic is True
+    unpacked = load_config(write(tmp_path, "[chunking]\npack_atomic = false\n"))
+    assert unpacked.chunking.to_policy().pack_atomic is False
 
 
 def test_pack_atomic_changes_the_config_digest(tmp_path: Path) -> None:

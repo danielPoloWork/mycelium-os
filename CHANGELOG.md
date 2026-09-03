@@ -12,6 +12,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **[BUG-0019](docs/bugs/2026/09/BUG-0019-pack-atomic-does-not-invalidate-the-chunk-cache.md):
+  turning `pack_atomic` on against an existing store changed nothing**, and the build
+  reported success. The setting was missing from the chunk stage's config slice, so neither
+  the environment digest nor the chunk cache key moved with it: every document looked
+  unchanged and the previous boundaries were served under the new configuration. `--clean`
+  was the accidental workaround. Found while flipping the default — the flip is exactly the
+  operation the defect suppresses.
+
 - **Gate G3 can now see a chunking change** (roadmap 4.13). G3 enforces its 2 % per-slice
   rule only when the run is comparable to its baseline, and comparability was the fold of
   chunk digests — so any change to chunk boundaries made the two runs "not comparable" and
@@ -55,6 +63,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   guards nothing, silently.
 
 ### Changed
+
+- **`[chunking] pack_atomic` is on by default** (roadmap 4.15). A table or code block may
+  share a chunk with the prose around it instead of ending the run on both sides; it is
+  still never *split*, and packing never crosses a heading. Measured on the frozen release
+  sets: `uv-docs` **0.306 → 0.492** nDCG@10, `uv-docs-ingested` **0.385 → 0.647**, this
+  repository 0.450 → 0.463, no slice regressed anywhere — and gate G3 **enforced** that
+  verdict on both vendored corpora rather than abstaining, which is the first time it could
+  see a chunking change (ADR-0045). Set `pack_atomic = false` for the v0.3 boundaries. See
+  [ADR-0047](docs/adr/0047-flip-the-packed-chunker-on-and-let-the-gate-say-so.md).
+- **Every corpus is re-chunked once** on the first build after upgrading. Anchors naming a
+  section are unaffected; an anchor naming an ordinal inside a multi-chunk section may move,
+  and a consumer holding one should expect `ANCHOR_GONE` and re-resolve.
+- Spec 03 §5's chunking sentence is updated rather than deviated from: tables and code
+  blocks are never split, and may now share.
 
 - A build that *does* pin now re-pins a document whose recorded identity was derived
   (roadmap 4.14). The plan's fast path skips the frontmatter parse for an unchanged digest

@@ -111,9 +111,9 @@ the family is closed — which is how roadmap 4.8 stopped being a search for one
 and became a chunking item (4.11).
 
 **A judgment must be true under every configuration the set is scored under.** The rule
-above assumes one chunker. When a chunking change is pending — `[chunking] pack_atomic`, off
-today and flipped at roadmap 4.15 — a judgment naming a chunk that the change deletes scores
-zero however good the retrieval was. So the unit a judgment names is the smallest one holding
+above assumes one chunker. When a chunking change is pending — `[chunking] pack_atomic` was
+the first, measured at roadmap 4.11 and flipped on at 4.15 — a judgment naming a chunk that
+the change deletes scores zero however good the retrieval was. So the unit a judgment names is the smallest one holding
 the answer under *both* settings: still the chunk where the chunk survives, the section where
 the change merges it away. Five cases were re-anchored on that basis at 4.12 and nothing else
 was widened; the reasoning, and the one case where it overrides ADR-0029's caution with the

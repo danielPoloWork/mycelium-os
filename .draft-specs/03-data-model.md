@@ -185,7 +185,10 @@ Git.
 
 Chunking policy (defaults; configurable in `mycelium.toml`): heading-bounded; target 200–800
 tokens; oversize sections split at paragraph boundaries with ordinal suffixes; tables and
-code blocks are atomic chunks (`kind: "table" | "code"`); no mid-sentence splits; overlap
+code blocks are never *split* (`atomic`), and since roadmap 4.15 they may **share** a chunk
+with the prose around them (`[chunking] pack_atomic`, on by default — ADR-0042, ADR-0047);
+a block that is alone in its section is still a `kind: "table" | "code"` chunk of its own.
+No mid-sentence splits; overlap
 0 by default (structure replaces overlap). Invariant: ordered chunk texts ⊇ normalized
 document text (property-tested).
 

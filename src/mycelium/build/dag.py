@@ -125,6 +125,11 @@ class BuildEnv:
             chunk_slice={
                 "target_tokens": policy.target_tokens,
                 "max_tokens": policy.max_tokens,
+                # Every setting that changes what the chunker emits belongs here,
+                # and `pack_atomic` did not — so turning it on against an existing
+                # store changed nothing at all: identical key, cache hit, the old
+                # boundaries served under the new configuration ([BUG-0019]).
+                "pack_atomic": policy.pack_atomic,
                 "counter": _counter_id(policy),
             },
             kir_schema=record_schema_version(KirDocument),

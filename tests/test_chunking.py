@@ -165,7 +165,7 @@ x = 1
 
 
 def test_sections_become_chunks_with_their_heading_path() -> None:
-    chunks = chunk(STRUCTURED)
+    chunks = chunk(STRUCTURED, policy=ChunkingPolicy(pack_atomic=False))
     assert [c.heading_path for c in chunks] == [
         ("Architecture",),
         ("Architecture", "Event Bus"),
@@ -178,7 +178,9 @@ def test_sections_become_chunks_with_their_heading_path() -> None:
 
 
 def test_tables_and_code_blocks_are_atomic_chunks() -> None:
-    chunks = chunk(STRUCTURED)
+    """Unpacked, an atomic block is a chunk of its own — the v0.3 boundaries, which
+    `pack_atomic = false` still asks for (ADR-0007, ADR-0047)."""
+    chunks = chunk(STRUCTURED, policy=ChunkingPolicy(pack_atomic=False))
     kinds = {c.kind for c in chunks}
     assert kinds == {ChunkKind.PROSE, ChunkKind.TABLE, ChunkKind.CODE}
     table = next(c for c in chunks if c.kind is ChunkKind.TABLE)
@@ -205,15 +207,17 @@ Then check it.
 
 
 def test_packed_atomic_blocks_share_a_chunk_with_their_prose() -> None:
-    """The change 4.11 is about: a command no longer ends the chunk it belongs to.
+    """The change 4.11 measured and 4.15 shipped: a command no longer ends the
+    chunk it belongs to.
 
-    Under the shipped default a section reading "prose, code, prose" becomes
-    three chunks, two of them fragments. That is what makes chunk sizes bimodal,
-    and BM25 normalises by length — so a seven-token fragment outranks the
-    paragraph that answers (ADR-0031).
+    Unpacked, a section reading "prose, code, prose" becomes three chunks, two of
+    them fragments. That is what makes chunk sizes bimodal, and BM25 normalises by
+    length — so a seven-token fragment outranks the paragraph that answers
+    (ADR-0031). Packed is now the default; `atomic` is what the operator asks for
+    to get the old shape back.
     """
-    atomic = chunk(INSTALL)
-    packed = chunk(INSTALL, policy=ChunkingPolicy(pack_atomic=True))
+    atomic = chunk(INSTALL, policy=ChunkingPolicy(pack_atomic=False))
+    packed = chunk(INSTALL)
 
     assert [c.kind for c in atomic] == [ChunkKind.PROSE, ChunkKind.CODE, ChunkKind.PROSE]
     assert len(packed) == 1
@@ -265,14 +269,27 @@ def test_an_oversize_atomic_block_is_never_split() -> None:
     assert tables[0].tokens > 100, "an indivisible block may exceed the ceiling; it is not cut"
 
 
-def test_packing_is_off_by_default() -> None:
-    """The measured behaviour ships behind a setting, and the default is unchanged.
+def test_packing_is_on_by_default() -> None:
+    """The shipped default since roadmap 4.15 (ADR-0047).
 
-    Flipping it re-anchors judged cases, and one change may move the retriever or
-    the judgments and not both (roadmap 4.12 and 4.15, ADR-0042).
+    ADR-0042 measured the change and shipped it *off*, because flipping it and
+    re-anchoring the judged cases it invalidates could not be one change. 4.12 did
+    the re-anchoring; this is the flip. On the second corpus it is worth
+    0.306 → 0.492 nDCG@10 on the frozen release set with no slice regressed, and
+    gate G3 enforced that verdict rather than abstaining (ADR-0045).
     """
-    assert ChunkingPolicy().pack_atomic is False
-    assert ChunkKind.CODE in {c.kind for c in chunk(INSTALL)}
+    assert ChunkingPolicy().pack_atomic is True
+    assert [c.kind for c in chunk(INSTALL)] == [ChunkKind.PROSE]
+
+
+def test_the_old_boundaries_are_one_setting_away() -> None:
+    """A default is not a removal: `pack_atomic = false` still produces exactly
+    what ADR-0007 shipped, which is what makes the flip reversible per corpus."""
+    assert [c.kind for c in chunk(INSTALL, policy=ChunkingPolicy(pack_atomic=False))] == [
+        ChunkKind.PROSE,
+        ChunkKind.CODE,
+        ChunkKind.PROSE,
+    ]
 
 
 def test_oversize_sections_split_at_paragraph_boundaries() -> None:

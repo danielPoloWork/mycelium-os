@@ -38,3 +38,10 @@ retry_policy = RetryPolicy(
 
 The values above are defaults; a connector may lower the ceiling but never raise it past
 the build's own budget. See ![[architecture]] for where this sits in the pipeline.
+
+## Worked example
+
+```python
+snapshot = build(root, clean=True)
+assert snapshot.counts.chunks > 0
+```

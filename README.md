@@ -412,11 +412,20 @@ foresight no planner can have — is 3 % above grep. The evidence re-runs with
 `python tools/measure_ranking.py --release --oracle`.
 
 What did move the number was the *unit*, not the ranking. `[chunking] pack_atomic` lets a code
-block share a chunk with the prose it belongs to instead of ending it, which is worth **+61 %**
-on that corpus (0.280 → 0.451, against grep's 0.471) with no slice regressed. It ships
-**off**, because moving a chunk boundary deletes a judged anchor and five cases must be
-re-anchored before the default can flip — roadmap 4.12 and 4.15, deliberately separate changes
-([ADR-0042](docs/adr/0042-let-an-atomic-block-share-its-chunk.md)).
+block share a chunk with the prose it belongs to instead of ending it. It shipped **off** while
+the judged cases a moved boundary invalidates were re-anchored, and it is **on by default**
+since roadmap 4.15: on that corpus the frozen release set goes **0.306 → 0.492** nDCG@10 with
+no slice regressed, and gate G3 *enforced* that verdict rather than abstaining — the first
+chunking change it could see ([ADR-0042](docs/adr/0042-let-an-atomic-block-share-its-chunk.md),
+[ADR-0045](docs/adr/0045-ask-the-documents-whether-two-runs-are-comparable.md),
+[ADR-0047](docs/adr/0047-flip-the-packed-chunker-on-and-let-the-gate-say-so.md)).
+
+It does not close the gap it narrows. grep moves with the chunker too — the same corpus,
+re-measured, gives grep 0.519 against our 0.492 — so on `uv`'s documentation the product is
+still behind, by 5 % where it was behind by 35 %. On our own corpus and on the ingested one it
+is ahead (0.463 against 0.271, and 0.647 against 0.610). Roadmap 4.8 stays open on the corpus
+it was filed about, which is what D-010 asks for. Set `pack_atomic = false` to get the v0.3
+boundaries back.
 
 | # | Title | Status |
 |---|---|---|

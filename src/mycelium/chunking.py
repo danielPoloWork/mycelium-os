@@ -98,11 +98,19 @@ class ChunkingPolicy:
     max_tokens: int = 800
     overlap_tokens: int = 0
     count_tokens: TokenCounter = estimate_tokens
-    pack_atomic: bool = False
+    pack_atomic: bool = True
     """Whether a table or code block may share a chunk with the prose around it.
 
-    Measured at roadmap 4.11 (ADR-0042); the default stays what ADR-0007 shipped
-    until roadmap 4.15 flips it.
+    On by default since roadmap 4.15, and the reason is the unit rather than the
+    ranking: an atomic block used to close the prose run on both sides, so a
+    section reading "paragraph, command, paragraph" became three chunks, two of
+    them offcuts. On the second corpus that was 47 % of all chunks under 25
+    tokens; packed, it is 8.8 %, and release nDCG@10 goes 0.306 → 0.451 with no
+    slice regressed (ADR-0042 measured it, ADR-0047 flipped it).
+
+    A block is still never *split* — that is what `atomic` protects — and packing
+    never crosses a heading, so ADR-0007's constraint holds as written. Set it
+    `false` to get the boundaries v0.3 produced.
     """
 
     def __post_init__(self) -> None:

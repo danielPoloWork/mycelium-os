@@ -152,7 +152,8 @@ redact_secrets = true          # replace credentials found in an ingested source
 max_tokens = 800               # hard ceiling: prose splits at the paragraph before it
 # target_tokens = 400         # aim smaller than the ceiling; measure before you do
 atomic = ["table", "code"]     # tables and code blocks are never split
-# pack_atomic = true          # let a table or code block share a chunk with the prose
+pack_atomic = true             # a table or code block may share a chunk with the prose
+                               # around it; false restores the v0.3 boundaries
                                # around it, instead of standing alone. Measured on two
                                # corpora (ADR-0042): on task documentation full of command
                                # blocks it is worth +61% nDCG@10, on long-form prose it is
