@@ -67,6 +67,7 @@ from mycelium.ingest import (
     write_projection,
 )
 from mycelium.mcp import serve_stdio
+from mycelium.retrieval import SearchOutcome
 from mycelium.retrieval import search as run_search
 from mycelium.sdk.identity import (
     IdentityError,
@@ -868,7 +869,12 @@ def search(
         ),
     ] = False,
     explain: Annotated[
-        bool, typer.Option("--explain", help="Show which legs produced each result.")
+        bool,
+        typer.Option(
+            "--explain",
+            help="Show which legs produced each result, and what each query term "
+            "reached in the index.",
+        ),
     ] = False,
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
@@ -896,6 +902,7 @@ def search(
             ),
             config=retrieval,
             embedder=_query_embedder(settings, retrieval),
+            explain=explain or as_json,
         )
         results = [
             {
@@ -927,6 +934,8 @@ def search(
         return
     for note in outcome.degraded:
         warn(note)
+    if explain:
+        _report_terms(outcome)
     if not results:
         typer.echo("No results.")
         return
@@ -937,6 +946,31 @@ def search(
         if explain:
             detail(f"   via {'+'.join(fused.legs)} at {fused.ranks}")
         typer.echo(f"   {_snippet(str(result['text']))}")
+
+
+def _report_terms(outcome: SearchOutcome) -> None:
+    """Print what each query word reached, worst first (roadmap 4.21).
+
+    Worst first because the answer an operator came for is usually at that end: a
+    word the corpus does not contain, or one only the stemmer rescued. Ordering
+    by document count would bury it under `the` and `a`.
+    """
+    if not outcome.terms:
+        return
+    dead = [item for item in outcome.terms if item.unmatched]
+    rescued = [item for item in outcome.terms if item.stem_only]
+    typer.echo(
+        f"terms: {len(outcome.terms)}"
+        f"{f', {len(dead)} matching nothing' if dead else ''}"
+        f"{f', {len(rescued)} reached only by stem' if rescued else ''}"
+    )
+    for item in sorted(outcome.terms, key=lambda hit: (hit.documents, hit.stem_documents)):
+        if item.unmatched:
+            warn(f"   {item.term}: nothing in this corpus, in any inflection")
+            continue
+        stemmed = "" if item.stem == item.term else f'; stem "{item.stem}" {item.stem_documents}'
+        note = "  <- only via its stem" if item.stem_only else ""
+        detail(f"   {item.term}: {item.documents} doc(s){stemmed}{note}")
 
 
 def _query_embedder(settings: MyceliumConfig, retrieval: RetrievalConfig) -> Embedder | None:

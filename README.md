@@ -71,7 +71,8 @@ takes `--json`, exits 0/1/2 (ok / failed / usage), and honours `NO_COLOR`.
 
 Point an MCP-capable agent at `mycelium serve` and it gets four read-only tools —
 `mycelium_search`, `mycelium_fetch`, `mycelium_neighbors` (the graph of links your documents
-actually contain), and `mycelium_explain` (how a query was planned, and why) — returning
+actually contain), and `mycelium_explain` (how a query was planned, why, and what each of
+its words actually reached in the index) — returning
 verbatim passages with `mycelium://` citations, trust class, and verification status. Every response states in words that its
 content is data, never instructions: retrieved text is quoted evidence, and injection
 resistance is a tested property, not a promise (D-017).
@@ -124,6 +125,28 @@ So the shipped default is `[retrieval] profile = "lexical"`. Turn hybrid on with
 or `mycelium search --hybrid`, and read the numbers, the sweep that failed to fix abstention,
 and what has to change before it earns a default in
 [ADR-0017](docs/adr/0017-adopt-the-local-embedder-and-hybrid-retrieval.md).
+
+`--explain` also says what each word of your query reached, which is the one question
+ranking cannot answer about itself: a term matching nothing contributes nothing to a score,
+which is arithmetically identical to a term that matched and lost.
+
+On a two-document corpus that says *signed off* and *contribution*:
+
+```text
+$ mycelium search "who signs off a kubernetes contribution" --explain
+terms: 6, 2 matching nothing, 1 reached only by stem
+warning:    who: nothing in this corpus, in any inflection
+warning:    kubernetes: nothing in this corpus, in any inflection
+   signs: 0 doc(s); stem "sign" 1  <- only via its stem
+   off: 1 doc(s)
+   a: 1 doc(s)
+   contribution: 1 doc(s); stem "contribut" 1
+```
+
+Three outcomes, kept apart: written that way, reached only by its stem, or absent from the
+corpus in every inflection. A query standing on one weak word is then visible in one command
+— which on this project's own evaluation set it once was not, for two milestones
+([ADR-0050](docs/adr/0050-report-what-each-query-term-reached.md)).
 
 Embeddings are an optional install — `pip install mycelium-os[embeddings]` — and a build
 without them publishes normally, marked `degraded: ["vectors"]`, with lexical search intact.

@@ -61,6 +61,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`mycelium search --explain` and `mycelium_explain` now report what each query term
+  reached** (roadmap 4.21,
+  [ADR-0050](docs/adr/0050-report-what-each-query-term-reached.md)). Ranking is silent about
+  what it did not find — a term matching nothing contributes nothing, which is
+  arithmetically identical to a term that matched and lost — and that silence once let a
+  judged case score 0.395 for two milestones on the strength of a single stopword. Each
+  distinct query word now comes back with document and chunk counts and **three
+  distinguishable outcomes**: written that way, reached *only* by its stem, or absent from
+  the corpus in every inflection. Surface and stem stay apart deliberately, so a term the
+  stemmer rescued (roadmap 4.19) reads as a rescue rather than as a hit. Dead terms also
+  become a note on the outcome, and a warning in the human output.
+- `SqliteStore.term_hits`, `mycelium.store.TermHits`, and `SearchOutcome.terms` /
+  `dead_terms`. The report is computed only when `search` is called with `explain=True` —
+  two index queries per term, and the harness that measures p95 runs thousands of queries.
 - **`mycelium eval --against <retriever>`** (roadmap 4.8,
   [ADR-0049](docs/adr/0049-close-the-grep-gap-and-keep-the-incumbent-in-the-manifest.md)) —
   score a second retriever over the same cases, on the same snapshot, in the same anchor

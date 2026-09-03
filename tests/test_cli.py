@@ -400,6 +400,43 @@ def test_search_returns_ranked_hits_with_citation_uris(tmp_path: Path) -> None:
     assert hit["verification_status"] == "verified"
 
 
+def test_search_explain_reports_what_each_term_reached(tmp_path: Path) -> None:
+    """Roadmap 4.21: the query's weakest word, visible in one command."""
+    seeded(tmp_path)
+    run_build(tmp_path)
+    result = invoke(
+        "search", "exponential kubernetes backoff", "--path", str(tmp_path), "--explain"
+    )
+    assert result.exit_code == ExitCode.OK
+    assert "terms: 3, 1 matching nothing" in result.stdout
+    # The dead term is a warning, not a line in the table: it is the answer the
+    # operator came for, and it goes where warnings go (spec 05 §1).
+    assert "kubernetes: nothing in this corpus" in result.stderr
+    assert "exponential: 1 doc(s)" in result.stdout
+
+
+def test_search_without_explain_says_nothing_about_terms(tmp_path: Path) -> None:
+    seeded(tmp_path)
+    run_build(tmp_path)
+    result = invoke("search", "exponential kubernetes", "--path", str(tmp_path))
+    assert "terms:" not in result.stdout
+    assert "nothing in this corpus" not in result.stderr
+
+
+def test_search_json_always_carries_the_term_report(tmp_path: Path) -> None:
+    # `--json` is a format, and the document it emits is self-explanatory by
+    # default — the same reason each result already carries its `explain` block.
+    seeded(tmp_path)
+    run_build(tmp_path)
+    payload = json.loads(
+        invoke("search", "exponential kubernetes", "--path", str(tmp_path), "--json").stdout
+    )
+    terms = {item["term"]: item for item in payload["retrieval"]["terms"]}
+    assert terms["kubernetes"]["unmatched"] is True
+    assert terms["exponential"]["documents"] == 1
+    assert any("match nothing" in note for note in payload["retrieval"]["notes"])
+
+
 def test_search_honours_limit_and_filters(tmp_path: Path) -> None:
     seeded(tmp_path)
     run_build(tmp_path)
