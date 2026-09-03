@@ -110,15 +110,66 @@ def source(*items: object) -> "queue.Queue[object]":
 
 def test_the_derived_store_is_never_watched(tmp_path: Path) -> None:
     """The footgun this rule exists for: a build writes into `.mycelium/`, so
-    treating those writes as changes is an infinite rebuild loop."""
+    treating those writes as changes is an infinite rebuild loop.
+
+    The list is what a build was observed to write, not what it seemed likely to:
+    a `store.db`, a `CURRENT` pointer, one snapshot manifest, four CAS blobs, and
+    the journal — plus the lock, which lives and dies inside the same directory
+    (roadmap 4.18).
+    """
     root = repo(tmp_path)
     for written in (
         root / ".mycelium" / "store.db",
         root / ".mycelium" / "CURRENT",
+        root / ".mycelium" / "journal.jsonl",
+        root / ".mycelium" / "lock",
         root / ".mycelium" / "snapshots" / "01ARZ3NDEKTSV4RRFFQ69G5FAV.json",
         root / ".mycelium" / "cas" / "ab" / "cdef",
+        root / ".mycelium" / "eval" / "01ARZ3NDEKTSV4RRFFQ69G5FAV.json",
     ):
         assert is_relevant(written, root) is False
+
+
+def test_classification_does_not_depend_on_how_a_path_is_spelled(tmp_path: Path) -> None:
+    """Roadmap 4.18 named this as a candidate cause of the macOS flake, and it is
+    not one — but only because both sides are resolved.
+
+    On macOS `tmp_path` is under `/var`, a symlink to `/private/var`, and the
+    watcher reports the resolved form while the caller holds the unresolved one.
+    `is_relevant` resolves *both* operands, so the two spellings classify alike;
+    the redundant-segment case below is the portable form of that property, and
+    the symlink case is the real thing, where a symlink can be created.
+
+    It also fails **closed**: a path it cannot relate to the root at all is not
+    relevant. That direction matters most — the alternative would be a filter
+    that waves through anything it does not understand, including a build's own
+    writes.
+    """
+    root = repo(tmp_path)
+    document = root / "knowledge" / "retries.md"
+    spelled_oddly = root / "knowledge" / ".." / "knowledge" / "." / "retries.md"
+    assert spelled_oddly != document  # textually different, same file
+    assert is_relevant(spelled_oddly, root) is is_relevant(document, root) is True
+
+    derived = root / ".mycelium" / "store.db"
+    assert is_relevant(root / "knowledge" / ".." / ".mycelium" / "store.db", root) is (
+        is_relevant(derived, root)
+    )
+    assert is_relevant(Path("relative-and-unrooted.md"), root) is False
+
+
+@pytest.mark.skipif(os.name == "nt", reason="symlink creation needs privilege on Windows")
+def test_a_symlinked_root_classifies_the_same_as_its_real_path(tmp_path: Path) -> None:
+    """The macOS `/var` → `/private/var` shape, on any platform that has symlinks."""
+    real = repo(tmp_path / "real")
+    link = tmp_path / "link"
+    link.symlink_to(real, target_is_directory=True)
+
+    # The caller holds the link; the watcher reports the real path, or the reverse.
+    assert is_relevant(real / "knowledge" / "retries.md", link) is True
+    assert is_relevant(link / "knowledge" / "retries.md", real) is True
+    assert is_relevant(real / ".mycelium" / "store.db", link) is False
+    assert is_relevant(link / ".mycelium" / "store.db", real) is False
 
 
 def test_reading_a_file_is_not_a_change(tmp_path: Path) -> None:
@@ -579,21 +630,83 @@ def test_the_observer_reports_a_real_edit(tmp_path: Path) -> None:
 
 
 def test_the_observer_ignores_the_derived_store(tmp_path: Path) -> None:
-    """The infinite-loop guard, over a real watcher this time."""
+    """The infinite-loop guard, over a real watcher, on a corpus that can show it.
+
+    Roadmap 4.18 rewrote this test twice over, because the version that flaked on
+    macOS was wrong in a second way that its green hid.
+
+    **It watched nothing.** Its corpus had a `knowledge/` tree, so the observer
+    watched `knowledge/` — and the derived store is `.mycelium/`, a sibling. Not
+    one event about the store was ever delivered to the handler, so "nothing
+    arrived" was true no matter what the filter did. The guard is only reachable
+    on a corpus whose root *is* the corpus, which is what this one uses: measured
+    on Windows, that shape delivers 103 raw events during a build, all of them
+    under `.mycelium/`, and none of them survives the filter.
+
+    **And it asserted the absence of events with a timeout.** "Nothing arrives
+    within two seconds" cannot pass for a good reason — it can only fail to fail
+    — and it makes every unrelated event anywhere in the watched tree a red
+    build. So the negative is bounded by a *sentinel* the test owns instead: edit
+    a document, wait for that edit (a positive wait, which fails loudly and
+    truthfully when the watcher is broken), then assert that nothing the queue
+    holds names the derived store. Anything spurious the build produced was
+    enqueued before the sentinel, so draining past it is a complete check with no
+    timeout on the thing that must not happen.
+    """
     from mycelium.corpus import CorpusScope
     from mycelium.watch import _start_observer
 
-    root = repo(tmp_path)
+    # A bare-root corpus: no `knowledge/`, so `.mycelium/` is inside the watch.
+    root = repo(tmp_path / "bare", {"retries.md": CORPUS["knowledge/retries.md"]})
+    assert CorpusScope().scope_of(root) == root, "the store has to be in scope to be ignored"
+
     events: queue.Queue[object] = queue.Queue()
     observer = _start_observer(root, events, CorpusScope())
     try:
-        # The corpus is pre-pinned, so this build writes only into `.mycelium/`:
-        # a store, a manifest, CURRENT, CAS blobs. None of it may come back as a
-        # change, or the loop would rebuild forever.
+        # Pre-pinned, so this build writes only into `.mycelium/`: a store, a
+        # manifest, CURRENT, CAS blobs, the journal, the lock. None of it may come
+        # back as a change, or the loop would rebuild forever.
         result = build(root, config=LEXICAL)
         assert result.pinned == ()
-        with pytest.raises(queue.Empty):
-            events.get(timeout=2)
+
+        sentinel = root / "retries.md"
+        sentinel.write_text("# Retries\n\nEdited after the build.\n", encoding="utf-8")
+        seen = [Path(str(events.get(timeout=10)))]
+        while True:
+            try:
+                seen.append(Path(str(events.get_nowait())))
+            except queue.Empty:
+                break
     finally:
         observer.stop()
         observer.join(timeout=5)
+
+    assert sentinel in seen, "the watcher never reported the edit that bounds this check"
+    assert not [path for path in seen if ".mycelium" in path.parts], (
+        f"a build's own write came back as a change: {seen}"
+    )
+
+
+def test_an_authored_tree_puts_the_derived_store_out_of_the_watch(tmp_path: Path) -> None:
+    """The second, independent reason the loop cannot self-trigger.
+
+    Stated as its own test because it is what made the previous version of the
+    test above vacuous, and a reader who does not know it will write that version
+    again. When a repository has a `knowledge/` tree the observer watches only
+    that tree, so a build's writes into the sibling `.mycelium/` are not filtered
+    out — they are never delivered. Belt and braces, and the braces are here.
+    """
+    from mycelium.corpus import CorpusScope
+    from mycelium.watch import is_relevant
+
+    root = repo(tmp_path)  # has knowledge/
+    watched = CorpusScope().scope_of(root)
+    assert watched == root / "knowledge"
+    derived = root / ".mycelium"
+    assert watched != derived and watched not in derived.parents
+
+    bare = repo(tmp_path / "bare", {"notes.md": "# Notes\n"})
+    # No authored tree, so the watch covers the root — and the filter is then the
+    # only thing standing between a build's own writes and the next build.
+    assert CorpusScope().scope_of(bare) == bare
+    assert is_relevant(bare / ".mycelium" / "store.db", bare) is False

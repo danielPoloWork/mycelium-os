@@ -12,6 +12,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **The watcher's infinite-rebuild guard was covered by a test that passed with the guard
+  deleted** ([BUG-0020](docs/bugs/2026/09/BUG-0020-the-rebuild-loop-guard-was-covered-by-a-vacuous-test.md),
+  roadmap 4.18). No behaviour changes — the filter and the watch scoping both work — but the
+  end-to-end check for them asserted "no event arrives within two seconds" against a corpus
+  whose derived store was outside the watched tree, so nothing was ever delivered to filter.
+  The test now uses a corpus where the store *is* inside the watch (103 events to reject,
+  measured) and bounds the negative with a sentinel edit rather than a clock, so a broken
+  watcher fails loudly instead of passing vacuously.
+
 - **[BUG-0019](docs/bugs/2026/09/BUG-0019-pack-atomic-does-not-invalidate-the-chunk-cache.md):
   turning `pack_atomic` on against an existing store changed nothing**, and the build
   reported success. The setting was missing from the chunk stage's config slice, so neither
