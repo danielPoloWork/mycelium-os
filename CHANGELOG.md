@@ -12,6 +12,27 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The lexical index gates the query, not the documents** (roadmap 4.23,
+  [ADR-0054](docs/adr/0054-gate-the-query-not-the-documents.md)). ADR-0048's stem
+  expansion required a surface hit inside one MATCH expression, which held two rules at
+  once: *this query* must have a literal footing in the corpus, and *every candidate
+  document* must carry one of its words as written. Only the first buys the abstention that
+  keeps gate G4 green, and the second was excluding documents that share a word's
+  inflection and nothing else. They are now separate — a `LIMIT 1` foothold probe, then an
+  open search — with no threshold introduced anywhere. Measured: `uv/release` 0.5483 →
+  0.5620 and `uv-ingested/release` 0.6469 → 0.6556 with **G3 enforcing and passing**, every
+  point of it in the `fact` slice; ours/release flat at 0.4978; G4 unchanged at 0.00 % on
+  all three corpora, which the same search without the gate is not.
+- **`STEM_WEIGHT` is 0.05, not 0.1**, and it is the same balance rather than a new one: the
+  old expression named the surface clause twice, so the nominal weight understated the
+  surface side. With the duplication gone the nominal weight is the effective one. An
+  evaluation run manifest's `retriever_config.stem_weight` is how a reader tells a run on
+  this index from a run on the last one.
+- **`mycelium.store.foothold_query` is a new public name**, and `expanded_query` changes
+  meaning: it is now the open expression, and a caller wanting ADR-0048's semantics must run
+  the gate itself. No store is rebuilt — the index columns are unchanged, so the schema
+  stays `mycelium/store/v4`.
+
 - **Gate G3 reports on the corpus we author, and enforces on the ones we do not** (roadmap
   4.22, [ADR-0053](docs/adr/0053-report-on-the-corpus-we-author-and-gate-on-the-one-we-do-not.md)).
   G3 enforces only when the corpus and the judgements are the ones its baseline was taken

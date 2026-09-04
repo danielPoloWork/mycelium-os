@@ -300,10 +300,14 @@ does not survive rendering and re-projection. Filed as roadmap 5.7.
 ## Known limitations
 
 - **Abstention is measured only in the extreme.** A case counts as abstained when the
-  system returns nothing at all, which happens only when every query term is absent from
-  the corpus. A natural-language question about something the corpus does not cover still
-  returns low-ranked noise, because retrieval has no confidence signal to abstain on
-  (roadmap 3.11). G4 proves the system does not invent matches, and no more.
+  system returns nothing at all, which happens only when no query term appears in the
+  corpus as written — the foothold gate roadmap 4.23 kept when it removed the rest of
+  ADR-0048's precondition. A natural-language question about something the corpus does not
+  cover still returns low-ranked noise, because retrieval has no confidence signal to
+  abstain on (roadmap 3.11). G4 proves the system does not invent matches, and no more.
+  All ten judged `unanswerable` cases are of the extreme kind, which is also why 4.23's
+  reach for footholdless *queries* had no headroom to find
+  ([ADR-0054](../docs/adr/0054-gate-the-query-not-the-documents.md)).
 - **The dev/release split is not real yet.** Spec 04 §7.1 wants the release set frozen
   before any tuning; we gate on the same twenty cases we develop against, so G3 detects
   regression but not overfitting. Filed as roadmap 3.13 with the ≥ 60-case, two-corpus

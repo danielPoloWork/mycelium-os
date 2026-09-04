@@ -24,6 +24,7 @@ from mycelium.store.sqlite import (
     StoreVersionError,
     TermHits,
     expanded_query,
+    foothold_query,
     fts_query,
 )
 
@@ -43,5 +44,6 @@ __all__ = [
     "STEM_WEIGHT",
     "TermHits",
     "expanded_query",
+    "foothold_query",
     "fts_query",
 ]
