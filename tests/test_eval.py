@@ -514,6 +514,11 @@ def test_every_gate_the_spec_names_is_accounted_for(corpus: Path) -> None:
     assert all(result.detail for result in manifest.gates)
 
 
+JUDGEMENTS = "sha256:" + "1" * 64
+"""A stand-in case-set digest. Gate G3 compares it for equality and never reads
+it, so what matters in these tests is only whether two of them agree."""
+
+
 def test_g3_says_so_when_no_baseline_is_committed(tmp_path: Path, corpus: Path) -> None:
     """An absent baseline must not read as a pass; it must read as an absence."""
     manifest = run_evaluation(corpus, load_cases(CASES))
@@ -546,13 +551,14 @@ def test_g3_enforces_only_on_a_comparable_corpus(corpus: Path) -> None:
         "per_slice": {"fact": 0.80},
         "content_digest": here.content,
         "corpus_digest": here.chunks,
+        "cases_digest": JUDGEMENTS,
     }
 
-    assert _gate_g3({"fact": summary(0.80)}, baseline, here).passed
+    assert _gate_g3({"fact": summary(0.80)}, baseline, here, JUDGEMENTS).passed
     # Inside the 2 % the spec allows.
-    assert _gate_g3({"fact": summary(0.79)}, baseline, here).passed
+    assert _gate_g3({"fact": summary(0.79)}, baseline, here, JUDGEMENTS).passed
 
-    regressed = _gate_g3({"fact": summary(0.60)}, baseline, here)
+    regressed = _gate_g3({"fact": summary(0.60)}, baseline, here, JUDGEMENTS)
     assert not regressed.passed
     assert "fact" in regressed.detail
     assert "same corpus, same boundaries" in regressed.detail
@@ -563,6 +569,7 @@ def test_g3_enforces_only_on_a_comparable_corpus(corpus: Path) -> None:
         {"fact": summary(0.60)},
         baseline,
         CorpusFingerprint(content="sha256:other-docs", chunks="sha256:other-cuts"),
+        JUDGEMENTS,
     )
     assert elsewhere.passed
     assert "not comparable" in elsewhere.detail
@@ -597,14 +604,15 @@ def test_g3_enforces_across_a_chunking_change() -> None:
         "per_slice": {"fact": 0.80},
         "content_digest": "sha256:docs",
         "corpus_digest": "sha256:before",
+        "cases_digest": JUDGEMENTS,
     }
     recut = CorpusFingerprint(content="sha256:docs", chunks="sha256:after")
 
-    verdict = _gate_g3({"fact": summary(0.60)}, baseline, recut)
+    verdict = _gate_g3({"fact": summary(0.60)}, baseline, recut, JUDGEMENTS)
     assert not verdict.passed, "a chunking change that regresses a slice must fail"
     assert "cut differently" in verdict.detail, "and the report must say why it moved"
 
-    held = _gate_g3({"fact": summary(0.81)}, baseline, recut)
+    held = _gate_g3({"fact": summary(0.81)}, baseline, recut, JUDGEMENTS)
     assert held.passed
     assert "cut differently" in held.detail
 
@@ -639,6 +647,7 @@ def test_g3_falls_back_and_says_so_on_a_baseline_blessed_before_the_split() -> N
         {"fact": summary(0.60)},
         legacy,
         CorpusFingerprint(content="sha256:docs", chunks="sha256:cuts"),
+        JUDGEMENTS,
     )
     assert not same.passed, "the old comparison still enforces where it applied"
     assert "predates the content fingerprint" in same.detail
@@ -648,9 +657,153 @@ def test_g3_falls_back_and_says_so_on_a_baseline_blessed_before_the_split() -> N
         {"fact": summary(0.60)},
         legacy,
         CorpusFingerprint(content="sha256:docs", chunks="sha256:moved"),
+        JUDGEMENTS,
     )
     assert recut.passed, "and it still abstains where it did before - no silent change"
     assert "not comparable" in recut.detail
+
+
+def test_g3_reports_rather_than_enforces_when_the_judgements_changed() -> None:
+    """The gap roadmap 4.24 exists to close (ADR-0051).
+
+    A slice's score is a mean over the cases in that slice. 4.15 regenerated a
+    derived set from 14 cases to 16, `fact` went from five cases to seven, and G3
+    reported `fact 0.632 -> 0.494 (-21.8%)` against a baseline blessed minutes
+    earlier. Nothing had regressed — the old set still gave its old number on the
+    same build — but the gate had no way to tell a different denominator from a
+    worse retriever.
+    """
+    from mycelium.eval.harness import _gate_g3
+    from mycelium.sdk.types import MetricSummary
+
+    def summary(score: float) -> MetricSummary:
+        return MetricSummary(
+            cases=1,
+            ndcg_at_10=score,
+            recall_at_10=1.0,
+            recall_at_50=1.0,
+            mrr=1.0,
+            citation_coverage=1.0,
+            false_answer_rate=0.0,
+            latency_p50_ms=1,
+            latency_p95_ms=1,
+        )
+
+    here = CorpusFingerprint(content="sha256:docs", chunks="sha256:cuts")
+    baseline = {
+        "per_slice": {"fact": 0.632},
+        "content_digest": here.content,
+        "corpus_digest": here.chunks,
+        "cases_digest": JUDGEMENTS,
+    }
+
+    # Same corpus, same boundaries, *different judgements*: the drop is reported
+    # and the gate abstains, because the two numbers are means over different
+    # populations.
+    regraded = _gate_g3({"fact": summary(0.494)}, baseline, here, "sha256:" + "2" * 64)
+    assert regraded.passed
+    assert "the judgements changed" in regraded.detail
+    assert "different case populations" in regraded.detail
+    assert "--bless" in regraded.detail
+
+    # And the movement is named as movement, never as a regression: calling it
+    # one is precisely the report this item exists to stop.
+    assert "moved beyond -2%" in regraded.detail
+    assert "; beyond -2%" not in regraded.detail
+
+    # The identical drop with the judgements held fixed still fails.
+    held = _gate_g3({"fact": summary(0.494)}, baseline, here, JUDGEMENTS)
+    assert not held.passed
+    assert "beyond -2%" in held.detail
+    assert "same judgements" not in held.detail
+
+
+def test_g3_says_the_case_set_comparison_is_unarmed_on_an_older_baseline() -> None:
+    """A baseline with no case-set digest keeps the comparison it was written for.
+
+    Reading the absent field as a match would let a baseline enforce across a
+    case-set change, which is what 4.15 hit; reading it as a mismatch would
+    disarm G3 on every baseline at once, which is the failure ADR-0045 refused
+    for the corpus fingerprint. It gets the old comparison, and the verdict says
+    what is not yet being checked.
+    """
+    from mycelium.eval.harness import _gate_g3
+    from mycelium.sdk.types import MetricSummary
+
+    def summary(score: float) -> MetricSummary:
+        return MetricSummary(
+            cases=1,
+            ndcg_at_10=score,
+            recall_at_10=1.0,
+            recall_at_50=1.0,
+            mrr=1.0,
+            citation_coverage=1.0,
+            false_answer_rate=0.0,
+            latency_p50_ms=1,
+            latency_p95_ms=1,
+        )
+
+    here = CorpusFingerprint(content="sha256:docs", chunks="sha256:cuts")
+    older = {
+        "per_slice": {"fact": 0.80},
+        "content_digest": here.content,
+        "corpus_digest": here.chunks,
+    }
+
+    verdict = _gate_g3({"fact": summary(0.60)}, older, here, JUDGEMENTS)
+    assert not verdict.passed, "enforcement is unchanged - no silent disarming"
+    assert "no case-set identity" in verdict.detail
+    assert "--bless" in verdict.detail
+
+    passing = _gate_g3({"fact": summary(0.80)}, older, here, JUDGEMENTS)
+    assert passing.passed
+    assert "same judgements" not in passing.detail, "it cannot claim what it did not check"
+
+
+def test_the_case_set_digest_sees_what_moves_a_score_and_not_what_does_not() -> None:
+    """What belongs in the digest, stated as behaviour rather than as a field list."""
+    from mycelium.eval.harness import case_set_digest
+
+    def case(**overrides: object) -> EvalCase:
+        base: dict[str, object] = {
+            "case_id": "q-0001",
+            "query": "how do retries work",
+            "slices": (EvalSlice.FACT,),
+            "relevant": (RelevantAnchor(anchor="a.md#retries/0", grade=3),),
+        }
+        return EvalCase(**(base | overrides))  # type: ignore[arg-type]
+
+    original = [case()]
+    assert case_set_digest(original) == case_set_digest([case()]), "must be a function"
+
+    # Reordering is not a change: the same set is the same set.
+    pair = [case(), case(case_id="q-0002")]
+    assert case_set_digest(pair) == case_set_digest(list(reversed(pair)))
+
+    # A note is prose for whoever re-judges the case next. Improving it must not
+    # disarm a gate.
+    assert case_set_digest([case(note="added at 4.24")]) == case_set_digest(original)
+
+    # Everything that moves a score does change it.
+    for changed in (
+        case(case_id="q-0009"),
+        case(query="how does retrying work"),
+        case(slices=(EvalSlice.CONCEPTUAL,)),
+        case(relevant=(RelevantAnchor(anchor="a.md#retries/0", grade=1),)),
+        case(relevant=(RelevantAnchor(anchor="b.md#other/0", grade=3),)),
+    ):
+        assert case_set_digest([changed]) != case_set_digest(original), changed.case_id
+
+    # Adding a case changes it — the 4.15 case, in one line.
+    assert case_set_digest(pair) != case_set_digest(original)
+
+
+def test_a_run_records_the_judgements_it_was_scored_against(corpus: Path) -> None:
+    from mycelium.eval.harness import case_set_digest
+
+    cases = load_cases(CASES)
+    manifest = run_evaluation(corpus, cases)
+    assert manifest.cases_digest == case_set_digest(cases)
 
 
 def test_the_content_fingerprint_survives_a_chunking_change(tmp_path: Path) -> None:

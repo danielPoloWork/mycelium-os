@@ -12,6 +12,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **Gate G3 can now see a case-set change** (roadmap 4.24,
+  [ADR-0051](docs/adr/0051-hold-the-judgements-fixed-too.md)). A slice's score is a mean
+  over the cases in that slice, so adding or re-grading cases changes the denominator — and
+  G3 read a different denominator as a regression. Regenerating a derived set from 14 cases
+  to 16 made it report `fact 0.632 -> 0.494 (-21.8%)` against a baseline blessed minutes
+  earlier, when nothing had regressed. A baseline now records `cases_digest`, the identity of
+  the judgements its numbers were taken over; when they differ the gate **reports and
+  abstains**, and the movement is named as movement rather than in the vocabulary of
+  regression. Both vendored baselines are armed by stamp — added lines only, no score moved.
+
 - **The lexical index now matches inflections** (roadmap 4.19,
   [ADR-0048](docs/adr/0048-index-the-stem-beside-the-surface-form.md)). `signs` did not
   match `signed` and `contributed` did not match `contribution`, because FTS5's
@@ -60,6 +70,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   [ADR-0045](docs/adr/0045-ask-the-documents-whether-two-runs-are-comparable.md).
 
 ### Added
+
+- `mycelium.eval.case_set_digest`, and `cases_digest` on `EvalRunManifest` and on a
+  committed baseline (with a `cases` count beside it, for whoever reads a diff between two
+  baselines). `tools/stamp_baseline_fingerprints.py` arms it on existing baselines, and
+  refuses unless Git shows the case set was frozen before the bless.
 
 - **`mycelium search --explain` and `mycelium_explain` now report what each query term
   reached** (roadmap 4.21,

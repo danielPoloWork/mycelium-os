@@ -71,6 +71,7 @@ from mycelium.sdk.types import (
     EvalRunManifest,
     GateResult,
     MetricSummary,
+    Sha256Digest,
     Toolchain,
 )
 from mycelium.store import STORE_DIRNAME, SqliteStore
@@ -81,6 +82,7 @@ __all__ = [
     "QUERY_BUDGET_P95_MS",
     "CorpusFingerprint",
     "baseline_path",
+    "case_set_digest",
     "corpus_fingerprint_of",
     "read_baseline",
     "write_baseline",
@@ -286,10 +288,46 @@ def corpus_fingerprint_of(root: Path, snapshot_id: str = "") -> CorpusFingerprin
     )
 
 
+def case_set_digest(cases: Sequence[EvalCase]) -> Sha256Digest:
+    """Identity of a set of judgements (roadmap 4.24).
+
+    Gate G3 needs two things held fixed, not one. ADR-0045 gave it corpus
+    identity; this is the other half — because adding a case, re-grading an
+    anchor, or moving a case between slices changes a slice's *population*, and
+    a slice's score is a mean over its population. The gate then reads a
+    different denominator as a regression. That is not a hypothetical: 4.15
+    regenerated a derived set from 14 cases to 16, `fact` went from five cases to
+    seven, and G3 reported `fact 0.632 -> 0.494 (-21.8%)` against a baseline
+    blessed minutes earlier. Nothing had regressed; the old set still gave its
+    old number on the same build (ADR-0051).
+
+    What is digested is what moves a score: the case ids, their queries, their
+    slice membership, their answerability, and every judged anchor with its
+    grade. What is *not* digested is `note` — prose for whoever re-judges the
+    case next, which must not disarm a gate when someone improves it.
+
+    Cases are sorted by id, so a set that is reordered is the same set. Grades
+    are sorted with their anchors for the same reason.
+    """
+    return digest_json(
+        [
+            {
+                "case_id": case.case_id,
+                "query": case.query,
+                "slices": sorted(item.value for item in case.slices),
+                "answerable": case.answerable,
+                "relevant": sorted([anchor.anchor, anchor.grade] for anchor in case.relevant),
+            }
+            for case in sorted(cases, key=lambda case: case.case_id)
+        ]
+    )
+
+
 def _gate_g3(
     per_slice: dict[str, MetricSummary],
     baseline: dict[str, object] | None,
     fingerprint: CorpusFingerprint,
+    cases_digest: Sha256Digest,
 ) -> GateResult:
     """Gate G3 — no release may regress a protected slice by more than 2 % (spec 04 §7.3).
 
@@ -315,6 +353,13 @@ def _gate_g3(
     treating a missing field as a match would let a stale baseline enforce
     against a corpus nobody checked.
 
+    The corpus is not the only thing that has to be held fixed. A slice's score
+    is a mean over the cases in that slice, so adding a case or re-grading one
+    changes the denominator — and the gate reads a different denominator as a
+    regression. That is roadmap 4.24, and it is BUG-0014's failure one level
+    along: enforcement therefore also requires the *judgements* to be the ones
+    the baseline was blessed on, and reports when they are not (ADR-0051).
+
     The baseline is a committed file, not the previous run in `.mycelium/`: a
     gate comparing against whatever happens to be on this machine compares
     against nothing in CI, where every run starts empty. Establishing it is a
@@ -338,14 +383,14 @@ def _gate_g3(
             detail="the committed baseline records no per-slice scores; re-bless it",
         )
 
-    regressions = []
+    moved = []
     for name, summary in sorted(per_slice.items()):
         before = slices.get(name)
         if not isinstance(before, int | float):
             continue
         delta = _relative(summary.ndcg_at_10, float(before))
         if delta < -0.02:
-            regressions.append(f"{name} {before:.4f} -> {summary.ndcg_at_10:.4f} ({delta:+.1%})")
+            moved.append(f"{name} {before:.4f} -> {summary.ndcg_at_10:.4f} ({delta:+.1%})")
 
     baseline_content = baseline.get("content_digest")
     baseline_chunks = baseline.get("corpus_digest")
@@ -360,13 +405,38 @@ def _gate_g3(
         same_corpus = not recut
         legacy = True
 
+    baseline_cases = baseline.get("cases_digest")
+    if isinstance(baseline_cases, str) and baseline_cases:
+        same_cases: bool | None = baseline_cases == cases_digest
+    else:
+        # Blessed before the case-set digest existed. `None` is neither "the
+        # judgements match" nor "they do not": reading it as a match would let a
+        # baseline enforce across a case-set change, which is what 4.15 hit, and
+        # reading it as a mismatch would disarm G3 on every baseline at once —
+        # the failure ADR-0045 refused for the corpus fingerprint. So the old
+        # comparison runs and the verdict says the new one is unarmed.
+        same_cases = None
+
     fresh = sorted(set(per_slice) - set(slices))
 
     detail = f"{len(slices)} slice(s) compared"
     if fresh:
         detail += f"; new since the baseline: {', '.join(fresh)}"
-    if regressions:
-        detail += f"; beyond -2%: {'; '.join(regressions)}"
+    if same_cases is False:
+        # Named as *movement*, never as a regression: these are means over
+        # different case populations, and calling that a regression is the report
+        # roadmap 4.24 exists to stop.
+        if moved:
+            detail += f"; moved beyond -2%: {'; '.join(moved)}"
+        detail += (
+            "; the judgements changed since the baseline was taken, so these numbers are "
+            "means over different case populations - reported, not enforced. Re-bless "
+            "deliberately with `mycelium eval --bless` once the case set is the one you "
+            "mean to measure (roadmap 4.24)"
+        )
+        return GateResult(gate="G3 No regression", passed=True, detail=detail)
+    if moved:
+        detail += f"; beyond -2%: {'; '.join(moved)}"
     if not same_corpus:
         detail += (
             "; the corpus has changed since the baseline was taken, so these numbers are "
@@ -388,9 +458,15 @@ def _gate_g3(
         )
     else:
         detail += "; same corpus, same boundaries"
-    if not regressions and not legacy:
-        detail += ", no slice regressed"
-    return GateResult(gate="G3 No regression", passed=not regressions, detail=detail)
+    if same_cases is None:
+        detail += (
+            "; this baseline records no case-set identity, so a change to the judgements "
+            "would not be visible here - re-bless with `mycelium eval --bless` to arm it "
+            "(roadmap 4.24)"
+        )
+    if not moved and not legacy and same_cases:
+        detail += ", same judgements, no slice regressed"
+    return GateResult(gate="G3 No regression", passed=not moved, detail=detail)
 
 
 def _gate_g5(overall: MetricSummary, chunks: int) -> GateResult:
@@ -599,6 +675,11 @@ def write_baseline(
     on; `corpus_digest` keeps the name and the meaning it has had since
     BUG-0014 — the fold of chunk boundaries — so a reviewer reading two baselines
     side by side can tell a re-cut corpus from a changed one.
+
+    `cases_digest` is the third, and it holds the *other* variable G3 needs fixed
+    (roadmap 4.24): the judgements these numbers are means over. Without it a
+    baseline can only say which corpus it was taken on, and a set that grew from
+    fourteen cases to sixteen reads as a regression (ADR-0051).
     """
     path = baseline_path(root, manifest.case_set)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -621,6 +702,12 @@ def write_baseline(
         # How those documents were cut. Reported by G3, never gated on — the
         # distinction roadmap 4.13 exists to draw.
         "corpus_digest": taken.chunks,
+        # Which judgements the scores below are means over (roadmap 4.24). A
+        # baseline that cannot say this cannot tell a re-graded set from a worse
+        # retriever, and the numbers are per-slice means whose denominator the
+        # case set decides.
+        "cases_digest": manifest.cases_digest or "",
+        "cases": len(manifest.results),
         "toolchain": manifest.toolchain.model_dump(mode="json"),
         "overall_ndcg_at_10": round(manifest.overall.ndcg_at_10, 6),
         "per_slice": {
@@ -685,9 +772,15 @@ def run_evaluation(
 
         chunks = store.counts()["chunks"]
         fingerprint = corpus_fingerprint_of(root, snapshot)
+        cases_digest = case_set_digest(cases)
         gates = list(_gates(overall, sum(1 for case in cases if not case.answerable)))
         gates.append(
-            _gate_g3(per_slice, read_baseline(root, case_set, retriever_name), fingerprint)
+            _gate_g3(
+                per_slice,
+                read_baseline(root, case_set, retriever_name),
+                fingerprint,
+                cases_digest,
+            )
         )
         gates.append(_gate_g5(overall, chunks))
         gates.append(_gate_g6())
@@ -721,6 +814,7 @@ def run_evaluation(
             {"retriever": retriever_name, "config": retriever_config, "limit": RETRIEVAL_LIMIT}
         ),
         case_set=case_set,
+        cases_digest=cases_digest,
         retriever=retriever_name,
         retriever_config=dict(retriever_config),
         toolchain=Toolchain(mycelium=__version__, python=platform.python_version()),

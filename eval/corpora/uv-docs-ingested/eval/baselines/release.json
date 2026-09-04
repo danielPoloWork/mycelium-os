@@ -1,6 +1,8 @@
 {
   "mycelium": {
     "blessed_from_snapshot": "01M1K4CB6329B2J7G581NY7DC8",
+    "cases": 16,
+    "cases_digest": "sha256:ab9458cd61a03476a2b47a4ce8f4868fcc4cb5a891e8e70a0012c909d6056ae1",
     "content_digest": "sha256:54a897ee81ca493702e48b4e355e8a9c2ecf61df4263c982078a5faeee660384",
     "corpus_digest": "sha256:0960060bb289feef4a0408a8e189924201671847c59c06bfc762746edfcdde76",
     "overall_ndcg_at_10": 0.59108,

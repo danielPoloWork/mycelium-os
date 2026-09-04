@@ -89,6 +89,25 @@ distinguish a regression from one case's luck
 — which is a finding about the sets, not a caveat about the tool
 ([ADR-0044](../docs/adr/0044-name-what-a-two-case-slice-can-and-cannot-say.md), roadmap 4.20).
 
+### What a baseline records
+
+`eval/baselines/<set>.json`, per retriever:
+
+| field | what it holds | what G3 does with it |
+|---|---|---|
+| `per_slice`, `overall_ndcg_at_10` | the frozen scores | compares against them |
+| `content_digest` | what the corpus *says*, from chunk text | **decides whether it enforces** |
+| `corpus_digest` | how the corpus was *cut*, the fold of chunk digests | reports it, names a re-cut |
+| `cases_digest` | which judgements the means were taken over | **decides whether it enforces** |
+| `cases` | how many, for whoever reads a diff | nothing |
+| `blessed_from_snapshot`, `toolchain` | provenance | nothing |
+
+A baseline missing one of the digests keeps the comparison it was written for, and the
+verdict says which one is unarmed — reading an absent field as a match would let a stale
+baseline enforce, and reading it as a mismatch would disarm the gate everywhere at once.
+`tools/stamp_baseline_fingerprints.py` arms an older baseline without re-blessing, and
+refuses when it cannot verify that the corpus or the case set was frozen before the bless.
+
 **The committed baselines predate roadmap 4.19's index.** Stemming moved every release set
 up by nine to eleven points with no slice regressing, and the baselines were deliberately
 *not* re-blessed with it: how this repository's baseline is re-blessed at all is roadmap
@@ -253,7 +272,7 @@ though the missing gates passed.
 |---|---|
 | G1 Citations | **Enforced** — every returned anchor must resolve; must be 1.00 |
 | G2 Earn hybrid | **Enforced when `--retriever hybrid` runs** — it scores the lexical baseline on the same cases and compares (ADR-0017) |
-| G3 No regression | **Enforced against `baselines/<set>.json`** when the corpus is the one the baseline was taken on — no slice may fall more than 2 %. "The same corpus" means the same *documents*, not the same chunk boundaries, so a chunking change is gated rather than excused (roadmap 4.13, ADR-0045) and the verdict names the re-cut. When the documents themselves have changed the numbers are not comparable, so the gate *reports* the deltas instead of failing on them: this repository's documentation grows with every PR, and a gate that fails on that teaches everyone to re-bless on red. `--bless` writes a baseline and records both fingerprints |
+| G3 No regression | **Enforced against `baselines/<set>.json`** when the corpus *and the judgements* are the ones the baseline was taken on — no slice may fall more than 2 %. "The same corpus" means the same *documents*, not the same chunk boundaries, so a chunking change is gated rather than excused (roadmap 4.13, ADR-0045) and the verdict names the re-cut. "The same judgements" means the same cases with the same grades: a slice's score is a mean over its cases, so a set that grew reads as a regression unless the gate can tell the two apart (roadmap 4.24, ADR-0051). When either has changed the numbers are not comparable, so the gate *reports* the movement instead of failing on it — and calls it movement, not regression. `--bless` writes a baseline and records all three fingerprints |
 | G4 Abstention | **Enforced** — false-answer rate on `unanswerable` ≤ 5 % |
 | G5 Performance | **Enforced, with its limit stated** — query p95 ≤ 150 ms, reported with the corpus size it was measured on. The budget is defined at the 10⁵-chunk reference profile, so passing here is a floor rather than the measurement spec 04 §1 asks for |
 | G6 Determinism | **Delegated** — a compiler gate with its own golden and its own CI job (ADR-0012) |
