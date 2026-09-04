@@ -12,6 +12,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **One roadmap number, one roadmap item — now enforced** (roadmap 4.27). `4.23` had been
+  issued twice, so every reference to it was ambiguous, and `ROADMAP.md`'s own "never
+  renumber" rule is what made unpicking that expensive. The collision is resolved by moving
+  the half almost nothing points at: the derived-set regeneration closed inside 4.15 is now
+  **4.30**, and the thirty references to the other 4.23 are untouched.
+  `tools/consistency_lint.py` gained a `roadmap-numbering` check — unique item numbers, and
+  an item under the milestone it names — so a duplicate can no longer be introduced quietly,
+  and `ROADMAP.md`'s preamble now says how the next number is chosen: one past the highest
+  ever issued in that milestone, never the next gap. A *gap* stays legitimate: an item folded
+  into another leaves one.
 - **The lexical index gates the query, not the documents** (roadmap 4.23,
   [ADR-0054](docs/adr/0054-gate-the-query-not-the-documents.md)). ADR-0048's stem
   expansion required a surface hit inside one MATCH expression, which held two rules at
@@ -232,7 +242,7 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   and a consumer holding one should expect `ANCHOR_GONE` and re-resolve.
 - Spec 03 §5's chunking sentence is updated rather than deviated from: tables and code
   blocks are never split, and may now share.
-- **The derived ingested judgement sets are regenerated** with the chunker (roadmap 4.23).
+- **The derived ingested judgement sets are regenerated** with the chunker (roadmap 4.30, renumbered from 4.23 at roadmap 4.27).
   They are carried mechanically from the second corpus's frozen sets, so a chunking change
   necessarily moves them; under packing the carry improves and the release set grows 14 → 16
   cases, because two judgements the coverage floor had been dropping now clear it. Queries,
