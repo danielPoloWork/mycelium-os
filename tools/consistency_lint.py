@@ -24,7 +24,9 @@ contract (the "congruence checks"):
      agrees with its id/discovered date, ids are unique and non-gapped, the index ↔ files
      bijection holds, and a `fixed` record names its `fixed-in`;
   7. i18n-freshness  — (only when i18n is enabled) no translated page is staler than its
-     English source.
+     English source;
+  8. roadmap-numbering — every ROADMAP item number is unique and sits under the milestone
+     it names, because "never renumber" is only affordable while nothing collides.
 
 Each check is independent; all run, then the report lists every failure. The checks are
 designed to PASS on a freshly-generated repository (empty catalogues, no releases yet).
@@ -385,6 +387,53 @@ def check_i18n_freshness():
 _ENTERPRISE_MARKER = "enterprise governance posture"
 
 
+def check_roadmap_numbering():
+    """Every ROADMAP item number is unique, and sits in the milestone it names.
+
+    `ROADMAP.md` says new work takes a fresh `<milestone>.<task>` number and that
+    nothing is ever renumbered. Those two rules only hold together while the
+    numbers are unique: once two items share one, every reference to that number
+    is ambiguous — and the no-renumber rule is precisely what makes repairing it
+    expensive. `4.23` was issued twice, and by the time anyone unpicked it the
+    number was cited from a source file, two tests, a tool, three ADRs, the
+    README, `eval/README.md` and the CHANGELOG (roadmap 4.27). Cheap to prevent,
+    dear to repair: which is what a lint is for.
+
+    Two invariants, both unambiguous defects rather than matters of taste.
+    Contiguity is deliberately *not* one — a gap is a legitimate outcome when an
+    item is folded into another, and failing on it would train people to fill
+    holes, which is renumbering under a different name.
+    """
+    name = "roadmap-numbering"
+    roadmap = read("ROADMAP.md")
+    sections = re.split(r"^## Milestone (\d+)", roadmap, flags=re.MULTILINE)
+    if len(sections) < 3:
+        fail(name, "no '## Milestone N' sections parsed from ROADMAP.md")
+        return
+    seen = {}
+    for i in range(1, len(sections), 2):
+        milestone = int(sections[i])
+        body = sections[i + 1].split("\n## ")[0]
+        for line in body.splitlines():
+            m = re.match(r"^- \[[ xX]\]\s+(\d+)\.(\d+)\s", line)
+            if not m:
+                continue
+            number = f"{m.group(1)}.{m.group(2)}"
+            title = re.sub(r"^- \[[ xX]\]\s+\S+\s+", "", line).strip()[:60]
+            if int(m.group(1)) != milestone:
+                fail(name, f"item {number} sits under '## Milestone {milestone}': {title}")
+            if number in seen:
+                fail(
+                    name,
+                    f"item number {number} is used twice - '{seen[number]}' and '{title}'; "
+                    "give the newer one a fresh number and update every reference to it",
+                )
+            else:
+                seen[number] = title
+    if not seen:
+        fail(name, "no numbered ROADMAP items parsed")
+
+
 def check_posture():
     name = "posture"
     agents = read("AGENTS.md") if exists("AGENTS.md") else ""
@@ -410,6 +459,7 @@ CHECKS = [
     check_patterns,
     check_spec_map,
     check_milestones,
+    check_roadmap_numbering,
     check_bugs,
     check_i18n_freshness,
     check_posture,
