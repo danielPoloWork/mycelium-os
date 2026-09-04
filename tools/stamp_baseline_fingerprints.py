@@ -27,9 +27,13 @@ to re-bless deliberately, which is a decision, not a stamp.
 
 **A refusal is expected on a corpus under active authorship**, and this
 repository's own is one: its documentation grows with every PR, so its baseline
-has been stale — and G3 correctly abstaining on it — since the bless. Stamping
-cannot fix that, and pretending otherwise is the failure this check exists to
-prevent. The vendored corpora do not move, so theirs stamp cleanly.
+goes stale — and G3 correctly abstains on it — as soon as anyone commits a
+document. Stamping cannot fix that, and pretending otherwise is the failure this
+check exists to prevent. The vendored corpora do not move, so theirs stamp
+cleanly. Roadmap 4.22 settled what follows from the refusal rather than treating
+it as a backlog item: G3 *reports* on the set we author and *enforces* on the two
+we do not, so this tool refusing here is the expected steady state and not a
+thing to chase (ADR-0053).
 
 Refusal is per corpus: the ones that check out are written, the one that does not
 is left exactly as it was. `--check` reports without writing; `--force`

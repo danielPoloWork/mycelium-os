@@ -1,15 +1,97 @@
 {
-  "mycelium": {
-    "blessed_from_snapshot": "01M1K4CB6329B2J7G581NY7DC8",
+  "grep": {
+    "blessed_from_snapshot": "01M1NSYJY2GD2R814D1A05V0XF",
     "cases": 16,
     "cases_digest": "sha256:ab9458cd61a03476a2b47a4ce8f4868fcc4cb5a891e8e70a0012c909d6056ae1",
     "content_digest": "sha256:54a897ee81ca493702e48b4e355e8a9c2ecf61df4263c982078a5faeee660384",
     "corpus_digest": "sha256:0960060bb289feef4a0408a8e189924201671847c59c06bfc762746edfcdde76",
-    "overall_ndcg_at_10": 0.59108,
+    "overall_ndcg_at_10": 0.566341,
+    "per_case": {
+      "conceptual": {
+        "u-1002": 0.63093,
+        "u-1005": 1.0,
+        "u-1016": 0.622446
+      },
+      "exact": {
+        "u-1003": 0.0,
+        "u-1015": 1.0
+      },
+      "fact": {
+        "u-1001": 0.339989,
+        "u-1004": 1.0,
+        "u-1006": 1.0,
+        "u-1008": 0.315465,
+        "u-1010": 0.787155,
+        "u-1013": 0.0,
+        "u-1014": 0.315465
+      },
+      "relationship": {
+        "u-1009": 0.917319,
+        "u-1010": 0.787155
+      },
+      "symbol": {
+        "u-1007": 0.0
+      },
+      "unanswerable": {
+        "u-1011": 0.0,
+        "u-1012": 0.0
+      }
+    },
     "per_slice": {
-      "conceptual": 0.755377,
-      "exact": 0.815465,
-      "fact": 0.494391,
+      "conceptual": 0.751125,
+      "exact": 0.5,
+      "fact": 0.536868,
+      "relationship": 0.852237,
+      "symbol": 0.0,
+      "unanswerable": 0.0
+    },
+    "toolchain": {
+      "mycelium": "0.3.0",
+      "python": "3.12.10"
+    }
+  },
+  "mycelium": {
+    "blessed_from_snapshot": "01M1NSYJY2GD2R814D1A05V0XF",
+    "cases": 16,
+    "cases_digest": "sha256:ab9458cd61a03476a2b47a4ce8f4868fcc4cb5a891e8e70a0012c909d6056ae1",
+    "content_digest": "sha256:54a897ee81ca493702e48b4e355e8a9c2ecf61df4263c982078a5faeee660384",
+    "corpus_digest": "sha256:0960060bb289feef4a0408a8e189924201671847c59c06bfc762746edfcdde76",
+    "overall_ndcg_at_10": 0.646877,
+    "per_case": {
+      "conceptual": {
+        "u-1002": 1.0,
+        "u-1005": 1.0,
+        "u-1016": 0.635202
+      },
+      "exact": {
+        "u-1003": 1.0,
+        "u-1015": 1.0
+      },
+      "fact": {
+        "u-1001": 0.641865,
+        "u-1004": 0.386853,
+        "u-1006": 1.0,
+        "u-1008": 0.30103,
+        "u-1010": 0.787155,
+        "u-1013": 0.0,
+        "u-1014": 0.386853
+      },
+      "relationship": {
+        "u-1009": 0.917319,
+        "u-1010": 0.787155
+      },
+      "symbol": {
+        "u-1007": 0.0
+      },
+      "unanswerable": {
+        "u-1011": 0.0,
+        "u-1012": 0.0
+      }
+    },
+    "per_slice": {
+      "conceptual": 0.878401,
+      "exact": 1.0,
+      "fact": 0.500536,
       "relationship": 0.852237,
       "symbol": 0.0,
       "unanswerable": 0.0
