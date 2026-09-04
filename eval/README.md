@@ -111,12 +111,32 @@ baseline enforce, and reading it as a mismatch would disarm the gate everywhere 
 `tools/stamp_baseline_fingerprints.py` arms an older baseline without re-blessing, and
 refuses when it cannot verify that the corpus or the case set was frozen before the bless.
 
-**The committed baselines predate roadmap 4.19's index.** Stemming moved every release set
-up by nine to eleven points with no slice regressing, and the baselines were deliberately
-*not* re-blessed with it: how this repository's baseline is re-blessed at all is roadmap
-4.22's open decision, and it says it cannot ride along with a retrieval change. Until it
-does, G3 has that much headroom on the vendored sets — a change that gave the gain back
-would pass it — and 4.22 should now re-bless against the retriever that actually ships
+### Which sets a gate can live on
+
+G3 needs the corpus held fixed, and **this repository's documentation is its own corpus** —
+every PR here adds an ADR, a journal entry, a CHANGELOG line, so `content_digest` moves and
+G3 abstains. That is not a defect to work around; it is the standing state of a self-hosting
+set, and roadmap 4.22 settled what follows from it
+([ADR-0053](../docs/adr/0053-report-on-the-corpus-we-author-and-gate-on-the-one-we-do-not.md)):
+
+| release set | corpus | G3 |
+|---|---|---|
+| [`release.jsonl`](release.jsonl) | this repository's documentation, authored here | **reported** |
+| [`corpora/uv-docs/…/release.jsonl`](corpora/uv-docs/eval/release.jsonl) | vendored, frozen | **enforced** |
+| [`corpora/uv-docs-ingested/…/release.jsonl`](corpora/uv-docs-ingested/eval/release.jsonl) | derived from the vendored corpus, frozen | **enforced** |
+
+Our baseline is still committed and still re-blessed, for two reasons that survive not
+being a gate: G3 *reports* the deltas against it, and a report against a corpus that no
+longer exists is a number that looks like a measurement; and since ADR-0052 it carries the
+per-case scores, which are the only continuous per-case record of our own corpus. So it must
+be current, and **a re-bless is its own PR** — per-slice diff in the body, never riding along
+with a retrieval or judgment change. `measure_slice_decay.py` above is what asks the
+regression question on that set.
+
+All three were last blessed at roadmap 4.22, against the shipping retriever. Before that the
+vendored two predated roadmap 4.19's stemming index — which had moved every release set up by
+nine to eleven points, so the only enforcing gate in the project was carrying that much
+headroom and a change giving the gain back would have passed it
 ([ADR-0048](../docs/adr/0048-index-the-stem-beside-the-surface-form.md)).
 
 ## Candidate re-rankings, and why none of them shipped

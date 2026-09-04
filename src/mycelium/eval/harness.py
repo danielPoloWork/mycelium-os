@@ -450,6 +450,16 @@ def _gate_g3(
     against nothing in CI, where every run starts empty. Establishing it is a
     deliberate act (`mycelium eval --bless`), so a regression can never be
     absorbed by quietly moving the line.
+
+    One consequence is worth stating rather than leaving a reader to deduce it
+    from three digest comparisons: **where the documents are authored in the same
+    repository as the code, the report branch is the standing state, not a
+    transient one.** Every documentation commit moves `content_digest`, so
+    enforcement is unreachable there by construction — and that is the correct
+    behaviour, not a defect to work around. Such a set is *reported*; a gate
+    needs a frozen corpus, and the verdict now says so where it is met, because
+    a per-slice threshold nobody can ever trip reads as a gate and is not one
+    (roadmap 4.22, ADR-0053).
     """
     if not baseline:
         return GateResult(
@@ -556,7 +566,10 @@ def _gate_g3(
         detail += (
             "; the corpus has changed since the baseline was taken, so these numbers are "
             "not comparable - reported, not enforced. Re-bless deliberately with "
-            "`mycelium eval --bless` once the corpus is the one you mean to measure"
+            "`mycelium eval --bless` once the corpus is the one you mean to measure. "
+            "Where the documents are authored in the same repository as the code, this "
+            "is the standing state rather than a transient one: G3 reports on that set "
+            "and enforces on a frozen one (ADR-0053)"
         )
         return GateResult(gate="G3 No regression", passed=True, detail=detail)
     if legacy:

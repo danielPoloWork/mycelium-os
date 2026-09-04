@@ -448,7 +448,8 @@ on the release sets — the ones nobody develops against — the product now lea
 | release set | Mycelium OS | the `grep` loop |
 |---|---:|---:|
 | `uv`'s documentation (the corpus this was filed about) | **0.548** | 0.519 |
-| this repository | **0.504** | 0.271 |
+| the same documents, ingested from DOCX/HTML/PDF | **0.647** | 0.566 |
+| this repository | **0.498** | 0.331 |
 
 Thirteen candidate re-rankings were measured on the way there and **all thirteen refused**
 ([ADR-0031](docs/adr/0031-refuse-three-rerankings.md),
@@ -472,6 +473,14 @@ vs grep: nDCG@10 0.548 against grep's 0.519 (+0.029) - ahead of the incumbent;
 still the incumbent's, and it is roadmap 4.25. `mycelium eval --against grep` is how any run
 answers the question, and CI runs it on all three corpora so the answer cannot go stale
 unnoticed again ([ADR-0049](docs/adr/0049-close-the-grep-gap-and-keep-the-incumbent-in-the-manifest.md)).
+
+**Two of those three sets are gated; the third is reported, and that is deliberate.** The
+regression gate needs the corpus held fixed, and this repository's documentation *is* its
+own corpus — every PR here adds an ADR and a journal entry, so there is no fixed corpus to
+compare against. The two vendored sets are frozen, so gate G3 enforces on them; our own set
+is reported, its baseline re-blessed as its own deliberate act, and a slow decay on it is
+caught by holding the judgments fixed and varying only the corpus
+([ADR-0053](docs/adr/0053-report-on-the-corpus-we-author-and-gate-on-the-one-we-do-not.md)).
 
 One number in that table is worth reading twice: the incumbent went **up** as well, 0.409 to
 0.519, because the corpus was re-judged and the chunker moved underneath both of us. That is

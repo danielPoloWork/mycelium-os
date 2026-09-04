@@ -12,6 +12,25 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **Gate G3 reports on the corpus we author, and enforces on the ones we do not** (roadmap
+  4.22, [ADR-0053](docs/adr/0053-report-on-the-corpus-we-author-and-gate-on-the-one-we-do-not.md)).
+  G3 enforces only when the corpus and the judgements are the ones its baseline was taken
+  on, and this repository's documentation *is* its corpus — so on our own release set that
+  can never be true, and `eval/baselines/release.json` has carried per-slice numbers CI
+  never once enforced. The contract is now stated rather than deduced: **our set is
+  reported, the two vendored sets are gated**, our baseline stays committed (G3 reports
+  against it, and since ADR-0052 it holds the per-case scores) and is re-blessed as its own
+  deliberate act. The verdict itself now says the report branch is the *standing* state on
+  a self-hosting corpus, so a threshold nobody can trip stops reading as a gate.
+- **All three release baselines are re-blessed against the shipping retriever.** Ours/release
+  overall `0.4499 → 0.4982`: `conceptual` and `fact` up on unchanged populations,
+  `relationship` up on the two cases it already held (`0.1064 → 0.3013`), and `exact` down
+  `0.9833 → 0.7593` only because the slice went from one case to four — the case the 0.9833
+  was measured on reads **0.9942** today. The vendored two predated roadmap 4.19's stemming
+  index, so the only *enforcing* gate was carrying nine points of headroom: `uv/release`
+  `0.4920 → 0.5483` and `uv-ingested/release` `0.5911 → 0.6469`, no slice down on either.
+  `uv-ingested/release` gains the `grep` entry it never had.
+
 - **Gate G3 states which slices it can enforce, and says so in its verdict** (roadmap 4.20,
   [ADR-0052](docs/adr/0052-give-a-slice-cases-or-stop-gating-it.md)). A slice's score is a
   mean, and a mean over one case is that case wearing a slice's name — five of seventeen

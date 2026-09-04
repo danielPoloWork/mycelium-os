@@ -575,6 +575,10 @@ def test_g3_enforces_only_on_a_comparable_corpus(corpus: Path) -> None:
     assert elsewhere.passed
     assert "not comparable" in elsewhere.detail
     assert "--bless" in elsewhere.detail
+    # Roadmap 4.22: the verdict also says that on a set whose documents live in
+    # this repository the report branch is permanent, so a reader does not read a
+    # threshold nobody can trip as a gate (ADR-0053).
+    assert "standing state" in elsewhere.detail
 
 
 def test_g3_enforces_across_a_chunking_change() -> None:
