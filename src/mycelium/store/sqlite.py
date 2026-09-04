@@ -65,7 +65,7 @@ _FTS_TERM: Final = re.compile(r"\w+", re.UNICODE)
 _SURFACE_WEIGHTS: Final = (0.0, 1.0, 3.0, 2.0)
 """Column order is (anchor, text, title, heading_path); spec 04 §3 sets the weights."""
 
-STEM_WEIGHT: Final = 0.1
+STEM_WEIGHT: Final = 0.05
 """How much a stem match counts against a surface match of the same field.
 
 The stem columns exist to reach a document that inflects a word differently from
@@ -74,11 +74,14 @@ on their own: a stem is a weaker piece of evidence than the word the author
 actually wrote, and the slice that pays when it stops being weaker is
 `conceptual`, whose queries share many stems with many documents.
 
-An order of magnitude below the weakest surface field (`text`, 1.0) is therefore
-the shape of the answer, and 0.1 is that with a measured margin. Every value from
-0.05 to 0.25 clears gate G3 on both release sets; 0.35 and above fails it, on
-`conceptual`, by −12 % (ADR-0048). Shipping at 0.25 would have sat against that
-cliff for a gain of a third of a percent."""
+An order of magnitude below the weakest surface field (`text`, 1.0) is the shape
+of the answer. It was 0.1 while the MATCH expression named the surface clause
+*twice* — `X AND (X OR Y)` — which raised the surface contribution and left the
+stems relatively quieter than their nominal weight. Roadmap 4.23 removed the
+duplication, so the nominal weight is now the effective one and the same balance
+is 0.05: on the dev sets the curve peaks over 0.05-0.075 and a `conceptual` case
+loses its definition to a passage that merely says "this means that" at 0.09 and
+above (ADR-0054)."""
 
 _BM25_WEIGHTS: Final = (
     *_SURFACE_WEIGHTS,
@@ -241,6 +244,19 @@ def _stemmed(text: str) -> str:
     return " ".join(stem_text(_FTS_TERM.findall(text)))
 
 
+def foothold_query(text: str) -> str:
+    """The surface-only expression that asks whether a query has *any* footing here.
+
+    Roadmap 4.23. Always disjunctive, and never conjunctive even for a caller that
+    asked for `match_all`: the question is about the corpus rather than about a
+    document. "Did the author write any of these words" is what abstention needs
+    to know; whether they wrote them all in *one* document is a different question,
+    and the search itself asks it.
+    """
+    surface = fts_query(text)
+    return f"{_SURFACE_FIELDS} : ({surface})" if surface else ""
+
+
 def expanded_query(text: str, *, prefix: bool = False, match_all: bool = False) -> str:
     """The MATCH expression the shipped index is searched with (roadmap 4.19).
 
@@ -251,15 +267,20 @@ def expanded_query(text: str, *, prefix: bool = False, match_all: bool = False) 
     weighted columns a hit accumulates, which is the mechanism spec 04 §3 already
     uses to prefer a title over a body (ADR-0048).
 
-    **A surface hit is the precondition.** The expression requires at least one
-    query word to appear as the author wrote it before any stem is allowed to
-    speak, so stems *reorder* the documents the surface index found and can never
-    introduce one of their own. That is ADR-0025's rule a layer down — lexical
-    evidence gates the weaker signal — and here it is what keeps abstention
-    intact: Porter conflates `escapement` with `escape`, so without the
-    precondition a query about watchmaking retrieves five documents about escape
-    hatches, and gate G4 counts that as a false answer because it is one
-    (ADR-0048).
+    **The surface precondition is a separate query, not a clause here.** Until
+    roadmap 4.23 this expression read `X AND (X OR Y)`, which held two rules at
+    once: *this query* must have a literal footing in the corpus, and *every
+    candidate document* must carry one of its words as written. Only the first is
+    what abstention needs — Porter conflates `escapement` with `escape`, so a
+    watchmaking query would otherwise retrieve documents about escape hatches and
+    gate G4 would count that as the false answer it is (ADR-0048). The second was
+    costing recall for nothing, so it is gone: this expression is open, and
+    :func:`foothold_query` asks the first question once, of the corpus, before
+    the search runs (ADR-0054).
+
+    Removing the duplicated clause also removes the extra weight it gave the
+    surface columns, which is why :data:`STEM_WEIGHT` halves in the same change:
+    the balance is unchanged, its expression is honest.
 
     `prefix=True` returns the surface expression unchanged. A prefix query already
     generalises across suffixes — `sign*` reaches `signs`, `signed` and
@@ -280,7 +301,7 @@ def expanded_query(text: str, *, prefix: bool = False, match_all: bool = False) 
     joiner = " " if match_all else " OR "
     stemmed = joiner.join(f'"{stem}"' for stem in stems)
     on_surface = f"{_SURFACE_FIELDS} : ({surface})"
-    return f"{on_surface} AND ({on_surface} OR {_STEM_FIELDS} : ({stemmed}))"
+    return f"{on_surface} OR {_STEM_FIELDS} : ({stemmed})"
 
 
 class SqliteStore:
@@ -1219,6 +1240,31 @@ class SqliteStore:
             )
         return tuple(counted)
 
+    def _has_foothold(self, query: str, where: str, params: Sequence[Any]) -> bool:
+        """Whether any word of `query` appears in this corpus as it is written.
+
+        One row at most, and the same filters the search runs under — a foothold
+        in a document the caller has excluded is not a foothold for this query
+        (the reasoning :meth:`term_hits` states). Cheap by construction: the
+        surface expression is a subset of the one the search runs, so the index
+        pages it touches are pages the search is about to touch anyway.
+        """
+        match = foothold_query(query)
+        if not match:
+            return False
+        row = self._connection.execute(
+            f"""
+            SELECT 1
+            FROM chunks_fts
+            JOIN chunks c ON c.anchor = chunks_fts.anchor
+            JOIN documents d ON d.doc_id = c.doc_id
+            WHERE chunks_fts MATCH ?{where}
+            LIMIT 1
+            """,
+            [match, *params],
+        ).fetchone()
+        return row is not None
+
     def _count_matching(self, match: str, where: str, params: Sequence[Any]) -> tuple[int, int]:
         """``(documents, chunks)`` reached by one MATCH expression."""
         row = self._connection.execute(
@@ -1245,9 +1291,15 @@ class SqliteStore:
 
         The query is expanded with the stems of its terms
         (:func:`expanded_query`), so a document that inflects a word differently
-        is reachable while one that spells it exactly still ranks above it. A
-        surface hit is the precondition: stems reorder what the query's own words
-        found and never introduce a document of their own (ADR-0048).
+        is reachable while one that spells it exactly still ranks above it.
+
+        **Abstention is a gate on the query, not a filter on the documents**
+        (roadmap 4.23, ADR-0054). A query none of whose words this corpus contains
+        as written gets nothing: that is what keeps an out-of-domain question
+        unanswered, and it is the only half of ADR-0048's precondition worth
+        keeping — the other half, which required *every candidate* to carry a
+        surface hit, cost recall and bought no safety. So the foothold is checked
+        once, with a ``LIMIT 1`` probe, and the search that follows is open.
 
         Scores are returned positive and descending — SQLite's ``bm25()`` is
         negated so that "better" is larger, which is what every consumer expects.
@@ -1257,6 +1309,10 @@ class SqliteStore:
             return ()
         clauses, params = self._filter_sql(filters or SearchFilters())
         where = "".join(f" AND {clause}" for clause in clauses)
+        if not prefix and not self._has_foothold(query, where, params):
+            # A prefix query needs no gate: it carries no stems, so there is
+            # nothing for a foothold to authorise.
+            return ()
 
         rows = self._connection.execute(
             f"""

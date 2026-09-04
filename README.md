@@ -163,13 +163,16 @@ what swapping in a stemming tokenizer would have cost: measured, that swap wins 
 regresses the `exact` slice on one corpus and `conceptual` on the other, and it fails gate
 G3 on both.
 
-A stem can **reorder** the documents your words found and can never introduce one of its
-own. That is not a detail: Porter's algorithm over-stems — `organization` and `organ`
-collapse to the same token — so without the rule a question about something this corpus
-does not contain gets answered anyway, and answering what you cannot answer is worse than
-missing it. The price is that a query *none* of whose words appear as you spelled them
-still misses. The numbers, the two variants refused, and the price are in
-[ADR-0048](docs/adr/0048-index-the-stem-beside-the-surface-form.md).
+A stem can never make the system answer a question your words have no footing for. That is
+not a detail: Porter's algorithm over-stems — `organization` and `organ` collapse to the
+same token — so without the rule a question about something this corpus does not contain
+gets answered anyway, and answering what you cannot answer is worse than missing it. So the
+rule is a gate on the *query*: if not one of your words appears in the corpus as you spelled
+it, you get silence. It used to be a filter on the *documents* too — every candidate had to
+carry one of your words literally — and roadmap 4.23 found that half was costing reach and
+buying no safety, so it is gone. The numbers, the variants refused, and the price still paid
+are in [ADR-0048](docs/adr/0048-index-the-stem-beside-the-surface-form.md) and
+[ADR-0054](docs/adr/0054-gate-the-query-not-the-documents.md).
 
 ### Ingestion picks its parser, and you pick which one
 
@@ -447,8 +450,8 @@ on the release sets — the ones nobody develops against — the product now lea
 
 | release set | Mycelium OS | the `grep` loop |
 |---|---:|---:|
-| `uv`'s documentation (the corpus this was filed about) | **0.548** | 0.519 |
-| the same documents, ingested from DOCX/HTML/PDF | **0.647** | 0.566 |
+| `uv`'s documentation (the corpus this was filed about) | **0.562** | 0.519 |
+| the same documents, ingested from DOCX/HTML/PDF | **0.656** | 0.566 |
 | this repository | **0.498** | 0.331 |
 
 Thirteen candidate re-rankings were measured on the way there and **all thirteen refused**
@@ -459,14 +462,15 @@ showed it returning a 14-token lead-in in place of the paragraph that answered. 
 that family is what closed the gap. Two changes to what gets *indexed* did: a chunker that
 lets a code block share a chunk with the prose it belongs to (`pack_atomic`, on by default
 since roadmap 4.15), and a lexical index that carries each word's stem beside its surface
-form, with the surface hit as the precondition (roadmap 4.19). The evidence re-runs with
+form (roadmap 4.19), with the query gated on having *some* literal footing in the corpus
+rather than every candidate document needing one (roadmap 4.23). The evidence re-runs with
 `python tools/measure_ranking.py --release --oracle`.
 
 The overall lead still hides a slice, and the harness prints it rather than rounding it off:
 
 ```text
-vs grep: nDCG@10 0.548 against grep's 0.519 (+0.029) - ahead of the incumbent;
-         still conceded: fact 0.403 vs 0.497
+vs grep: nDCG@10 0.562 against grep's 0.519 (+0.043) - ahead of the incumbent;
+         still conceded: fact 0.431 vs 0.497
 ```
 
 `fact` on that corpus — seven cases of "how do I do X", the shape the corpus is made of — is

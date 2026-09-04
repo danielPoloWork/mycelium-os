@@ -303,6 +303,21 @@ def _tokenizer_ranking(
         match = (
             f"{_SURFACE_COLUMNS} : ({surface}) AND ({both})" if variant.endswith("pre") else both
         )
+        if variant.endswith("gate"):
+            # Roadmap 4.23. The precondition holds two rules at once, and only one
+            # of them is what abstention needs. *Query*-level: does any word of
+            # this query appear in this corpus as written? *Document*-level: must
+            # every candidate carry such a word? The first is what keeps a
+            # watchmaking query silent; the second is what costs recall. So the
+            # gate asks the first question once, of the corpus, and leaves the
+            # documents open. No threshold: a term either appears or it does not.
+            probe = _token_index(store, variant, stem_weight).execute(
+                "SELECT 1 FROM chunks_fts WHERE chunks_fts MATCH ? LIMIT 1",
+                [f"{_SURFACE_COLUMNS} : ({surface})"],
+            )
+            if probe.fetchone() is None:
+                return []
+            match = both
         weights = [*_SURFACE_WEIGHTS, *(stem_weight * w for w in _SURFACE_WEIGHTS[1:])]
     else:
         match = fts_query(" ".join(terms))
@@ -340,12 +355,24 @@ TOKENIZER_FAMILY: Final[list[tuple[str, Ranking]]] = [
     ("index: expand-pre 0.1", tokenizer("expand-pre", 0.1)),
     ("index: expand-pre 0.5", tokenizer("expand-pre", 0.5)),
     ("index: expand-pre 1.0", tokenizer("expand-pre", 1.0)),
+    ("index: expand-gate 0.05", tokenizer("expand-gate", 0.05)),
+    ("index: expand-gate 0.075", tokenizer("expand-gate", 0.075)),
+    ("index: expand-gate 0.1", tokenizer("expand-gate", 0.1)),
 ]
-"""`plain` is the control: an in-memory rebuild of what ships, which must score
-exactly what `baseline (ships)` scores or the harness is measuring the wrong
-thing. The `expand` rows differ only in how much weight the stem columns carry
-relative to the surface ones — the single free parameter this family has, chosen
-on the dev sets and read off the release sets."""
+"""`plain` is the no-stem control — the index as it stood before roadmap 4.19 —
+and `expand-gate 0.05` is the mirror of what ships today, which must score what
+`baseline (ships)` scores or the harness is measuring the wrong thing.
+
+The rows differ in two ways, and only two. How much weight the stem columns carry
+relative to the surface ones (the family's single free parameter, chosen on the
+dev sets and read off the release sets), and where the surface precondition sits:
+`expand` has none and fails gate G4, `expand-pre` puts it inside the MATCH
+expression as ADR-0048 shipped it, and `expand-gate` asks it once of the corpus
+before the search — the same abstention with the document-level restriction
+removed (roadmap 4.23, ADR-0054). Comparing a `pre` row with a `gate` row at the
+*same* weight compares two things at once: the old expression named the surface
+clause twice, so its nominal weight understates the surface side by roughly a
+factor of two."""
 
 
 def _best_chunk_per_section(store: SqliteStore, query: str) -> dict[str, str]:

@@ -69,3 +69,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0051](0051-hold-the-judgements-fixed-too.md) | Hold the judgements fixed too, and name a population change as one | Accepted |
 | [0052](0052-give-a-slice-cases-or-stop-gating-it.md) | Give a slice cases, or stop gating it — and name the case that moved | Accepted |
 | [0053](0053-report-on-the-corpus-we-author-and-gate-on-the-one-we-do-not.md) | Report on the corpus we author, gate on the one we do not | Accepted |
+| [0054](0054-gate-the-query-not-the-documents.md) | Gate the query, not the documents | Accepted |

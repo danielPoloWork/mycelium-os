@@ -1,29 +1,31 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright (c) 2026 Daniel Polo
-"""The stem-expanded lexical index (roadmap 4.19, ADR-0048).
+"""The stem-expanded lexical index (roadmap 4.19, ADR-0048; 4.23, ADR-0054).
 
 Three properties, and they are the three the item was filed for:
 
 **Reach, once a query has a foothold.** A query that inflects a word differently from the
 document finds it — `release signs` reaches a document that says `release signed`, which
-`unicode61` alone cannot do.
+`unicode61` alone cannot do. Since roadmap 4.23 that reach extends to a document sharing
+*only* a stem with the query, which the old expression excluded from the candidate set.
 
 **The literal edge.** A document spelling the query's word exactly outranks one that only
 inflects it, because it matches a surface column *and* a stem column while the other
 matches the stem column alone. This is what a `porter` tokenizer gives up, and giving it
 up costs the `exact` slice.
 
-**Abstention.** A stem may reorder the documents the surface index found and may never
-introduce one. Porter conflates `escapement` with `escape`, so without that precondition a
-query about watchmaking answers out of a corpus that has no watchmaking in it — which gate
-G4 counts as a false answer, correctly.
+**Abstention.** A query none of whose words the corpus contains as written gets silence.
+Porter conflates `escapement` with `escape`, so without that gate a query about watchmaking
+answers out of a corpus with no watchmaking in it — which gate G4 counts as a false answer,
+correctly.
 
-The third property bounds the first, and the bound is not an accident:
-:func:`test_a_query_with_no_literal_foothold_still_misses` is the same situation as the
-watchmaking query, seen from the other side. A query *every* word of which the corpus
-spells differently gets silence, because nothing distinguishes it from a query about
-something the corpus does not contain. That is the cost of the precondition, it is
-measured (ADR-0048), and closing it is roadmap 4.23 rather than a heuristic here.
+ADR-0048 enforced the third property with a clause inside the MATCH expression, and that
+clause held a second rule with it: every *candidate document* also had to carry a surface
+hit. Roadmap 4.23 separated them — the gate is one `LIMIT 1` probe of the corpus, and the
+search that follows is open — because only the first rule bought the safety while the
+second cost reach. :func:`test_a_query_with_no_literal_foothold_still_misses` is still the
+bound, and it is deliberate rather than incidental: nothing in the index distinguishes such
+a query from one about something the corpus does not hold.
 """
 
 from collections.abc import Iterator
@@ -31,7 +33,7 @@ from pathlib import Path
 
 import pytest
 
-from mycelium.store import SqliteStore, expanded_query
+from mycelium.store import SqliteStore, expanded_query, foothold_query
 from mycelium.store.schema import SCHEMA_VERSION
 from mycelium.store.stemming import stem
 from test_store import make_chunk, make_document, seed
@@ -69,13 +71,15 @@ def test_an_inflected_query_reaches_a_differently_inflected_document(
 
 
 def test_a_query_with_no_literal_foothold_still_misses(store: SqliteStore) -> None:
-    """The cost of the precondition, stated as a test rather than as a caveat.
+    """The bound on the reach, stated as a test rather than as a caveat.
 
-    Nothing in the query is spelled the way the corpus spells it, so there is no
-    surface hit to let the stems speak — and a query like this is indistinguishable
-    from one about something the corpus simply does not hold, which is the
-    watchmaking case below. Silence is the same answer to both, and it is the
-    right answer to only one of them (roadmap 4.23).
+    Nothing in the query is spelled the way the corpus spells it, so the foothold
+    gate closes and the stems never speak — and a query like this is
+    indistinguishable from one about something the corpus simply does not hold,
+    which is the watchmaking case below. Silence is the same answer to both, and
+    it is the right answer to only one of them. Roadmap 4.23 measured what
+    lifting it would cost and kept it: nothing in the index tells the two apart,
+    and G4 is what pays when a retriever guesses (ADR-0054).
     """
     seed(
         store,
@@ -84,6 +88,25 @@ def test_a_query_with_no_literal_foothold_still_misses(store: SqliteStore) -> No
     )
     assert anchors(store, "signs") == []
     assert anchors(store, "signs contributed") == []
+
+
+def test_a_document_sharing_only_a_stem_is_now_reachable(store: SqliteStore) -> None:
+    """The reach roadmap 4.23 bought, and the only thing that actually changed.
+
+    `maintainer` is the query's foothold and it appears in one chunk only. The
+    other shares nothing with the query as written — `signs` against `signed` —
+    so ADR-0048's expression excluded it from the candidate set entirely. It is a
+    candidate now, and it still ranks below the literal match.
+    """
+    seed(
+        store,
+        make_chunk("foothold.md#a/0", "The maintainer approved the release."),
+        make_chunk("stem-only.md#a/0", "Contributions are signed by their authors."),
+        document=make_document(),
+    )
+    found = anchors(store, "maintainer signs")
+    assert set(found) == {"foothold.md#a/0", "stem-only.md#a/0"}
+    assert found[0] == "foothold.md#a/0", "the literal foothold still leads"
 
 
 def test_the_surface_form_still_matches_itself(store: SqliteStore) -> None:
@@ -187,12 +210,34 @@ def test_one_surface_hit_is_enough_to_let_the_stems_speak(store: SqliteStore) ->
 # ---------------------------------------------------------------------------
 
 
-def test_the_expression_requires_a_surface_hit() -> None:
+def test_the_expression_is_open_and_the_gate_is_a_separate_query() -> None:
+    """Roadmap 4.23. The two rules ADR-0048's single expression held are now apart.
+
+    The expression asks "does this document match, literally or by stem"; the gate
+    asks, once and of the whole corpus, "does this query have any literal footing
+    here". Holding both in one clause made the second imply a third nobody wanted
+    — that every candidate carry a surface hit — which cost reach and bought no
+    safety (ADR-0054).
+    """
     match = expanded_query("signs off")
     assert match.startswith("{text title heading_path} : ")
-    assert " AND " in match, "the surface side is a precondition, not an alternative"
+    assert " AND " not in match, "the surface side is an alternative, not a filter"
     assert '"sign"' in match
     assert '"signs"' in match
+
+    gate = foothold_query("signs off")
+    assert gate == '{text title heading_path} : ("signs" OR "off")'
+    assert "text_stem" not in gate, "a stem cannot authorise its own expansion"
+
+
+def test_the_gate_asks_about_the_corpus_not_about_one_document() -> None:
+    # Even for a caller that wants conjunction, the foothold question stays
+    # disjunctive: "did the author write any of these words" is what abstention
+    # needs, and "all of them, in one chunk" is the search's own question.
+    assert foothold_query("signs contributed") == (
+        '{text title heading_path} : ("signs" OR "contributed")'
+    )
+    assert foothold_query("   ") == ""
 
 
 def test_a_prefix_query_is_not_stemmed() -> None:

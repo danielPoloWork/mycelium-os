@@ -1,6 +1,9 @@
 # ADR-0048: Index the stem beside the surface form, and let the surface gate it
 
-- **Status:** Accepted
+- **Status:** Accepted — **amended by [ADR-0054](0054-gate-the-query-not-the-documents.md)** (roadmap 4.23), which moved the
+  surface precondition out of the MATCH expression into a query-level gate and halved
+  `STEM_WEIGHT` with it. The columns, the stemmer, and the refusal of open expansion below
+  all stand; the expression and the weight quoted here are historical.
 - **Date:** 2026-09-03
 - **Deciders:** project architect (agent), maintainer (owner)
 - **Related:** ROADMAP 4.19 (this item), 4.17 (the diagnosis), 4.20, 4.23 (filed here);

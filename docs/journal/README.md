@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-04 — one clause, two rules (roadmap 4.23)](2026/09/2026-09-04-gate-the-query-not-the-documents.md)
 - [2026-09-05 — the third controlled variable (roadmap 4.24)](2026/09/2026-09-05-g3-sees-a-case-set-change.md)
 - [2026-09-04 — a line drawn against a corpus that no longer existed (roadmap 4.22)](2026/09/2026-09-04-rebless-and-name-what-a-gate-can-hold.md)
 - [2026-09-04 — a gate that said it was watching seventeen rows (roadmap 4.20)](2026/09/2026-09-04-thin-slice-gating.md)
