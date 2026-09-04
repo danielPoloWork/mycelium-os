@@ -10,6 +10,36 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **Gate G3 states which slices it can enforce, and says so in its verdict** (roadmap 4.20,
+  [ADR-0052](docs/adr/0052-give-a-slice-cases-or-stop-gating-it.md)). A slice's score is a
+  mean, and a mean over one case is that case wearing a slice's name — five of seventeen
+  gated rows across the three release sets could never fail at all (a relative threshold
+  cannot fail a 0.0000 baseline) and eight of the rest held three cases or fewer, while the
+  verdict said `6 slice(s) compared` regardless. G3 now enforces a slice only when it is not
+  `unanswerable` (whose correct score *is* 0.0000, and which G4 gates), its baseline is
+  above zero, and it holds at least **4** judged cases; every other row is reported **by
+  name, with the reason**. On the sets G3 actually enforces this makes the gate honest and
+  smaller — `uv/release` reads `1 of 6 slice(s) enforced` — which roadmap 4.26 is filed to
+  widen again.
+
+- **Five judged cases lift `exact` and `relationship` on our own release set** to four cases
+  each, from one and two. The first thing that bought was a correction: `exact` was blessed
+  at **0.9833 on a single case**, a term quoted back verbatim from a heading, and reads
+  **0.7593** over four — the new `STRIDE` case at 0.3331 is an acronym whose literal home is
+  one document among three that mention it. That figure was not a regression waiting to
+  happen; it was a case being reported as a slice.
+
+- **A failing or reported slice now names the cases behind it** — `exact 0.9833 -> 0.7593
+  (-22.8%) [r-0003 0.9942, r-0015 1.0000, r-0016 0.7098, r-0017 0.3331]` — and
+  `mycelium eval --bless` records per-case scores, so the next baseline can show where each
+  case moved *from*. The complaint ADR-0044 recorded was attribution, not sensitivity: a
+  slice mean cannot say whose move it was, and at these set sizes it never will.
+
+- G3 reports rather than enforces on our own release set until roadmap 4.22 re-blesses it:
+  growing a set changes its `cases_digest`, which is ADR-0051's designed behaviour.
+
 ### Fixed
 
 - **Gate G3 can now see a case-set change** (roadmap 4.24,

@@ -69,6 +69,7 @@ from mycelium.sdk.types import (
     CaseResult,
     EvalCase,
     EvalRunManifest,
+    EvalSlice,
     GateResult,
     MetricSummary,
     Sha256Digest,
@@ -78,6 +79,8 @@ from mycelium.store import STORE_DIRNAME, SqliteStore
 
 __all__ = [
     "BASELINES_DIRNAME",
+    "G3_REPORTED_SLICES",
+    "MIN_ENFORCEABLE_SLICE_CASES",
     "EVAL_DIRNAME",
     "QUERY_BUDGET_P95_MS",
     "CorpusFingerprint",
@@ -108,6 +111,32 @@ QUERY_BUDGET_P95_MS: Final = 150
 
 BASELINES_DIRNAME: Final = "baselines"
 """Committed per-slice scores a release is measured against (gate G3)."""
+
+MIN_ENFORCEABLE_SLICE_CASES: Final = 4
+"""Below this many judged cases, gate G3 reports a slice instead of failing on it.
+
+A slice's score is a mean, and a mean over one case is that case wearing a
+slice's name: the smallest move it can make is the case's whole range, against a
+threshold of 2 %. So the row cannot be tripped by anything *except* a single
+case, and is tripped by every single case — including ones moving for reasons
+that have nothing to do with retrieval (ADR-0044 measured exactly that).
+
+Four is not a statistical threshold, and at fourteen-to-twenty-four cases per set
+no honest one exists: even at seven cases a single answer falling out of the top
+ten moves the mean by an order of magnitude more than 2 %. It is the point at
+which the row stops being one case relabelled, and the number is stated here so a
+reader can disagree with it in one place. What turns G3 into a regression gate
+rather than a single-case alarm is set size — spec 04 §7.6's ≥ 1 000 cases at
+1.0 — not a constant chosen at this milestone (ADR-0052)."""
+
+G3_REPORTED_SLICES: Final = frozenset({EvalSlice.UNANSWERABLE.value})
+"""Slices G3 reports and never enforces, whatever their case count.
+
+`unanswerable` scores 0.0000 by construction — the cases name no relevant anchor,
+so there is no gain to lose — and a *fall* in it would be the system getting
+*better* at staying silent. Enforcing "must not decrease" on it is backwards as
+well as impossible. The slice is gated by G4 (false-answer rate ≤ 5 %), which
+asks the question it is actually for (ADR-0052)."""
 
 
 class EvaluationError(RuntimeError):
@@ -323,11 +352,67 @@ def case_set_digest(cases: Sequence[EvalCase]) -> Sha256Digest:
     )
 
 
+def _unarmed_because(name: str, blessed: float, cases: int) -> str | None:
+    """Why G3 cannot enforce this row, or ``None`` when it can (ADR-0052).
+
+    Three reasons, in the order they stop being about the numbers and start being
+    about the slice. A slice G3 must never gate; a slice whose frozen score
+    leaves nothing to lose; a slice too thin for its mean to be more than one
+    case. Each is reported by name rather than quietly counted as a pass — a gate
+    that says "6 slices compared" while four of them cannot fail is decoration.
+    """
+    if name in G3_REPORTED_SLICES:
+        return "reported by design: 0.0000 is its correct score, and G4 gates it"
+    if blessed <= 0.0:
+        # `_relative` returns 0.0 or 1.0 against a zero baseline, so the -2 %
+        # threshold is unreachable. Saying so beats letting the row look watched.
+        return "blessed at 0.0000: a relative threshold cannot fail it"
+    if cases < MIN_ENFORCEABLE_SLICE_CASES:
+        return f"{cases} case(s), below the {MIN_ENFORCEABLE_SLICE_CASES} G3 enforces on"
+    return None
+
+
+def _slice_cases(
+    cases: Sequence[EvalCase], results: Sequence[CaseResult]
+) -> dict[str, list[CaseResult]]:
+    """Group case results by slice, in the order the cases were judged."""
+    slices_of = {case.case_id: {item.value for item in case.slices} for case in cases}
+    grouped: dict[str, list[CaseResult]] = {}
+    for result in results:
+        for name in sorted(slices_of.get(result.case_id, ())):
+            grouped.setdefault(name, []).append(result)
+    return grouped
+
+
+def _attribute(results: Sequence[CaseResult], before: Mapping[str, float] | None) -> str:
+    """Name the cases behind a slice's number, so a reader can see whose move it was.
+
+    A slice mean cannot say whether a regression is the retriever or one case's
+    luck, and at these set sizes it never will (ADR-0044). What it *can* do is
+    hand over the cases: two of them, one at zero, is a sentence a reader acts on
+    where `relationship 0.30 -> 0.11` is one they have to go and investigate.
+
+    Baselines blessed before roadmap 4.20 record no per-case scores, so the
+    before-value is shown only where the baseline carries it — the same
+    discipline the fingerprints follow: an absent field is reported as absent,
+    never guessed at.
+    """
+    parts = []
+    for result in sorted(results, key=lambda item: item.case_id):
+        was = None if before is None else before.get(result.case_id)
+        if was is None:
+            parts.append(f"{result.case_id} {result.ndcg_at_10:.4f}")
+        else:
+            parts.append(f"{result.case_id} {was:.4f}->{result.ndcg_at_10:.4f}")
+    return ", ".join(parts)
+
+
 def _gate_g3(
     per_slice: dict[str, MetricSummary],
     baseline: dict[str, object] | None,
     fingerprint: CorpusFingerprint,
     cases_digest: Sha256Digest,
+    slice_cases: Mapping[str, Sequence[CaseResult]] | None = None,
 ) -> GateResult:
     """Gate G3 — no release may regress a protected slice by more than 2 % (spec 04 §7.3).
 
@@ -383,14 +468,36 @@ def _gate_g3(
             detail="the committed baseline records no per-slice scores; re-bless it",
         )
 
-    moved = []
+    raw_cases = baseline.get("per_case")
+    per_case = raw_cases if isinstance(raw_cases, dict) else None
+
+    moved: list[str] = []
+    unarmed: list[str] = []
+    compared = 0
     for name, summary in sorted(per_slice.items()):
         before = slices.get(name)
         if not isinstance(before, int | float):
             continue
+        compared += 1
+        reason = _unarmed_because(name, float(before), summary.cases)
         delta = _relative(summary.ndcg_at_10, float(before))
-        if delta < -0.02:
-            moved.append(f"{name} {before:.4f} -> {summary.ndcg_at_10:.4f} ({delta:+.1%})")
+        if delta >= -0.02 and reason is None:
+            continue
+        line = f"{name} {before:.4f} -> {summary.ndcg_at_10:.4f} ({delta:+.1%})"
+        if slice_cases is not None and name in slice_cases:
+            slice_before = per_case.get(name) if isinstance(per_case, dict) else None
+            attribution = _attribute(
+                slice_cases[name], slice_before if isinstance(slice_before, dict) else None
+            )
+            if attribution:
+                line += f" [{attribution}]"
+        if reason is not None:
+            # Reported, never failed on: the row is named with what it can and
+            # cannot say, so an unarmed gate reads as unarmed rather than green
+            # (ADR-0052).
+            unarmed.append(f"{name} ({reason})" + (f": {line}" if delta < -0.02 else ""))
+        else:
+            moved.append(line)
 
     baseline_content = baseline.get("content_digest")
     baseline_chunks = baseline.get("corpus_digest")
@@ -419,7 +526,15 @@ def _gate_g3(
 
     fresh = sorted(set(per_slice) - set(slices))
 
-    detail = f"{len(slices)} slice(s) compared"
+    # The count states what is *enforced*, not what was looked at: "6 slice(s)
+    # compared" while four of them cannot fail is the reading ADR-0052 exists to
+    # stop. The unarmed rows follow, each with the reason it is unarmed.
+    # Counted over the rows actually compared, not over the baseline's keys: a
+    # baseline row this run has no slice for is neither armed nor unarmed.
+    armed = compared - len(unarmed)
+    detail = f"{armed} of {compared} slice(s) enforced"
+    if unarmed:
+        detail += f"; reported only: {'; '.join(unarmed)}"
     if fresh:
         detail += f"; new since the baseline: {', '.join(fresh)}"
     if same_cases is False:
@@ -465,7 +580,7 @@ def _gate_g3(
             "(roadmap 4.24)"
         )
     if not moved and not legacy and same_cases:
-        detail += ", same judgements, no slice regressed"
+        detail += ", same judgements, no enforced slice regressed"
     return GateResult(gate="G3 No regression", passed=not moved, detail=detail)
 
 
@@ -664,6 +779,7 @@ def write_baseline(
     root: Path,
     manifest: EvalRunManifest,
     fingerprint: CorpusFingerprint | None = None,
+    cases: Sequence[EvalCase] | None = None,
 ) -> Path:
     """Freeze this run's per-slice scores as the baseline gate G3 compares against.
 
@@ -680,6 +796,12 @@ def write_baseline(
     (roadmap 4.24): the judgements these numbers are means over. Without it a
     baseline can only say which corpus it was taken on, and a set that grew from
     fourteen cases to sixteen reads as a regression (ADR-0051).
+
+    `cases` is optional only because a caller may not have them to hand; supplying
+    them records the per-case scores behind each slice mean, which is what lets the
+    next run's verdict say *which case* moved instead of only that the mean did
+    (roadmap 4.20, ADR-0052). A baseline written without them is still a valid
+    baseline — the attribution simply shows today's numbers with no before.
     """
     path = baseline_path(root, manifest.case_set)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -713,6 +835,18 @@ def write_baseline(
         "per_slice": {
             name: round(summary.ndcg_at_10, 6)
             for name, summary in sorted(manifest.per_slice.items())
+        },
+        # The cases behind each of those means (roadmap 4.20). A slice mean cannot
+        # say whether a move was the retriever or one case's luck, and at these
+        # set sizes it never will — so the baseline carries the cases, and the
+        # next run's verdict can name whose move it was rather than leaving a
+        # reader to go and find out (ADR-0052).
+        "per_case": {
+            name: {
+                result.case_id: round(result.ndcg_at_10, 6)
+                for result in sorted(results, key=lambda item: item.case_id)
+            }
+            for name, results in sorted(_slice_cases(cases or (), manifest.results).items())
         },
     }
     text = json.dumps(data, indent=2, sort_keys=True) + "\n"
@@ -780,6 +914,7 @@ def run_evaluation(
                 read_baseline(root, case_set, retriever_name),
                 fingerprint,
                 cases_digest,
+                _slice_cases(cases, results),
             )
         )
         gates.append(_gate_g5(overall, chunks))

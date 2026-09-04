@@ -344,6 +344,68 @@ RELEASE: tuple[Judgment, ...] = (
         "A metadata checklist under a nested heading.",
     ),
     (
+        "r-0015",
+        "Reciprocal Rank Fusion",
+        (EvalSlice.EXACT,),
+        (
+            (
+                "README.md#what-makes-it-different/retrieval-is-lexical-by-default-and-that-was-measured/0",
+                3,
+            ),
+        ),
+        "A literal term with exactly one home in the corpus. Added at 4.20: `exact` on this "
+        "set held a single case, so its mean was a case wearing a slice's name (ADR-0044).",
+    ),
+    (
+        "r-0016",
+        "Contributor Covenant",
+        (EvalSlice.EXACT,),
+        (
+            ("CODE_OF_CONDUCT.md#attribution/0", 3),
+            ("CODE_OF_CONDUCT.md#/0", 1),
+        ),
+        "The literal term appears twice in one document, and only one of the two answers "
+        "the question a reader asking it has: Attribution names the covenant and its "
+        "version, while the title is the term with nothing behind it. Grade 1 rather than 0 "
+        "because a reader landing on the title has found the right document.",
+    ),
+    (
+        "r-0017",
+        "STRIDE",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/security/threat-model.md#2-stride-pass/0", 3),
+            ("AGENTS.md#7-documentation-maintenance/0", 1),
+        ),
+        "An acronym that appears in three documents, where only one of them *is* the thing "
+        "named; the other two say the threat model contains it. That is what makes it a "
+        "harder exact case than a heading quoted back verbatim.",
+    ),
+    (
+        "r-0018",
+        "can an agent keep querying while a build is running",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/adr/0008-adopt-sqlite-store-behind-a-store-protocol.md#decision/0", 3),
+            ("docs/adr/0009-adopt-build-publication-semantics.md#decision/0", 2),
+        ),
+        "Relates two mechanisms decided in two different ADRs — WAL with read-only "
+        "connections, and the single-writer lock with its pointer swap — and the query uses "
+        "neither's noun. Added at 4.20, where `relationship` held two cases.",
+    ),
+    (
+        "r-0019",
+        "why do the compiler and the file watcher never disagree about what a document is",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/adr/0021-scope-the-corpus-and-gate-the-evaluation.md#decision/", 3),
+            ("docs/adr/0019-adopt-watch-mode.md#decision/0", 1),
+        ),
+        "The relation is stated in one place and its consequence in another. Named as a "
+        "section rather than a chunk: the decision runs to two chunks and the answer is the "
+        "paragraph inside it, which is the reading ADR-0029 asks for.",
+    ),
+    (
         "r-0013",
         "dressage piaffe pirouette",
         (EvalSlice.UNANSWERABLE,),

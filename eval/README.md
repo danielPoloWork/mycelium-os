@@ -22,18 +22,18 @@ Six of them: a **dev** and a **release** set per corpus (spec 04 §7.1, ADR-0027
 | set | cases | corpus |
 |---|---:|---|
 | [`dev.jsonl`](dev.jsonl) | 20 | this repository's documentation |
-| [`release.jsonl`](release.jsonl) | 14 | this repository's documentation |
+| [`release.jsonl`](release.jsonl) | 19 | this repository's documentation |
 | [`corpora/uv-docs/eval/dev.jsonl`](corpora/uv-docs/eval/dev.jsonl) | 12 | [`uv`'s documentation](corpora/uv-docs/README.md) |
 | [`corpora/uv-docs/eval/release.jsonl`](corpora/uv-docs/eval/release.jsonl) | 16 | the same |
 | [`corpora/uv-docs-ingested/eval/dev.jsonl`](corpora/uv-docs-ingested/eval/dev.jsonl) | 12 | [the same documents, ingested](corpora/uv-docs-ingested/README.md) |
-| [`corpora/uv-docs-ingested/eval/release.jsonl`](corpora/uv-docs-ingested/eval/release.jsonl) | 14 | the same |
+| [`corpora/uv-docs-ingested/eval/release.jsonl`](corpora/uv-docs-ingested/eval/release.jsonl) | 16 | the same |
 
 The third corpus is the second one **put through `mycelium ingest`** — the same 81 upstream
 documents rendered into DOCX, HTML and PDF, and scored as the evidence documents the
 projector wrote from them (roadmap 4.10). Its cases are not judged here: every query, grade
 and slice is copied from the `uv-docs` sets and only the anchor is recomputed, so the
-document is the only thing that varies. Two cases lose every anchor in the carry and are
-dropped by name, which is why its release set is 14 rather than 16.
+document is the only thing that varies. Every case carries today; the two that once lost
+every anchor cleared the coverage floor when packing landed (roadmap 4.15).
 
 **The release set is what CI gates. The dev set is what tuning may look at.** A release run
 scores the dev set beside it and prints the gap — reported, never gated, because nobody has
@@ -83,11 +83,13 @@ copied in, both sides are compiled with today's compiler — then prints per-sli
 for the slices that moved, the per-case ranks behind them. A slice that moves here moved
 because documents arrived; one that does not is telling you to look at the code.
 
-**Read the per-case lines, not the slice mean.** Of the eleven gated release-set rows G3 can
-actually fail, five hold two cases or fewer — one holds a single case — so a slice mean cannot
-distinguish a regression from one case's luck
-— which is a finding about the sets, not a caveat about the tool
-([ADR-0044](../docs/adr/0044-name-what-a-two-case-slice-can-and-cannot-say.md), roadmap 4.20).
+**Read the per-case lines, not the slice mean.** A slice mean cannot distinguish a regression
+from one case's luck, which is a finding about the sets rather than a caveat about the tool
+([ADR-0044](../docs/adr/0044-name-what-a-two-case-slice-can-and-cannot-say.md)). Roadmap 4.20
+acted on it — G3 now prints the cases behind any row it reports or fails, and enforces only
+the rows that can carry it
+([ADR-0052](../docs/adr/0052-give-a-slice-cases-or-stop-gating-it.md)) — but at these set
+sizes the per-case lines are still where the answer is.
 
 ### What a baseline records
 
@@ -100,6 +102,7 @@ distinguish a regression from one case's luck
 | `corpus_digest` | how the corpus was *cut*, the fold of chunk digests | reports it, names a re-cut |
 | `cases_digest` | which judgements the means were taken over | **decides whether it enforces** |
 | `cases` | how many, for whoever reads a diff | nothing |
+| `per_case` | each case's nDCG@10, per slice | names the case behind a move (ADR-0052) |
 | `blessed_from_snapshot`, `toolchain` | provenance | nothing |
 
 A baseline missing one of the digests keeps the comparison it was written for, and the
@@ -153,6 +156,14 @@ retrieval, chunking, the store or the metrics. One change may move the retriever
 the judgments, and not both — which is the failure that actually happens: a run comes back
 worse, a judgment looks wrong in hindsight, and the set quietly becomes the thing that fits.
 
+A **derived** set may not move in the same change as its source either, and that rule has a
+cost nobody had walked into until roadmap 4.20: it makes a source set unable to grow at all,
+because a source that gains cases must regenerate its carry (CI byte-checks it) and a
+regeneration alone has nothing to regenerate from. The `uv` sets are blocked on it, together
+with a second coupling — the third corpus assigns formats by rotation over the *judged* set,
+so growing that set re-rolls renderings that are committed provenance. Both are roadmap
+4.26's to settle ([ADR-0052](../docs/adr/0052-give-a-slice-cases-or-stop-gating-it.md)).
+
 **Corpus:** this repository's own documentation, as `mycelium.toml` defines it —
 `[project] exclude` drops `tests` (fixtures are test data, not knowledge), `docs/journal`
 (it grows every session and would churn judgments for no gain), `eval/corpora` (the second
@@ -175,6 +186,30 @@ fixture* and gate G4 read 25 %
 **Slices covered:** `exact`, `symbol`, `fact`, `conceptual`, `relationship`, `injection`,
 `unanswerable`. Metrics are always reported per slice — an overall win never excuses a
 protected-slice loss.
+
+### Which slices gate G3, and which it only reports
+
+A slice's score is a mean, and a mean over one case is that case wearing a slice's name: the
+smallest move it can make is the case's whole range, against a 2 % threshold. So G3 enforces
+a slice only when all three of these hold, and **names the row and the reason** when one does
+not ([ADR-0052](../docs/adr/0052-give-a-slice-cases-or-stop-gating-it.md)):
+
+| | why |
+|---|---|
+| it is not `unanswerable` | that slice scores 0.0000 by construction and a *fall* in it means the system got better at staying silent; **G4** gates it |
+| the baseline is above zero | a relative threshold cannot fail a zero, so a row blessed at 0.0000 is unfailable whatever it does |
+| it holds ≥ 4 judged cases | below that the row is one case relabelled — and 4 is a line drawn on a continuum, not a statistic: at these set sizes no honest threshold exists |
+
+The verdict says so out loud — `4 of 6 slice(s) enforced; reported only: symbol (blessed at
+0.0000: a relative threshold cannot fail it); …` — because a gate that reports "6 slices
+compared" while four of them cannot fail is describing its own coverage inaccurately.
+
+Every gated slice on **our own** release set now holds at least four cases; five were judged
+at 4.20 for exactly that. The `uv` sets — the ones G3 actually enforces on, since ours is
+never comparable — could not grow in the same change and read `1 of 6 slice(s) enforced`
+until roadmap 4.26 lifts them. What makes G3 a regression gate rather than a single-case
+alarm is set size, and that is spec 04 §7.6's ≥ 1 000 cases at 1.0, not a constant chosen
+here.
 
 ## Chunk or section: the judging rule
 
@@ -236,9 +271,9 @@ does not survive rendering and re-projection. Filed as roadmap 5.7.
   `build_ingested_cases.py` picks the twin chunk with the most word overlap with the judged
   passage, which is mildly favourable to the ingested side. Every conclusion drawn from that
   corpus is stated in the direction the bias does not help.
-- **88 cases is the floor the spec asks for at this phase, not a benchmark.** 1.0 wants
+- **93 cases is the floor the spec asks for at this phase, not a benchmark.** 1.0 wants
   ≥ 1 000. Small sets move a lot on single-case changes, so read differences of a few points
-  as noise.
+  as noise — and that remains true of every gated slice, four cases or not (ADR-0052).
 - **Absolute numbers are not targets.** Pre-GA the discipline is relative (spec 04 §7.3):
   compare against the previous run and against grep, not against an invented threshold.
 
@@ -272,7 +307,7 @@ though the missing gates passed.
 |---|---|
 | G1 Citations | **Enforced** — every returned anchor must resolve; must be 1.00 |
 | G2 Earn hybrid | **Enforced when `--retriever hybrid` runs** — it scores the lexical baseline on the same cases and compares (ADR-0017) |
-| G3 No regression | **Enforced against `baselines/<set>.json`** when the corpus *and the judgements* are the ones the baseline was taken on — no slice may fall more than 2 %. "The same corpus" means the same *documents*, not the same chunk boundaries, so a chunking change is gated rather than excused (roadmap 4.13, ADR-0045) and the verdict names the re-cut. "The same judgements" means the same cases with the same grades: a slice's score is a mean over its cases, so a set that grew reads as a regression unless the gate can tell the two apart (roadmap 4.24, ADR-0051). When either has changed the numbers are not comparable, so the gate *reports* the movement instead of failing on it — and calls it movement, not regression. `--bless` writes a baseline and records all three fingerprints |
+| G3 No regression | **Enforced against `baselines/<set>.json`** when the corpus *and the judgements* are the ones the baseline was taken on, and only on the slices that can carry it — no enforced slice may fall more than 2 %, and a slice that is `unanswerable`, blessed at 0.0000, or thinner than four cases is reported by name with the reason (ADR-0052). "The same corpus" means the same *documents*, not the same chunk boundaries, so a chunking change is gated rather than excused (roadmap 4.13, ADR-0045) and the verdict names the re-cut. "The same judgements" means the same cases with the same grades: a slice's score is a mean over its cases, so a set that grew reads as a regression unless the gate can tell the two apart (roadmap 4.24, ADR-0051). When either has changed the numbers are not comparable, so the gate *reports* the movement instead of failing on it — and calls it movement, not regression. `--bless` writes a baseline and records all three fingerprints |
 | G4 Abstention | **Enforced** — false-answer rate on `unanswerable` ≤ 5 % |
 | G5 Performance | **Enforced, with its limit stated** — query p95 ≤ 150 ms, reported with the corpus size it was measured on. The budget is defined at the 10⁵-chunk reference profile, so passing here is a floor rather than the measurement spec 04 §1 asks for |
 | G6 Determinism | **Delegated** — a compiler gate with its own golden and its own CI job (ADR-0012) |

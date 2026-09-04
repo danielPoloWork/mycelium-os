@@ -17,7 +17,9 @@ from mycelium.eval.cases import load_cases, write_cases
 from mycelium.eval.harness import (
     BASELINES_DIRNAME,
     EVAL_DIRNAME,
+    G3_REPORTED_SLICES,
     MAX_FALSE_ANSWER_RATE,
+    MIN_ENFORCEABLE_SLICE_CASES,
     QUERY_BUDGET_P95_MS,
     RETRIEVAL_LIMIT,
     CorpusFingerprint,
@@ -46,6 +48,8 @@ from mycelium.eval.tasks import AgentTask, TaskSuiteReport, load_tasks, run_task
 
 __all__ = [
     "BASELINES_DIRNAME",
+    "G3_REPORTED_SLICES",
+    "MIN_ENFORCEABLE_SLICE_CASES",
     "EVAL_DIRNAME",
     "QUERY_BUDGET_P95_MS",
     "AgentTask",

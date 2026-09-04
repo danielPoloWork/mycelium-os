@@ -20,6 +20,7 @@ _(newest first)_
 #### September
 
 - [2026-09-05 — the third controlled variable (roadmap 4.24)](2026/09/2026-09-05-g3-sees-a-case-set-change.md)
+- [2026-09-04 — a gate that said it was watching seventeen rows (roadmap 4.20)](2026/09/2026-09-04-thin-slice-gating.md)
 - [2026-09-04 — the question ranking cannot answer about itself (roadmap 4.21)](2026/09/2026-09-04-explain-per-term-hits.md)
 - [2026-09-03 — the gap closed, and nobody saw it (roadmap 4.8)](2026/09/2026-09-03-the-gap-closed-and-nobody-saw-it.md)
 - [2026-09-03 — the gate the instrument could not see (roadmap 4.19)](2026/09/2026-09-03-stem-the-index.md)

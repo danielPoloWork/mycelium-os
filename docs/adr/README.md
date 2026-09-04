@@ -67,3 +67,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0049](0049-close-the-grep-gap-and-keep-the-incumbent-in-the-manifest.md) | Close the grep gap, and keep the incumbent in the manifest | Accepted |
 | [0050](0050-report-what-each-query-term-reached.md) | Report what each query term reached, surface and stem apart | Accepted |
 | [0051](0051-hold-the-judgements-fixed-too.md) | Hold the judgements fixed too, and name a population change as one | Accepted |
+| [0052](0052-give-a-slice-cases-or-stop-gating-it.md) | Give a slice cases, or stop gating it — and name the case that moved | Accepted |
