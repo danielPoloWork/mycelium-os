@@ -19,6 +19,7 @@ from mycelium.build import build
 from mycelium.config import load_config
 from mycelium.corpus import CorpusScope, discover
 from mycelium.eval import (
+    MIN_ENFORCEABLE_SLICE_CASES,
     CorpusFingerprint,
     EvaluationError,
     GrepRetriever,
@@ -533,9 +534,9 @@ def test_g3_enforces_only_on_a_comparable_corpus(corpus: Path) -> None:
     from mycelium.eval.harness import _gate_g3
     from mycelium.sdk.types import MetricSummary
 
-    def summary(score: float) -> MetricSummary:
+    def summary(score: float, cases: int = MIN_ENFORCEABLE_SLICE_CASES) -> MetricSummary:
         return MetricSummary(
-            cases=1,
+            cases=cases,
             ndcg_at_10=score,
             recall_at_10=1.0,
             recall_at_50=1.0,
@@ -587,9 +588,9 @@ def test_g3_enforces_across_a_chunking_change() -> None:
     from mycelium.eval.harness import _gate_g3
     from mycelium.sdk.types import MetricSummary
 
-    def summary(score: float) -> MetricSummary:
+    def summary(score: float, cases: int = MIN_ENFORCEABLE_SLICE_CASES) -> MetricSummary:
         return MetricSummary(
-            cases=1,
+            cases=cases,
             ndcg_at_10=score,
             recall_at_10=1.0,
             recall_at_50=1.0,
@@ -628,9 +629,9 @@ def test_g3_falls_back_and_says_so_on_a_baseline_blessed_before_the_split() -> N
     from mycelium.eval.harness import _gate_g3
     from mycelium.sdk.types import MetricSummary
 
-    def summary(score: float) -> MetricSummary:
+    def summary(score: float, cases: int = MIN_ENFORCEABLE_SLICE_CASES) -> MetricSummary:
         return MetricSummary(
-            cases=1,
+            cases=cases,
             ndcg_at_10=score,
             recall_at_10=1.0,
             recall_at_50=1.0,
@@ -676,9 +677,9 @@ def test_g3_reports_rather_than_enforces_when_the_judgements_changed() -> None:
     from mycelium.eval.harness import _gate_g3
     from mycelium.sdk.types import MetricSummary
 
-    def summary(score: float) -> MetricSummary:
+    def summary(score: float, cases: int = MIN_ENFORCEABLE_SLICE_CASES) -> MetricSummary:
         return MetricSummary(
-            cases=1,
+            cases=cases,
             ndcg_at_10=score,
             recall_at_10=1.0,
             recall_at_50=1.0,
@@ -730,9 +731,9 @@ def test_g3_says_the_case_set_comparison_is_unarmed_on_an_older_baseline() -> No
     from mycelium.eval.harness import _gate_g3
     from mycelium.sdk.types import MetricSummary
 
-    def summary(score: float) -> MetricSummary:
+    def summary(score: float, cases: int = MIN_ENFORCEABLE_SLICE_CASES) -> MetricSummary:
         return MetricSummary(
-            cases=1,
+            cases=cases,
             ndcg_at_10=score,
             recall_at_10=1.0,
             recall_at_50=1.0,
@@ -758,6 +759,141 @@ def test_g3_says_the_case_set_comparison_is_unarmed_on_an_older_baseline() -> No
     passing = _gate_g3({"fact": summary(0.80)}, older, here, JUDGEMENTS)
     assert passing.passed
     assert "same judgements" not in passing.detail, "it cannot claim what it did not check"
+
+
+def thin_summary(score: float, *, cases: int) -> MetricSummary:
+    """A per-slice summary with a stated case count — what G3 now reads (ADR-0052)."""
+    return MetricSummary(
+        cases=cases,
+        ndcg_at_10=score,
+        recall_at_10=1.0,
+        recall_at_50=1.0,
+        mrr=1.0,
+        citation_coverage=1.0,
+        false_answer_rate=0.0,
+        latency_p50_ms=1,
+        latency_p95_ms=1,
+    )
+
+
+def test_g3_reports_a_slice_too_thin_to_carry_a_gate() -> None:
+    """Roadmap 4.20 / ADR-0052.
+
+    A mean over one case is that case wearing a slice's name: the smallest move
+    it can make is the case's whole range, against a 2 % threshold. Such a row
+    cannot be tripped by anything except a single case and is tripped by every
+    single case, so G3 reports it and says how many cases are behind it.
+    """
+    from mycelium.eval.harness import _gate_g3
+
+    here = CorpusFingerprint(content="sha256:docs", chunks="sha256:cuts")
+    baseline = {
+        "per_slice": {"fact": 0.80},
+        "content_digest": here.content,
+        "corpus_digest": here.chunks,
+        "cases_digest": JUDGEMENTS,
+    }
+
+    thin = _gate_g3({"fact": thin_summary(0.20, cases=2)}, baseline, here, JUDGEMENTS)
+    assert thin.passed, "a two-case slice cannot fail the gate"
+    assert "0 of 1 slice(s) enforced" in thin.detail
+    assert "2 case(s)" in thin.detail
+
+    # The same drop, over enough cases to be a slice rather than a case.
+    thick = _gate_g3(
+        {"fact": thin_summary(0.20, cases=MIN_ENFORCEABLE_SLICE_CASES)},
+        baseline,
+        here,
+        JUDGEMENTS,
+    )
+    assert not thick.passed
+    assert "1 of 1 slice(s) enforced" in thick.detail
+
+
+def test_g3_never_enforces_unanswerable_however_many_cases_it_has() -> None:
+    """`unanswerable` scores 0.0000 by construction and is gated by G4.
+
+    A fall in it would be the system getting *better* at staying silent, so
+    "must not decrease" is backwards as well as unreachable (ADR-0052).
+    """
+    from mycelium.eval.harness import _gate_g3
+
+    here = CorpusFingerprint(content="sha256:docs", chunks="sha256:cuts")
+    baseline = {
+        "per_slice": {"unanswerable": 0.40},
+        "content_digest": here.content,
+        "corpus_digest": here.chunks,
+        "cases_digest": JUDGEMENTS,
+    }
+    verdict = _gate_g3({"unanswerable": thin_summary(0.0, cases=40)}, baseline, here, JUDGEMENTS)
+    assert verdict.passed
+    assert "G4 gates it" in verdict.detail
+
+
+def test_g3_reports_a_row_blessed_at_zero_rather_than_pretending_to_watch_it() -> None:
+    """`_relative` cannot return a negative against a zero baseline, so the row is
+    unfailable. Saying so beats counting it among the slices compared."""
+    from mycelium.eval.harness import _gate_g3
+
+    here = CorpusFingerprint(content="sha256:docs", chunks="sha256:cuts")
+    baseline = {
+        "per_slice": {"symbol": 0.0},
+        "content_digest": here.content,
+        "corpus_digest": here.chunks,
+        "cases_digest": JUDGEMENTS,
+    }
+    verdict = _gate_g3({"symbol": thin_summary(0.0, cases=9)}, baseline, here, JUDGEMENTS)
+    assert verdict.passed
+    assert "blessed at 0.0000" in verdict.detail
+    assert "0 of 1 slice(s) enforced" in verdict.detail
+
+
+def test_g3_names_the_cases_behind_a_slice_that_moved() -> None:
+    """The complaint ADR-0044 recorded was not sensitivity but attribution: the
+    gate said `relationship 0.30 -> 0.11` and could not say whose move it was."""
+    from mycelium.eval.harness import _gate_g3
+    from mycelium.sdk.types import CaseResult
+
+    def result(case_id: str, score: float) -> CaseResult:
+        return CaseResult(
+            case_id=case_id,
+            ndcg_at_10=score,
+            recall_at_10=score,
+            recall_at_50=score,
+            reciprocal_rank=score,
+            citation_coverage=1.0,
+        )
+
+    here = CorpusFingerprint(content="sha256:docs", chunks="sha256:cuts")
+    baseline = {
+        "per_slice": {"fact": 0.80},
+        "content_digest": here.content,
+        "corpus_digest": here.chunks,
+        "cases_digest": JUDGEMENTS,
+        "per_case": {"fact": {"r-1": 0.80, "r-2": 0.80, "r-3": 0.80, "r-4": 0.80}},
+    }
+    cases = [result("r-1", 0.8), result("r-2", 0.8), result("r-3", 0.8), result("r-4", 0.0)]
+    verdict = _gate_g3(
+        {"fact": thin_summary(0.60, cases=4)},
+        baseline,
+        here,
+        JUDGEMENTS,
+        {"fact": cases},
+    )
+    assert not verdict.passed
+    # The case that moved is named, with where it moved from.
+    assert "r-4 0.8000->0.0000" in verdict.detail
+    assert "r-1 0.8000->0.8000" in verdict.detail
+
+    # A baseline with no per-case record still attributes, with today's numbers
+    # only - an absent field is reported as absent, never guessed at.
+    without = dict(baseline)
+    del without["per_case"]
+    older = _gate_g3(
+        {"fact": thin_summary(0.60, cases=4)}, without, here, JUDGEMENTS, {"fact": cases}
+    )
+    assert "r-4 0.0000" in older.detail
+    assert "->" not in older.detail.split("[")[1]
 
 
 def test_the_case_set_digest_sees_what_moves_a_score_and_not_what_does_not() -> None:
@@ -895,6 +1031,17 @@ def test_blessing_writes_a_baseline_that_g3_then_reads(tmp_path: Path, corpus: P
     assert baseline["content_digest"]
     assert baseline["corpus_digest"]
     assert baseline["content_digest"] != baseline["corpus_digest"]
+
+    # Supplying the cases records the scores behind each slice mean, so the next
+    # run's verdict can name which case moved rather than only that the mean did
+    # (roadmap 4.20, ADR-0052).
+    with_cases = write_baseline(
+        tmp_path, manifest, corpus_fingerprint_of(corpus), load_cases(CASES)
+    )
+    recorded = json.loads(with_cases.read_text(encoding="utf-8"))["mycelium"]["per_case"]
+    assert set(recorded) == set(manifest.per_slice)
+    scored = {case_id for slice_scores in recorded.values() for case_id in slice_scores}
+    assert scored == {result.case_id for result in manifest.results}
 
 
 def test_the_committed_baseline_covers_the_gated_case_set() -> None:

@@ -1629,7 +1629,9 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
         detail(f"  run manifest: {written}")
 
     if bless:
-        frozen = write_baseline(path, manifest, corpus_fingerprint_of(path, manifest.snapshot_id))
+        frozen = write_baseline(
+            path, manifest, corpus_fingerprint_of(path, manifest.snapshot_id), cases
+        )
         detail(f"  baseline: {frozen}")
 
     if gate and failed:
