@@ -6,6 +6,7 @@
     python tools/measure_ranking.py [repository-root]      # the dev sets
     python tools/measure_ranking.py --release              # ...and the gate view
     python tools/measure_ranking.py --oracle               # the family's ceiling
+    python tools/measure_ranking.py --stems                # the IDF-floor refusal
 
 Roadmap 4.8 was open because the grep incumbent beat the product on the second
 corpus. **It no longer does** (ADR-0049): measured after packing (4.15) and
@@ -338,6 +339,35 @@ def _tokenizer_ranking(
     return [str(row["anchor"]) for row in rows]
 
 
+def query_words(strip: bool) -> Ranking:
+    """The product's lexical leg, with and without the function-word boundary.
+
+    Roadmap 4.28's evidence, and the only row in this file that varies the
+    *query* rather than the index or the ranking. `query: raw` is what the
+    product did before ADR-0057 — every word of the question, function words at
+    full field weight — and `query: stopped` is what it does now. The whole
+    family exists because no other row can show the difference: every retriever
+    the harness scores has always been handed `terms_of(query)`, so the harness
+    was measuring the fix four milestones before the product had it.
+    """
+
+    def rank(store: SqliteStore, query: str) -> list[str]:
+        text = " ".join(terms_of(query)) if strip else query
+        return [hit.chunk.anchor for hit in store.search_chunks(text, limit=DEPTH)]
+
+    return rank
+
+
+QUERY_FAMILY: Final[list[tuple[str, Ranking]]] = [
+    ("query: raw", query_words(strip=False)),
+    ("query: stopped", query_words(strip=True)),
+]
+"""`query: stopped` is what ships (ADR-0057) and must score what
+`baseline (ships)` scores; `query: raw` is the control — the product as it stood
+before roadmap 4.28, which is *not* what any earlier number in this file
+measured."""
+
+
 def tokenizer(variant: str, stem_weight: float = 0.0) -> Ranking:
     """One index variant, as a ranking the scorer can drive."""
 
@@ -625,6 +655,47 @@ def _report(
     print()
 
 
+def stem_frequencies(root: Path, case_set: str) -> list[tuple[str, int, int, set[str]]]:
+    """Every judged query's stems, by how many chunks carry them.
+
+    Roadmap 4.28's first candidate fix was an IDF floor on the stem side: drop a
+    stem that is too common to be evidence. This is the table that refuses it.
+    A function word and a corpus's own central noun are not separable by document
+    frequency — and BM25 already discounts by IDF, so the stem that broke
+    `u-0007` is *rare* rather than common (ADR-0057).
+    """
+    stems: dict[str, set[str]] = {}
+    for case in load_cases(root / "eval" / f"{case_set}.jsonl"):
+        terms = _FTS_TERM.findall(case.query)
+        for term, stem in zip(terms, stem_text(terms), strict=True):
+            stems.setdefault(stem, set()).add(term.lower())
+    with SqliteStore.open(root, read_only=True) as store:
+        connection = store._connection  # noqa: SLF001 - a measurement, not a caller
+        total = int(connection.execute("SELECT count(*) FROM chunks_fts").fetchone()[0])
+        counts: dict[str, int] = dict.fromkeys(stems, 0)
+        for row in connection.execute(
+            "SELECT text_stem, title_stem, heading_path_stem FROM chunks_fts"
+        ):
+            carried = set()
+            for column in row:
+                carried.update((column or "").split())
+            for stem in stems:
+                if stem in carried:
+                    counts[stem] += 1
+    return [
+        (stem, counts[stem], total, stems[stem]) for stem in sorted(stems, key=lambda s: -counts[s])
+    ]
+
+
+def _report_stems(label: str, root: Path, case_set: str) -> None:
+    rows = stem_frequencies(root, case_set)
+    print()
+    print(f"{label}/{case_set}: {rows[0][2] if rows else 0} chunks")
+    for stem, count, total, words in rows[:12]:
+        share = count / total if total else 0.0
+        print(f"   {count:5} {share:6.1%}  {stem:14} <- {', '.join(sorted(words))}")
+
+
 def main() -> int:
     flags = {arg for arg in sys.argv[1:] if arg.startswith("--")}
     args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
@@ -632,6 +703,7 @@ def main() -> int:
     corpora = [("ours", ours), ("uv", ROOT / "eval" / "corpora" / "uv-docs")]
     strategies: list[tuple[str, Ranking]] = [
         ("baseline (ships)", baseline),
+        *QUERY_FAMILY,
         *TOKENIZER_FAMILY,
         *SECTION_FAMILY,
         ("length>=60", length_prior(60)),
@@ -648,6 +720,18 @@ def main() -> int:
         print("\n=== the gate view: release sets, per slice. Read, never tuned against. ===\n")
         for corpus, root in corpora:
             _report(f"{corpus}/release", root, "release", strategies)
+    if "--stems" in flags:
+        print()
+        print("=== stem document frequency: why an IDF floor cannot find a function word ===")
+        for corpus, root in corpora:
+            for set_name in ("dev", "release"):
+                _report_stems(corpus, root, set_name)
+        print(
+            "\nRead the two corpora together. Nothing separates the classes: on this "
+            "repository `what` reaches 37 % of chunks and `adr` 60 %; on uv's "
+            "documentation `mean` reaches 2.8 % and `uv` itself 88 %. A floor that "
+            "dropped the first of each pair would drop the second (ADR-0057)."
+        )
     if "--oracle" in flags:
         print("\n=== the family's ceiling — no planner can beat it ===\n")
         print(f"{'set':<13} {'chunk':>8} {'family':>8} {'oracle':>8} {'vs grep':>9}")

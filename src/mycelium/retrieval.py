@@ -25,6 +25,7 @@ to, at 3.4. Until then both legs run for every query, which is the honest
 behaviour to measure hybrid against.
 """
 
+import re
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
@@ -36,8 +37,10 @@ from mycelium.store import SearchFilters, SearchHit, SqliteStore, TermHits
 
 __all__ = [
     "DEFAULT_LIMIT",
+    "STOPWORDS",
     "FusedHit",
     "SearchOutcome",
+    "query_terms",
     "reciprocal_rank_fusion",
     "search",
 ]
@@ -50,6 +53,80 @@ VECTOR_CANDIDATES: Final = 50
 
 _LEXICAL: Final = "lexical"
 _VECTOR: Final = "vector"
+
+_TERM: Final = re.compile(r"\w+", re.UNICODE)
+
+STOPWORDS: Final = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "but",
+        "by",
+        "do",
+        "does",
+        "for",
+        "from",
+        "how",
+        "i",
+        "in",
+        "is",
+        "it",
+        "of",
+        "on",
+        "or",
+        "that",
+        "the",
+        "to",
+        "was",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "why",
+        "with",
+        "you",
+    }
+)
+"""Function words the **lexical** leg does not search on (roadmap 4.28).
+
+This list is not new and it is deliberately not re-chosen here: it has lived in
+the evaluation harness since the grep baseline was written, where it was applied
+to *both* retrievers so neither got an easier question. What it was never applied
+to is the product — so `mycelium search "what does resolution mean"` searched on
+`what` and `does`, and the harness that was supposed to notice had removed them
+before it looked (ADR-0057).
+
+Why a list rather than a statistic: because the statistic does not exist.
+Document frequency, measured on both corpora, does not separate a function word
+from a corpus's own central nouns — `what` reaches 37 % of this repository's
+chunks and `adr` reaches 60 %; on `uv`'s documentation `mean` reaches 2.8 % and
+`uv` itself reaches 88 %. An IDF floor calibrated to drop the first would drop
+the second, and BM25 already discounts by IDF, so the stems that hurt are the
+*rare* ones with nothing else behind them. The membership of this list is
+therefore an English fact, not a tuning parameter, and changing it is a separate
+decision from adopting it.
+
+The **vector** leg still sees the whole question: an embedder is asked in the
+words it was trained on, and the grammar is what it reads."""
+
+
+def query_terms(query: str) -> list[str]:
+    """The words the lexical leg searches on, in the order they were written.
+
+    A query made *entirely* of function words keeps them all: "what is it" has
+    no content words to fall back on, and searching for nothing would abstain on
+    a question the corpus may well answer. Removing every term is never an
+    improvement over searching badly.
+    """
+    found = [term.lower() for term in _TERM.findall(query)]
+    kept = [term for term in found if term not in STOPWORDS]
+    return kept or found
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,12 +291,22 @@ def search(
     depth = max(limit, VECTOR_CANDIDATES)
     timings: dict[str, int] = {}
 
+    # The lexical leg searches on content words; the vector leg below is given
+    # `query` whole, because an embedder reads the grammar (ADR-0057).
+    searched = " ".join(query_terms(query))
+    dropped = [term for term in _TERM.findall(query.lower()) if term not in searched.split()]
+
     started = time.perf_counter()
-    lexical = store.search_chunks(query, limit=depth, filters=filters, prefix=prefix)
+    lexical = store.search_chunks(searched, limit=depth, filters=filters, prefix=prefix)
     timings[_LEXICAL] = _elapsed_ms(started)
     lists: list[tuple[str, Sequence[SearchHit]]] = [(_LEXICAL, lexical)]
     degraded: list[str] = []
     notes: list[str] = [policy_note] if policy_note else []
+    if dropped:
+        notes.append(
+            f"lexical leg searched on {searched!r}: {len(dropped)} function word(s) "
+            f"dropped ({', '.join(dict.fromkeys(dropped))})"
+        )
 
     if settings.hybrid:
         if not lexical:
@@ -269,7 +356,9 @@ def search(
     terms: tuple[TermHits, ...] = ()
     if explain:
         started = time.perf_counter()
-        terms = store.term_hits(query, filters=filters)
+        # The terms that *ran*, not the words that were typed: a report crediting
+        # a word the search never used explains someone else's query (ADR-0050).
+        terms = store.term_hits(searched, filters=filters)
         timings["terms"] = _elapsed_ms(started)
         dead = [item.term for item in terms if item.unmatched]
         if dead:
