@@ -13,6 +13,11 @@ judgments, and not both.
 That is the only form of the rule a machine can check, and it catches the failure
 that actually happens: a run comes back worse, the judgment looks wrong in
 hindsight, and the set quietly becomes the thing that fits (ADR-0027).
+
+One rule that used to live here has been retired: a *derived* set may now move
+with the set it is carried from, because a byte-exact regeneration check says
+more than a rule about which commit two files arrived in. See `DERIVED_SETS`
+below, which is kept empty rather than deleted (roadmap 4.26, ADR-0056).
 """
 
 import subprocess
@@ -27,26 +32,32 @@ RELEASE_SETS = (
 )
 """Every *judged* frozen release set — the ones a human wrote and could re-fit."""
 
-DERIVED_SETS = {
-    "eval/corpora/uv-docs-ingested/eval/release.jsonl": "eval/corpora/uv-docs/eval/release.jsonl",
-    "eval/corpora/uv-docs-ingested/eval/dev.jsonl": "eval/corpora/uv-docs/eval/dev.jsonl",
-}
-"""Derived set → the judged set it is carried from (`tools/build_ingested_cases.py`).
+DERIVED_SETS: dict[str, str] = {}
+"""Empty, and the emptiness is the decision (roadmap 4.26, ADR-0056).
 
-Nothing in a derived set is judged: every query, grade, slice and note is copied
-verbatim from the source, and only the *anchor* is computed (ADR-0039). So the
-conjunction rule below does not apply to it, and applying it was a category error
-that only became visible at roadmap 4.15 — the first chunking change after both
-guards existed.
+A derived set — `eval/corpora/uv-docs-ingested/eval/*.jsonl` — used to be
+forbidden from moving in the same change as the judged set it is carried from.
+Nothing in it is judged: every query, grade, slice and note is copied verbatim
+and only the *anchor* is computed (ADR-0039), so the rule was never about
+re-fitting. It was a proxy for "this file was not hand-edited".
 
-The bind is that a derived set is a function of the chunker. A chunking change
-*must* move it (the `ingest / lanes` job fails otherwise, [BUG-0018]) and the
-conjunction rule *forbade* moving it, so the two guards could not both be
-satisfied and no ordering of two PRs helped: the set only changes once the
-chunker does. Nothing weaker replaces the rule — what replaces it is stronger.
-A derived set may not move in the same change as **its source**, and its contents
-are byte-checked against the generator on every CI run, which is a better
-guarantee than "nobody edited this file" (roadmap 4.15, ADR-0047)."""
+The proxy is retired because the direct check exists and is stronger.
+`tools/build_ingested_cases.py --check` regenerates the carry from the source set
+and the corpus and byte-compares it, in CI, on every run (roadmap 4.16,
+[BUG-0018]). A hand-edited derived set fails that check whichever commit it
+arrived in; a rule about *when* two files changed cannot say anything a
+regeneration cannot say better.
+
+What the proxy did do was deadlock growth. A derived set is a function of its
+source and the chunker, so it *must* move when either does — and the rule forbade
+exactly that, from the chunking side at roadmap 4.15 and from the judgement side
+at 4.20, where eight drafted cases could not land because the carry could not
+follow them. No ordering of two PRs helped: the set only changes once its source
+does.
+
+The mapping is kept rather than deleted so the shape of the rule stays visible,
+and so re-arming it is a one-line change if the reproduction check ever stops
+running in CI."""
 
 TUNING_PATHS = (
     "src/mycelium/retrieval.py",

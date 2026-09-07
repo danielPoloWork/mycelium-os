@@ -1,20 +1,24 @@
 {
   "grep": {
-    "blessed_from_snapshot": "01M1NSXN26AG2HYJET6WP35MRA",
-    "cases": 16,
-    "cases_digest": "sha256:64bff59768988ef2771e13902597c32ae548026796acbb9fda303f763c52d956",
+    "blessed_from_snapshot": "01M1XR0PJK8W1XG1E4KDA0BJR3",
+    "cases": 25,
+    "cases_digest": "sha256:5f8ebc1377c56c1b00e834a3e284caae8cc63d38866281494ae35f611883d409",
     "content_digest": "sha256:44895398cedfc30a39759a8dfd9ab59ec2df26e6d251e8e619a6bc3ea4af2b06",
     "corpus_digest": "sha256:3083b97f9d6983bba978df8cb09b48fc872666379faa7808b9be1ed6f7bf6282",
-    "overall_ndcg_at_10": 0.518981,
+    "overall_ndcg_at_10": 0.484912,
     "per_case": {
       "conceptual": {
         "u-1002": 0.63093,
         "u-1005": 1.0,
-        "u-1016": 0.578764
+        "u-1016": 0.578764,
+        "u-1023": 0.0
       },
       "exact": {
         "u-1003": 0.0,
-        "u-1015": 1.0
+        "u-1015": 1.0,
+        "u-1018": 0.333333,
+        "u-1020": 1.0,
+        "u-1021": 0.430677
       },
       "fact": {
         "u-1001": 0.339009,
@@ -27,10 +31,15 @@
       },
       "relationship": {
         "u-1009": 0.578764,
-        "u-1010": 0.787155
+        "u-1010": 0.787155,
+        "u-1022": 0.410896,
+        "u-1024": 0.0
       },
       "symbol": {
-        "u-1007": 0.0
+        "u-1007": 0.0,
+        "u-1017": 1.0,
+        "u-1019": 0.411306,
+        "u-1025": 0.30103
       },
       "unanswerable": {
         "u-1011": 0.0,
@@ -38,11 +47,11 @@
       }
     },
     "per_slice": {
-      "conceptual": 0.736565,
-      "exact": 0.5,
+      "conceptual": 0.552423,
+      "exact": 0.552802,
       "fact": 0.496754,
-      "relationship": 0.682959,
-      "symbol": 0.0,
+      "relationship": 0.444204,
+      "symbol": 0.428084,
       "unanswerable": 0.0
     },
     "toolchain": {
@@ -51,37 +60,46 @@
     }
   },
   "mycelium": {
-    "blessed_from_snapshot": "01M1NSXN26AG2HYJET6WP35MRA",
-    "cases": 16,
-    "cases_digest": "sha256:64bff59768988ef2771e13902597c32ae548026796acbb9fda303f763c52d956",
+    "blessed_from_snapshot": "01M1XR0PJK8W1XG1E4KDA0BJR3",
+    "cases": 25,
+    "cases_digest": "sha256:5f8ebc1377c56c1b00e834a3e284caae8cc63d38866281494ae35f611883d409",
     "content_digest": "sha256:44895398cedfc30a39759a8dfd9ab59ec2df26e6d251e8e619a6bc3ea4af2b06",
     "corpus_digest": "sha256:3083b97f9d6983bba978df8cb09b48fc872666379faa7808b9be1ed6f7bf6282",
-    "overall_ndcg_at_10": 0.54834,
+    "overall_ndcg_at_10": 0.585847,
     "per_case": {
       "conceptual": {
         "u-1002": 1.0,
         "u-1005": 1.0,
-        "u-1016": 0.635202
+        "u-1016": 0.635202,
+        "u-1023": 0.0
       },
       "exact": {
         "u-1003": 0.30103,
-        "u-1015": 1.0
+        "u-1015": 1.0,
+        "u-1018": 1.0,
+        "u-1020": 1.0,
+        "u-1021": 0.333333
       },
       "fact": {
-        "u-1001": 0.551854,
+        "u-1001": 0.676361,
         "u-1004": 0.333333,
         "u-1006": 0.430677,
-        "u-1008": 0.333333,
+        "u-1008": 0.356207,
         "u-1010": 0.787155,
         "u-1013": 0.0,
-        "u-1014": 0.386853
+        "u-1014": 0.430677
       },
       "relationship": {
         "u-1009": 0.917319,
-        "u-1010": 0.787155
+        "u-1010": 0.787155,
+        "u-1022": 0.932444,
+        "u-1024": 0.0
       },
       "symbol": {
-        "u-1007": 0.0
+        "u-1007": 0.0,
+        "u-1017": 1.0,
+        "u-1019": 0.70981,
+        "u-1025": 0.63093
       },
       "unanswerable": {
         "u-1011": 0.0,
@@ -89,11 +107,11 @@
       }
     },
     "per_slice": {
-      "conceptual": 0.878401,
-      "exact": 0.650515,
-      "fact": 0.403315,
-      "relationship": 0.852237,
-      "symbol": 0.0,
+      "conceptual": 0.658801,
+      "exact": 0.726873,
+      "fact": 0.43063,
+      "relationship": 0.65923,
+      "symbol": 0.585185,
       "unanswerable": 0.0
     },
     "toolchain": {

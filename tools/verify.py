@@ -64,6 +64,19 @@ EVAL_DATA_PREFIXES = ("eval/",)
 """The judged sets, the baselines and the corpora. A change here moves what the
 gates *measure*, which is as much a retrieval change as touching the ranker."""
 
+CORPUS_PREFIXES = ("eval/corpora/",)
+"""The vendored corpora — and the one place `retrieval` is not wide enough.
+
+Only `full` builds and gates these, and they are the sets gate G3 actually
+enforces on (ADR-0053). So a change to one of *them* that ran `retrieval` would
+skip the gate it is most likely to move: found at roadmap 4.26, where growing
+`uv/release` from 16 judged cases to 25 derived `retrieval` and would have left
+that set's own G3 unrun.
+
+Deliberately narrower than "every retrieval change gates the vendored corpora",
+which is a real question about ADR-0055's measured economy and is filed as 4.35
+rather than decided here."""
+
 CI_PREFIXES = (".github/",)
 
 
@@ -126,6 +139,9 @@ def derive(paths: list[str]) -> tuple[str, str]:
     for path in paths:
         if any(path.startswith(prefix) for prefix in TUNING_PATHS):
             return "retrieval", f"{path} can change what a query returns"
+    for path in paths:
+        if any(path.startswith(prefix) for prefix in CORPUS_PREFIXES):
+            return "full", f"{path} is a corpus only `full` builds and gates"
     for path in paths:
         if any(path.startswith(prefix) for prefix in EVAL_DATA_PREFIXES):
             return "retrieval", f"{path} changes what the gates measure"

@@ -133,18 +133,18 @@
     "source_digest": "sha256:02831e81cdd25425ac11ff1703eb626f730ff9342710daae94bfb4d048d938af"
   },
   "docs/concepts/projects/run.md": {
-    "evidence": "knowledge/evidence/run-html-2e847d14.md",
-    "format": "html",
-    "parser": "docling",
-    "source": "sources/concepts/projects/run.html",
-    "source_digest": "sha256:2e847d14bc37c811822a5f7dcc49185792eeb9eb9f239b25894d7d5f3aa41bbf"
+    "evidence": "knowledge/evidence/run-pdf-1537d99d.md",
+    "format": "pdf",
+    "parser": "pdf",
+    "source": "sources/concepts/projects/run.pdf",
+    "source_digest": "sha256:1537d99d2379df6a63c76416a4e9c9a347a309df0ec9f3f36b896d27d28ae1b4"
   },
   "docs/concepts/projects/sync.md": {
-    "evidence": "knowledge/evidence/sync-html-9c97b88f.md",
-    "format": "html",
+    "evidence": "knowledge/evidence/sync-docx-001285de.md",
+    "format": "docx",
     "parser": "docling",
-    "source": "sources/concepts/projects/sync.html",
-    "source_digest": "sha256:9c97b88f46e197c74235e9fc4d68f171049497c53be3cd94a7b79505827be523"
+    "source": "sources/concepts/projects/sync.docx",
+    "source_digest": "sha256:001285def7c842d41465361802c19da63e89fccd07161901f37b6e7fe39d25bd"
   },
   "docs/concepts/projects/workspaces.md": {
     "evidence": "knowledge/evidence/workspaces-html-45cf0a84.md",

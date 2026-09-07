@@ -12,6 +12,34 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **Gate G3 enforces five slices on each frozen release set instead of one** (roadmap 4.26,
+  [ADR-0056](docs/adr/0056-make-the-format-assignment-append-only.md)). ADR-0052 gave G3 the
+  right rule — enforce a slice only when it holds at least four judged cases and a baseline
+  above zero — and the honest consequence was `1 of 6 slice(s) enforced` on the only sets a
+  gate can live on (ADR-0053). Nine cases judged from `uv`'s documentation take the second
+  corpus's release set from 16 cases to 25: conceptual 4, exact 5, fact 7, relationship 4,
+  symbol 4, unanswerable 2. `symbol` in particular goes from a row blessed at 0.0000 on a
+  single case — which no relative threshold could ever trip — to **0.585** over four.
+- **A rendered format, once assigned, is never reassigned.** The third corpus's DOCX/HTML/PDF
+  rotation now runs over a recorded order (`format-rotation.json`) rather than over the judged
+  paths re-sorted on every run, and `--render` writes only what is missing. Sorting made the
+  corpus unable to grow: a newly judged document sorts between existing ones and re-rolls the
+  format of documents already rendered, whose renderings are committed provenance that cannot
+  be re-derived (ADR-0039). Appending re-rendered **two** documents where sorting would have
+  re-rendered eighty-one.
+- **Both frozen baselines are re-blessed.** `uv/release` mycelium `0.5483 → 0.5858` against
+  grep `0.5190 → 0.4849`, so the lead over the incumbent widens from +0.029 to +0.101;
+  `uv-ingested/release` mycelium `0.6469 → 0.6153` against grep `0.5046`. Exactly three
+  pre-existing cases moved on each corpus, all in `fact` — PR #75's retrieval gain, which
+  #75 deliberately left unblessed, booked here. A bless on an *enforced* set rides with the
+  judgement change that occasions it, which narrows ADR-0053's rule to the reported set it
+  was reasoned about.
+- **The rule forbidding a derived judgement set from moving with its source is retired.** It
+  was a proxy for "this file was not hand-written", and the direct check exists:
+  `tools/build_ingested_cases.py --check` regenerates the carry and byte-compares it in CI
+  whichever commit it arrived in. The proxy's only real effect was to deadlock growth — a
+  source that gains cases must regenerate its carry, and a regeneration alone has nothing to
+  regenerate from.
 - **A change now runs the gates it implicates, and CI derives which those are** (roadmap
   4.31, [ADR-0055](docs/adr/0055-run-the-gates-the-change-implicates.md)). `tools/verify.py`
   classifies a diff as `docs`, `code`, `retrieval` or `full` and runs that mode's gates,

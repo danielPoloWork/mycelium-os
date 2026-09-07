@@ -1,13 +1,13 @@
 ---
 title: Locking and syncing
 origin: ingested
-source: "file:sources/concepts/projects/sync.html"
-source_digest: "sha256:9c97b88f46e197c74235e9fc4d68f171049497c53be3cd94a7b79505827be523"
+source: "file:sources/concepts/projects/sync.docx"
+source_digest: "sha256:001285def7c842d41465361802c19da63e89fccd07161901f37b6e7fe39d25bd"
 ---
 
 # Locking and syncing
 
-Locking is the process of resolving your project's dependencies into a lockfile. Syncing is the process of installing a subset of packages from the lockfile into the project environment.
+Locking is the process of resolving your project’s dependencies into a lockfile. Syncing is the process of installing a subset of packages from the lockfile into the project environment.
 
 ## Automatic lock and sync
 
@@ -48,7 +48,7 @@ This is equivalent to the --locked flag for other commands.
 !!! important
 
 ```
-uv will not consider lockfiles outdated when new versions of packages are released - the lockfile
+uv will not consider lockfiles outdated when new versions of packages are released — the lockfile
 needs to be explicitly updated if you want to upgrade dependencies. See the documentation on
 [upgrading locked package versions](#upgrading-locked-package-versions) for details.
 ```
@@ -86,7 +86,7 @@ See the [build systems](./config.md#build-systems) documentation for details.
 
 ### Handling of extraneous packages
 
-uv sync performs "exact" syncing by default, which means it will remove any packages that are not present in the lockfile.
+uv sync performs “exact” syncing by default, which means it will remove any packages that are not present in the lockfile.
 
 To retain extraneous packages, use the --inexact flag:
 
@@ -94,7 +94,7 @@ To retain extraneous packages, use the --inexact flag:
 $ uv sync --inexact
 ```
 
-In contrast, uv run uses "inexact" syncing by default, ensuring that all required packages are installed but not removing extraneous packages. To enable exact syncing with uv run, use the --exact flag:
+In contrast, uv run uses “inexact” syncing by default, ensuring that all required packages are installed but not removing extraneous packages. To enable exact syncing with uv run, use the --exact flag:
 
 ```
 $ uv run --exact ...
@@ -102,7 +102,7 @@ $ uv run --exact ...
 
 ### Syncing optional dependencies
 
-uv reads optional dependencies from the [project.optional-dependencies] table. These are frequently referred to as "extras".
+uv reads optional dependencies from the [project.optional-dependencies] table. These are frequently referred to as “extras”.
 
 uv does not sync extras by default. Use the --extra option to include an extra.
 
@@ -138,7 +138,7 @@ See the development dependencies documentation for details on how to manage deve
 
 ## Upgrading locked package versions
 
-With an existing uv.lock file, uv will prefer the previously locked versions of packages when running uv sync and uv lock. Package versions will only change if the project's dependency constraints exclude the previous, locked version.
+With an existing uv.lock file, uv will prefer the previously locked versions of packages when running uv sync and uv lock. Package versions will only change if the project’s dependency constraints exclude the previous, locked version.
 
 To upgrade all packages:
 
@@ -158,7 +158,7 @@ To upgrade a single package to a specific version:
 $ uv lock --upgrade-package <package>==<version>
 ```
 
-In all cases, upgrades are limited to the project's dependency constraints. For example, if the project defines an upper bound for a package then an upgrade will not go beyond that version.
+In all cases, upgrades are limited to the project’s dependency constraints. For example, if the project defines an upper bound for a package then an upgrade will not go beyond that version.
 
 !!! note
 
@@ -185,17 +185,11 @@ See the export guide for comprehensive documentation on all export formats and t
 
 ## Partial installations
 
-Sometimes it's helpful to perform installations in multiple steps, e.g., for optimal layer caching while building a Docker image. uv sync has several flags for this purpose.
+Sometimes it’s helpful to perform installations in multiple steps, e.g., for optimal layer caching while building a Docker image. uv sync has several flags for this purpose.
 
--
-
-  --no-install-project: Do not install the current project
--
-
-  --no-install-workspace: Do not install any workspace members, including the root project
--
-
-  --no-install-package <NO_INSTALL_PACKAGE>: Do not install the given package(s)
+- --no-install-project: Do not install the current project
+- --no-install-workspace: Do not install any workspace members, including the root project
+- --no-install-package <NO_INSTALL_PACKAGE>: Do not install the given package(s)
 
 When these options are used, all the dependencies of the target are still installed. For example, --no-install-project will omit the project but not any of its dependencies.
 
@@ -209,7 +203,7 @@ If used improperly, these flags can result in a broken environment since a packa
 On-sync malware checking is in [preview](../preview.md), and is subject to change until stabilized.
 ```
 
-While syncing, uv can perform a lightweight scan of your lockfile for known malware by checking it against OSV. OSV references MAL advisories from the OpenSSF's malicious packages database.
+While syncing, uv can perform a lightweight scan of your lockfile for known malware by checking it against OSV. OSV references MAL advisories from the OpenSSF’s malicious packages database.
 
 If a locked dependency matches a malware advisory, the sync will be terminated.
 

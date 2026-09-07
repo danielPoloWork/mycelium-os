@@ -52,9 +52,37 @@
       "coverage": 0.8738,
       "twin": "knowledge/evidence/dependencies-docx-d90e9be4.md#adding-dependencies/0"
     },
+    "docs/concepts/projects/dependencies.md#dependency-sources/disabling-sources/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/dependencies-docx-d90e9be4.md#dependency-sources/disabling-sources/0"
+    },
+    "docs/concepts/projects/dependencies.md#dependency-specifiers/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/dependencies-docx-d90e9be4.md#virtual-dependencies/1"
+    },
+    "docs/concepts/projects/run.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/run-pdf-1537d99d.md#/0"
+    },
+    "docs/concepts/projects/sync.md#automatic-lock-and-sync/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/sync-docx-001285de.md#automatic-lock-and-sync/0"
+    },
+    "docs/concepts/projects/sync.md#checking-the-lockfile/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/sync-docx-001285de.md#checking-the-lockfile/0"
+    },
+    "docs/concepts/projects/sync.md#exporting-the-lockfile/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/sync-docx-001285de.md#exporting-the-lockfile/0"
+    },
     "docs/concepts/projects/workspaces.md#/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/workspaces-html-45cf0a84.md#/0"
+    },
+    "docs/concepts/python-versions.md#free-threaded-python/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/python-versions-pdf-ea39018d.md#/4"
     },
     "docs/concepts/python-versions.md#managed-and-system-python-installations/0": {
       "coverage": 0.9821,
@@ -64,6 +92,10 @@
       "coverage": 0.927,
       "twin": "knowledge/evidence/python-versions-pdf-ea39018d.md#/0"
     },
+    "docs/concepts/python-versions.md#requesting-a-version/python-version-files/0": {
+      "coverage": 0.8387,
+      "twin": "knowledge/evidence/python-versions-pdf-ea39018d.md#/0"
+    },
     "docs/concepts/resolution.md#/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/resolution-docx-0961b125.md#/0"
@@ -71,6 +103,14 @@
     "docs/concepts/tools.md#the-uv-tool-interface/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/tools-html-36b20d8c.md#the-uv-tool-interface/0"
+    },
+    "docs/getting-started/features.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/features-html-b3a656a3.md#/0"
+    },
+    "docs/getting-started/features.md#python-versions/0": {
+      "coverage": 0.6207,
+      "twin": "knowledge/evidence/features-html-b3a656a3.md#uv-python-pin-pin-the-current-project-to-use-a-specific-python-version/0"
     },
     "docs/guides/scripts.md#/": {
       "coverage": 0.9697,

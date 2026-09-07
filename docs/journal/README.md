@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-04 — one row to five, and the two rules that were stopping it (roadmap 4.26)](2026/09/2026-09-04-grow-the-second-corpus.md)
 - [2026-09-04 — two refusals and a 124-second install (roadmap 4.31)](2026/09/2026-09-04-run-the-gates-the-change-implicates.md)
 - [2026-09-04 — the cheap half of a collision (roadmap 4.27)](2026/09/2026-09-04-one-number-one-item.md)
 - [2026-09-04 — one clause, two rules (roadmap 4.23)](2026/09/2026-09-04-gate-the-query-not-the-documents.md)
