@@ -7,7 +7,10 @@
 > [`audit-2026-08-29-bootstrap.md`](audit-2026-08-29-bootstrap.md)). Boundaries marked
 > *(design)* come from the accepted design (RFC-0001 / spec docs 02 §8, 04 §6) and gain
 > their mechanical controls at the named milestone — they are modeled now so the controls
-> are built in, not bolted on. **Last revised 2026-09-04** (roadmap 4.31, PR #78):
+> are built in, not bolted on. **Last revised 2026-09-07** (roadmap 4.35, PR #82): B13's
+> control was mitigated against a *declared* narrowing and blind to an *implemented* one —
+> the plan behind a mode was a second implementation, and at `retrieval` it ran fewer gates
+> than CI. The revision before, 2026-09-04 (roadmap 4.31, PR #78):
 > **B13 — verification scope** is new, because a change now decides which gates run on it;
 > and the duplicate `B10` is resolved — tier-1 custody becomes **B12**, the half of the
 > collision only one row pointed at (the rule roadmap 4.27 established). The revision
@@ -69,6 +72,7 @@
 | Denial of service | MCP query exhausting the local store | B6 (design) | Budgeted packing (`budget_tokens`), typed `BUDGET_EXCEEDED`, latency budgets are CI gates (G5) | ▢ design control — M2/M3 |
 | Elevation of privilege | Ingested content forging an *authored* assertion — a wikilink, an embed, a tag — by being projected into the authored tree | B11 | The projector renders only section-level, non-reference nodes, so wikilink and embed syntax cannot survive into a projected document. Asserted by test, because the property is structural and a future rendering change could quietly lose it (ADR-0034) | ✅ mitigated (4.3) |
 | Elevation of privilege | A change choosing gates that cannot catch it | B13 | The mode is derived from the diff, so it cannot be chosen; `--mode` widens only, and a narrowing request is refused naming the gates it would skip. `tools/verify.py`'s classifier fails *wide*: a file type it cannot classify raises the mode to `full` rather than lowering it | ✅ mitigated (4.31) |
+| Elevation of privilege | A mode running fewer gates than its name claims, with nobody having chosen it | B13 | The control above governs the *declared* mode and said nothing about what a mode runs, which was written twice — in `tools/verify.py` and in the workflow — and drifted: at `retrieval` CI gated three corpora and the local tool gated one. `tests/test_verify_ladder.py` reads both and fails when a CI job gates something the local plan skips, so the narrowing cannot recur unobserved | ✅ mitigated (4.35) |
 | Tampering | A CI runner executing an unpinned third-party binary | B2/B13 | pandoc is installed from its pinned release archive and verified against a digest recorded in `.github/actions/setup-pandoc/action.yml` *before* extraction — replacing three package managers that shipped three unreviewed versions | ✅ mitigated (4.31) |
 | Tampering | An ingested document silently entering `verified` truth | B11 | Projection writes only under `knowledge/evidence/`; `verified` is reached by `mycelium promote`, a human/Git action gated on G7 (D-021, roadmap 4.5) | ▢ design control — 4.5 |
 | Elevation of privilege — ungranted authority? | A PR gaining write via workflow modification | B1 | `pull_request` event runs with read-only token regardless of workflow edits in the PR; release workflow unreachable from PRs (tag trigger) | ✅ mitigated |

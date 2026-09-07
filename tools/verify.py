@@ -37,6 +37,24 @@ threat model, and the refusal below is its control.
 The mode is *declared* in the sense that matters: every run prints the mode it
 used and why, `--json` emits it for CI to key its matrix on, and the PR body
 carries it. What ran is on the record rather than inferred from a green tick.
+
+**And the plan is checked against CI, not merely believed.** The workflow says of
+the mode "one implementation, two callers", which is true — both ask this file.
+It was never true of *what a mode runs*: that lived here as `plan()` and again in
+the workflow as job conditions and shell steps, and the two drifted. At
+`retrieval` CI gated three corpora and this tool gated one, so a contributor
+could pass the local loop and be told something new by CI, which is the one thing
+a scoped loop must not do. `tests/test_verify_ladder.py` now reads both and fails
+when they disagree (roadmap 4.35, ADR-0059).
+
+The rungs, and what each adds:
+
+| mode | adds |
+|---|---|
+| `docs` | the congruence lint |
+| `code` | format, lint, types, the suite |
+| `retrieval` | the frozen-set rule, and every corpus built and gated, and the agent-task suite |
+| `full` | the benchmarks, alone rather than beside four hundred other tests |
 """
 
 import argparse
@@ -62,22 +80,23 @@ CODE_PREFIXES = ("src/", "tests/", "tools/", "pyproject.toml", "uv.lock")
 
 EVAL_DATA_PREFIXES = ("eval/",)
 """The judged sets, the baselines and the corpora. A change here moves what the
-gates *measure*, which is as much a retrieval change as touching the ranker."""
+gates *measure*, which is as much a retrieval change as touching the ranker.
 
-CORPUS_PREFIXES = ("eval/corpora/",)
-"""The vendored corpora — and the one place `retrieval` is not wide enough.
-
-Only `full` builds and gates these, and they are the sets gate G3 actually
-enforces on (ADR-0053). So a change to one of *them* that ran `retrieval` would
-skip the gate it is most likely to move: found at roadmap 4.26, where growing
-`uv/release` from 16 judged cases to 25 derived `retrieval` and would have left
-that set's own G3 unrun.
-
-Deliberately narrower than "every retrieval change gates the vendored corpora",
-which is a real question about ADR-0055's measured economy and is filed as 4.35
-rather than decided here."""
+The vendored corpora used to need a rule of their own — `eval/corpora/` derived
+`full`, because only `full` built and gated them, so a change to one of *them*
+would otherwise have skipped its own gate (roadmap 4.26). `retrieval` gates them
+now, and the exception has nothing left to except: one rule covers the judged
+sets, the baselines and the corpora alike (roadmap 4.35, ADR-0059)."""
 
 CI_PREFIXES = (".github/",)
+
+CORPORA = ("eval/corpora/uv-docs", "eval/corpora/uv-docs-ingested")
+"""The vendored corpora, built and gated from `retrieval` upward.
+
+Named here rather than inline because `tests/test_verify_ladder.py` reads this
+list and the CI workflow's `eval` job and asserts they agree. The mode has always
+been one implementation with two callers; the *plan* was two implementations
+with one name, which is how they came to disagree (roadmap 4.35, ADR-0059)."""
 
 
 MYCELIUM = [sys.executable, "-c", "from mycelium.cli import main; main()"]
@@ -140,9 +159,6 @@ def derive(paths: list[str]) -> tuple[str, str]:
         if any(path.startswith(prefix) for prefix in TUNING_PATHS):
             return "retrieval", f"{path} can change what a query returns"
     for path in paths:
-        if any(path.startswith(prefix) for prefix in CORPUS_PREFIXES):
-            return "full", f"{path} is a corpus only `full` builds and gates"
-    for path in paths:
         if any(path.startswith(prefix) for prefix in EVAL_DATA_PREFIXES):
             return "retrieval", f"{path} changes what the gates measure"
     for path in paths:
@@ -192,9 +208,12 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
         ("build", [*MYCELIUM, "build", ".", "--no-pin"]),
         ("gates", [*MYCELIUM, "eval", ".", "--gate", "--against", "grep"]),
     ]
-    if mode == "retrieval":
-        return steps
-    for corpus in ("eval/corpora/uv-docs", "eval/corpora/uv-docs-ingested"):
+    # Every corpus, at `retrieval` — because that is what CI's `eval` job does at
+    # this mode, and because these two are the sets gate G3 actually *enforces*
+    # on (ADR-0053). A retrieval change that ran only the corpus above skipped
+    # the gate it was most likely to move, and the mode's name promised a gate it
+    # did not run (roadmap 4.35, ADR-0059).
+    for corpus in CORPORA:
         steps += [
             (f"build {corpus}", [*MYCELIUM, "build", corpus, "--no-pin"]),
             (
@@ -211,6 +230,15 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
                 ],
             ),
         ]
+    steps.append(("agent tasks", [*MYCELIUM, "eval", ".", "--tasks"]))
+    if mode == "retrieval":
+        return steps
+    # The one thing `full` adds, and the one job CI gates on `full` alone. The
+    # suite runs the benchmarks too, but it runs them beside four hundred other
+    # tests on a loaded machine — which is the same numbers taken badly. A
+    # performance claim needs a reproducible measurement (AGENTS.md §10), and
+    # that means the benchmarks alone.
+    steps.append(("benchmarks", [python, "-m", "pytest", "tests/bench", "--benchmark-only", "-q"]))
     return steps
 
 
