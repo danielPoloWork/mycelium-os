@@ -259,6 +259,103 @@ RELEASE: tuple[Judgment, ...] = (
         "six-chunk section that packing makes a single 204-token chunk, so no chunk "
         "anchor here is true under both settings.",
     ),
+    # Nine cases added at roadmap 4.26, to give the thin slices enough judgements
+    # to carry a gate (ADR-0052 asks for four). `symbol` takes three of them and
+    # `exact` three, because those were the two rows a single case was speaking
+    # for; the last three are the relationship and conceptual questions the
+    # corpus can honestly be asked. Written from the documents, as every other
+    # judgement here was — the passages first, the anchors looked up afterwards.
+    (
+        "u-1017",
+        "uv lock --check",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/projects/sync.md#checking-the-lockfile/0", 3),),
+        "A command with a flag, and the section that documents it is named for the "
+        "question rather than for the command.",
+    ),
+    (
+        "u-1018",
+        "--no-sources",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/projects/dependencies.md#dependency-sources/disabling-sources/0", 3),),
+        "A literal flag. It appears in four documents and is *explained* in one, which is "
+        "the discrimination an exact query has to make.",
+    ),
+    (
+        "u-1019",
+        "uv python pin",
+        (EvalSlice.SYMBOL,),
+        (
+            (
+                "docs/concepts/python-versions.md#requesting-a-version/python-version-files/0",
+                3,
+            ),
+            ("docs/getting-started/features.md#python-versions/0", 1),
+        ),
+        "The command is named in a feature list and explained under a heading that does "
+        "not contain it; the list is graded 1 because it answers only that the command "
+        "exists.",
+    ),
+    (
+        "u-1020",
+        "free-threaded Python",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/python-versions.md#free-threaded-python/0", 3),),
+        "A term quoted verbatim from its own heading, and one the corpus uses nowhere "
+        "else - the counterpart to `storage directories` on the second corpus.",
+    ),
+    (
+        "u-1021",
+        "PEP 508",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/projects/dependencies.md#dependency-specifiers/0", 3),),
+        "A standard's number, cited in four documents. Only one says what it *is*, and "
+        "the others link it in passing - so a hit anywhere is not an answer.",
+    ),
+    (
+        "u-1022",
+        "why is my project environment already up to date when I run a command",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/sync.md#automatic-lock-and-sync/0", 3),
+            ("docs/concepts/projects/run.md#/0", 2),
+        ),
+        "Two documents state the two halves: one that locking and syncing are automatic, "
+        "the other that `uv run` ensures the environment is current first. The query uses "
+        "neither's noun - it says neither `lock` nor `sync`.",
+    ),
+    (
+        "u-1023",
+        "can I adopt part of uv without adopting all of it",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/getting-started/features.md#/0", 3),),
+        "The answer is one clause of an overview document - the interface breaks into "
+        "sections usable independently or together - phrased the way someone deciding "
+        "would ask it.",
+    ),
+    (
+        "u-1024",
+        "where do I record which Python a project needs, and what reads that",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            (
+                "docs/concepts/python-versions.md#requesting-a-version/python-version-files/0",
+                3,
+            ),
+            ("docs/concepts/projects/run.md#/0", 1),
+        ),
+        "A two-part question: the file that records the request, and the commands that "
+        "honour it. Graded 1 on the second because it states the mechanism without "
+        "naming the file.",
+    ),
+    (
+        "u-1025",
+        "uv export",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/projects/sync.md#exporting-the-lockfile/0", 3),),
+        "The third `symbol` case, and the one that takes the slice to the four ADR-0052 "
+        "enforces on. A command whose section is titled by what it produces.",
+    ),
 )
 
 

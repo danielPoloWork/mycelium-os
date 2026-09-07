@@ -37,6 +37,11 @@ import verify  # noqa: E402 - the tool is not an installed package
         (["src/mycelium/config.py"], "retrieval"),
         (["eval/release.jsonl"], "retrieval"),
         (["eval/baselines/release.json"], "retrieval"),
+        # A vendored corpus is wider than `retrieval`, because only `full` builds
+        # and gates one — and those are the sets G3 actually enforces on
+        # (roadmap 4.26, ADR-0053/0056).
+        (["eval/corpora/uv-docs/eval/release.jsonl"], "full"),
+        (["eval/corpora/uv-docs-ingested/provenance.json"], "full"),
         ([".github/workflows/ci.yml"], "full"),
     ],
 )
@@ -44,6 +49,19 @@ def test_a_path_derives_its_mode(paths: list[str], expected: str) -> None:
     mode, reason = verify.derive(paths)
     assert mode == expected
     assert paths[0] in reason or "changed" in reason
+
+
+def test_a_corpus_change_outranks_the_eval_data_it_sits_under() -> None:
+    """The narrowing roadmap 4.26 walked into.
+
+    `eval/corpora/uv-docs/eval/release.jsonl` matches both prefixes. Read as
+    `eval/` it derives `retrieval`, which builds and gates *our* corpus and not
+    the one that changed — so growing the set G3 enforces on would have left that
+    set's own gate unrun.
+    """
+    mode, reason = verify.derive(["eval/corpora/uv-docs/eval/release.jsonl"])
+    assert mode == "full"
+    assert "corpus" in reason
 
 
 def test_the_widest_path_decides_however_many_others_there_are() -> None:

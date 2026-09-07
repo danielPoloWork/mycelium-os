@@ -20,13 +20,25 @@ was written about. Here nothing is judged at all: the judgements are the ones
 already frozen for the Markdown corpus, and `tools/build_ingested_cases.py`
 carries them across by matching text, not by re-reading the documents.
 
-**Format assignment is mechanical, and fixed before anything is measured.** The
-documents a judgement points at, sorted by path, take `docx`, `html`, `pdf` in
+**Format assignment is mechanical, fixed before anything is measured, and
+append-only.** The documents a judgement points at take `docx`, `html`, `pdf` in
 rotation. Every other document is HTML: its format cannot change a judgement —
 it is a distractor either way — and a PDF costs seven times the bytes of the
 Markdown it came from. HTML also makes those distractors *strong* (their headings
 survive), which is the conservative choice: it cannot flatter the judged
 documents.
+
+The rotation runs over a **recorded order**, `format-rotation.json`, rather than
+over the judged paths re-sorted on every run. Sorting was the original rule and
+it made the corpus unable to grow: a document newly judged sorts *between*
+existing ones, shifts every index after it, and re-rolls the format of documents
+already rendered — whose renderings are committed provenance that cannot be
+re-derived, because typst embeds a build identifier (ADR-0039). So an assignment,
+once made, is never remade. A newly judged document appends, takes the next
+format in the cycle, and nothing already rendered moves. A document that stops
+being judged keeps its slot for the same reason: the file on disk is the
+evidence, and the order is the record of how it got there (roadmap 4.26,
+ADR-0056).
 
 **Rendering.** pandoc writes the DOCX and the HTML. For PDF it writes typst
 markup, which the `typst` package compiles — chosen because it is one pip install
@@ -48,6 +60,12 @@ ingesting the committed bytes. `--check` does it into a temporary tree and
 compares, so a change in docling, pandoc, PDFium or the projector shows up as a
 named difference rather than as a corpus that quietly stopped matching its own
 provenance.
+
+`--render` is therefore *incremental*: it writes the renderings the plan asks for
+and disk does not already have, and it removes a stale rendering of the same
+document in another format. A deliberate full re-render is `rm -rf sources/`
+followed by `--render` — a provenance act with a per-format cost table to
+re-measure behind it, not something a routine invocation should do by accident.
 """
 
 import argparse
@@ -75,6 +93,13 @@ from mycelium.sdk.identity import new_ulid  # noqa: E402
 SOURCE_CORPUS = ROOT / "eval" / "corpora" / "uv-docs"
 CORPUS = ROOT / "eval" / "corpora" / "uv-docs-ingested"
 KNOWLEDGE = "knowledge"
+
+ROTATION_FILE = "format-rotation.json"
+"""The order judged documents took their formats in — the record the rotation runs over.
+
+Committed, because it is the only thing that makes the assignment append-only:
+without it the order is recomputed by sorting, and a document newly judged shifts
+every format after it (roadmap 4.26)."""
 
 FORMATS: tuple[str, ...] = ("docx", "html", "pdf")
 DISTRACTOR_FORMAT = "html"
@@ -108,13 +133,45 @@ def judged_documents() -> tuple[str, ...]:
     return tuple(sorted(seen))
 
 
-def assignment() -> dict[str, str]:
+def rotation_order() -> list[str]:
+    """The committed order judged documents took their formats in, oldest first."""
+    import json
+
+    path = CORPUS / ROTATION_FILE
+    if not path.is_file():
+        return []
+    recorded = json.loads(path.read_text(encoding="utf-8"))
+    return [str(item) for item in recorded]
+
+
+def rotation_of(judged: tuple[str, ...] | None = None) -> list[str]:
+    """The recorded order, with any newly judged document appended in path order.
+
+    Append-only: an entry is never moved and never dropped, so every format
+    already rendered stays the format on disk. New entries go on the end, sorted
+    among themselves, so two people adding the same cases compute the same plan.
+    """
+    order = rotation_order()
+    known = set(order)
+    order.extend(path for path in sorted(judged or judged_documents()) if path not in known)
+    return order
+
+
+def assignment(judged: tuple[str, ...] | None = None) -> dict[str, str]:
     """Which format each document is rendered into. Mechanical, stated, unchosen."""
-    judged = judged_documents()
-    plan = {path: FORMATS[index % len(FORMATS)] for index, path in enumerate(judged)}
+    order = rotation_of(judged)
+    plan = {path: FORMATS[index % len(FORMATS)] for index, path in enumerate(order)}
     for path in sorted(markdown_documents()):
         plan.setdefault(path, DISTRACTOR_FORMAT)
     return plan
+
+
+def write_rotation(order: list[str]) -> None:
+    """Record the order. Written by `--render`, which is when a slot is actually taken."""
+    import json
+
+    body = json.dumps(order, indent=2)
+    (CORPUS / ROTATION_FILE).write_text(body + "\n", encoding="utf-8", newline="\n")
 
 
 def markdown_documents() -> Iterator[str]:
@@ -161,17 +218,30 @@ def _pandoc(text: str, destination: Path, writer: str) -> None:
         raise SystemExit(msg)
 
 
-def render_sources(sources: Path) -> None:
-    """Render every document of the Markdown corpus into its assigned format.
+def render_sources(sources: Path) -> list[str]:
+    """Render what the plan asks for and disk does not already have.
 
-    A one-time act: see the module docstring on why the result is committed
-    rather than regenerated.
+    Incremental, and that is the point: a rendering already committed is
+    provenance (the module docstring says why), so re-making it would replace the
+    bytes a measurement was taken on with different bytes saying the same thing.
+    Returns the documents actually rendered, so a caller can report exactly what
+    a provenance act touched.
     """
-    if sources.exists():
-        shutil.rmtree(sources)
+    written: list[str] = []
     for relative, fmt in sorted(assignment().items()):
-        target = sources / Path(relative).relative_to("docs").with_suffix(_EXTENSION[fmt])
+        stem = sources / Path(relative).relative_to("docs")
+        target = stem.with_suffix(_EXTENSION[fmt])
+        if target.is_file():
+            continue
+        # A document whose assigned format changed leaves its old rendering
+        # behind, and the corpus would then hold the same document twice.
+        for extension in _EXTENSION.values():
+            stale = stem.with_suffix(extension)
+            if extension != _EXTENSION[fmt] and stale.is_file():
+                stale.unlink()
         render(SOURCE_CORPUS / relative, target, fmt, typst_root=sources)
+        written.append(relative)
+    return written
 
 
 def build(corpus: Path, *, sources: Path) -> int:
@@ -303,10 +373,18 @@ def main() -> int:
         if not (SOURCE_CORPUS / "docs").is_dir():
             print(f"the corpus this one mirrors is missing: {SOURCE_CORPUS / 'docs'}")
             return 1
-        render_sources(sources)
+        # The order is recorded *before* anything is rendered, so a run that
+        # fails halfway leaves the record of what was claimed rather than a plan
+        # nobody can reconstruct.
+        write_rotation(rotation_of())
+        rendered = render_sources(sources)
         plan = assignment()
         counts = {fmt: sum(1 for value in plan.values() if value == fmt) for fmt in FORMATS}
-        print(f"rendered {counts}")
+        if rendered:
+            print(f"rendered {len(rendered)} document(s): {', '.join(rendered)}")
+        else:
+            print("nothing to render; every document already has its assigned format")
+        print(f"assignment now {counts}")
 
     if not sources.is_dir():
         print(f"no sources at {sources}; run with --render first")

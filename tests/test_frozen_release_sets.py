@@ -12,8 +12,10 @@ PR #61 added it, and this file is what stops it being removed again by someone w
 The second gap ran the other way: the rule was applied to a set in which **nothing is
 judged**. A derived set's queries, grades and slices are copied verbatim from a frozen
 source and only its anchor is computed (ADR-0039), so it is a function of the chunker and
-a chunking change *must* move it — while the conjunction rule forbade exactly that. What
-replaces the rule is narrower and stronger, and is tested below (roadmap 4.15, ADR-0047).
+a chunking change *must* move it — while the conjunction rule forbade exactly that. Roadmap
+4.15 exempted the machinery; roadmap 4.26 retired the rest of the rule, because the same
+deadlock reappeared from the judgement side and the byte-exact regeneration check says
+everything the rule was a proxy for (ADR-0047, ADR-0056).
 
 Every path list is checked against the filesystem for the same reason: a guard naming a
 file that has since moved guards nothing, silently, and the failure mode is that a
@@ -85,12 +87,20 @@ def test_a_derived_set_may_move_with_the_machinery(changed: list[str]) -> None:
     assert guard.main() == 0
 
 
-def test_a_derived_set_may_not_move_with_its_source(changed: list[str]) -> None:
-    """The invariant that actually protects a carried set.
+def test_a_derived_set_may_now_move_with_its_source(changed: list[str]) -> None:
+    """The rule roadmap 4.26 retired, and why it had to go (ADR-0056).
 
-    Its queries, grades and slices are copied verbatim from the frozen source, so a
-    change moving both cannot be told apart from re-fitting the source and carrying the
-    fit across — which is precisely what ADR-0027 refuses.
+    It read: a carried set may not move in the same change as the judged set it is
+    copied from, because then nothing distinguishes a carry from a re-fit. The
+    intent was right and the control was a proxy — "this file was not
+    hand-written" — and the direct check exists. `build_ingested_cases.py --check`
+    regenerates the carry from its source and byte-compares it, in CI, whichever
+    commit the file arrived in.
+
+    What the proxy did do was make a source set unable to grow: the carry *must*
+    follow its source, so the rule forbade exactly the change that was required.
+    That deadlock was met from the chunking side at 4.15 and from the judgement
+    side at 4.20, where eight drafted cases could not land.
     """
     changed.extend(
         [
@@ -98,14 +108,34 @@ def test_a_derived_set_may_not_move_with_its_source(changed: list[str]) -> None:
             "eval/corpora/uv-docs/eval/release.jsonl",
         ]
     )
-    assert guard.main() == 1
+    assert guard.main() == 0
 
 
-def test_the_derived_dev_set_is_covered_by_the_same_rule(changed: list[str]) -> None:
+def test_the_derived_dev_set_may_move_with_its_source_too(changed: list[str]) -> None:
     changed.extend(
         [
             "eval/corpora/uv-docs-ingested/eval/dev.jsonl",
             "eval/corpora/uv-docs/eval/dev.jsonl",
+        ]
+    )
+    assert guard.main() == 0
+
+
+def test_growing_a_judged_set_still_refuses_a_retrieval_change_alongside(
+    changed: list[str],
+) -> None:
+    """The rule that did *not* go, and the one the retirement leans on.
+
+    Retiring the derived-set proxy widens what a judgement change may carry; it
+    does not touch the conjunction that matters. A change that grows a judged set
+    *and* moves the ranker still cannot be told apart from fitting the ranker to
+    the set (spec 04 §7.1, ADR-0027).
+    """
+    changed.extend(
+        [
+            "eval/corpora/uv-docs/eval/release.jsonl",
+            "eval/corpora/uv-docs-ingested/eval/release.jsonl",
+            "src/mycelium/retrieval.py",
         ]
     )
     assert guard.main() == 1

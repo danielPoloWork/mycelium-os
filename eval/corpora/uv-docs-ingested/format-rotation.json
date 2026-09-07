@@ -1,0 +1,22 @@
+[
+  "docs/concepts/authentication/certificates.md",
+  "docs/concepts/authentication/cli.md",
+  "docs/concepts/authentication/http.md",
+  "docs/concepts/cache.md",
+  "docs/concepts/configuration-files.md",
+  "docs/concepts/indexes.md",
+  "docs/concepts/projects/dependencies.md",
+  "docs/concepts/projects/workspaces.md",
+  "docs/concepts/python-versions.md",
+  "docs/concepts/resolution.md",
+  "docs/concepts/tools.md",
+  "docs/guides/scripts.md",
+  "docs/guides/tools.md",
+  "docs/pip/compatibility.md",
+  "docs/reference/policies/platforms.md",
+  "docs/reference/policies/versioning.md",
+  "docs/reference/storage.md",
+  "docs/concepts/projects/run.md",
+  "docs/concepts/projects/sync.md",
+  "docs/getting-started/features.md"
+]

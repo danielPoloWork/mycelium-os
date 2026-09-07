@@ -24,9 +24,9 @@ Six of them: a **dev** and a **release** set per corpus (spec 04 §7.1, ADR-0027
 | [`dev.jsonl`](dev.jsonl) | 20 | this repository's documentation |
 | [`release.jsonl`](release.jsonl) | 19 | this repository's documentation |
 | [`corpora/uv-docs/eval/dev.jsonl`](corpora/uv-docs/eval/dev.jsonl) | 12 | [`uv`'s documentation](corpora/uv-docs/README.md) |
-| [`corpora/uv-docs/eval/release.jsonl`](corpora/uv-docs/eval/release.jsonl) | 16 | the same |
+| [`corpora/uv-docs/eval/release.jsonl`](corpora/uv-docs/eval/release.jsonl) | 25 | the same |
 | [`corpora/uv-docs-ingested/eval/dev.jsonl`](corpora/uv-docs-ingested/eval/dev.jsonl) | 12 | [the same documents, ingested](corpora/uv-docs-ingested/README.md) |
-| [`corpora/uv-docs-ingested/eval/release.jsonl`](corpora/uv-docs-ingested/eval/release.jsonl) | 16 | the same |
+| [`corpora/uv-docs-ingested/eval/release.jsonl`](corpora/uv-docs-ingested/eval/release.jsonl) | 25 | the same |
 
 The third corpus is the second one **put through `mycelium ingest`** — the same 81 upstream
 documents rendered into DOCX, HTML and PDF, and scored as the evidence documents the
@@ -133,11 +133,12 @@ be current, and **a re-bless is its own PR** — per-slice diff in the body, nev
 with a retrieval or judgment change. `measure_slice_decay.py` above is what asks the
 regression question on that set.
 
-All three were last blessed at roadmap 4.22, against the shipping retriever. Before that the
-vendored two predated roadmap 4.19's stemming index — which had moved every release set up by
-nine to eleven points, so the only enforcing gate in the project was carrying that much
-headroom and a change giving the gain back would have passed it
-([ADR-0048](../docs/adr/0048-index-the-stem-beside-the-surface-form.md)).
+The two frozen sets were last blessed at roadmap 4.26, where they grew from 16 judged cases
+to 25 and gate G3 went from `1 of 6 slice(s) enforced` to **5 of 6**; our own set was last
+blessed at 4.22. A bless on a frozen set *does* ride with the judgement change that occasions
+it — leaving it out would disarm the only enforcing gate and make re-arming it somebody's
+errand — and never with a retrieval change, which is the conjunction
+`check_frozen_release_sets.py` refuses (ADR-0056 narrows ADR-0053 on exactly this).
 
 ## Candidate re-rankings, and why none of them shipped
 
@@ -176,13 +177,22 @@ retrieval, chunking, the store or the metrics. One change may move the retriever
 the judgments, and not both — which is the failure that actually happens: a run comes back
 worse, a judgment looks wrong in hindsight, and the set quietly becomes the thing that fits.
 
-A **derived** set may not move in the same change as its source either, and that rule has a
-cost nobody had walked into until roadmap 4.20: it makes a source set unable to grow at all,
-because a source that gains cases must regenerate its carry (CI byte-checks it) and a
-regeneration alone has nothing to regenerate from. The `uv` sets are blocked on it, together
-with a second coupling — the third corpus assigns formats by rotation over the *judged* set,
-so growing that set re-rolls renderings that are committed provenance. Both are roadmap
-4.26's to settle ([ADR-0052](../docs/adr/0052-give-a-slice-cases-or-stop-gating-it.md)).
+A **derived** set used to be forbidden from moving with its source as well, and that rule is
+retired (roadmap 4.26,
+[ADR-0056](../docs/adr/0056-make-the-format-assignment-append-only.md)). It was a proxy for
+"this file was not hand-written", and the direct check exists: `build_ingested_cases.py
+--check` regenerates the carry and byte-compares it in CI, whichever commit it arrived in.
+What the proxy did do was deadlock growth — a source that gains cases must regenerate its
+carry, and a regeneration alone has nothing to regenerate from — which is what stopped the
+`uv` sets from growing at 4.20 and the chunker from moving at 4.15.
+
+**A format, once assigned, is never reassigned.** The third corpus renders the documents a
+judgement points at into DOCX, HTML and PDF in rotation, and that rotation runs over a
+recorded order — `corpora/uv-docs-ingested/format-rotation.json` — rather than over the
+judged paths re-sorted on every run. Sorting made the corpus unable to grow: a newly judged
+document sorts *between* existing ones and re-rolls every format after it, and those
+renderings are committed provenance that cannot be re-derived (ADR-0039). Appending
+re-rendered two documents where sorting would have re-rendered eighty-one.
 
 **Corpus:** this repository's own documentation, as `mycelium.toml` defines it —
 `[project] exclude` drops `tests` (fixtures are test data, not knowledge), `docs/journal`

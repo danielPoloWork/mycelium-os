@@ -55,6 +55,26 @@ stale — a report is only worth reading against numbers someone meant. So a re-
 own PR, carrying the per-slice diff in its body, and it never rides along with a retrieval
 or a judgement change.
 
+> **Narrowed at roadmap 4.26 ([ADR-0056](0056-make-the-format-assignment-append-only.md)).**
+> The last clause was reasoned about *this* baseline — the reported one — and stated as
+> though it held for every baseline. It does not. On an **enforced** set a judgement change
+> moves `cases_digest` and disarms G3 by design (ADR-0051), so a PR that grows such a set
+> without re-blessing leaves the only enforcing gate switched off with nobody accountable
+> for switching it back. The rule that survives on both kinds of set is the one about
+> *retrieval*: a bless may never ride with a retrieval change, because that conjunction is
+> the one that could fit the retriever to the set. On an enforced set a bless **must** ride
+> with the judgement change, with the per-slice and per-case diff in the PR body.
+
+> **Narrowed at roadmap 4.26 ([ADR-0056](0056-make-the-format-assignment-append-only.md)).**
+> The last clause was reasoned about *this* baseline — the reported one — and stated as
+> though it held for every baseline. It does not. On an **enforced** set a judgement change
+> moves `cases_digest` and disarms G3 by design (ADR-0051), so a PR that grows such a set
+> without re-blessing leaves the only enforcing gate switched off with nobody accountable
+> for switching it back. The rule that survives on both kinds of set is the one about
+> *retrieval*: a bless may never ride with a retrieval change, because that conjunction is
+> the one that could fit the retriever to the set. On an enforced set a bless **must** ride
+> with the judgement change, with the per-slice and per-case diff in the PR body.
+
 **All three baselines are re-blessed here, against the retriever that actually ships.** Ours
 because it described a vanished corpus; the vendored two because they predated ADR-0048 and
 were quietly granting the gate headroom.

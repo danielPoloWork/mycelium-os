@@ -65,25 +65,73 @@ def test_all_three_formats_are_present(manifest: dict[str, dict[str, str]]) -> N
     )
 
 
+def judged_documents() -> set[str]:
+    return {
+        relevant.anchor.partition("#")[0]
+        for name in ("dev.jsonl", "release.jsonl")
+        for case in load_cases(TWIN / "eval" / name)
+        for relevant in case.relevant
+    }
+
+
 def test_the_judged_documents_take_the_formats_in_rotation(
     manifest: dict[str, dict[str, str]],
 ) -> None:
-    """The assignment is a rotation over sorted paths, fixed before anything was measured.
+    """The assignment is a rotation over the recorded order, not over sorted paths.
 
     Asserted rather than trusted: an assignment chosen after seeing a result is
     the one way the per-format comparison could be made to say what we wanted.
+
+    The order is *recorded* since roadmap 4.26 rather than recomputed by sorting,
+    because sorting made the corpus unable to grow — a newly judged document
+    sorts between existing ones and re-rolls the format of every document after
+    it, and those renderings are committed provenance (ADR-0039, ADR-0056).
     """
-    judged = sorted(
-        {
-            relevant.anchor.partition("#")[0]
-            for name in ("dev.jsonl", "release.jsonl")
-            for case in load_cases(TWIN / "eval" / name)
-            for relevant in case.relevant
-        }
-    )
-    assert [manifest[path]["format"] for path in judged] == [
-        FORMATS[index % len(FORMATS)] for index in range(len(judged))
+    order = json.loads((CORPUS / "format-rotation.json").read_text(encoding="utf-8"))
+    assert [manifest[path]["format"] for path in order] == [
+        FORMATS[index % len(FORMATS)] for index in range(len(order))
     ]
+
+
+def test_every_judged_document_has_a_recorded_slot() -> None:
+    """A judgement pointing at a document with no recorded format has no plan.
+
+    The other direction is deliberately *not* asserted: append-only means a
+    document that stops being judged keeps its slot, so the record may be a
+    strict superset of what is judged today.
+    """
+    order = json.loads((CORPUS / "format-rotation.json").read_text(encoding="utf-8"))
+    missing = sorted(judged_documents() - set(order))
+    assert not missing, f"judged with no recorded format slot: {missing}"
+
+
+def test_the_recorded_order_holds_each_document_once() -> None:
+    order = json.loads((CORPUS / "format-rotation.json").read_text(encoding="utf-8"))
+    assert len(order) == len(set(order)), "a repeated slot would double-assign a format"
+
+
+def test_a_newly_judged_document_appends_and_moves_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The property the whole change exists for (roadmap 4.26).
+
+    Inserting a document that sorts *first* must leave every existing assignment
+    exactly where it was, and take the next slot itself.
+    """
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
+    import build_ingested_corpus as builder
+
+    monkeypatch.setattr(builder, "markdown_documents", lambda: iter(()))
+    before = builder.assignment()
+    order = builder.rotation_order()
+
+    intruder = "docs/aaa-sorts-first.md"
+    after = builder.assignment(judged=(*order, intruder))
+
+    assert {path: after[path] for path in order} == {path: before[path] for path in order}
+    assert after[intruder] == FORMATS[len(order) % len(FORMATS)]
 
 
 @pytest.mark.parametrize("name", ["dev.jsonl", "release.jsonl"])
