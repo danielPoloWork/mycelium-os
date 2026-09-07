@@ -12,6 +12,37 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The lexical leg no longer searches on function words** (roadmap 4.28,
+  [ADR-0057](docs/adr/0057-drop-the-function-words-and-score-the-seam-that-ships.md)).
+  `mycelium search "what does resolution mean"` searched on `what` and `does` at full field
+  weight and returned a section titled *"What is CycloneDX"* at rank 1, with the judged
+  definition at rank 5. It now returns the definition at rank 1. The stop-list is not new —
+  it has lived in the evaluation harness since the grep baseline was written, applied to both
+  retrievers — and it had never been applied to the product, which is why no number could
+  show the gap: measured through the product's own tokenisation, uv/dev read **0.510** where
+  the harness reported 0.673, and against its own committed baselines the product as it stood
+  **would have failed gate G3** (`fact` −4.8 %, `relationship` −12.0 %). The **vector** leg
+  still receives the whole question, because an embedder reads grammar.
+- **`--explain` names the words the search dropped**, and its per-term table now covers only
+  the terms that ran — a report crediting a word the search never used explains someone
+  else's query.
+- **The evaluation harness scores the product's own seam.** `MyceliumRetriever` called
+  `store.search_chunks` directly, which is how the divergence above stayed invisible for four
+  milestones; it now goes through `mycelium.retrieval.search`, the seam the CLI and MCP server
+  use. No case moved on any judged set — verified before the change, and re-verifiable as
+  `query: stopped` in `tools/measure_ranking.py`.
+- **Published nDCG numbers are unchanged and now describe the shipped query path.** Every one
+  of them was measured through the harness's tokenisation; before this change they described a
+  path no user had.
+
+### Added
+
+- **Two instruments for roadmap 4.28's refusals**: `tools/measure_ranking.py` gains the
+  `query:` family (`raw` against `stopped` — the only rows that vary the query rather than the
+  index or the ranking) and `--stems`, which prints the stem document-frequency tables that
+  refuse an IDF floor: `what` reaches 36.9 % of this repository's chunks and `adr` 60.0 %; on
+  `uv`'s documentation `mean` reaches 2.8 % and `uv` itself 88.0 %.
+
 - **Gate G3 enforces five slices on each frozen release set instead of one** (roadmap 4.26,
   [ADR-0056](docs/adr/0056-make-the-format-assignment-append-only.md)). ADR-0052 gave G3 the
   right rule — enforce a slice only when it holds at least four judged cases and a baseline

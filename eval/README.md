@@ -140,12 +140,32 @@ it — leaving it out would disarm the only enforcing gate and make re-arming it
 errand — and never with a retrieval change, which is the conjunction
 `check_frozen_release_sets.py` refuses (ADR-0056 narrows ADR-0053 on exactly this).
 
+## The harness scores the product's seam, and did not always
+
+Until roadmap 4.28 `MyceliumRetriever` called `store.search_chunks` directly — a
+re-implementation of the query path rather than the path itself — and it tokenised the query
+with `terms_of` on the way. **The product did not.** So the harness had been measuring a
+function-word boundary the product never had, for four milestones and seven ADRs: every
+number in this directory, in the baselines and in the root README described a query path no
+user could reach. Measured through the product's own tokenisation, `uv/dev` read 0.510 where
+the harness reported 0.673, and against its own committed baselines the product as it stood
+would have failed gate G3
+([ADR-0057](../docs/adr/0057-drop-the-function-words-and-score-the-seam-that-ships.md)).
+
+Both halves are closed. The product drops function words itself
+(`mycelium.retrieval.query_terms`, one list, imported here rather than restated), and this
+retriever goes through `mycelium.retrieval.search` — the seam the CLI and the MCP server
+use — so a query-path change cannot reach the product without reaching every measurement of
+it. Routing it there moved no case on any set; `query: stopped` scoring exactly
+`baseline (ships)` is the standing check.
+
 ## Candidate re-rankings, and why none of them shipped
 
 ```bash
 python tools/measure_ranking.py                     # the dev sets - what tuning may read
 python tools/measure_ranking.py --release           # the gate view, per slice
 python tools/measure_ranking.py --oracle            # the ceiling no planner can beat
+python tools/measure_ranking.py --stems             # why an IDF floor cannot find a function word
 ```
 
 Ten candidate strategies live in that tool and **all ten are refused** — four rows by

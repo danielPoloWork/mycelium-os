@@ -24,7 +24,7 @@ import pytest
 from fakes import FakeEmbedder
 from mycelium.build import build
 from mycelium.config import RetrievalConfig
-from mycelium.retrieval import RRF_K, reciprocal_rank_fusion, search
+from mycelium.retrieval import RRF_K, STOPWORDS, query_terms, reciprocal_rank_fusion, search
 from mycelium.sdk.types import Chunk, ChunkKind, TrustClass, VerificationStatus
 from mycelium.store import SearchHit, SqliteStore
 
@@ -384,3 +384,102 @@ def test_lexical_profile_needs_no_precondition_and_gains_no_note(tmp_path: Path)
 
     assert outcome.hits == ()
     assert not any("abstains" in note for note in outcome.notes)
+
+
+# ---------------------------------------------------------------------------
+# The function-word boundary (roadmap 4.28, ADR-0057)
+# ---------------------------------------------------------------------------
+
+
+def test_query_terms_keeps_content_words_in_order() -> None:
+    assert query_terms("What does Resolution mean") == ["resolution", "mean"]
+
+
+def test_query_terms_keeps_everything_when_nothing_would_survive() -> None:
+    # Searching for nothing abstains on a question the corpus may answer, which
+    # is never an improvement over searching badly.
+    assert query_terms("what is it") == ["what", "is", "it"]
+
+
+def test_query_terms_leaves_a_content_only_query_alone() -> None:
+    assert query_terms("exponential backoff jitter") == ["exponential", "backoff", "jitter"]
+
+
+def test_the_lexical_leg_does_not_search_on_function_words(tmp_path: Path) -> None:
+    """The defect ADR-0057 fixes, in miniature.
+
+    `licence.md` says "The project is distributed under Apache-2.0" and holds no
+    delivery vocabulary; before the boundary, "what is the delivery guarantee"
+    reached it through `the` and `is` at full field weight.
+    """
+    root = built(tmp_path)
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, "what is the delivery guarantee")
+        note = next(item for item in outcome.notes if "function word" in item)
+        assert "'delivery guarantee'" in note
+        assert "what, is, the" in note
+        paths = {hit.hit.path for hit in outcome.hits}
+        assert "knowledge/licence.md" not in paths
+
+
+def test_a_query_of_only_function_words_still_searches(tmp_path: Path) -> None:
+    root = built(tmp_path)
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, "what is it")
+        assert not any("function word" in item for item in outcome.notes)
+
+
+def test_explain_reports_the_terms_that_ran_not_the_words_typed(tmp_path: Path) -> None:
+    # A per-term report crediting a word the search never used explains someone
+    # else's query (roadmap 4.21, ADR-0050).
+    root = built(tmp_path)
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, "what is the delivery guarantee", explain=True)
+    assert [item.term for item in outcome.terms] == ["delivery", "guarantee"]
+
+
+def test_the_vector_leg_is_given_the_whole_question(tmp_path: Path) -> None:
+    """The boundary is the lexical leg's, not the query path's.
+
+    An embedder is asked in the words it was trained on, so it must see the
+    grammar the lexical index has no use for.
+    """
+    embedder = FakeEmbedder()
+    seen: list[str] = []
+
+    class Recording(FakeEmbedder):
+        def embed_query(self, text: str) -> tuple[float, ...]:
+            seen.append(text)
+            return super().embed_query(text)
+
+    root = built(tmp_path, embedder=embedder)
+    with SqliteStore.open(root, read_only=True) as store:
+        search(store, "what is the delivery guarantee", config=HYBRID, embedder=Recording())
+    assert seen == ["what is the delivery guarantee"]
+
+
+def test_the_harness_and_the_product_share_one_list() -> None:
+    """Two definitions of this list is how the defect hid for four milestones."""
+    from mycelium.eval import retrievers
+
+    assert retrievers.terms_of("what does resolution mean") == query_terms(
+        "what does resolution mean"
+    )
+    assert retrievers._STOPWORDS is STOPWORDS
+
+
+def test_the_scored_retriever_is_the_product_seam(tmp_path: Path) -> None:
+    """What makes the divergence unrepeatable (ADR-0057).
+
+    `MyceliumRetriever` scored a re-implementation of the query path until
+    roadmap 4.28. Routing it through `search` moved no case on any judged set,
+    and from here a query-path change cannot reach the product without reaching
+    the harness.
+    """
+    from mycelium.eval.retrievers import MyceliumRetriever
+
+    root = built(tmp_path)
+    with SqliteStore.open(root, read_only=True) as store:
+        through_seam = MyceliumRetriever(store=store).search("what is the delivery guarantee", 10)
+        directly = [fused.hit.chunk.anchor for fused in search(store, "delivery guarantee").hits]
+    assert through_seam == directly

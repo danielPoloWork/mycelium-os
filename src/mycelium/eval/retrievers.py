@@ -26,7 +26,7 @@ from typing import Final, Protocol
 
 from mycelium.config import RetrievalConfig
 from mycelium.embedding import Embedder
-from mycelium.retrieval import RRF_K, VECTOR_CANDIDATES
+from mycelium.retrieval import RRF_K, STOPWORDS, VECTOR_CANDIDATES, query_terms
 from mycelium.retrieval import search as run_search
 from mycelium.store import STEM_WEIGHT, SqliteStore
 
@@ -40,45 +40,14 @@ __all__ = [
     "terms_of",
 ]
 
-_TERM: Final = re.compile(r"\w+", re.UNICODE)
-_STOPWORDS: Final = frozenset(
-    {
-        "a",
-        "an",
-        "and",
-        "are",
-        "as",
-        "at",
-        "be",
-        "but",
-        "by",
-        "do",
-        "does",
-        "for",
-        "from",
-        "how",
-        "i",
-        "in",
-        "is",
-        "it",
-        "of",
-        "on",
-        "or",
-        "that",
-        "the",
-        "to",
-        "was",
-        "what",
-        "when",
-        "where",
-        "which",
-        "who",
-        "why",
-        "with",
-        "you",
-    }
-)
-"""Words a grep user would not bother typing; removed for both retrievers alike."""
+_STOPWORDS: Final = STOPWORDS
+"""The product's own list, imported rather than restated (roadmap 4.28).
+
+It lived here first — words a grep user would not bother typing, removed for
+both retrievers alike so neither got an easier question — and it was never
+applied to the product, which is the defect ADR-0057 fixes. Now that the lexical
+leg drops them itself, this name exists so `grep` is asked the same question the
+product asks, and so there is one list rather than two that can drift."""
 
 
 class Retriever(Protocol):
@@ -100,10 +69,14 @@ class Retriever(Protocol):
 
 
 def terms_of(query: str) -> list[str]:
-    """Extract query terms — shared, so neither retriever gets an easier question."""
-    found = [term.lower() for term in _TERM.findall(query)]
-    kept = [term for term in found if term not in _STOPWORDS]
-    return kept or found
+    """Extract query terms — shared, so neither retriever gets an easier question.
+
+    A thin alias for :func:`mycelium.retrieval.query_terms` since roadmap 4.28,
+    kept because the tools import it by this name and because *this* is the
+    surface that has to keep applying it: the product now strips for its own
+    lexical leg, and `grep` has no lexical leg to strip inside.
+    """
+    return query_terms(query)
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,12 +95,26 @@ class MyceliumRetriever:
             # manifest is how a reader of an old result knows which index it was
             # measured on (roadmap 4.19, ADR-0048).
             "stem_weight": STEM_WEIGHT,
+            # How many function words the lexical leg drops (roadmap 4.28). Part
+            # of what produced the numbers, so a reader of an old run manifest
+            # can tell whether it predates the boundary (ADR-0057).
+            "stopwords": len(STOPWORDS),
             "hybrid": False,
         }
 
     def search(self, query: str, limit: int) -> list[str]:
-        hits = self.store.search_chunks(" ".join(terms_of(query)), limit=limit)
-        return [hit.chunk.anchor for hit in hits]
+        """Score the product's own seam, not a re-implementation of it.
+
+        This called `store.search_chunks` directly until roadmap 4.28, and that
+        is how the defect ADR-0057 fixes stayed hidden for four milestones: the
+        harness tokenised the query itself, the product did not, and no number
+        anywhere could show the difference. Fusion over a single rank list
+        preserves that list's order, so routing through :func:`search` moved no
+        case on any set — verified before the change, and re-verifiable as
+        `query: stopped` in `tools/measure_ranking.py`.
+        """
+        outcome = run_search(self.store, query, limit=limit, config=RetrievalConfig())
+        return [fused.hit.chunk.anchor for fused in outcome.hits]
 
 
 @dataclass(frozen=True, slots=True)

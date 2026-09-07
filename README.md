@@ -174,6 +174,31 @@ buying no safety, so it is gone. The numbers, the variants refused, and the pric
 are in [ADR-0048](docs/adr/0048-index-the-stem-beside-the-surface-form.md) and
 [ADR-0054](docs/adr/0054-gate-the-query-not-the-documents.md).
 
+### Your question is answered by its content words
+
+`mycelium search "what does resolution mean"` used to return a section titled *"What is
+CycloneDX"* at rank 1, with the definition it asked for at rank 5 — because `what` and
+`does` matched a **heading** at three times a body's weight. The lexical leg now drops
+function words before it searches, and `--explain` names the ones it dropped and the query
+it actually ran. The **vector** leg still receives the whole question: an embedder is asked
+in the words it was trained on, and the grammar is what it reads.
+
+The list of words is not new, and that is the uncomfortable part. It has lived in the
+evaluation harness since the `grep` baseline was written — applied to both retrievers so
+neither got an easier question — and it was never applied to the product. So every number
+this README publishes was measured through a query path no user had. They do not move here;
+they simply describe the shipped one now. Measured through the product's own tokenisation,
+`uv`'s dev set read **0.510** where the harness reported 0.673, and against its own
+committed baselines the product as it stood **would have failed** the regression gate.
+
+What was *not* fixed is worth stating too: a stemmed function word can still outrank a
+definition if the stem weight is raised, `mean` cannot go in the list because it is a
+content word elsewhere, and an IDF floor is refused on measurement — document frequency does
+not tell a function word from a corpus's own nouns (`what` reaches 37 % of this repository's
+chunks; `adr` reaches 60 %). The numbers, the refusals and the two instruments that re-run
+them are in
+[ADR-0057](docs/adr/0057-drop-the-function-words-and-score-the-seam-that-ships.md).
+
 ### Ingestion picks its parser, and you pick which one
 
 Non-Markdown sources are compiled by adapters over engines that already exist — Mycelium OS
