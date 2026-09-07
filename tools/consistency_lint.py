@@ -26,7 +26,9 @@ contract (the "congruence checks"):
   7. i18n-freshness  — (only when i18n is enabled) no translated page is staler than its
      English source;
   8. roadmap-numbering — every ROADMAP item number is unique and sits under the milestone
-     it names, because "never renumber" is only affordable while nothing collides.
+     it names, because "never renumber" is only affordable while nothing collides;
+  9. threat-boundaries — every threat-model boundary id is unique, and every STRIDE row
+     cites one that exists.
 
 Each check is independent; all run, then the report lists every failure. The checks are
 designed to PASS on a freshly-generated repository (empty catalogues, no releases yet).
@@ -434,6 +436,49 @@ def check_roadmap_numbering():
         fail(name, "no numbered ROADMAP items parsed")
 
 
+def check_threat_boundaries():
+    """Every threat-model boundary id is unique, and every STRIDE row cites one that exists.
+
+    The sibling of `roadmap-numbering`, and filed for the same reason: `B10` was
+    issued twice — LLM egress at 4.4 and tier-1 custody at 4.2 — so six STRIDE
+    rows citing `B10` meant two different things, and which one a row meant could
+    only be recovered by reading it (roadmap 4.31).
+
+    The second half is what a duplicate id makes possible and a lint makes
+    impossible: a row pointing at a boundary that does not exist. That is worse
+    than a duplicate, because it reads as coverage.
+    """
+    name = "threat-boundaries"
+    path = os.path.join("docs", "security", "threat-model.md")
+    if not exists(path):
+        return  # the register is optional until the posture declares it
+    model = read("docs", "security", "threat-model.md")
+
+    declared = {}
+    for m in re.finditer(r"^\|\s*\*\*(B\d+)\s+—\s+([^*]+?)\*\*", model, re.MULTILINE):
+        boundary, title = m.group(1), m.group(2).strip()
+        if boundary in declared:
+            fail(
+                name,
+                f"boundary {boundary} is declared twice - '{declared[boundary]}' and "
+                f"'{title}'; give the newer one a fresh id and update every row citing it",
+            )
+        else:
+            declared[boundary] = title
+    if not declared:
+        fail(name, "no '**BN — ...**' boundary rows parsed from the threat model")
+        return
+
+    # A STRIDE row's boundary cell may name several (`B2/B13`); every one must exist.
+    for line in model.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 5 or cells[0].startswith("**") or "—" in cells[0][:3]:
+            continue
+        for cited in re.findall(r"\bB\d+\b", cells[2]):
+            if cited not in declared:
+                fail(name, f"a STRIDE row cites {cited}, which no boundary declares")
+
+
 def check_posture():
     name = "posture"
     agents = read("AGENTS.md") if exists("AGENTS.md") else ""
@@ -460,6 +505,7 @@ CHECKS = [
     check_spec_map,
     check_milestones,
     check_roadmap_numbering,
+    check_threat_boundaries,
     check_bugs,
     check_i18n_freshness,
     check_posture,

@@ -12,6 +12,26 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **A change now runs the gates it implicates, and CI derives which those are** (roadmap
+  4.31, [ADR-0055](docs/adr/0055-run-the-gates-the-change-implicates.md)). `tools/verify.py`
+  classifies a diff as `docs`, `code`, `retrieval` or `full` and runs that mode's gates,
+  cheapest first; the CI workflow keys its jobs on the same derivation, so what a contributor
+  saw and what the workflow decided cannot drift. The mode is **derived from the diff, never
+  declared** — `--mode` may only widen, and a narrower request is refused naming the gates it
+  would skip (threat-model **B13**). `main`, tags and called workflows are always `full`. The
+  matrix is deliberately *not* narrowed by mode: a pure-Python change is exactly the kind that
+  breaks on Windows and not on Linux.
+- **pandoc is pinned and verified instead of installed three ways.**
+  `.github/actions/setup-pandoc` pulls one release archive and checks it against a recorded
+  digest before extracting, on every runner. That removes **124 s** from CI's critical path
+  (`choco install pandoc` on windows-2022) and ends three package managers shipping three
+  engine versions — so a parser test now asserts behaviour rather than tolerating whichever
+  pandoc a cell happened to get (ADR-0032).
+- **The threat model's duplicate `B10` is resolved**: tier-1 custody becomes **B12**, the half
+  only one row pointed at. `tools/consistency_lint.py` gained a `threat-boundaries` check —
+  unique boundary ids, and no STRIDE row citing a boundary nothing declares — the sibling of
+  the `roadmap-numbering` check added at 4.27.
+
 - **One roadmap number, one roadmap item — now enforced** (roadmap 4.27). `4.23` had been
   issued twice, so every reference to it was ambiguous, and `ROADMAP.md`'s own "never
   renumber" rule is what made unpicking that expensive. The collision is resolved by moving

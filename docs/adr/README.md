@@ -70,3 +70,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0052](0052-give-a-slice-cases-or-stop-gating-it.md) | Give a slice cases, or stop gating it — and name the case that moved | Accepted |
 | [0053](0053-report-on-the-corpus-we-author-and-gate-on-the-one-we-do-not.md) | Report on the corpus we author, gate on the one we do not | Accepted |
 | [0054](0054-gate-the-query-not-the-documents.md) | Gate the query, not the documents | Accepted |
+| [0055](0055-run-the-gates-the-change-implicates.md) | Run the gates the change implicates, and derive which those are | Accepted |

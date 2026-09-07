@@ -108,3 +108,81 @@ def test_a_roadmap_with_no_milestone_headings_is_reported(numbering: Run) -> Non
 def test_the_check_is_registered(numbering: Run) -> None:
     # A check nobody runs is a check that does not exist.
     assert lint.check_roadmap_numbering in lint.CHECKS
+
+
+# ---------------------------------------------------------------------------
+# The threat model's boundary ids (roadmap 4.31) — the same defect, one artifact
+# along: `B10` was issued twice, so six STRIDE rows citing it meant two things.
+# ---------------------------------------------------------------------------
+
+MODEL = """# Threat model
+
+## 1. Scope & trust boundaries
+
+| Boundary | Untrusted inputs | Assumptions |
+|---|---|---|
+| **B1 — First** (today): a thing | input | assumed |
+| **B2 — Second** (today): another | input | assumed |
+
+## 2. STRIDE pass
+
+| Category | Threat | Boundary / component | Mitigation | Status |
+|---|---|---|---|---|
+| Spoofing | something | B1 | a control | ✅ |
+| Tampering | something else | B1/B2 | a control | ✅ |
+"""
+
+
+@pytest.fixture
+def boundaries(monkeypatch: pytest.MonkeyPatch) -> Iterator[Run]:
+    def run(text: str) -> list[str]:
+        monkeypatch.setattr(lint, "read", lambda *parts: text)
+        monkeypatch.setattr(lint, "exists", lambda rel: True)
+        lint.failures.clear()
+        lint.check_threat_boundaries()
+        return [message for _, message in lint.failures]
+
+    lint.failures.clear()
+    yield run
+    lint.failures.clear()
+
+
+def test_the_committed_threat_model_passes() -> None:
+    lint.failures.clear()
+    try:
+        lint.check_threat_boundaries()
+        assert lint.failures == []
+    finally:
+        lint.failures.clear()
+
+
+def test_a_well_formed_threat_model_passes(boundaries: Run) -> None:
+    assert boundaries(MODEL) == []
+
+
+def test_a_duplicate_boundary_id_fails_and_names_both(boundaries: Run) -> None:
+    duplicated = MODEL.replace("**B2 — Second**", "**B1 — Second**")
+    messages = boundaries(duplicated)
+    assert any("boundary B1 is declared twice" in m for m in messages)
+    assert any("First" in m and "Second" in m for m in messages)
+
+
+def test_a_row_citing_a_boundary_that_does_not_exist_fails(boundaries: Run) -> None:
+    # Worse than a duplicate: it reads as coverage.
+    dangling = MODEL.replace("| Spoofing | something | B1 |", "| Spoofing | something | B99 |")
+    assert boundaries(dangling) == ["a STRIDE row cites B99, which no boundary declares"]
+
+
+def test_a_row_citing_several_boundaries_checks_each(boundaries: Run) -> None:
+    dangling = MODEL.replace("| B1/B2 |", "| B2/B98 |")
+    assert boundaries(dangling) == ["a STRIDE row cites B98, which no boundary declares"]
+
+
+def test_a_threat_model_with_no_boundaries_is_reported(boundaries: Run) -> None:
+    assert boundaries("# Threat model\n\nNothing yet.\n") == [
+        "no '**BN — ...**' boundary rows parsed from the threat model"
+    ]
+
+
+def test_the_boundary_check_is_registered() -> None:
+    assert lint.check_threat_boundaries in lint.CHECKS
