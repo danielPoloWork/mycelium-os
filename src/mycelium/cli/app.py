@@ -118,6 +118,13 @@ app = typer.Typer(
 )
 
 _CONFIG_FILENAME: Final = "mycelium.toml"
+
+_CONCEDED_CASES_SHOWN: Final = 4
+"""How many conceded cases a slice names before the line says "and N more".
+
+Four fits a terminal line and is more than any conceded slice on any set this
+project has judged; the full list is in the run manifest, which is where a
+reader who needs all of them should be reading anyway (ADR-0058)."""
 _KNOWLEDGE_LANES: Final = ("verified", "candidate", "evidence")
 _GITIGNORE_ENTRIES: Final = (
     (f"{STORE_DIRNAME}/", "derived store - always ignored"),
@@ -1604,7 +1611,7 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
         )
         for name, summary in sorted(manifest.per_slice.items()):
             detail(f"  {name:<14} nDCG@10 {summary.ndcg_at_10:.3f}  ({summary.cases} cases)")
-        comparison = incumbent_comparison(manifest)
+        comparison = incumbent_comparison(manifest, cases)
         if comparison is not None:
             # D-010's doctrine is "fix the product, not the benchmark", which is
             # only actionable if the product's standing against the incumbent is
@@ -1612,6 +1619,13 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
             # slice the incumbent still owns.
             report = success if comparison.ahead else warn
             report(f"vs {comparison.retriever}: {comparison.detail}")
+            # ...and a conceded slice is only actionable once it is the cases it
+            # is made of. Roadmap 4.25 was filed reading `fact 0.431 vs 0.497` as
+            # a property of the corpus; it is two cases of seven, which is a
+            # different piece of work (ADR-0058).
+            totals = {name: summary.cases for name, summary in manifest.per_slice.items()}
+            for line in comparison.decomposition(totals, shown=_CONCEDED_CASES_SHOWN):
+                detail(f"  {line}")
         if manifest.companion_overall is not None:
             beside = manifest.companion_overall
             gap = beside.ndcg_at_10 - overall.ndcg_at_10

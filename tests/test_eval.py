@@ -23,6 +23,7 @@ from mycelium.eval import (
     CorpusFingerprint,
     EvaluationError,
     GrepRetriever,
+    IncumbentComparison,
     MyceliumRetriever,
     build_retriever,
     citation_coverage,
@@ -37,6 +38,7 @@ from mycelium.eval import (
     write_run,
 )
 from mycelium.sdk.types import (
+    CaseResult,
     EvalCase,
     EvalRunManifest,
     EvalSlice,
@@ -402,6 +404,162 @@ def test_a_slice_neither_retriever_answers_is_not_conceded() -> None:
         {"symbol": summary(ndcg=0.0)},
     )
     assert comparison.conceded == ()
+
+
+# ---------------------------------------------------------------------------
+# Decomposing a conceded slice into the cases it is made of (roadmap 4.25)
+# ---------------------------------------------------------------------------
+
+
+def judged(case_id: str, *slices: str) -> EvalCase:
+    return EvalCase(
+        case_id=case_id,
+        query=f"query for {case_id}",
+        slices=tuple(EvalSlice(name) for name in slices),
+        relevant=(RelevantAnchor(anchor="docs/a.md#s/0", grade=3),),
+    )
+
+
+def scored(case_id: str, ndcg: float) -> CaseResult:
+    return CaseResult(
+        case_id=case_id,
+        ndcg_at_10=ndcg,
+        recall_at_10=1.0,
+        recall_at_50=1.0,
+        reciprocal_rank=1.0,
+        citation_coverage=1.0,
+    )
+
+
+def compare_three_cases(ours: dict[str, float], theirs: dict[str, float]) -> IncumbentComparison:
+    """One conceded `fact` slice of three cases, scored by hand."""
+    cases = [judged(case_id, "fact") for case_id in ours]
+    mean = lambda values: sum(values) / len(values)  # noqa: E731
+    return compare_to_incumbent(
+        "grep",
+        summary(ndcg=mean(list(ours.values()))),
+        summary(ndcg=mean(list(theirs.values()))),
+        {"fact": summary(ndcg=mean(list(ours.values())))},
+        {"fact": summary(ndcg=mean(list(theirs.values())))},
+        cases=cases,
+        ours_results=[scored(k, v) for k, v in ours.items()],
+        theirs_results=[scored(k, v) for k, v in theirs.items()],
+    )
+
+
+def test_a_conceded_slice_names_the_cases_it_is_made_of() -> None:
+    """Roadmap 4.25's finding, as a report.
+
+    `fact 0.43 vs 0.50` is the same number whether every case is a little behind
+    — a property of the corpus — or one case is badly behind and the rest tie.
+    The item was filed on the first reading and the measurement said the second,
+    which nothing in the product could show (ADR-0058).
+    """
+    comparison = compare_three_cases(
+        ours={"c-1": 0.10, "c-2": 0.90, "c-3": 0.90},
+        theirs={"c-1": 1.00, "c-2": 0.90, "c-3": 0.80},
+    )
+    assert comparison.conceded == ("fact",)
+    assert [loss.case_id for loss in comparison.losses] == ["c-1"]
+    assert str(comparison.losses[0]) == "c-1 0.100 vs 1.000 (-0.900)"
+
+
+def test_conceded_cases_come_worst_first() -> None:
+    comparison = compare_three_cases(
+        ours={"c-1": 0.50, "c-2": 0.10, "c-3": 0.60},
+        theirs={"c-1": 0.60, "c-2": 0.90, "c-3": 0.00},
+    )
+    # The slice is conceded 0.400 to 0.500. `c-3` is a win and must not appear;
+    # `c-2` loses by 0.80 and `c-1` by 0.10.
+    assert comparison.conceded == ("fact",)
+    assert [loss.case_id for loss in comparison.losses] == ["c-2", "c-1"]
+    assert comparison.losses[0].gap == pytest.approx(-0.80)
+
+
+def test_a_case_is_reported_under_each_conceded_slice_it_belongs_to() -> None:
+    cases = [judged("c-1", "fact", "exact"), judged("c-2", "exact")]
+    ours = {"c-1": 0.20, "c-2": 0.90}
+    theirs = {"c-1": 0.80, "c-2": 0.10}
+    comparison = compare_to_incumbent(
+        "grep",
+        summary(ndcg=0.55),
+        summary(ndcg=0.45),
+        {"fact": summary(ndcg=0.20), "exact": summary(ndcg=0.55)},
+        {"fact": summary(ndcg=0.80), "exact": summary(ndcg=0.45)},
+        cases=cases,
+        ours_results=[scored(k, v) for k, v in ours.items()],
+        theirs_results=[scored(k, v) for k, v in theirs.items()],
+    )
+    # Only `fact` is conceded, so only `fact` is decomposed — `exact` is led.
+    assert comparison.conceded == ("fact",)
+    assert [loss.case_id for loss in comparison.losses_in("fact")] == ["c-1"]
+    assert comparison.losses_in("exact") == ()
+
+
+def test_without_the_case_set_the_comparison_is_what_it_always_was() -> None:
+    """A manifest written before roadmap 4.25 carries no incumbent per-case results.
+
+    It must still render, as the slice means alone, rather than raising or
+    inventing a decomposition it does not have.
+    """
+    comparison = compare_to_incumbent(
+        "grep",
+        summary(ndcg=0.55),
+        summary(ndcg=0.50),
+        {"fact": summary(ndcg=0.40)},
+        {"fact": summary(ndcg=0.50)},
+    )
+    assert comparison.conceded == ("fact",)
+    assert comparison.losses == ()
+    assert "still conceded: fact 0.400 vs 0.500" in comparison.detail
+
+
+def test_the_decomposition_reads_as_a_sentence() -> None:
+    comparison = compare_three_cases(
+        ours={"c-1": 0.10, "c-2": 0.90, "c-3": 0.20},
+        theirs={"c-1": 1.00, "c-2": 0.80, "c-3": 0.90},
+    )
+    (line,) = comparison.decomposition({"fact": 3})
+    assert line == (
+        "fact is conceded on 2 of 3 case(s): "
+        "c-1 0.100 vs 1.000 (-0.900), c-3 0.200 vs 0.900 (-0.700)"
+    )
+    # Without the totals it still renders, minus a number it does not have.
+    assert "of 3" not in comparison.decomposition()[0]
+    # And it truncates rather than filling a terminal.
+    assert comparison.decomposition({"fact": 3}, shown=1)[0].endswith("and 1 more")
+
+
+def test_a_slice_conceded_by_no_single_case_prints_no_line() -> None:
+    """Seven cases each a little behind is a real shape, and it has no list.
+
+    The line exists to say "this is one case"; when it is not, saying nothing is
+    correct and the slice means above it already carry the finding.
+    """
+    comparison = compare_to_incumbent(
+        "grep",
+        summary(ndcg=0.40),
+        summary(ndcg=0.50),
+        {"fact": summary(ndcg=0.40)},
+        {"fact": summary(ndcg=0.50)},
+    )
+    assert comparison.conceded == ("fact",)
+    assert comparison.decomposition({"fact": 7}) == ()
+
+
+def test_a_run_records_the_incumbent_s_own_case_results(
+    compared: EvalRunManifest, corpus: Path
+) -> None:
+    """The run already scored them and used to throw them away."""
+    assert len(compared.incumbent_results) == len(compared.results)
+    assert {r.case_id for r in compared.incumbent_results} == {r.case_id for r in compared.results}
+
+    comparison = incumbent_comparison(compared, load_cases(RELEASE))
+    assert comparison is not None
+    for loss in comparison.losses:
+        # Every reported loss is a real one, in a slice that is really conceded.
+        assert loss.theirs > loss.ours
+        assert loss.slice_name in comparison.conceded
 
 
 def test_the_grep_baseline_is_fair(corpus: Path) -> None:

@@ -32,6 +32,21 @@ rows beside it are the variants it beat or was refused in favour of. `index:
 plain` is the control — an in-memory rebuild of the pre-4.19 index, which is why
 it now scores *below* `baseline (ships)`.
 
+The twelfth is the **heading** family (roadmap 4.25), and it is also refused. A
+chunk's `heading_path` is its whole ancestor chain, so a subsection's heading
+field is a strict superset of its parent's; the hypothesis was that splitting the
+leaf heading from the ancestors would stop a query that matches an ancestor's
+heading from boosting every descendant. Two results, both worth keeping. It does
+not move the case it was built for — `u-1006` sits at 0.431 at *every* setting,
+including ancestors at zero, because the child never won on the heading field at
+all (it wins on `text`, at 164 tokens against 385). And the settings that do move
+something move it only on the **release** sets: on uv/dev, the set this had to be
+developed on, every safe setting scores exactly what `baseline (ships)` scores.
+A parameter pair with no dev signal, chosen by reading the held-out sets, is the
+thing spec 04 §7.1 exists to refuse (ADR-0058). The unsplit controls
+(`heading 3.0/3.0`, `heading 4.0/4.0`) fail gate G3 on `exact`, which is the part
+that says the split is doing real work — just not work this slice needs.
+
 **One thing this file cannot see**: it scores answerable cases only, so gate G4
 is outside its view. Open expansion wins three of four sets here and answers a
 question the corpus cannot answer, which only the real `mycelium eval --gate`
@@ -67,7 +82,12 @@ from mycelium.eval.metrics import (  # noqa: E402
 )
 from mycelium.eval.retrievers import build_retriever, terms_of  # noqa: E402
 from mycelium.store import SearchHit, SqliteStore  # noqa: E402
-from mycelium.store.sqlite import _FTS_TERM, _SURFACE_WEIGHTS, fts_query  # noqa: E402
+from mycelium.store.sqlite import (  # noqa: E402
+    _FTS_TERM,
+    _SURFACE_WEIGHTS,
+    STEM_WEIGHT,
+    fts_query,
+)
 from mycelium.store.stemming import stem_text  # noqa: E402
 
 DEPTH = 50
@@ -569,6 +589,128 @@ def _occurrences(query: str, hit: SearchHit) -> int:
 
 
 # ---------------------------------------------------------------------------
+# The heading family (roadmap 4.25) — same chunks, same tokenisation, one field
+# split in two
+#
+# A chunk's `heading_path` is its whole ancestor chain, so a subsection's
+# heading field is a strict *superset* of its parent's. Every word that made a
+# query match the parent's heading also matches the child's, at the same field
+# weight of 2.0 — and the child adds its own words on top. The uv/release case
+# `u-1006` is that shape exactly: "which Python version formats can I request"
+# puts `Requesting a version / Python version files` above `Requesting a
+# version`, and only the second one lists the formats.
+#
+# The hypothesis is that the leaf heading — the one that names what *this* chunk
+# is about — and the ancestors — which name where it sits — are different
+# evidence and should not share a weight. It is an indexing change rather than a
+# re-ranking, which is the family the two changes that actually closed the gap
+# came from (roadmap 4.19, 4.15).
+# ---------------------------------------------------------------------------
+
+_HEADING_INDEX: dict[tuple[int, float, float], sqlite3.Connection] = {}
+
+_HEADING_SURFACE: Final = "{text title heading ancestors}"
+_HEADING_STEMS: Final = "{text_stem title_stem heading_stem ancestors_stem}"
+
+
+def _split_chunk_rows(store: SqliteStore) -> list[tuple[str, str, str, str, str]]:
+    """`(anchor, text, title, leaf heading, ancestor headings)` per chunk."""
+    rows = []
+    for doc_id in store.document_ids():
+        document = store.get_document(doc_id)
+        if document is None:  # pragma: no cover - ids come from the same store
+            continue
+        for chunk in store.chunks_of(doc_id):
+            path = list(chunk.heading_path)
+            leaf = path[-1] if path else ""
+            rows.append((chunk.anchor, chunk.text, document.title, leaf, " / ".join(path[:-1])))
+    return rows
+
+
+def _heading_index(store: SqliteStore, leaf: float, ancestors: float) -> sqlite3.Connection:
+    key = (id(store), leaf, ancestors)
+    cached = _HEADING_INDEX.get(key)
+    if cached is not None:
+        return cached
+    memory = sqlite3.connect(":memory:")
+    memory.row_factory = sqlite3.Row
+    memory.execute(
+        """
+        CREATE VIRTUAL TABLE chunks_fts USING fts5(
+            anchor UNINDEXED, text, title, heading, ancestors,
+            text_stem, title_stem, heading_stem, ancestors_stem,
+            tokenize='unicode61', prefix='2 3 4'
+        )
+        """
+    )
+    memory.executemany(
+        "INSERT INTO chunks_fts(anchor, text, title, heading, ancestors,"
+        " text_stem, title_stem, heading_stem, ancestors_stem) VALUES(?,?,?,?,?,?,?,?,?)",
+        [(anchor, *fields, *(_stemmed(field) for field in fields)) for anchor, *fields in rows]
+        if (rows := _split_chunk_rows(store))
+        else [],
+    )
+    memory.commit()
+    _HEADING_INDEX[key] = memory
+    return memory
+
+
+def heading_split(leaf: float, ancestors: float) -> Ranking:
+    """The shipping index with `heading_path` split into leaf and ancestors.
+
+    Everything else is held fixed on purpose: the same chunks, the same
+    `unicode61` tokenisation, the same surface-and-stem expansion at the shipped
+    :data:`STEM_WEIGHT`, and the same query-level abstention gate. `leaf` and
+    `ancestors` are the only free parameters, and setting both to 2.0 must
+    reproduce `baseline (ships)` — otherwise this row is measuring something else.
+    """
+
+    def rank(store: SqliteStore, query: str) -> list[str]:
+        terms = terms_of(query)
+        if not terms:
+            return []
+        surface = " OR ".join(f'"{term}"' for term in terms)
+        stems = " OR ".join(f'"{term}"' for term in dict.fromkeys(stem_text(terms)))
+        index = _heading_index(store, leaf, ancestors)
+        probe = index.execute(
+            "SELECT 1 FROM chunks_fts WHERE chunks_fts MATCH ? LIMIT 1",
+            [f"{_HEADING_SURFACE} : ({surface})"],
+        )
+        if probe.fetchone() is None:
+            return []
+        match = f"{_HEADING_SURFACE} : ({surface}) OR {_HEADING_STEMS} : ({stems})"
+        surfaces = (1.0, 3.0, leaf, ancestors)
+        weights = [0.0, *surfaces, *(STEM_WEIGHT * weight for weight in surfaces)]
+        placeholders = ", ".join("?" for _ in weights)
+        rows = index.execute(
+            f"""
+            SELECT anchor, bm25(chunks_fts, {placeholders}) AS score
+            FROM chunks_fts WHERE chunks_fts MATCH ?
+            ORDER BY score LIMIT ?
+            """,
+            [*weights, match, DEPTH],
+        ).fetchall()
+        return [str(row["anchor"]) for row in rows]
+
+    return rank
+
+
+HEADING_FAMILY: Final[tuple[tuple[str, Ranking], ...]] = (
+    ("heading 2.0/2.0", heading_split(2.0, 2.0)),
+    ("heading 2.0/1.0", heading_split(2.0, 1.0)),
+    ("heading 2.0/0.5", heading_split(2.0, 0.5)),
+    ("heading 2.0/0.0", heading_split(2.0, 0.0)),
+    ("heading 3.0/0.5", heading_split(3.0, 0.5)),
+    ("heading 3.0/1.0", heading_split(3.0, 1.0)),
+    ("heading 3.0/3.0", heading_split(3.0, 3.0)),
+    ("heading 4.0/0.5", heading_split(4.0, 0.5)),
+    ("heading 4.0/4.0", heading_split(4.0, 4.0)),
+)
+"""`heading 2.0/2.0` is the control: one field split in two, both halves at the
+weight the single field had. It must score what `baseline (ships)` scores."""
+
+
+# ---------------------------------------------------------------------------
 # Scoring
 # ---------------------------------------------------------------------------
 
@@ -635,6 +777,7 @@ def _report(
     for name, rank in strategies:
         _SECTION_INDEX.clear()
         _TOKEN_INDEX.clear()
+        _HEADING_INDEX.clear()
         (ndcg, mrr, recall), means = score(root, set_name, rank)
         slices[name] = means
         print(f"{label:<13} {name:<18} {ndcg:8.3f} {mrr:7.3f} {recall:7.3f}")
@@ -705,6 +848,7 @@ def main() -> int:
         ("baseline (ships)", baseline),
         *QUERY_FAMILY,
         *TOKENIZER_FAMILY,
+        *HEADING_FAMILY,
         *SECTION_FAMILY,
         ("length>=60", length_prior(60)),
         ("length>=120", length_prior(120)),

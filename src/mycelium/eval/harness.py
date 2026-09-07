@@ -93,6 +93,7 @@ __all__ = [
     "MAX_FALSE_ANSWER_RATE",
     "RETRIEVAL_LIMIT",
     "EvaluationError",
+    "CaseLoss",
     "IncumbentComparison",
     "compare_to_incumbent",
     "incumbent_comparison",
@@ -689,6 +690,24 @@ def _score(
 
 
 @dataclass(frozen=True, slots=True)
+class CaseLoss:
+    """One case a conceded slice is actually made of."""
+
+    case_id: str
+    slice_name: str
+    ours: float
+    theirs: float
+
+    @property
+    def gap(self) -> float:
+        """`ours - theirs`. Negative by construction — this is a loss."""
+        return self.ours - self.theirs
+
+    def __str__(self) -> str:
+        return f"{self.case_id} {self.ours:.3f} vs {self.theirs:.3f} ({self.gap:+.3f})"
+
+
+@dataclass(frozen=True, slots=True)
 class IncumbentComparison:
     """What a run says about the incumbent it was measured against (D-010).
 
@@ -717,11 +736,87 @@ class IncumbentComparison:
     conceded: tuple[str, ...]
     """Slices where the incumbent scores strictly higher, worst first."""
     detail: str
+    losses: tuple[CaseLoss, ...] = ()
+    """The individual cases inside those slices that the incumbent wins, worst first.
+
+    A conceded slice mean is not actionable on its own. `fact 0.431 vs 0.497` is
+    the same number whether seven cases are each a little behind — a property of
+    the corpus — or one case is badly behind and six are ties. Those two readings
+    call for opposite work, and roadmap 4.25 was filed on the first while the
+    measurement said the second (ADR-0058). Empty when the run recorded no
+    per-case incumbent results, or when the judged set was not supplied.
+    """
 
     @property
     def ahead(self) -> bool:
         """Whether the product leads overall. Slices may still be conceded."""
         return self.lead > 0.0
+
+    def losses_in(self, slice_name: str) -> tuple[CaseLoss, ...]:
+        """The conceded cases belonging to one slice, worst first."""
+        return tuple(loss for loss in self.losses if loss.slice_name == slice_name)
+
+    def decomposition(
+        self, totals: Mapping[str, int] | None = None, *, shown: int = 4
+    ) -> tuple[str, ...]:
+        """One line per conceded slice, naming the cases it is made of.
+
+        The sentence lives here rather than in the CLI because it is the finding,
+        not the formatting: every surface that reports a concession should report
+        the same decomposition of it. `totals` supplies each slice's case count —
+        "2 of 7" is the sentence a reader acts on, and "2" alone is not.
+        """
+        lines = []
+        for name in self.conceded:
+            losses = self.losses_in(name)
+            if not losses:
+                continue
+            total = (totals or {}).get(name, 0)
+            of_total = f" of {total}" if total else ""
+            more = len(losses) - shown
+            listed = ", ".join(str(loss) for loss in losses[:shown])
+            lines.append(
+                f"{name} is conceded on {len(losses)}{of_total} case(s): {listed}"
+                + (f", and {more} more" if more > 0 else "")
+            )
+        return tuple(lines)
+
+
+def _conceded_cases(
+    conceded: Sequence[str],
+    cases: Sequence[EvalCase],
+    ours_results: Sequence[CaseResult],
+    theirs_results: Sequence[CaseResult],
+) -> tuple[CaseLoss, ...]:
+    """The cases the incumbent wins inside each conceded slice, worst first.
+
+    Gate G3 has named the cases behind a slice since roadmap 4.20 (`_attribute`),
+    for the reason that applies here word for word: a slice mean cannot say
+    whether a number is the retriever or one case, and at these set sizes it
+    never will (ADR-0044). The comparison against the incumbent is the one that
+    sends a reader hunting, and it was the one number in the project that could
+    not be decomposed.
+    """
+    if not cases or not ours_results or not theirs_results:
+        return ()
+    mine = {result.case_id: result.ndcg_at_10 for result in ours_results}
+    yours = {result.case_id: result.ndcg_at_10 for result in theirs_results}
+    slices_of = {case.case_id: {item.value for item in case.slices} for case in cases}
+    losses = [
+        CaseLoss(
+            case_id=case.case_id,
+            slice_name=name,
+            ours=mine[case.case_id],
+            theirs=yours[case.case_id],
+        )
+        for name in conceded
+        for case in cases
+        if name in slices_of.get(case.case_id, ())
+        and case.case_id in mine
+        and case.case_id in yours
+        and yours[case.case_id] > mine[case.case_id]
+    ]
+    return tuple(sorted(losses, key=lambda loss: (loss.gap, loss.case_id)))
 
 
 def compare_to_incumbent(
@@ -730,8 +825,19 @@ def compare_to_incumbent(
     theirs: MetricSummary,
     ours_slices: Mapping[str, MetricSummary],
     theirs_slices: Mapping[str, MetricSummary],
+    *,
+    cases: Sequence[EvalCase] = (),
+    ours_results: Sequence[CaseResult] = (),
+    theirs_results: Sequence[CaseResult] = (),
 ) -> IncumbentComparison:
-    """Summarise one run against its incumbent, and name what it still concedes."""
+    """Summarise one run against its incumbent, and name what it still concedes.
+
+    The three keyword arguments are what turns a conceded slice from a number
+    into a list of case ids. They are optional because a manifest written before
+    roadmap 4.25 carries no incumbent per-case results, and a comparison read
+    from one must still render — as the slice means alone, which is what it has
+    always shown.
+    """
     lead = ours.ndcg_at_10 - theirs.ndcg_at_10
     conceded = sorted(
         (
@@ -753,12 +859,23 @@ def compare_to_incumbent(
         )
         detail += f"; still conceded: {losses}"
     return IncumbentComparison(
-        retriever=retriever, lead=lead, conceded=tuple(conceded), detail=detail
+        retriever=retriever,
+        lead=lead,
+        conceded=tuple(conceded),
+        detail=detail,
+        losses=_conceded_cases(conceded, cases, ours_results, theirs_results),
     )
 
 
-def incumbent_comparison(manifest: EvalRunManifest) -> IncumbentComparison | None:
-    """The comparison a run recorded, or ``None`` when it was measured alone."""
+def incumbent_comparison(
+    manifest: EvalRunManifest, cases: Sequence[EvalCase] = ()
+) -> IncumbentComparison | None:
+    """The comparison a run recorded, or ``None`` when it was measured alone.
+
+    `cases` supplies the slice each case belongs to, which the manifest does not
+    carry — it identifies the judged set by name and digest instead. Without it
+    the comparison is exactly what it was before roadmap 4.25: the slice means.
+    """
     if manifest.incumbent is None or manifest.incumbent_overall is None:
         return None
     return compare_to_incumbent(
@@ -767,6 +884,9 @@ def incumbent_comparison(manifest: EvalRunManifest) -> IncumbentComparison | Non
         manifest.incumbent_overall,
         manifest.per_slice,
         manifest.incumbent_per_slice,
+        cases=cases,
+        ours_results=manifest.results,
+        theirs_results=manifest.incumbent_results,
     )
 
 
@@ -940,6 +1060,7 @@ def run_evaluation(
 
         incumbent_overall = None
         incumbent_slices: dict[str, MetricSummary] = {}
+        incumbent_results: list[CaseResult] = []
         if against is not None:
             if against == retriever_name:
                 msg = f"cannot compare {retriever_name!r} against itself"
@@ -948,7 +1069,9 @@ def run_evaluation(
                 incumbent = build_retriever(against, store, _embedder_for(root, against))
             except ValueError as error:
                 raise EvaluationError(str(error)) from error
-            _, incumbent_overall, incumbent_slices = _score(cases, incumbent, resolvable)
+            incumbent_results, incumbent_overall, incumbent_slices = _score(
+                cases, incumbent, resolvable
+            )
 
         companion_overall = None
         if companion:
@@ -975,6 +1098,7 @@ def run_evaluation(
         incumbent=against if incumbent_overall is not None else None,
         incumbent_overall=incumbent_overall,
         incumbent_per_slice=incumbent_slices,
+        incumbent_results=tuple(incumbent_results),
     )
 
 

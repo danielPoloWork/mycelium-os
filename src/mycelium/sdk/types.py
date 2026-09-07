@@ -1041,3 +1041,13 @@ class EvalRunManifest(Record):
             "comparison."
         ),
     )
+    incumbent_results: tuple[CaseResult, ...] = Field(
+        default=(),
+        description=(
+            "The incumbent's per-case results, which the run already computed and "
+            "used to discard (roadmap 4.25). A conceded slice mean cannot say "
+            "whether the incumbent is ahead on every case or on one, and those "
+            "call for opposite responses: keeping the cases is what lets the "
+            "comparison be decomposed instead of investigated (ADR-0058)."
+        ),
+    )
