@@ -10,6 +10,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Added
+
+- **A conceded slice now names the cases it is made of** (roadmap 4.25,
+  [ADR-0058](docs/adr/0058-decompose-a-conceded-slice-before-believing-it.md)).
+  `mycelium eval --against grep` reported `still conceded: fact 0.431 vs 0.497` and left it
+  there — the same number whether seven cases are each a little behind, which is a property
+  of the corpus, or one case is badly behind and six are ties, which is a bug. It now adds:
+
+  ```text
+  fact is conceded on 2 of 7 case(s): u-1006 0.431 vs 1.000 (-0.569), u-1004 0.333 vs 0.631 (-0.298)
+  ```
+
+  The run already scored the incumbent case by case and discarded the results; they are kept
+  in the run manifest as `incumbent_results`. A slice conceded by *every* case prints no list,
+  because there the mean is the finding. Gate G3 has named the cases behind a slice since
+  roadmap 4.20; this was the last number in the project that could not be decomposed.
+
 ### Changed
 
 - **The lexical leg no longer searches on function words** (roadmap 4.28,
