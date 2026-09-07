@@ -102,6 +102,25 @@ reads as coverage.
 That the same defect surfaced twice in two artifacts on the same day is the argument for
 lints over care.
 
+## The pandoc action failed on two runners, and failed correctly
+
+First CI run: ubuntu green, **macOS and Windows red in 15–22 s**. Two distinct bugs, and the
+shape of both failures is the argument for having written it this way.
+
+- **Windows**: `shasum: command not found`. Git Bash ships `sha256sum` and no `shasum`;
+  macOS ships `shasum` and no `sha256sum`. The digest step then did the right thing — it
+  refused, and **nothing was extracted**. A version of this action that had trusted the
+  download would have installed an unverified binary and gone green.
+- **macOS**: the archive layout is not what I predicted. The Windows zip holds
+  `pandoc-3.11/pandoc.exe`; the macOS one holds `pandoc-3.11-**arm64**/bin/pandoc`, an arch
+  suffix a hard-coded `pandoc-<version>` prefix misses. So the flatten did nothing, `PATH`
+  pointed at a directory with no binary, and the confirmation step caught it by name rather
+  than letting parser tests silently *skip* — which was the whole reason that step exists.
+
+Both fixes remove a prediction rather than correct one: try the three digest tools in turn,
+and `find` the binary instead of guessing where it lands. Verified against both real archives
+before pushing again.
+
 ## What this does not fix, stated
 
 `pytest` on this machine spends ~16 s before the first test, 12 s of it collection, and a

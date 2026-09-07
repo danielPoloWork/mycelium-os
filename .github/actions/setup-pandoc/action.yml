@@ -54,29 +54,44 @@ runs:
         curl --fail --silent --show-error --location --retry 3 \
           --output "${dest}/${asset}" "${base}/${asset}"
 
-        # Verify before extracting: an archive that is not the one this file was
+        # No single digest tool is on all three runners: Git Bash on Windows has
+        # `sha256sum` and no `shasum`, macOS has `shasum` and no `sha256sum`.
+        # Compare the strings ourselves rather than depend on a `--check` flag
+        # whose spelling also varies.
+        if command -v sha256sum > /dev/null; then
+          actual=$(sha256sum "${dest}/${asset}" | cut -d' ' -f1)
+        elif command -v shasum > /dev/null; then
+          actual=$(shasum -a 256 "${dest}/${asset}" | cut -d' ' -f1)
+        else
+          actual=$(openssl dgst -sha256 "${dest}/${asset}" | awk '{print $NF}')
+        fi
+
+        # Verified before extraction: an archive that is not the one this file was
         # reviewed against must never reach the filesystem as executables.
-        echo "${digest}  ${dest}/${asset}" | shasum -a 256 --check --status || {
+        if [ "$actual" != "$digest" ]; then
           echo "::error::${asset} does not match its pinned digest"
           echo "  expected ${digest}"
-          echo "  actual   $(shasum -a 256 "${dest}/${asset}" | cut -d' ' -f1)"
+          echo "  actual   ${actual}"
           exit 1
-        }
+        fi
 
         case "$asset" in
-          *.tar.gz) tar -xzf "${dest}/${asset}" -C "$dest" --strip-components=1 ;;
-          *.zip)    unzip -q "${dest}/${asset}" -d "$dest"
-                    # The zips carry a `pandoc-<version>/` prefix; flatten it so
-                    # the PATH entry below is the same shape on every runner.
-                    inner="${dest}/pandoc-${VERSION}"
-                    [ -d "$inner" ] && cp -R "$inner"/* "$dest"/ ;;
+          *.tar.gz) tar -xzf "${dest}/${asset}" -C "$dest" ;;
+          *.zip)    unzip -q "${dest}/${asset}" -d "$dest" ;;
         esac
 
-        if [ -d "${dest}/bin" ]; then
-          echo "${dest}/bin" >> "$GITHUB_PATH"
-        else
-          echo "$dest" >> "$GITHUB_PATH"
+        # Find the binary rather than predict where it lands. The archives do not
+        # agree: the Windows zip holds `pandoc-<version>/pandoc.exe`, the macOS
+        # ones `pandoc-<version>-<arch>/bin/pandoc` — an arch suffix that a
+        # hard-coded `pandoc-<version>` prefix misses, which is exactly how the
+        # first version of this action passed on Linux and failed on macOS.
+        binary=$(find "$dest" -type f \( -name pandoc -o -name pandoc.exe \) | head -n 1)
+        if [ -z "$binary" ]; then
+          echo "::error::no pandoc binary found under ${dest} after extracting ${asset}"
+          find "$dest" -maxdepth 3 | head -n 20
+          exit 1
         fi
+        echo "$(dirname "$binary")" >> "$GITHUB_PATH"
 
     - name: Confirm the pinned engine is the one on PATH
       shell: bash
