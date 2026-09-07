@@ -31,7 +31,9 @@ is the source of truth.**
 ## Claude Code specifics
 
 - Use the planning / task tools for any multi-step work.
-- Run `python tools/consistency_lint.py` before drafting a PR.
+- Run `python tools/verify.py` before drafting a PR. It derives the gates this change
+  implicates and runs them; `--mode` may only widen what it derived (ADR-0055). The
+  congruence lint runs inside it, and `python tools/consistency_lint.py` still runs alone.
 - Never push to `main`. Never run `git merge` or `gh pr merge`. Draft PRs only
   — the user clicks "Create" and "Merge".
 

@@ -39,8 +39,31 @@ jobs:
     timeout-minutes: 5
     outputs:
       ready: ${{ steps.probe.outputs.ready }}
+      mode: ${{ steps.mode.outputs.mode }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0        # the mode is derived from a diff against the base
+      # Which gates this change needs, derived from what it touches (roadmap 4.31,
+      # ADR-0055). A pull request runs the gates its diff implicates; everything
+      # else - a push to `main`, a release tag, a called workflow - runs the lot,
+      # because the mode is an economy on the *proposal* and never on the record.
+      #
+      # `tools/verify.py` is the same derivation a contributor runs locally, so
+      # what CI decided and what they saw cannot drift: one implementation, two
+      # callers.
+      - id: mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags --depth=1 origin "${{ github.event.pull_request.base.sha }}"
+            mode=$(python3 tools/verify.py --json --base "${{ github.event.pull_request.base.sha }}"                    | python3 -c 'import json,sys; print(json.load(sys.stdin)["mode"])')
+          else
+            mode=full
+          fi
+          echo "mode=$mode" >> "$GITHUB_OUTPUT"
+          echo "::notice title=Verification mode::$mode"
       - id: probe
         shell: bash
         run: |
@@ -58,7 +81,12 @@ jobs:
   build:
     name: build / ${{ matrix.os }} / ${{ matrix.toolchain }} / ${{ matrix.preset }}
     needs: bootstrap
-    if: needs.bootstrap.outputs.ready == 'true'
+    # A documentation-only change cannot move this, so it does not run it
+    # (roadmap 4.31). The matrix itself is *not* narrowed further by mode:
+    # a pure-Python change is exactly the kind that breaks on Windows and
+    # not on Linux, which this repository has already paid for once (the
+    # drive-letter path bug at 4.1).
+    if: needs.bootstrap.outputs.ready == 'true' && needs.bootstrap.outputs.mode != 'docs'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
@@ -88,14 +116,7 @@ jobs:
       # than on one. The tests that need it skip when it is absent, which is what
       # a contributor without pandoc sees; CI does not get to skip them.
       - name: Install pandoc
-        shell: bash
-        run: |
-          case "$RUNNER_OS" in
-            Linux)   sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends pandoc ;;
-            macOS)   brew install pandoc ;;
-            Windows) choco install pandoc --no-progress -y ;;
-          esac
-          pandoc --version | head -n 1
+        uses: ./.github/actions/setup-pandoc
 
       - name: Build
         shell: bash
@@ -129,7 +150,12 @@ jobs:
     name: lint / ruff + mypy
     runs-on: ubuntu-24.04
     needs: bootstrap
-    if: needs.bootstrap.outputs.ready == 'true'
+    # A documentation-only change cannot move this, so it does not run it
+    # (roadmap 4.31). The matrix itself is *not* narrowed further by mode:
+    # a pure-Python change is exactly the kind that breaks on Windows and
+    # not on Linux, which this repository has already paid for once (the
+    # drive-letter path bug at 4.1).
+    if: needs.bootstrap.outputs.ready == 'true' && needs.bootstrap.outputs.mode != 'docs'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -147,7 +173,12 @@ jobs:
   determinism:
     name: determinism / gate G6
     needs: bootstrap
-    if: needs.bootstrap.outputs.ready == 'true'
+    # A documentation-only change cannot move this, so it does not run it
+    # (roadmap 4.31). The matrix itself is *not* narrowed further by mode:
+    # a pure-Python change is exactly the kind that breaks on Windows and
+    # not on Linux, which this repository has already paid for once (the
+    # drive-letter path bug at 4.1).
+    if: needs.bootstrap.outputs.ready == 'true' && needs.bootstrap.outputs.mode != 'docs'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -175,7 +206,12 @@ jobs:
   ingest:
     name: ingest / lanes
     needs: bootstrap
-    if: needs.bootstrap.outputs.ready == 'true'
+    # A documentation-only change cannot move this, so it does not run it
+    # (roadmap 4.31). The matrix itself is *not* narrowed further by mode:
+    # a pure-Python change is exactly the kind that breaks on Windows and
+    # not on Linux, which this repository has already paid for once (the
+    # drive-letter path bug at 4.1).
+    if: needs.bootstrap.outputs.ready == 'true' && needs.bootstrap.outputs.mode != 'docs'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -189,7 +225,7 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras --dev
       - name: Install pandoc
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends pandoc
+        uses: ./.github/actions/setup-pandoc
       - name: Both lanes — connector, parsers, custody, hostile suite, and synthesis
         shell: bash
         # The synthesis suite runs here with no credential configured, which is the
@@ -242,7 +278,12 @@ jobs:
   inventory:
     name: inventory / zero silent element loss
     needs: bootstrap
-    if: needs.bootstrap.outputs.ready == 'true'
+    # A documentation-only change cannot move this, so it does not run it
+    # (roadmap 4.31). The matrix itself is *not* narrowed further by mode:
+    # a pure-Python change is exactly the kind that breaks on Windows and
+    # not on Linux, which this repository has already paid for once (the
+    # drive-letter path bug at 4.1).
+    if: needs.bootstrap.outputs.ready == 'true' && needs.bootstrap.outputs.mode != 'docs'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -256,7 +297,7 @@ jobs:
       - name: Sync dependencies
         run: uv sync --all-extras --dev
       - name: Install pandoc
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends pandoc
+        uses: ./.github/actions/setup-pandoc
       - name: Every element declared, accounted for by every route
         shell: bash
         run: uv run pytest -m inventory -q
@@ -280,7 +321,12 @@ jobs:
   eval:
     name: eval / gates G1-G6
     needs: bootstrap
-    if: needs.bootstrap.outputs.ready == 'true'
+    # The gates read the corpora and the judged sets, so they run when the
+    # change can move either — and always on `main` and on a tag, where the
+    # mode is `full` by construction (roadmap 4.31).
+    if: >-
+      needs.bootstrap.outputs.ready == 'true'
+      && (needs.bootstrap.outputs.mode == 'retrieval' || needs.bootstrap.outputs.mode == 'full')
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -352,7 +398,8 @@ jobs:
   benchmark:
     name: benchmark / reproducible perf
     needs: bootstrap
-    if: needs.bootstrap.outputs.ready == 'true'
+    # Timings are only worth recording against a full run (roadmap 4.31).
+    if: needs.bootstrap.outputs.ready == 'true' && needs.bootstrap.outputs.mode == 'full'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

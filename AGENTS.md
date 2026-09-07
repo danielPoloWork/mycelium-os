@@ -190,7 +190,20 @@ Squash is the only merge method, so the PR title/body **becomes the commit on
 professional summary (context, change, verification) — never a one-line collapse. Write it as it
 should read in `git log` forever.
 
-**Pre-PR congruence check (mandatory).** Before drafting any PR, run and pass:
+**Pre-PR verification (mandatory).** Before drafting any PR, run and pass:
+
+```bash
+python tools/verify.py
+```
+
+It derives which gates this change implicates from the diff — `docs`, `code`, `retrieval`
+or `full` — runs them in that order, cheapest first, and prints the mode it used and why
+(ADR-0055). CI derives the mode with the same script, so what you saw and what the workflow
+decides cannot drift. `--mode` may only **widen** the derived mode; a narrower one is refused
+naming the gates it would skip, which is the control on threat-model boundary B13. A push to
+`main` and a release tag are always `full`.
+
+The congruence lint runs in every mode and can still be run alone:
 
 ```bash
 python tools/consistency_lint.py
