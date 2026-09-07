@@ -58,12 +58,19 @@ runs:
         # `sha256sum` and no `shasum`, macOS has `shasum` and no `sha256sum`.
         # Compare the strings ourselves rather than depend on a `--check` flag
         # whose spelling also varies.
+        #
+        # Every one of them reads **stdin**, so no filename appears in the output.
+        # That is not tidiness: `RUNNER_TEMP` on Windows is `D:\a\_temp`, and GNU
+        # coreutils escapes a line whose filename contains a backslash by
+        # prefixing the whole thing with `\` — which produced a digest differing
+        # from the pinned one by exactly that character, and a refusal that was
+        # right about the mismatch and wrong about the cause.
         if command -v sha256sum > /dev/null; then
-          actual=$(sha256sum "${dest}/${asset}" | cut -d' ' -f1)
+          actual=$(sha256sum < "${dest}/${asset}" | cut -d' ' -f1)
         elif command -v shasum > /dev/null; then
-          actual=$(shasum -a 256 "${dest}/${asset}" | cut -d' ' -f1)
+          actual=$(shasum -a 256 < "${dest}/${asset}" | cut -d' ' -f1)
         else
-          actual=$(openssl dgst -sha256 "${dest}/${asset}" | awk '{print $NF}')
+          actual=$(openssl dgst -sha256 < "${dest}/${asset}" | awk '{print $NF}')
         fi
 
         # Verified before extraction: an archive that is not the one this file was

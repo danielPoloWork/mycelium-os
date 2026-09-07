@@ -121,6 +121,28 @@ Both fixes remove a prediction rather than correct one: try the three digest too
 and `find` the binary instead of guessing where it lands. Verified against both real archives
 before pushing again.
 
+**And the second run found a third, better one.** macOS went green; Windows failed again on
+the digest, with the two hashes *identical* apart from a leading backslash:
+
+```text
+expected 2ab72baf2399450e148ddf7a2a8689806c42e1bba71862b57e220fd9b8456d3d
+actual   \2ab72baf2399450e148ddf7a2a8689806c42e1bba71862b57e220fd9b8456d3d
+```
+
+`RUNNER_TEMP` on Windows is `D:\a\_temp`, so the path handed to `sha256sum` contains
+backslashes — and GNU coreutils escapes such a line by prefixing the *whole output*
+with a backslash. The refusal was right about the mismatch and wrong about the cause, which
+is the failure mode a digest check is most likely to have: it cannot tell "wrong bytes"
+from "right bytes, mis-read".
+
+The fix is the same move a third time: stop letting a filename into the output at all. All
+three tools now read **stdin**, so there is nothing to escape. Reproduced locally in Git Bash
+before pushing — passing the path as an argument prints the leading backslash, and
+`sha256sum < file` prints the pinned digest exactly.
+
+Three bugs, three predictions removed. The pattern is worth naming: each fix deleted an
+assumption about someone else's output format rather than encoding a better one.
+
 ## What this does not fix, stated
 
 `pytest` on this machine spends ~16 s before the first test, 12 s of it collection, and a
