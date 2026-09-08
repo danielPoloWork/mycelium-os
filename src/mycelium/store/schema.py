@@ -16,7 +16,7 @@ two stores built from the same sources hold byte-identical column values.
 
 from typing import Final
 
-SCHEMA_VERSION: Final = "mycelium/store/v4"
+SCHEMA_VERSION: Final = "mycelium/store/v5"
 """Bumped whenever the DDL below changes. v1 migration policy is rebuild (D-016):
 a *writer* that meets a foreign version recreates the file (the store is derived
 data, D-005 — ADR-0015); a *reader* refuses and points at `mycelium build`.
@@ -25,7 +25,9 @@ v1 → v2 added `snapshot_state` (roadmap 3.2, restorable snapshots);
 v2 → v3 added `doc_state.graph_json` (roadmap 3.4, the authored link graph);
 v3 → v4 added the stem columns to `chunks_fts` (roadmap 4.19, ADR-0048) — a
 tokenization change is not migratable, so this is exactly the case the rebuild
-policy exists for."""
+policy exists for; v4 → v5 split `heading_path` into `heading` and `ancestors`
+(roadmap 4.36, ADR-0063), for the same reason: the columns of an FTS5 table
+cannot be altered, and re-deriving them from `chunks` is what a rebuild is."""
 
 META_SCHEMA_VERSION: Final = "schema_version"
 META_VECTORS_GENERATION: Final = "vectors_generation"
@@ -99,14 +101,21 @@ CREATE INDEX IF NOT EXISTS chunks_digest ON chunks(chunk_digest);
 -- inflection matches a stem column alone, and the field weights do the rest
 -- (ADR-0048). The stems live in this table rather than a second one so there is
 -- one BM25 computation and no fusion stage to tune.
+-- `heading_path` is split in two (roadmap 4.36, ADR-0063). The path is a chunk's
+-- whole ancestor chain, so a subsection's heading field was a strict *superset*
+-- of its parent's: every word that matched the parent matched the child too, at
+-- the same weight. `heading` is the leaf — what this chunk is about — and
+-- `ancestors` is where it sits, and they are different evidence.
 CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
     anchor UNINDEXED,
     text,
     title,
-    heading_path,
+    heading,
+    ancestors,
     text_stem,
     title_stem,
-    heading_path_stem,
+    heading_stem,
+    ancestors_stem,
     tokenize='unicode61',
     prefix='2 3 4'
 );

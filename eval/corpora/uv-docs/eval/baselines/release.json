@@ -60,12 +60,12 @@
     }
   },
   "mycelium": {
-    "blessed_from_snapshot": "01M20B7YBVYP1ZV10D7D92GX8B",
+    "blessed_from_snapshot": "01M20FXZ4TJ0XW8Q0VGQ6DT91K",
     "cases": 25,
     "cases_digest": "sha256:c94a2405626a5be10cdcbc3a1cb6a25dbc0f8578269450b5a95f2f51513a2be1",
     "content_digest": "sha256:44895398cedfc30a39759a8dfd9ab59ec2df26e6d251e8e619a6bc3ea4af2b06",
     "corpus_digest": "sha256:3083b97f9d6983bba978df8cb09b48fc872666379faa7808b9be1ed6f7bf6282",
-    "overall_ndcg_at_10": 0.602116,
+    "overall_ndcg_at_10": 0.603521,
     "per_case": {
       "conceptual": {
         "u-1002": 1.0,
@@ -74,7 +74,7 @@
         "u-1023": 0.0
       },
       "exact": {
-        "u-1003": 0.30103,
+        "u-1003": 0.333333,
         "u-1015": 1.0,
         "u-1018": 1.0,
         "u-1020": 1.0,
@@ -108,7 +108,7 @@
     },
     "per_slice": {
       "conceptual": 0.658801,
-      "exact": 0.726873,
+      "exact": 0.733333,
       "fact": 0.43063,
       "relationship": 0.65923,
       "symbol": 0.678734,

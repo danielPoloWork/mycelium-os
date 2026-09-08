@@ -292,6 +292,64 @@ def test_search_ranks_by_the_specified_field_weights(store: SqliteStore) -> None
     assert hits[0].score > hits[1].score
 
 
+def test_a_subsection_does_not_inherit_its_parents_heading_weight(store: SqliteStore) -> None:
+    """The defect the heading split removes (roadmap 4.36, ADR-0063).
+
+    `heading_path` was one field holding the whole ancestor chain, so a
+    subsection's heading field was a strict *superset* of its parent's — and a
+    superset can carry the query term *more often* than the set it contains.
+    Here "Retries" appears once in the parent's path and twice in the child's, so
+    the joined field gave the child the higher term frequency and the subsection
+    outranked the section the query was actually about. It is the shape ADR-0058
+    found on `u-1006`, where "Requesting a version / Python version files" beat
+    "Requesting a version".
+
+    Split, the child's own leaf is "Retries schedule" at 2.0 and its inherited
+    "Retries" is an ancestor at 0.5, so the parent wins. Measured on this
+    fixture: joined ranks child before parent (-1.636e-6 against -1.457e-6);
+    split ranks parent before child (-1.457e-6 against -1.418e-6). The bodies are
+    identical so that the heading field is the only thing deciding.
+    """
+    with store.transaction():
+        store.put_document(make_document(title="Webhooks", path="a.md"))
+        store.put_chunks(
+            [
+                make_chunk("a.md#retries/0", "identical body", heading_path=("Retries",)),
+                make_chunk(
+                    "a.md#retries-schedule/0",
+                    "identical body",
+                    heading_path=("Retries", "Retries schedule"),
+                ),
+            ]
+        )
+    hits = store.search_chunks("retries")
+    assert [hit.chunk.anchor for hit in hits] == [
+        "a.md#retries/0",
+        "a.md#retries-schedule/0",
+    ]
+    assert hits[0].score > hits[1].score
+
+
+def test_the_ancestors_still_carry_signal(store: SqliteStore) -> None:
+    """0.5 rather than 0.0, and the dev sets are why (ADR-0063).
+
+    Dropping the ancestors entirely costs 0.017 nDCG and three points of R@10 on
+    our own dev set, so where a chunk sits is evidence — just weaker evidence
+    than what it is about. A subsection whose ancestors mention the query still
+    beats a chunk that does not mention it anywhere.
+    """
+    with store.transaction():
+        store.put_document(make_document(title="Webhooks", path="a.md"))
+        store.put_document(make_document(doc_id=OTHER_ID, title="Unrelated", path="b.md"))
+        store.put_chunks(
+            [
+                make_chunk("a.md#x/0", "identical body", heading_path=("Retries", "Backoff")),
+                make_chunk("b.md#x/0", "identical body", doc_id=OTHER_ID, heading_path=("Other",)),
+            ]
+        )
+    assert [hit.chunk.anchor for hit in store.search_chunks("retries")] == ["a.md#x/0"]
+
+
 def test_hits_carry_the_document_context_a_citation_needs(store: SqliteStore) -> None:
     seed(store, make_chunk("a.md#x/0", "searchable content"))
     (hit,) = store.search_chunks("searchable")

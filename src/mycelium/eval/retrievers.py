@@ -90,7 +90,7 @@ class MyceliumRetriever:
     def config(self) -> dict[str, str | int | float | bool]:
         return {
             "engine": "fts5-bm25",
-            "weights": "title=3.0,heading_path=2.0,body=1.0",
+            "weights": "title=3.0,heading=2.0,body=1.0,ancestors=0.5",
             # Recorded because it is part of what produced the numbers: the run
             # manifest is how a reader of an old result knows which index it was
             # measured on (roadmap 4.19, ADR-0048).
@@ -177,7 +177,7 @@ class HybridRetriever:
     def config(self) -> dict[str, str | int | float | bool]:
         return {
             "engine": "fts5-bm25 + vector",
-            "weights": "title=3.0,heading_path=2.0,body=1.0",
+            "weights": "title=3.0,heading=2.0,body=1.0,ancestors=0.5",
             "hybrid": True,
             "fusion": "rrf",
             "rrf_k": RRF_K,

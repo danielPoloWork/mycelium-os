@@ -220,13 +220,13 @@ def test_the_expression_is_open_and_the_gate_is_a_separate_query() -> None:
     safety (ADR-0054).
     """
     match = expanded_query("signs off")
-    assert match.startswith("{text title heading_path} : ")
+    assert match.startswith("{text title heading ancestors} : ")
     assert " AND " not in match, "the surface side is an alternative, not a filter"
     assert '"sign"' in match
     assert '"signs"' in match
 
     gate = foothold_query("signs off")
-    assert gate == '{text title heading_path} : ("signs" OR "off")'
+    assert gate == '{text title heading ancestors} : ("signs" OR "off")'
     assert "text_stem" not in gate, "a stem cannot authorise its own expansion"
 
 
@@ -235,7 +235,7 @@ def test_the_gate_asks_about_the_corpus_not_about_one_document() -> None:
     # disjunctive: "did the author write any of these words" is what abstention
     # needs, and "all of them, in one chunk" is the search's own question.
     assert foothold_query("signs contributed") == (
-        '{text title heading_path} : ("signs" OR "contributed")'
+        '{text title heading ancestors} : ("signs" OR "contributed")'
     )
     assert foothold_query("   ") == ""
 
@@ -265,12 +265,15 @@ def test_two_query_words_sharing_a_stem_are_stated_once() -> None:
 
 
 def test_the_schema_version_records_the_new_index(store: SqliteStore) -> None:
-    assert SCHEMA_VERSION == "mycelium/store/v4"
+    # v5 rather than v4: the heading split is a column change, and FTS5 columns
+    # cannot be altered, so a foreign store is rebuilt (roadmap 4.36, ADR-0063).
+    assert SCHEMA_VERSION == "mycelium/store/v5"
     columns = {
         row[1] for row in store._connection.execute("PRAGMA table_info(chunks_fts)").fetchall()
     }
-    assert {"text", "title", "heading_path"} <= columns
-    assert {"text_stem", "title_stem", "heading_path_stem"} <= columns
+    assert {"text", "title", "heading", "ancestors"} <= columns
+    assert {"text_stem", "title_stem", "heading_stem", "ancestors_stem"} <= columns
+    assert "heading_path" not in columns, "the superset field is gone, not shadowed"
 
 
 def test_the_stem_columns_are_populated_from_the_chunk(store: SqliteStore) -> None:

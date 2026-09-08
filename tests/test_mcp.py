@@ -163,7 +163,12 @@ def test_explain_reports_the_plan_that_ran(repo: Path) -> None:
     assert explained["stages"] == ["lexical"]
     assert explained["degraded"] == []  # a deliberate choice is not a degradation
     assert explained["fusion"] == {"method": "rrf", "k": 60}
-    assert explained["field_weights"] == {"title": 3.0, "heading_path": 2.0, "body": 1.0}
+    assert explained["field_weights"] == {
+        "title": 3.0,
+        "heading": 2.0,
+        "body": 1.0,
+        "ancestors": 0.5,
+    }
 
 
 @pytest.mark.parametrize(
@@ -340,7 +345,12 @@ def test_explain_reports_the_plan_the_timings_and_the_config(repo: Path) -> None
     assert plan["stages"] == ["lexical"]
     assert payload["fusion"] == {"method": "rrf", "k": 60, "vector_candidates": 50}
     assert "total" in payload["timings_ms"]
-    assert payload["config"]["field_weights"] == {"title": 3.0, "heading_path": 2.0, "body": 1.0}
+    assert payload["config"]["field_weights"] == {
+        "title": 3.0,
+        "heading": 2.0,
+        "body": 1.0,
+        "ancestors": 0.5,
+    }
 
 
 def test_explain_accounts_for_each_candidate_without_returning_its_text(repo: Path) -> None:

@@ -409,7 +409,7 @@ def handle_search(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
             ),
             "stages": list(outcome.legs),
             "fusion": {"method": "rrf", "k": RRF_K},
-            "field_weights": {"title": 3.0, "heading_path": 2.0, "body": 1.0},
+            "field_weights": {"title": 3.0, "heading": 2.0, "body": 1.0, "ancestors": 0.5},
             "degraded": list(outcome.degraded),
             "notes": list(outcome.notes),
             "tokens_returned": spent,
@@ -553,7 +553,7 @@ def handle_explain(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
         "fusion": {"method": "rrf", "k": RRF_K, "vector_candidates": VECTOR_CANDIDATES},
         "timings_ms": dict(outcome.timings_ms),
         "config": {
-            "field_weights": {"title": 3.0, "heading_path": 2.0, "body": 1.0},
+            "field_weights": {"title": 3.0, "heading": 2.0, "body": 1.0, "ancestors": 0.5},
             "embedding_model": settings.embedding.model_id,
             "embedding_provider": settings.embedding.provider,
         },
