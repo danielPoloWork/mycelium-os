@@ -1,11 +1,11 @@
 {
   "grep": {
-    "blessed_from_snapshot": "01M1XR0PJK8W1XG1E4KDA0BJR3",
+    "blessed_from_snapshot": "01M20B7YBVYP1ZV10D7D92GX8B",
     "cases": 25,
-    "cases_digest": "sha256:5f8ebc1377c56c1b00e834a3e284caae8cc63d38866281494ae35f611883d409",
+    "cases_digest": "sha256:c94a2405626a5be10cdcbc3a1cb6a25dbc0f8578269450b5a95f2f51513a2be1",
     "content_digest": "sha256:44895398cedfc30a39759a8dfd9ab59ec2df26e6d251e8e619a6bc3ea4af2b06",
     "corpus_digest": "sha256:3083b97f9d6983bba978df8cb09b48fc872666379faa7808b9be1ed6f7bf6282",
-    "overall_ndcg_at_10": 0.484912,
+    "overall_ndcg_at_10": 0.517314,
     "per_case": {
       "conceptual": {
         "u-1002": 0.63093,
@@ -36,7 +36,7 @@
         "u-1024": 0.0
       },
       "symbol": {
-        "u-1007": 0.0,
+        "u-1007": 0.745253,
         "u-1017": 1.0,
         "u-1019": 0.411306,
         "u-1025": 0.30103
@@ -51,7 +51,7 @@
       "exact": 0.552802,
       "fact": 0.496754,
       "relationship": 0.444204,
-      "symbol": 0.428084,
+      "symbol": 0.614397,
       "unanswerable": 0.0
     },
     "toolchain": {
@@ -60,12 +60,12 @@
     }
   },
   "mycelium": {
-    "blessed_from_snapshot": "01M1XR0PJK8W1XG1E4KDA0BJR3",
+    "blessed_from_snapshot": "01M20B7YBVYP1ZV10D7D92GX8B",
     "cases": 25,
-    "cases_digest": "sha256:5f8ebc1377c56c1b00e834a3e284caae8cc63d38866281494ae35f611883d409",
+    "cases_digest": "sha256:c94a2405626a5be10cdcbc3a1cb6a25dbc0f8578269450b5a95f2f51513a2be1",
     "content_digest": "sha256:44895398cedfc30a39759a8dfd9ab59ec2df26e6d251e8e619a6bc3ea4af2b06",
     "corpus_digest": "sha256:3083b97f9d6983bba978df8cb09b48fc872666379faa7808b9be1ed6f7bf6282",
-    "overall_ndcg_at_10": 0.585847,
+    "overall_ndcg_at_10": 0.602116,
     "per_case": {
       "conceptual": {
         "u-1002": 1.0,
@@ -96,7 +96,7 @@
         "u-1024": 0.0
       },
       "symbol": {
-        "u-1007": 0.0,
+        "u-1007": 0.374195,
         "u-1017": 1.0,
         "u-1019": 0.70981,
         "u-1025": 0.63093
@@ -111,7 +111,7 @@
       "exact": 0.726873,
       "fact": 0.43063,
       "relationship": 0.65923,
-      "symbol": 0.585185,
+      "symbol": 0.678734,
       "unanswerable": 0.0
     },
     "toolchain": {
