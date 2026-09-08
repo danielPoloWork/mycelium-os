@@ -12,6 +12,28 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The lexical index scores a chunk's own heading apart from its ancestors** (roadmap 4.36,
+  [ADR-0063](docs/adr/0063-split-the-leaf-heading-from-its-ancestors.md)). `chunks_fts` held
+  the whole heading path in one field, so a subsection's heading was a strict *superset* of
+  its parent's: every word that matched the parent matched the child too, at the same weight,
+  and the leaf never got to distinguish them. It splits into `heading` (the leaf, keeping
+  spec 04 §3's 2.0) and `ancestors` (0.5, the middle of the plateau the dev sets are flat
+  across; dropping them to 0.0 costs 0.017 nDCG@10 and three points of R@10, so where a
+  chunk sits is real evidence).
+
+  Read before anything was re-blessed, gate **G3 enforced and passed on both frozen sets**,
+  with **exactly one judged case moving on each and both upward**: uv/release 0.6021 → 0.6035
+  (`exact` +0.9 %), uv-docs-ingested 0.6300 → 0.6306 (`fact` +0.4 %). The claim is that the
+  correction is *free*, not that it is a win — the reason to make it is that the field was
+  wrong. Raising the leaf weight past 2.0 gains three to four times more on the release sets
+  and *nothing* on either dev set, so it is refused a second time (ADR-0058) and filed as
+  roadmap 4.39.
+
+  **This bumps the store schema to `mycelium/store/v5`.** FTS5 columns cannot be altered, so
+  the next `mycelium build` recreates the store — the rebuild-as-migration policy (D-016).
+  A reader that meets a v5 store on older code refuses it by name rather than reinterpreting
+  it. `mycelium_explain`'s `field_weights` gains an `ancestors` key.
+
 - **`u-1007` is re-judged from the documents** (roadmap 4.34,
   [ADR-0062](docs/adr/0062-a-symbol-judgment-names-where-the-thing-is-documented.md)).
   The `uv tool install` case had scored 0.0000 since it was written, and reading it from the

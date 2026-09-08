@@ -32,20 +32,29 @@ rows beside it are the variants it beat or was refused in favour of. `index:
 plain` is the control — an in-memory rebuild of the pre-4.19 index, which is why
 it now scores *below* `baseline (ships)`.
 
-The twelfth is the **heading** family (roadmap 4.25), and it is also refused. A
-chunk's `heading_path` is its whole ancestor chain, so a subsection's heading
-field is a strict superset of its parent's; the hypothesis was that splitting the
-leaf heading from the ancestors would stop a query that matches an ancestor's
-heading from boosting every descendant. Two results, both worth keeping. It does
-not move the case it was built for — `u-1006` sits at 0.431 at *every* setting,
-including ancestors at zero, because the child never won on the heading field at
-all (it wins on `text`, at 164 tokens against 385). And the settings that do move
-something move it only on the **release** sets: on uv/dev, the set this had to be
-developed on, every safe setting scores exactly what `baseline (ships)` scores.
-A parameter pair with no dev signal, chosen by reading the held-out sets, is the
-thing spec 04 §7.1 exists to refuse (ADR-0058). The unsplit controls
-(`heading 3.0/3.0`, `heading 4.0/4.0`) fail gate G3 on `exact`, which is the part
-that says the split is doing real work — just not work this slice needs.
+The twelfth is the **heading** family (roadmap 4.25), and it is the second thing
+in this file to ship — in part. A chunk's `heading_path` was its whole ancestor
+chain, so a subsection's heading field was a strict superset of its parent's;
+splitting the leaf heading from the ancestors stops a query that matches an
+ancestor from boosting every descendant. What shipped is `heading 2.0/0.5`, so
+the rows below now read against a *split* baseline: `baseline (ships)` and
+`heading 2.0/0.5` are the same index, and the row is kept because it is the
+control that says so.
+
+Three results, all worth keeping. It does **not** move the case it was built for
+— `u-1006` sits at 0.431 at every setting, including ancestors at zero, because
+the child never won on the heading field at all (it wins on `text`, at 164 tokens
+against 385). Its own parameter was chosen where dev could see it: on ours/dev
+the ancestor weight is a **plateau**, 0.25 through 0.75 scoring identically
+(0.540/0.581/0.719 against the unsplit 0.537/0.572/0.719) and 0.0 collapsing to
+0.523/0.577/0.688, so the ancestors carry real signal and 0.5 is the middle of
+the flat part rather than a fitted optimum. And the **leaf** weight is still
+refused: `heading 3.0/0.5` and `heading 4.0/0.5` gain more on both release sets
+and score *exactly* the shipped setting on both dev sets, which is the pair
+ADR-0058 refused and ADR-0063 refuses again. The unsplit controls
+(`heading 3.0/3.0`, `heading 4.0/4.0`) fail gate G3 on `exact`, which is what
+says the split is what makes a higher leaf weight safe rather than the weight
+doing it alone — and it is why the leaf weight is now *askable* at all.
 
 **One thing this file cannot see**: it scores answerable cases only, so gate G4
 is outside its view. Open expansion wins three of four sets here and answers a
@@ -84,7 +93,6 @@ from mycelium.eval.retrievers import build_retriever, terms_of  # noqa: E402
 from mycelium.store import SearchHit, SqliteStore  # noqa: E402
 from mycelium.store.sqlite import (  # noqa: E402
     _FTS_TERM,
-    _SURFACE_WEIGHTS,
     STEM_WEIGHT,
     fts_query,
 )
@@ -225,7 +233,7 @@ def _section_ranking(store: SqliteStore, query: str, depth: int) -> list[str]:
         FROM sections_fts WHERE sections_fts MATCH ?
         ORDER BY score LIMIT ?
         """,
-            [*_SURFACE_WEIGHTS, match, depth],
+            [*_LEGACY_WEIGHTS, match, depth],
         )
         .fetchall()
     )
@@ -246,6 +254,17 @@ _TOKEN_INDEX: dict[tuple[int, str, float], sqlite3.Connection] = {}
 
 _SURFACE_COLUMNS: Final = "{text title heading_path}"
 _STEM_COLUMNS: Final = "{text_stem title_stem heading_path_stem}"
+
+_LEGACY_WEIGHTS: Final = (0.0, 1.0, 3.0, 2.0)
+"""The four columns the shipped index had before roadmap 4.36 split `heading_path`.
+
+Pinned here rather than imported from the store, and that is the point. Every
+in-memory index above this line is a *recorded refusal* — the section family
+(ADR-0031, ADR-0041), the tokenizer family (ADR-0044, ADR-0048) — and a refusal
+whose numbers move when an unrelated field is split is not re-runnable. These
+rows keep the index they were measured on; the store's own
+:data:`~mycelium.store.sqlite._SURFACE_WEIGHTS` moved on without them, which is
+what `heading 2.0/2.0` is in the file to show."""
 
 
 def _chunk_rows(store: SqliteStore) -> list[tuple[str, str, str, str]]:
@@ -339,10 +358,10 @@ def _tokenizer_ranking(
             if probe.fetchone() is None:
                 return []
             match = both
-        weights = [*_SURFACE_WEIGHTS, *(stem_weight * w for w in _SURFACE_WEIGHTS[1:])]
+        weights = [*_LEGACY_WEIGHTS, *(stem_weight * w for w in _LEGACY_WEIGHTS[1:])]
     else:
         match = fts_query(" ".join(terms))
-        weights = list(_SURFACE_WEIGHTS)
+        weights = list(_LEGACY_WEIGHTS)
     placeholders = ", ".join("?" for _ in weights)
     rows = (
         _token_index(store, variant, stem_weight)
@@ -698,7 +717,9 @@ def heading_split(leaf: float, ancestors: float) -> Ranking:
 HEADING_FAMILY: Final[tuple[tuple[str, Ranking], ...]] = (
     ("heading 2.0/2.0", heading_split(2.0, 2.0)),
     ("heading 2.0/1.0", heading_split(2.0, 1.0)),
+    ("heading 2.0/0.75", heading_split(2.0, 0.75)),
     ("heading 2.0/0.5", heading_split(2.0, 0.5)),
+    ("heading 2.0/0.25", heading_split(2.0, 0.25)),
     ("heading 2.0/0.0", heading_split(2.0, 0.0)),
     ("heading 3.0/0.5", heading_split(3.0, 0.5)),
     ("heading 3.0/1.0", heading_split(3.0, 1.0)),
@@ -706,8 +727,13 @@ HEADING_FAMILY: Final[tuple[tuple[str, Ranking], ...]] = (
     ("heading 4.0/0.5", heading_split(4.0, 0.5)),
     ("heading 4.0/4.0", heading_split(4.0, 4.0)),
 )
-"""`heading 2.0/2.0` is the control: one field split in two, both halves at the
-weight the single field had. It must score what `baseline (ships)` scores."""
+"""Two controls, and they now bracket the shipped setting from both sides.
+
+`heading 2.0/2.0` is the *unsplit* control: one field split in two, both halves
+at the weight the single field had, which is what the index did before roadmap
+4.36. `heading 2.0/0.5` is what ships, so it must score what `baseline (ships)`
+scores — if it does not, this family is measuring something other than the field
+split (ADR-0063)."""
 
 
 # ---------------------------------------------------------------------------

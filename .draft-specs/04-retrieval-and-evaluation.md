@@ -60,8 +60,14 @@ behavior is auditable and debuggable rather than folkloric.
 
 ## 3. Candidate generation and fusion
 
-- **Lexical:** FTS5 BM25, field-weighted (title 3.0, heading_path 2.0, body 1.0),
-  unicode61 tokenizer + prefix support for identifiers.
+- **Lexical:** FTS5 BM25, field-weighted (title 3.0, heading 2.0, body 1.0,
+  ancestors 0.5), unicode61 tokenizer + prefix support for identifiers, and a stem
+  column beside each surface field at 0.05 of its weight.
+  *Two amendments to the original three weights, both measured:* the stem columns
+  are what lets `signs` reach `signed` (roadmap 4.19, ADR-0048), and
+  `heading_path` is split into the leaf `heading` and its `ancestors` because one
+  field for the whole chain made a subsection's heading a strict superset of its
+  parent's (roadmap 4.36, ADR-0063). The three original weights are unchanged.
 - **Vector:** kNN over `vectors` for the configured `model_id` (sqlite-vec), k=50 default.
 - **Symbol:** exact lookup in `symbols` for identifier-like tokens.
 - **Fusion:** Reciprocal Rank Fusion, k=60, over rank lists — raw scores from different

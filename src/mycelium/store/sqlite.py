@@ -62,8 +62,18 @@ STORE_FILENAME: Final = "store.db"
 
 _FTS_TERM: Final = re.compile(r"\w+", re.UNICODE)
 
-_SURFACE_WEIGHTS: Final = (0.0, 1.0, 3.0, 2.0)
-"""Column order is (anchor, text, title, heading_path); spec 04 §3 sets the weights."""
+_SURFACE_WEIGHTS: Final = (0.0, 1.0, 3.0, 2.0, 0.5)
+"""Column order is (anchor, text, title, heading, ancestors).
+
+Spec 04 §3 sets three of them — title 3.0, heading 2.0, body 1.0 — and the fourth
+is this project's own, because the spec's `heading_path` is one field where there
+are two kinds of evidence (roadmap 4.36, ADR-0063). A chunk's path is its whole
+ancestor chain, so a subsection's heading field was a strict *superset* of its
+parent's: the leaf's own words never got to distinguish it. `heading` keeps the
+spec's 2.0 — the dev sets show no gain from raising it, and raising it is what
+ADR-0058 refused — and `ancestors` sits at 0.5, in the middle of the plateau the
+dev sets are flat across (0.25 to 0.75 score identically; 0.0 loses 0.017 nDCG
+and three points of R@10, so the ancestors carry real signal)."""
 
 STEM_WEIGHT: Final = 0.05
 """How much a stem match counts against a surface match of the same field.
@@ -87,12 +97,13 @@ _BM25_WEIGHTS: Final = (
     *_SURFACE_WEIGHTS,
     *(STEM_WEIGHT * weight for weight in _SURFACE_WEIGHTS[1:]),
 )
-"""The seven columns `chunks_fts` declares: the surface fields, then their stems
+"""The nine columns `chunks_fts` declares: the surface fields, then their stems
 at :data:`STEM_WEIGHT` of the same field's weight — so the relative importance of
-title over heading over body is stated once and holds on both sides."""
+title over heading over body over ancestors is stated once and holds on both
+sides."""
 
-_SURFACE_FIELDS: Final = "{text title heading_path}"
-_STEM_FIELDS: Final = "{text_stem title_stem heading_path_stem}"
+_SURFACE_FIELDS: Final = "{text title heading ancestors}"
+_STEM_FIELDS: Final = "{text_stem title_stem heading_stem ancestors_stem}"
 
 
 class StoreError(RuntimeError):
@@ -600,7 +611,12 @@ class SqliteStore:
         written = 0
         for chunk in chunks:
             title = self._document_title(chunk.doc_id)
-            heading_path = " / ".join(chunk.heading_path)
+            path = list(chunk.heading_path)
+            # The leaf names what this chunk is about; the ancestors name where it
+            # sits. Joined the way the path is rendered everywhere else, so the
+            # tokens an operator sees in `explain` are the tokens indexed.
+            heading = path[-1] if path else ""
+            ancestors = " / ".join(path[:-1])
             self._connection.execute("DELETE FROM chunks_fts WHERE anchor = ?", (chunk.anchor,))
             self._connection.execute(
                 """
@@ -629,16 +645,19 @@ class SqliteStore:
                 ),
             )
             self._connection.execute(
-                "INSERT INTO chunks_fts(anchor, text, title, heading_path,"
-                " text_stem, title_stem, heading_path_stem) VALUES(?,?,?,?,?,?,?)",
+                "INSERT INTO chunks_fts(anchor, text, title, heading, ancestors,"
+                " text_stem, title_stem, heading_stem, ancestors_stem)"
+                " VALUES(?,?,?,?,?,?,?,?,?)",
                 (
                     chunk.anchor,
                     chunk.text,
                     title,
-                    heading_path,
+                    heading,
+                    ancestors,
                     _stemmed(chunk.text),
                     _stemmed(title),
-                    _stemmed(heading_path),
+                    _stemmed(heading),
+                    _stemmed(ancestors),
                 ),
             )
             written += 1
@@ -1318,7 +1337,7 @@ class SqliteStore:
             f"""
             SELECT c.*, d.path AS doc_path, d.title AS doc_title,
                    d.trust_class AS doc_trust, d.verification_status AS doc_status,
-                   bm25(chunks_fts, ?, ?, ?, ?, ?, ?, ?) AS score
+                   bm25(chunks_fts, ?, ?, ?, ?, ?, ?, ?, ?, ?) AS score
             FROM chunks_fts
             JOIN chunks c ON c.anchor = chunks_fts.anchor
             JOIN documents d ON d.doc_id = c.doc_id
