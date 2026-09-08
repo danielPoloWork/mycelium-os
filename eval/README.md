@@ -370,15 +370,17 @@ though the missing gates passed.
 | Gate | Status |
 |---|---|
 | G1 Citations | **Enforced** — every returned anchor must resolve; must be 1.00 |
-| G2 Earn hybrid | **Enforced when `--retriever hybrid` runs** — it scores the lexical baseline on the same cases and compares (ADR-0017) |
+| G2 Earn hybrid | **Enforced when `--retriever hybrid` runs — and nothing runs it** — it scores the lexical baseline on the same cases and compares (ADR-0017). No automation passes that flag: the hybrid arm needs the 133 MB embedding model, which CI deliberately does not have (D-013), and `tools/verify.py` has no step for it either. So this gate is run by hand or not at all, and its verdict went three milestones and four lexical changes without being recomputed. Re-run it with `python tools/measure_hybrid_gate.py`, which also shows where a judged anchor sits in the lexical, vector and fused lists. Measured that way at roadmap 4.33 it **cannot currently decide**: three of six judged sets pass, and every failure but one is the per-slice condition tripping over a four-to-seven-case slice (ADR-0064; the gate's own design question is roadmap 4.41) |
 | G3 No regression | **Enforced against `baselines/<set>.json`** when the corpus *and the judgements* are the ones the baseline was taken on, and only on the slices that can carry it — no enforced slice may fall more than 2 %, and a slice that is `unanswerable`, blessed at 0.0000, or thinner than four cases is reported by name with the reason (ADR-0052). "The same corpus" means the same *documents*, not the same chunk boundaries, so a chunking change is gated rather than excused (roadmap 4.13, ADR-0045) and the verdict names the re-cut. "The same judgements" means the same cases with the same grades: a slice's score is a mean over its cases, so a set that grew reads as a regression unless the gate can tell the two apart (roadmap 4.24, ADR-0051). When either has changed the numbers are not comparable, so the gate *reports* the movement instead of failing on it — and calls it movement, not regression. `--bless` writes a baseline and records all three fingerprints |
 | G4 Abstention | **Enforced** — false-answer rate on `unanswerable` ≤ 5 % |
 | G5 Performance | **Enforced, with its limit stated** — query p95 ≤ 150 ms, reported with the corpus size it was measured on. The budget is defined at the 10⁵-chunk reference profile, so passing here is a floor rather than the measurement spec 04 §1 asks for |
 | G6 Determinism | **Delegated** — a compiler gate with its own golden and its own CI job (ADR-0012) |
 | G7 Grounding | Not applicable — it gates a *synthesized document's* promotion, and the synthesis lane arrives at 4.4 |
 
-CI runs G1–G6 on every push (`eval / gates G1-G6`), reports the grep baseline without
-gating on it, and runs the agent-task suite.
+CI runs G1, G3, G4, G5 and G6 on every push (`eval / gates G1-G6`), reports the grep
+baseline without gating on it, and runs the agent-task suite. **G2 is the exception and the
+job's name overstates it**: hybrid needs a model CI does not fetch, so G2 has no automated
+runner at all (ADR-0064, roadmap 4.40).
 
 ## The agent-task suite
 

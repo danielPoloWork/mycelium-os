@@ -116,15 +116,26 @@ so.
 
 Mycelium OS compiles vectors with a local embedder (no API key, no account, offline once the
 model is on disk), and can fuse them with BM25 by Reciprocal Rank Fusion. **It does not do
-so by default.** Gate G2 requires hybrid retrieval to earn the default — ≥ +5 % nDCG@10 with
-no slice worse than −2 % — and on this repository's own judged cases it did not: +12.7 %
-overall, but −17.8 % on the `exact` slice, and it answers every question the corpus cannot
-answer, where lexical search correctly stays silent.
+so by default.** Gate G2 requires hybrid retrieval to *earn* the default — ≥ +5 % nDCG@10
+with no slice worse than −2 % — and it has not.
+
+The uncomfortable part is what "has not" now means. Re-measured across six judged sets, G2
+splits **three to three**: hybrid clears the +5 % bar on five of the six, and fails on three
+of them because a slice of four to seven cases moved by one or two. The verdict is not even
+dev-versus-release — this repository's release set passes where its dev set fails. So the
+lexical default stands on the **burden of proof** (spec 04 §7.3 puts it on hybrid) rather
+than on a stable measurement, and saying otherwise would be claiming a decision the
+benchmark cannot currently make. What that costs, and what would fix it, is
+[ADR-0064](docs/adr/0064-measure-the-gate-that-decides-the-default.md); re-run it yourself
+with `python tools/measure_hybrid_gate.py`.
 
 So the shipped default is `[retrieval] profile = "lexical"`. Turn hybrid on with one setting
-or `mycelium search --hybrid`, and read the numbers, the sweep that failed to fix abstention,
-and what has to change before it earns a default in
-[ADR-0017](docs/adr/0017-adopt-the-local-embedder-and-hybrid-retrieval.md).
+or `mycelium search --hybrid` — on a natural-language question it can be the difference
+between an answer and none: one judged case has its answer at vector rank 3 of 568 and
+lexical rank 227. The original measurement, the similarity-floor sweep that failed to fix
+abstention, and the precondition that fixed it instead are in
+[ADR-0017](docs/adr/0017-adopt-the-local-embedder-and-hybrid-retrieval.md) and
+[ADR-0025](docs/adr/0025-make-lexical-evidence-the-vector-legs-precondition.md).
 
 `--explain` also says what each word of your query reached, which is the one question
 ranking cannot answer about itself: a term matching nothing contributes nothing to a score,

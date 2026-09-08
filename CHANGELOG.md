@@ -10,6 +10,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Fixed
+
+- **Two published claims about gate G2 were wrong, and are corrected** (roadmap 4.33,
+  [ADR-0064](docs/adr/0064-measure-the-gate-that-decides-the-default.md)). `eval/README.md`
+  said "CI runs G1–G6 on every push"; CI cannot run G2, because the hybrid arm needs the
+  133 MB embedding model and D-013 forbids fetching it unless configured — so G2 has no
+  automated runner at all and its verdict had not been recomputed for three milestones, while
+  the lexical leg it is measured against changed four times. And the README justified the
+  lexical default with ADR-0017's numbers (+12.7 % overall, −17.8 % `exact`, hybrid answering
+  unanswerable queries) — the last of which ADR-0025 fixed, and the first two of which no
+  longer reproduce. Re-measured on six judged sets, G2 splits three-to-three, so the default
+  now stands on the burden of proof rather than on a measurement, and both documents say so.
+  No product behaviour changes; `python tools/measure_hybrid_gate.py` re-runs the evidence.
+
 ### Changed
 
 - **The lexical index scores a chunk's own heading apart from its ancestors** (roadmap 4.36,
