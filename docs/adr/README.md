@@ -74,3 +74,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0056](0056-make-the-format-assignment-append-only.md) | Make the format assignment append-only, and let the regeneration check replace the rule it made impossible | Accepted |
 | [0057](0057-drop-the-function-words-and-score-the-seam-that-ships.md) | Drop the function words, and score the seam that ships | Accepted |
 | [0058](0058-decompose-a-conceded-slice-before-believing-it.md) | Decompose a conceded slice before believing what it says | Accepted |
+| [0059](0059-make-the-plan-one-implementation-too.md) | Make the plan one implementation too, and let `retrieval` gate every corpus | Accepted |

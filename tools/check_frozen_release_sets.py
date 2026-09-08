@@ -65,10 +65,18 @@ TUNING_PATHS = (
     "src/mycelium/config.py",
     "src/mycelium/store/",
     "src/mycelium/embedding/",
-    "src/mycelium/eval/retrievers.py",
-    "src/mycelium/eval/metrics.py",
+    "src/mycelium/eval/",
 )
 """Everything that can change what a query returns or how it is scored.
+
+`src/mycelium/eval/` is the whole package rather than the two files it used to
+name (`retrievers.py`, `metrics.py`). `harness.py` was outside it, and it is the
+module that drives the retriever over the cases, averages the results and decides
+every gate — so a change there classified as ordinary code and ran no gate at
+all. That is not hypothetical: PR #81 changed it and CI reported `eval / gates
+G1-G6` as *skipping* (roadmap 4.35, ADR-0059). A directory is the right unit here
+for the same reason `store/` and `embedding/` are: the question is not which file
+holds the ranking today.
 
 `config.py` is here because a shipped *default* changes the retriever as surely as
 the algorithm does: `[chunking] pack_atomic` moves every chunk boundary, and its

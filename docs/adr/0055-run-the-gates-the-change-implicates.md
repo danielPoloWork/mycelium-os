@@ -124,6 +124,12 @@ in the action *before* extracting, and puts it on `PATH` on every runner. That r
   accumulated temp trees of previous runs. A scoped run is cheaper than a full one but never
   free, so the honest claim is that the *shape* changed: the full suite runs once, in CI, in
   parallel with everything else, instead of two or three times locally in series.
+- **Refined by [ADR-0059](0059-make-the-plan-one-implementation-too.md).** The ladder this
+  ADR chose was implemented twice — as `verify.py`'s `plan()` and as the workflow's job
+  conditions — and the two drifted: at `retrieval` CI gated three corpora and the local
+  tool gated one. `retrieval` now gates every corpus, `full` keeps the benchmarks alone, and
+  a test reads both files and fails when they disagree. Nothing about the *derivation* or
+  its measured economy changed; what changed is that the plan is checked (roadmap 4.35).
 - **Four hypothesis tests fail under parallel load** with `DeadlineExceeded` — they carry
   timing deadlines on I/O-bound property tests. They pass in the shipped serial
   configuration, so nothing here is broken; it is filed as roadmap 4.32 rather than absorbed,

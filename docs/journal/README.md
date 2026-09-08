@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-07 — the plan was written twice (roadmap 4.35)](2026/09/2026-09-07-the-plan-was-written-twice.md)
 - [2026-09-07 — two cases, not a corpus (roadmap 4.25)](2026/09/2026-09-07-two-cases-not-a-corpus.md)
 - [2026-09-05 — the harness had been measuring the fix for four milestones (roadmap 4.28)](2026/09/2026-09-05-the-harness-was-measuring-the-fix.md)
 - [2026-09-04 — one row to five, and the two rules that were stopping it (roadmap 4.26)](2026/09/2026-09-04-grow-the-second-corpus.md)

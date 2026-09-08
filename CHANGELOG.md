@@ -29,6 +29,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **A retrieval change now gates every corpus locally, not just ours** (roadmap 4.35,
+  [ADR-0059](docs/adr/0059-make-the-plan-one-implementation-too.md)). `ci.yml` says of the
+  verification mode *"one implementation, two callers"* — true of the mode, never of the
+  *plan*, which lived in `tools/verify.py` and again in the workflow's job conditions with
+  nothing comparing them. At `retrieval`, CI gated all three corpora and `verify.py` gated
+  one, so passing the local loop did not mean passing CI. `retrieval` now builds and gates
+  every vendored corpus and runs the agent-task suite (+36 s on a ~750 s run; nothing at
+  all in CI, which already ran them); `full` keeps the benchmarks *alone*, which is the
+  measurement a performance claim needs; the `eval/corpora/` classification exception is
+  retired, because it existed only while `retrieval` was too narrow; and
+  `src/mycelium/eval/` becomes a tuning path — `harness.py` decides every gate and was
+  classified as ordinary code. `tests/test_verify_ladder.py` reads the workflow and the
+  plan and fails when they disagree.
+
 - **The lexical leg no longer searches on function words** (roadmap 4.28,
   [ADR-0057](docs/adr/0057-drop-the-function-words-and-score-the-seam-that-ships.md)).
   `mycelium search "what does resolution mean"` searched on `what` and `does` at full field

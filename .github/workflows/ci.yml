@@ -52,6 +52,13 @@ jobs:
       # `tools/verify.py` is the same derivation a contributor runs locally, so
       # what CI decided and what they saw cannot drift: one implementation, two
       # callers.
+      #
+      # The *plan* was a second implementation with one name, and it did drift:
+      # at `retrieval` the `eval` job below gated three corpora and the local
+      # tool gated one, so passing the local loop did not mean passing this
+      # (roadmap 4.35). `tests/test_verify_ladder.py` reads this file and
+      # `verify.py` and fails when a job gates something the local plan skips —
+      # so the duplication is checked rather than coincidental (ADR-0059).
       - id: mode
         shell: bash
         run: |

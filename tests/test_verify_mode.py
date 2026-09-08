@@ -35,13 +35,19 @@ import verify  # noqa: E402 - the tool is not an installed package
         (["src/mycelium/retrieval.py"], "retrieval"),
         (["src/mycelium/store/sqlite.py"], "retrieval"),
         (["src/mycelium/config.py"], "retrieval"),
+        # `harness.py` drives the retriever over the cases, averages the results
+        # and decides every gate. It was outside the tuning paths, so a change to
+        # it ran no gate at all — PR #81, where CI reported `eval / gates G1-G6`
+        # as *skipping* (roadmap 4.35, ADR-0059).
+        (["src/mycelium/eval/harness.py"], "retrieval"),
         (["eval/release.jsonl"], "retrieval"),
         (["eval/baselines/release.json"], "retrieval"),
-        # A vendored corpus is wider than `retrieval`, because only `full` builds
-        # and gates one — and those are the sets G3 actually enforces on
-        # (roadmap 4.26, ADR-0053/0056).
-        (["eval/corpora/uv-docs/eval/release.jsonl"], "full"),
-        (["eval/corpora/uv-docs-ingested/provenance.json"], "full"),
+        # A vendored corpus used to be wider than `retrieval`, because only `full`
+        # built and gated one. `retrieval` gates them all now, so the exception
+        # retired and one rule covers the sets, the baselines and the corpora
+        # alike (roadmap 4.35, ADR-0059).
+        (["eval/corpora/uv-docs/eval/release.jsonl"], "retrieval"),
+        (["eval/corpora/uv-docs-ingested/provenance.json"], "retrieval"),
         ([".github/workflows/ci.yml"], "full"),
     ],
 )
@@ -51,17 +57,20 @@ def test_a_path_derives_its_mode(paths: list[str], expected: str) -> None:
     assert paths[0] in reason or "changed" in reason
 
 
-def test_a_corpus_change_outranks_the_eval_data_it_sits_under() -> None:
-    """The narrowing roadmap 4.26 walked into.
+def test_a_corpus_change_gates_the_corpus_that_changed() -> None:
+    """The narrowing roadmap 4.26 walked into, closed at the other end.
 
-    `eval/corpora/uv-docs/eval/release.jsonl` matches both prefixes. Read as
-    `eval/` it derives `retrieval`, which builds and gates *our* corpus and not
-    the one that changed — so growing the set G3 enforces on would have left that
-    set's own gate unrun.
+    4.26 fixed it by raising a corpus change to `full`, because `retrieval` built
+    and gated *our* corpus and not the one that changed — so growing the set G3
+    enforces on would have left that set's own gate unrun. 4.35 made `retrieval`
+    gate every corpus, which removes the reason for the exception rather than the
+    protection it gave: what matters is that the changed corpus is gated, not
+    which rung does it (ADR-0059).
     """
-    mode, reason = verify.derive(["eval/corpora/uv-docs/eval/release.jsonl"])
-    assert mode == "full"
-    assert "corpus" in reason
+    mode, _ = verify.derive(["eval/corpora/uv-docs/eval/release.jsonl"])
+    assert mode == "retrieval"
+    gated = " ".join(" ".join(command) for _, command in verify.plan(mode))
+    assert "eval/corpora/uv-docs" in gated
 
 
 def test_the_widest_path_decides_however_many_others_there_are() -> None:
@@ -140,6 +149,31 @@ def test_every_mode_runs_everything_the_narrower_one_runs() -> None:
     for narrower, wider in zip(plans, plans[1:], strict=False):
         assert wider[: len(narrower)] == narrower, "a wider mode reordered or dropped a gate"
         assert len(wider) > len(narrower), "a wider mode must actually add something"
+
+
+def test_retrieval_gates_every_vendored_corpus() -> None:
+    """Roadmap 4.35's decision, as the assertion that would have caught its absence.
+
+    These are the sets gate G3 enforces on (ADR-0053). A retrieval change that
+    does not gate them is a retrieval change nobody measured where it counts —
+    and CI has gated them at this mode all along, which is the drift ADR-0059
+    closed.
+    """
+    gated = " ".join(" ".join(command) for _, command in verify.plan("retrieval"))
+    for corpus in verify.CORPORA:
+        assert f"eval {corpus}" in gated, f"`retrieval` does not gate {corpus}"
+
+
+def test_full_adds_the_benchmarks_rather_than_a_wider_name() -> None:
+    """Moving the corpora down into `retrieval` left `full` needing content of its own.
+
+    A mode that adds nothing promises a gate it does not run. The suite executes
+    the benchmarks beside four hundred other tests on a loaded machine; a
+    performance claim needs them alone (AGENTS.md §10), and it is the one job CI
+    gates on `full`.
+    """
+    added = [name for name, _ in verify.plan("full")][len(verify.plan("retrieval")) :]
+    assert added == ["benchmarks"]
 
 
 def test_the_congruence_lint_runs_in_every_mode() -> None:
