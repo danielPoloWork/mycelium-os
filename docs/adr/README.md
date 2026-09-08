@@ -76,3 +76,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0058](0058-decompose-a-conceded-slice-before-believing-it.md) | Decompose a conceded slice before believing what it says | Accepted |
 | [0059](0059-make-the-plan-one-implementation-too.md) | Make the plan one implementation too, and let `retrieval` gate every corpus | Accepted |
 | [0060](0060-declare-the-property-test-budget-and-keep-the-falsifying-example.md) | Declare the property-test budget, and keep the falsifying example | Accepted |
+| [0061](0061-count-the-population-before-decorating-it.md) | Count the population before decorating it, then guard the shape | Accepted |

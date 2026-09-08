@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **A property test that builds a store now has to exempt itself from the timing deadline**
+  (roadmap 4.32, [ADR-0061](docs/adr/0061-count-the-population-before-decorating-it.md)).
+  hypothesis's deadline covers the whole example body, fixtures included, so a property test
+  that opens a store or writes a corpus per example is timing its filesystem and reporting
+  the result as a property failure — which is how
+  [BUG-0021](docs/bugs/2026/09/BUG-0021-a-property-test-fails-its-deadline-on-store-creation.md)
+  reached CI. A guard in `tests/test_hypothesis_profile.py` now fails, by name, any property
+  test in that shape without `deadline=None`.
+
+  No test changed: walking all 24 property tests found exactly two in that shape and both
+  were already exempt, so 4.32's "four" is retired — and by reproduction, not argument.
+  Re-running the `pytest-xdist --dist load` configuration that produced the number (1395 s
+  against 4.31's 1389 s) yields zero deadline failures; the four were failures under 20-way
+  oversubscription rather than tests with the defect.
+
 - **Property tests now declare their own timing budget, and a failure survives the run**
   (roadmap 4.29,
   [ADR-0060](docs/adr/0060-declare-the-property-test-budget-and-keep-the-falsifying-example.md)).
