@@ -28,6 +28,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   failure recurs — no deadline, verbose, 1000 examples. No cause is claimed for the original
   failure; this makes the next occurrence worth something.
 
+  Declaring the deadline made the whole population visible, which turned up a second,
+  *reproducible* defect against it:
+  [BUG-0021](docs/bugs/2026/09/BUG-0021-a-property-test-fails-its-deadline-on-store-creation.md)
+  — `test_any_query_text_is_safe` opens a SQLite store per example and exceeds the 200 ms
+  deadline on a slow filesystem (269 ms and 1075 ms observed, 5 of 6 runs; all four CI cells
+  green). It is
+  recorded, not fixed here: the fix is one `deadline=None` decorator and belongs to roadmap
+  4.32, which owns those tests.
+
 - **A conceded slice now names the cases it is made of** (roadmap 4.25,
   [ADR-0058](docs/adr/0058-decompose-a-conceded-slice-before-believing-it.md)).
   `mycelium eval --against grep` reported `still conceded: fact 0.431 vs 0.497` and left it

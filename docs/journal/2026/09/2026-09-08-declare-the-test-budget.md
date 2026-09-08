@@ -4,7 +4,7 @@
   next occurrence diagnosable rather than lost (spec 04 §6).
 - **PR:** #83 (`test/hypothesis-profile-and-statistics`). Follows #82 (4.35), merged as
   `abdaa33`.
-- **Milestone 4:** 4.29 done; 4.32, 4.33, 4.34, 4.36 open.
+- **Milestone 4:** 4.29 done; 4.32, 4.33, 4.34, 4.36 open. New: [BUG-0021], `confirmed`.
 
 ## The item's discipline was the hard part
 
@@ -47,35 +47,69 @@ the property they assert — 308 ms observed under `pytest-xdist` contention. An
 change to this number decides that item by side effect: raise it and 4.32's tests quietly
 start passing with no record of why; remove it and there is nothing left for 4.32 to measure;
 lower it and I have pre-empted its measurement with my own. So the profile is the *seam* 4.32
-acts on, and today it changes nothing about what passes. One item, one decision.
+acts on. One item, one decision — which turned out to matter more than I expected, for the
+reason in the next section.
 
-## And then the measurement changed my mind about the measurement
+## I got the measurement wrong twice before I got it right
 
-My first reading was of one file: the flaking test at `~ 0-3 ms`, its neighbour at
-`~ 1-2 ms`, 40x headroom, "no test is near the deadline". I wrote that into the ADR. Then
-the whole-suite run came back — 23 property tests, serial, 765 s — and it was wrong:
+**First reading, one file.** The flaking test at `~ 0-3 ms`, its neighbour at `~ 1-2 ms`,
+40x headroom, "no test is near the deadline". Straight into the ADR.
 
-| property test | per example | margin at 200 ms |
-|---|---:|---|
-| twenty-one others, incl. the flaking one | 0-10 ms | ≥ 20x |
-| `test_any_query_text_is_safe` | **64-152 ms** | **1.3x** |
-| `test_any_mutation_sequence_stays_equal_to_clean` | 890-1784 ms | already `deadline=None` |
+**Second reading, the whole suite.** 23 property tests, and it was wrong: one of them,
+`test_any_query_text_is_safe`, came back at `~ 64-152 ms` against the 200 ms deadline. So I
+rewrote the ADR around a 1.3x margin and the sentence "serially, with nothing competing".
 
-Two things follow, and the second is the reason it was worth running the whole suite rather
-than the one file.
+**Third reading, and the second one was wrong too.** That number was measured while I had
+other pytest invocations running on the same machine. My own contention. "Nothing competing"
+was simply false, and I had written it in three files. Re-measured in isolation the typical
+is 63-74 ms — and then the run *failed*:
 
-**A "measured" deadline would have broken the suite.** Fitting a threshold to the twenty-one
-CPU-bound tests gives something like 100 ms at 10x their worst example — defensible-sounding,
-and it fails `test_any_query_text_is_safe` on the spot. Setting a global threshold from a
-sample of the population is how you ship a flake while believing you removed one. Keeping the
-status quo was not the timid option; it was the only number the whole population supports.
+```text
+hypothesis.errors.DeadlineExceeded: Test took 1075.21ms, which exceeds the deadline
+of 200.00ms.
+  - Typical runtimes: ~ 63-74 ms
+  - Stopped because test was flaky
+```
 
-**4.32 is less comfortable than its own text says.** That item calls itself "filed rather
-than urgent" because the four tests pass in the shipped serial configuration. They do — one
-of them at 76 % of its deadline, serially, with nothing else competing. It is one busy
-machine away from being the next 4.29. I put the number into 4.32's text and left the fix
-there: the decorators are its work, not mine, and merging the two would have hidden this
-finding inside a closed item.
+Six runs, each from a deleted example database: five failed. My first explanation was that
+the recorded slow example was being replayed by the reuse phase — plausible, and wrong; I
+tested it by clearing the database before every run, and the rate held. The CI runners,
+meanwhile, are entirely comfortable — 8-10 ms on `ubuntu-24.04`, 5-10 ms on `macos-14`, 40-62 ms on `windows-2022`,
+all four cells green. So the honest picture is not "a narrow margin" but "a slow-filesystem
+platform defect that fails outright on one machine and nowhere else".
+
+That is [BUG-0021], `confirmed` — and it is the thing 4.32 was filed for, now reproduced
+rather than inferred from an xdist measurement. 4.32's own reasoning ("they pass in the
+shipped serial configuration, which is why this is filed rather than urgent") does not hold.
+I put the numbers in its text, filed the record, and **left the fix there**: one decorator,
+its item, and folding it in would have hidden the finding inside a closed one.
+
+The decision never moved. Keeping 200 ms was right under all three readings — a threshold
+fitted to the twenty-one would have failed the store test on Windows CI too, and one
+generous enough for the store test would have absorbed 4.32. What moved was an *argument*,
+and the ADR now carries the correction rather than the tidier version.
+
+## The refusal that stopped being theoretical
+
+Reproducing the store failure wrote its slow example into the local `.hypothesis/examples`,
+where the reuse phase replays it first. Had I cached that database into CI, as hypothesis's
+own design suggests, a slow example from *my* filesystem would be replayed on a runner where
+the same test finishes in 8 ms, and would fail it for a property that holds.
+
+I refused the cache on reproducibility grounds — a previous run must not decide this one's
+result. The demonstration is stronger than the argument: a cached example database
+transports a **platform**, not just an example.
+
+## A lead on the original flake, offered as a lead
+
+The item says no cause is claimed, and I am not claiming one. But the same machine produced
+a **1075 ms example in a test whose typical is 63-74 ms** — a 15x environmental stall, on a
+box with nothing else running. A stall of that size landing inside any of the twenty-one
+0-4 ms examples would breach 200 ms, be re-run by hypothesis, pass, and leave precisely the
+signature 4.29 describes: failed once, passes on re-run, nothing persisted.
+
+That is a candidate cause with evidence behind it, which is more than the item had. It is
+not a conclusion, and I have written it into 4.29's closure as a lead rather than an answer.
 
 ## The half that took the actual thinking
 

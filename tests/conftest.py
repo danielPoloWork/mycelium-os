@@ -51,20 +51,25 @@ SQLite store creation rather than the property they assert — and having one pl
 to act on is the point.
 
 Changing the *number* is a separate decision from making it explicit, and it is
-not taken here. Measured over the whole suite on 2026-09-08
-(`--hypothesis-show-statistics`, 23 property tests, serial): twenty-one run at
-0-10 ms per example, which is 20x headroom or better. Two do not, and both are
-already accounted for — `test_any_mutation_sequence_stays_equal_to_clean`
-rebuilds a corpus (890-1784 ms) and has set `deadline=None` since roadmap 3.1,
-and `test_any_query_text_is_safe` opens a SQLite store per example (**64-152 ms**,
-a 1.3x margin) and is the test roadmap 4.32 is about.
+not taken here. Measured with `--hypothesis-show-statistics` on 2026-09-08 over
+23 property tests: twenty-one run at 0-10 ms per example on every platform, which
+is 20x headroom or better. Two do not:
 
-That distribution is the argument for leaving the number alone. Raising it would
-silently absorb 4.32; lowering it to fit the twenty-one — a "measured" deadline of
-100 ms would have looked defensible — would have broken the store test on the
-spot. A global threshold has to be set against the whole population, and the
-population here says: keep the status quo, and let the item that owns those tests
-give them the per-test decorators they need.
+- `test_any_mutation_sequence_stays_equal_to_clean` rebuilds a corpus
+  (890-1784 ms) and has set `deadline=None` since roadmap 3.1.
+- `test_any_query_text_is_safe` opens a SQLite store per example: 8-10 ms on
+  `ubuntu-24.04`, 5-10 ms on `macos-14`, 40-62 ms on `windows-2022`, and
+  **63-74 ms typical on a Windows development machine, where it exceeds the
+  deadline outright** — 269 ms and 1075 ms observed, failing 5 of 6 runs from a
+  cleared example database (BUG-0021). That is roadmap 4.32's test, and its fix
+  is one `deadline=None` decorator there, not a change to this number.
+
+So the number is left alone for a reason that survives the measurement rather
+than resting on it: raising it would silently absorb 4.32, and lowering it to fit
+the twenty-one would fail the store test everywhere instead of on one platform.
+A global threshold cannot fix a test whose fixture cost is inside the measured
+window — only a per-test `deadline=None` can, which is why the profile is a seam
+and not a solution.
 """
 
 settings.register_profile(

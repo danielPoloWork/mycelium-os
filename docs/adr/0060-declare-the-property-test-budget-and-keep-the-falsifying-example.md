@@ -38,20 +38,30 @@ reproduction blob unless asked (`print_blob` defaults to `False`). So a CI failu
 recoverable only from the job log, and a local failure only from a terminal buffer.
 
 Measured on 2026-09-08 with `--hypothesis-show-statistics` over the whole suite (23
-property tests, serial, 765 s): **twenty-one report 0-10 ms per example** — the flaking test
-itself `~ 0-4 ms` — so a deadline flake there needs a twenty-fold slowdown or worse. Two do
-not, and the distribution matters for what follows:
+property tests): **twenty-one report 0-10 ms per example on every platform** — the flaking
+test itself `~ 0-4 ms` locally and `~ 0-2 ms` on `ubuntu-24.04` — so a deadline flake there
+needs a twenty-fold slowdown or worse. Two do not, and the distribution decides what follows:
 
 | property test | per example | margin at 200 ms |
 |---|---:|---|
-| twenty-one others, incl. the flaking one | 0-10 ms | ≥ 20x |
-| `test_any_query_text_is_safe` (opens a SQLite store per example) | **64-152 ms** | **1.3x** |
+| twenty-one others, incl. the flaking one | 0-10 ms | at least 20x |
+| `test_any_query_text_is_safe` (SQLite store per example) | 8-10 ms Linux CI, 40-62 ms Windows CI, **63-74 ms Windows dev** | 3x on Windows CI — **and it fails outright on a Windows dev machine** |
 | `test_any_mutation_sequence_stays_equal_to_clean` (rebuilds a corpus) | 890-1784 ms | already `deadline=None` |
 
-The store test is the one roadmap 4.32 is about, and this measurement sharpens that item:
-4.32 recorded 308 ms *under `pytest-xdist` contention* and reasoned "they pass in the
-shipped serial configuration, which is why this is filed rather than urgent". Serially, with
-no contention, it is already at 76 % of its deadline.
+The store test is roadmap 4.32's, and measuring it produced a finding that item did not have:
+it does not merely sit near the deadline, it **exceeds** it — 269 ms and 1075 ms observed
+against a 63-74 ms typical, failing **5 of 6 runs from a cleared example database** on a
+Windows development machine while all four CI cells stay green. That is now
+[BUG-0021](../bugs/2026/09/BUG-0021-a-property-test-fails-its-deadline-on-store-creation.md),
+`confirmed`, and the fix stays 4.32's.
+
+> **A correction, kept rather than tidied away.** The first version of this ADR said
+> "64-152 ms, a 1.3x margin, serially, with nothing competing". The 152 ms half was measured
+> while other pytest invocations were running on the same machine — my own contention, not a
+> clean serial figure — so the "nothing competing" clause was false. Re-measured in
+> isolation the typical is 63-74 ms, and the honest worst case is not a narrow margin but an
+> outright failure. The decision below did not change; one of its arguments was wrong, and
+> the record says so rather than quietly reading better.
 
 ## Decision
 
@@ -73,9 +83,10 @@ by marker — runs `pytest -q --hypothesis-show-statistics`, and on a red run up
 no-op; it is not, because the value stops being a dependency's opinion and becomes this
 repository's. Changing it is a different decision with a different owner: roadmap 4.32 holds
 the property tests whose deadline measures SQLite store creation rather than the property
-they assert — it names four; one of them shows up in the statistics above at a 1.3x margin.
-Raising the profile deadline would silently absorb that item; lowering it would pre-empt its
-measurement. So the profile is the *seam* 4.32 acts on, and today it changes
+they assert — it names four; one of them fails that deadline today (BUG-0021). Raising the
+profile deadline would silently absorb that item; lowering it would pre-empt its measurement.
+Neither would actually fix it: a test whose fixture cost sits inside the measured window
+cannot be rescued by any global threshold, only by a per-test `deadline=None`. So the profile is the *seam* 4.32 acts on, and today it changes
 nothing about what passes.
 
 ## Alternatives Considered
@@ -88,11 +99,12 @@ nothing about what passes.
 - **A deadline derived from the measured worst case.** More in keeping with how this project
   sets numbers, and it is what I set out to do. The measurement refused it. A threshold
   fitted to the twenty-one CPU-bound tests — 100 ms would have looked defensible, at 10x
-  their worst example — **would have broken `test_any_query_text_is_safe` on the spot**, and
-  one fitted to *its* 152 ms would have raised the deadline enough to absorb 4.32 silently.
-  A global threshold has to be set against the whole population, and this population has no
-  single number that is both tighter than the status quo and honest. Per-test `deadline=None`
-  is the right instrument for the two outliers, and it is 4.32's to wield.
+  their worst example — **would have failed `test_any_query_text_is_safe` on Windows CI as
+  well as locally**, turning a one-platform intermittent into a matrix-wide red. A threshold
+  generous enough for the store test would have absorbed 4.32 silently. No single number is
+  both tighter than the status quo and honest, because the outlier's cost is *fixture* cost:
+  per-test `deadline=None` is the only instrument that removes it, and it is 4.32's to
+  wield.
 - **`actions/cache` for the example database.** The mechanism hypothesis is designed
   around: a falsifying example found in one run is replayed first in the next, so a fixed
   flake stays fixed. **Rejected**, and this is the substantive choice in this ADR. A cached
@@ -120,9 +132,19 @@ nothing about what passes.
 - **The next occurrence has a documented route.**
   `HYPOTHESIS_PROFILE=debug pytest <file> --hypothesis-show-statistics`, written down in
   `CONTRIBUTING.md` rather than only here.
-- **Roadmap 4.32 gains evidence it did not have.** Its own text calls itself "filed rather
-  than urgent" on the grounds that the four tests pass serially. They do — one of them with a
-  1.3x margin. The item's text now carries that number, and the fix is still 4.32's.
+- **Roadmap 4.32 gains evidence it did not have, and a bug record.** Its own text calls
+  itself "filed rather than urgent" on the grounds that the four tests pass serially. One of
+  them does not: it fails 5 of 6 runs on a Windows development machine, 269 ms and 1075 ms
+  against a 200 ms deadline, with the example database cleared before each run. That is BUG-0021, `confirmed`; the item's text
+  carries the numbers, and the fix is still 4.32's.
+- **The `actions/cache` refusal stopped being theoretical.** Reproducing the store failure
+  wrote its slow example into the local `.hypothesis/examples`, where the reuse phase replays
+  it first. Had that database been cached into CI, a slow example from one filesystem would be
+  replayed on runners where the same test finishes in 8 ms, failing them for a property that
+  holds. The refusal was argued from reproducibility; the demonstration is that a cached
+  example database transports a *platform*, not just an example. (It is not, as I first
+  assumed, what drives the local failure rate — six runs from a cleared database still failed
+  five times.)
 - **CI output grows a statistics block per property test** in the build matrix — twenty-three
   short blocks. That is the cost of being able to read per-example runtimes against the
   deadline after the fact instead of guessing.
@@ -140,13 +162,17 @@ nothing about what passes.
 
 - ROADMAP 4.29 (this item), 4.18 (`test_the_observer_ignores_the_derived_store`, the same
   family, closed on evidence), 4.32 (four property tests whose deadline measures I/O).
-- Measured 2026-09-08, this repository, `pytest -q --hypothesis-show-statistics` (1511
-  passed, 3 skipped, 765 s, serial): 23 property tests, of which
-  `test_node_list_is_always_a_well_formed_ordered_tree` reports `~ 0-4 ms` per example,
-  `test_any_query_text_is_safe` `~ 64-152 ms`, and
-  `test_any_mutation_sequence_stays_equal_to_clean` `~ 890-1784 ms`. Hypothesis 6.165.10
-  defaults to `deadline=200ms`, `print_blob=False`, and a database under
+- Measured 2026-09-08, this repository, `pytest -q --hypothesis-show-statistics`: 23 property
+  tests. `test_node_list_is_always_a_well_formed_ordered_tree` reports `~ 0-4 ms` per example
+  locally and `~ 0-2 ms` on `ubuntu-24.04`. `test_any_query_text_is_safe` reports 8-10 ms on
+  `ubuntu-24.04`, 5-10 ms on `macos-14` and 40-62 ms on `windows-2022`
+  ([run 34197166624](https://github.com/danielPoloWork/mycelium-os/actions/runs/34197166624)),
+  and 63-74 ms typical locally with observed 269 ms and 1075 ms failures.
+  `test_any_mutation_sequence_stays_equal_to_clean` reports `~ 890-1784 ms`. Hypothesis
+  6.165.10 defaults to `deadline=200ms`, `print_blob=False`, and a database under
   `.hypothesis/examples` relative to the working directory.
+- [BUG-0021](../bugs/2026/09/BUG-0021-a-property-test-fails-its-deadline-on-store-creation.md)
+  — the store test's deadline failure, recorded while closing this item.
 - Spec 04 §6 (property tests among the verification layers);
   [ADR-0012](0012-adopt-the-g6-determinism-gate.md) (what determinism claims, and why a
   run must be a function of its commit).
