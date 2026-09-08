@@ -10,6 +10,25 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **`u-1007` is re-judged from the documents** (roadmap 4.34,
+  [ADR-0062](docs/adr/0062-a-symbol-judgment-names-where-the-thing-is-documented.md)).
+  The `uv tool install` case had scored 0.0000 since it was written, and reading it from the
+  documents said why: its one anchor was a section whose subject is the `uv tool` *interface*
+  — the correct grade-3 home of a different query (`u-0006`, `uvx`, which that section
+  defines) — while the corpus, which vendors no CLI reference, documents the command in the
+  guide's `Installing tools` section. It is not a reach failure: the judged chunk came back
+  at rank 11, 1.1 % behind rank 10, in a field of eleven chunks spanning 21 %.
+
+  Re-judged on the convention its three sibling `symbol` cases already follow: the
+  documenting section at 3 (section-scoped), the framing section at 2, the feature-list
+  mention at 1. **Exactly one case moves on all four corpus × retriever combinations** —
+  uv/release 0.5858 → 0.6021 (`symbol` 0.5852 → 0.6787), uv-ingested 0.6153 → 0.6300 — and it
+  **costs lead**: the incumbent gains twice what we do, narrowing uv/release from +0.1009 to
+  +0.0848. No code under `src/`; both frozen baselines re-blessed, both retrievers, and gate
+  G3 armed again at 5 of 6 slices. The rule is now written down in `eval/README.md`.
+
 ### Added
 
 - **A property test that builds a store now has to exempt itself from the timing deadline**

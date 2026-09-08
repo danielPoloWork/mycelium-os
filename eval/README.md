@@ -191,6 +191,16 @@ was widened; the reasoning, and the one case where it overrides ADR-0029's cauti
 cost measured, is in
 [ADR-0043](../docs/adr/0043-judge-across-the-configurations-a-set-is-scored-under.md).
 
+**A judgment names where the thing is documented, not where it is framed.** The unit rule
+above says chunk-or-section; this one says *which* chunk or section. A `symbol` case — a
+query that is a named thing — names the section that documents it at grade 3; a page that
+frames it, defines a sibling, or mentions it in passing is a lesser grade or none, never the
+primary anchor. `u-1007` (`uv tool install`) broke it and scored 0.0000 for four milestones:
+its one anchor was a section whose subject is the *interface*, and which is the correct
+grade-3 home of a different query (`u-0006`, `uvx`, which it defines). Re-judged at roadmap
+4.34, with the reasoning and the honesty note — the incumbent gains twice what we do — in
+[ADR-0062](../docs/adr/0062-a-symbol-judgment-names-where-the-thing-is-documented.md).
+
 **Freezing is a conjunction, not an immutability.** Sets have to grow, so
 `tools/check_frozen_release_sets.py` refuses a change that edits a release set *and* touches
 retrieval, chunking, the store or the metrics. One change may move the retriever, or move

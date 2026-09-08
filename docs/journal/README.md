@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-08 — the section that defines a sibling (roadmap 4.34)](2026/09/2026-09-08-the-section-that-defines-a-sibling.md)
 - [2026-09-08 — the four that were two, and had already been done (roadmap 4.32)](2026/09/2026-09-08-count-before-decorating.md)
 - [2026-09-08 — the flake I did not fix (roadmap 4.29)](2026/09/2026-09-08-declare-the-test-budget.md)
 - [2026-09-07 — the plan was written twice (roadmap 4.35)](2026/09/2026-09-07-the-plan-was-written-twice.md)

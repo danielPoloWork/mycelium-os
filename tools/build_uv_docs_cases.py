@@ -179,8 +179,21 @@ RELEASE: tuple[Judgment, ...] = (
         "u-1007",
         "uv tool install",
         (EvalSlice.SYMBOL,),
-        (("docs/concepts/tools.md#the-uv-tool-interface/0", 2),),
-        "A command name that appears in several documents; the concept page frames it.",
+        (
+            ("docs/guides/tools.md#installing-tools/", 3),
+            ("docs/concepts/tools.md#the-uv-tool-interface/0", 2),
+            ("docs/getting-started/features.md#tools/0", 1),
+        ),
+        "A command with two homes, and the first judgement named the lesser one "
+        "(roadmap 4.34). This corpus vendors no CLI reference, so the command is "
+        "*documented* by the guide's `Installing tools` section - what it does, where "
+        "the executables land, how it differs from `uv pip install`, the flags - which "
+        "is the grade-3 unit its three sibling `symbol` cases all name. Section-scoped "
+        "because the answer is spread across the whole of it (ADR-0029). The concepts "
+        "page keeps grade 2: it frames the interface and mentions the command in one "
+        "sentence, which is more than 'it exists' and less than its documentation. The "
+        "feature list is graded 1 on u-1019's precedent - it answers only that the "
+        "command exists.",
     ),
     (
         "u-1008",
