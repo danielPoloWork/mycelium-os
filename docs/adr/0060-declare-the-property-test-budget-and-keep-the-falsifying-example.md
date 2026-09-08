@@ -51,7 +51,9 @@ needs a twenty-fold slowdown or worse. Two do not, and the distribution decides 
 The store test is roadmap 4.32's, and measuring it produced a finding that item did not have:
 it does not merely sit near the deadline, it **exceeds** it — 269 ms and 1075 ms observed
 against a 63-74 ms typical, failing **5 of 6 runs from a cleared example database** on a
-Windows development machine while all four CI cells stay green. That is now
+Windows development machine. And then, on the next CI run of this very branch, it failed
+`ubuntu-24.04` too: `Test took 501.68ms` where that runner's typical is 8-10 ms, a 50-60x
+stall ([run 34203353202](https://github.com/danielPoloWork/mycelium-os/actions/runs/34203353202)). That is now
 [BUG-0021](../bugs/2026/09/BUG-0021-a-property-test-fails-its-deadline-on-store-creation.md),
 `confirmed`, and the fix stays 4.32's.
 
@@ -134,9 +136,11 @@ nothing about what passes.
   `CONTRIBUTING.md` rather than only here.
 - **Roadmap 4.32 gains evidence it did not have, and a bug record.** Its own text calls
   itself "filed rather than urgent" on the grounds that the four tests pass serially. One of
-  them does not: it fails 5 of 6 runs on a Windows development machine, 269 ms and 1075 ms
-  against a 200 ms deadline, with the example database cleared before each run. That is BUG-0021, `confirmed`; the item's text
-  carries the numbers, and the fix is still 4.32's.
+  them does not: 5 of 6 runs on a Windows development machine, and then `ubuntu-24.04` on
+  CI. That is BUG-0021, `fixed` here — see the addendum for why the boundary moved — and
+  4.32 keeps the rest of its scope, plus the finding that only one property test in
+  twenty-three runs above 10 ms per example, so its "three more behave the same way" is
+  unconfirmed.
 - **The `actions/cache` refusal stopped being theoretical.** Reproducing the store failure
   wrote its slow example into the local `.hypothesis/examples`, where the reuse phase replays
   it first. Had that database been cached into CI, a slow example from one filesystem would be
@@ -157,6 +161,29 @@ nothing about what passes.
 - **What this does not do:** it does not explain the failure, and it does not claim the flake
   is fixed. The item stays closed on the evidence it asked for, not on a cause; if the test
   fails again, 4.29's output is what makes that occurrence worth something.
+
+## Addendum, same day: the boundary moved, and why
+
+This ADR argued that the store test's fix belonged to roadmap 4.32 and not here, because a
+global deadline change would either absorb that item or pre-empt its measurement. That
+argument still holds for the *number*. It stopped holding for the *test*.
+
+Between this PR's first CI run (four green cells) and its second, `ubuntu-24.04` failed with
+`DeadlineExceeded: Test took 501.68ms`. A reproduced red on the matrix cannot be left for a
+later item: it blocks this PR, it will redden unrelated PRs, and "re-run it" is precisely how
+a flake becomes normal — the harm roadmap 4.18 and 4.29 exist to prevent.
+
+So `test_any_query_text_is_safe` gets `@settings(deadline=None)` in this PR, BUG-0021 is
+`fixed`, and roadmap 4.32 stays open for the remainder of its scope. The scope extension is
+recorded here rather than folded in quietly, because the reason it happened — evidence
+arriving after the decision — is the only thing that justifies it. Two facts hand 4.32 more
+than it had: the fix is one decorator per test, and measuring all 23 property tests found
+only this one above 10 ms per example, so the "three more" in its text is unconfirmed and may
+be empty.
+
+The instrumentation this item added is what made the failure legible: the CI log carried
+`@reproduce_failure('6.165.10', b'AITCk8KS')` and the statistics block beside it. That was
+4.29's whole deliverable, working on the first real failure after it landed.
 
 ## References
 

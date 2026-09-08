@@ -57,19 +57,19 @@ is 20x headroom or better. Two do not:
 
 - `test_any_mutation_sequence_stays_equal_to_clean` rebuilds a corpus
   (890-1784 ms) and has set `deadline=None` since roadmap 3.1.
-- `test_any_query_text_is_safe` opens a SQLite store per example: 8-10 ms on
-  `ubuntu-24.04`, 5-10 ms on `macos-14`, 40-62 ms on `windows-2022`, and
-  **63-74 ms typical on a Windows development machine, where it exceeds the
-  deadline outright** — 269 ms and 1075 ms observed, failing 5 of 6 runs from a
-  cleared example database (BUG-0021). That is roadmap 4.32's test, and its fix
-  is one `deadline=None` decorator there, not a change to this number.
+- `test_any_query_text_is_safe` opened a SQLite store per example and **failed
+  this deadline** — 8-10 ms typical on `ubuntu-24.04` yet 501 ms observed there,
+  63-74 ms typical on a Windows development machine yet 269 ms and 1075 ms
+  observed, 5 of 6 runs from a cleared database (BUG-0021, fixed). It now sets
+  `deadline=None`, which is the only instrument that helps: the cost was
+  *fixture* cost, inside the measured window, so no global threshold could have
+  separated it from the property.
 
-So the number is left alone for a reason that survives the measurement rather
-than resting on it: raising it would silently absorb 4.32, and lowering it to fit
-the twenty-one would fail the store test everywhere instead of on one platform.
-A global threshold cannot fix a test whose fixture cost is inside the measured
-window — only a per-test `deadline=None` can, which is why the profile is a seam
-and not a solution.
+So the number is left alone, and the one test that could not live with it was
+exempted individually. That is the shape of the thing: a global threshold cannot
+fix a test whose fixture cost is inside the measured window, and raising this
+number to accommodate one such test would have quietly loosened the budget for
+the other twenty-two. The profile is a seam, not a solution.
 """
 
 settings.register_profile(

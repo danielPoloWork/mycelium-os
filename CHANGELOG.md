@@ -28,15 +28,6 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   failure recurs — no deadline, verbose, 1000 examples. No cause is claimed for the original
   failure; this makes the next occurrence worth something.
 
-  Declaring the deadline made the whole population visible, which turned up a second,
-  *reproducible* defect against it:
-  [BUG-0021](docs/bugs/2026/09/BUG-0021-a-property-test-fails-its-deadline-on-store-creation.md)
-  — `test_any_query_text_is_safe` opens a SQLite store per example and exceeds the 200 ms
-  deadline on a slow filesystem (269 ms and 1075 ms observed, 5 of 6 runs; all four CI cells
-  green). It is
-  recorded, not fixed here: the fix is one `deadline=None` decorator and belongs to roadmap
-  4.32, which owns those tests.
-
 - **A conceded slice now names the cases it is made of** (roadmap 4.25,
   [ADR-0058](docs/adr/0058-decompose-a-conceded-slice-before-believing-it.md)).
   `mycelium eval --against grep` reported `still conceded: fact 0.431 vs 0.497` and left it
@@ -226,6 +217,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   growing a set changes its `cases_digest`, which is ADR-0051's designed behaviour.
 
 ### Fixed
+
+- **A property test no longer fails on how long it takes to create a SQLite store**
+  ([BUG-0021](docs/bugs/2026/09/BUG-0021-a-property-test-fails-its-deadline-on-store-creation.md),
+  roadmap 4.29). `test_any_query_text_is_safe` opens a new store per hypothesis example, and
+  hypothesis's deadline covers the whole example body — so a 200 ms budget was measuring
+  filesystem speed rather than the property, and it failed on it: 501 ms on `ubuntu-24.04` CI
+  against an 8-10 ms typical ([run 34203353202](https://github.com/danielPoloWork/mycelium-os/actions/runs/34203353202)), and 269 ms and 1075 ms on a Windows
+  development machine against 63-74 ms, 5 of 6 runs. It now sets `deadline=None`, with the
+  reason in a comment beside it. The assertion is unchanged: no generated query string can
+  break FTS5 search.
 
 - **Gate G3 can now see a case-set change** (roadmap 4.24,
   [ADR-0051](docs/adr/0051-hold-the-judgements-fixed-too.md)). A slice's score is a mean
