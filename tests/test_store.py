@@ -11,7 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from mycelium.chunking import chunk_document
@@ -414,6 +414,15 @@ def test_operator_laden_queries_are_matched_as_words(store: SqliteStore, query: 
     assert store.counts()["chunks"] == 1
 
 
+# `deadline=None` because this example opens a *new store* — a temp directory, a
+# SQLite file, the DDL and the FTS5 index — and hypothesis's deadline covers the
+# whole example body, fixture work included. So the deadline measured filesystem
+# speed rather than the property, and it failed on that: 501 ms on `ubuntu-24.04`
+# against an 8-10 ms typical, 1075 ms on a Windows development machine against
+# 63-74 ms ([BUG-0021]). What is asserted here is that no generated query string
+# can break FTS5 search; how long it takes to create a store is not that claim,
+# and `test_build_incremental.py` set the same precedent at roadmap 3.1.
+@settings(deadline=None)
 @given(query=st.text(max_size=60))
 def test_any_query_text_is_safe(tmp_path_factory: pytest.TempPathFactory, query: str) -> None:
     root = tmp_path_factory.mktemp("store")

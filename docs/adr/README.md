@@ -75,3 +75,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0057](0057-drop-the-function-words-and-score-the-seam-that-ships.md) | Drop the function words, and score the seam that ships | Accepted |
 | [0058](0058-decompose-a-conceded-slice-before-believing-it.md) | Decompose a conceded slice before believing what it says | Accepted |
 | [0059](0059-make-the-plan-one-implementation-too.md) | Make the plan one implementation too, and let `retrieval` gate every corpus | Accepted |
+| [0060](0060-declare-the-property-test-budget-and-keep-the-falsifying-example.md) | Declare the property-test budget, and keep the falsifying example | Accepted |

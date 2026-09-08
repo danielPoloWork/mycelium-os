@@ -12,6 +12,22 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Property tests now declare their own timing budget, and a failure survives the run**
+  (roadmap 4.29,
+  [ADR-0060](docs/adr/0060-declare-the-property-test-budget-and-keep-the-falsifying-example.md)).
+  A property test failed once in a full-suite run and left nothing to look at: no persisted
+  falsifying example, and a tail truncated before the traceback. Two things change. The
+  suite registers a `mycelium` hypothesis profile with `deadline` stated explicitly at
+  **200 ms** — deliberately the value hypothesis 6.165 already defaults to, so behaviour is
+  unchanged and the number stops being an *unversioned* input that `hypothesis>=6.112` could
+  move in a patch release — and with `print_blob` on, so a failure prints a
+  `@reproduce_failure(...)` blob that is replayable from the log alone. CI's build matrix
+  runs `--hypothesis-show-statistics` and uploads `.hypothesis/` on a red run. A cross-run
+  cache of the example database was refused: it would let a previous run decide this one's
+  result. `HYPOTHESIS_PROFILE=debug` is the documented route when an intermittent property
+  failure recurs — no deadline, verbose, 1000 examples. No cause is claimed for the original
+  failure; this makes the next occurrence worth something.
+
 - **A conceded slice now names the cases it is made of** (roadmap 4.25,
   [ADR-0058](docs/adr/0058-decompose-a-conceded-slice-before-believing-it.md)).
   `mycelium eval --against grep` reported `still conceded: fact 0.431 vs 0.497` and left it
@@ -201,6 +217,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   growing a set changes its `cases_digest`, which is ADR-0051's designed behaviour.
 
 ### Fixed
+
+- **A property test no longer fails on how long it takes to create a SQLite store**
+  ([BUG-0021](docs/bugs/2026/09/BUG-0021-a-property-test-fails-its-deadline-on-store-creation.md),
+  roadmap 4.29). `test_any_query_text_is_safe` opens a new store per hypothesis example, and
+  hypothesis's deadline covers the whole example body — so a 200 ms budget was measuring
+  filesystem speed rather than the property, and it failed on it: 501 ms on `ubuntu-24.04` CI
+  against an 8-10 ms typical ([run 34203353202](https://github.com/danielPoloWork/mycelium-os/actions/runs/34203353202)), and 269 ms and 1075 ms on a Windows
+  development machine against 63-74 ms, 5 of 6 runs. It now sets `deadline=None`, with the
+  reason in a comment beside it. The assertion is unchanged: no generated query string can
+  break FTS5 search.
 
 - **Gate G3 can now see a case-set change** (roadmap 4.24,
   [ADR-0051](docs/adr/0051-hold-the-judgements-fixed-too.md)). A slice's score is a mean
