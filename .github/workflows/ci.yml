@@ -129,9 +129,33 @@ jobs:
         shell: bash
         run: uv run hatch build
 
+      # `--hypothesis-show-statistics` is on here and nowhere else: this is the
+      # only job that runs the property tests (the others select by marker), and
+      # roadmap 4.29 was filed because one of them failed once and left nothing
+      # to look at. The statistics block reports per-example runtimes against the
+      # profile's deadline, so the next occurrence can be read rather than
+      # guessed at.
       - name: Test
         shell: bash
-        run: uv run pytest -q
+        run: uv run pytest -q --hypothesis-show-statistics
+
+      # The falsifying example, kept. Hypothesis writes it into `.hypothesis/`,
+      # which a fresh checkout throws away — so on a red run it is uploaded and
+      # can be replayed locally with `HYPOTHESIS_PROFILE=debug`.
+      #
+      # Deliberately an artifact and NOT `actions/cache`: a cached example
+      # database would let a *previous* run decide this one's result, and "same
+      # commit, different answer" is the property this repository gates against
+      # (NFR-1, gate G6). Losing the cross-run replay is the price; the artifact
+      # keeps the diagnosis, which is what 4.29 asked for.
+      - name: Keep the falsifying example
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hypothesis-examples-${{ matrix.os }}-${{ matrix.toolchain }}
+          path: .hypothesis/
+          if-no-files-found: ignore
+          retention-days: 14
 
   # ---------------------------------------------------------------------------
   # Cross-artifact congruence — the agent-runnable consistency lint.

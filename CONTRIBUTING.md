@@ -42,6 +42,25 @@ python tools/consistency_lint.py
 ```
 
 All five must pass before a PR is opened; CI re-runs them on Linux, Windows, and macOS.
+`python tools/verify.py` runs the subset your diff implicates and prints which ones those
+are, which is the faster loop for a focused change (ADR-0055).
+
+### When a property test fails intermittently
+
+Property tests run under the `mycelium` hypothesis profile registered in
+`tests/conftest.py`: a declared 200 ms per-example deadline, and `print_blob`, so a failure
+prints a `@reproduce_failure(...)` line you can paste onto the test as a decorator to replay
+the exact example. If a property test fails once and passes on re-run, keep that line — it
+is the only durable record of the example. Then:
+
+```bash
+HYPOTHESIS_PROFILE=debug uv run pytest tests/test_markdown_adapter.py --hypothesis-show-statistics
+```
+
+The `debug` profile drops the deadline, turns on verbose output, and runs 1000 examples
+instead of 100. In CI the same evidence is already collected: the build matrix shows
+hypothesis statistics, and a red run uploads the example database as an artifact
+(ADR-0060).
 
 ## Making a change
 

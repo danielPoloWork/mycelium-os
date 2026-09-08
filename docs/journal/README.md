@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-08 — the flake I did not fix (roadmap 4.29)](2026/09/2026-09-08-declare-the-test-budget.md)
 - [2026-09-07 — the plan was written twice (roadmap 4.35)](2026/09/2026-09-07-the-plan-was-written-twice.md)
 - [2026-09-07 — two cases, not a corpus (roadmap 4.25)](2026/09/2026-09-07-two-cases-not-a-corpus.md)
 - [2026-09-05 — the harness had been measuring the fix for four milestones (roadmap 4.28)](2026/09/2026-09-05-the-harness-was-measuring-the-fix.md)

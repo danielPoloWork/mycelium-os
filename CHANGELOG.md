@@ -12,6 +12,22 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Property tests now declare their own timing budget, and a failure survives the run**
+  (roadmap 4.29,
+  [ADR-0060](docs/adr/0060-declare-the-property-test-budget-and-keep-the-falsifying-example.md)).
+  A property test failed once in a full-suite run and left nothing to look at: no persisted
+  falsifying example, and a tail truncated before the traceback. Two things change. The
+  suite registers a `mycelium` hypothesis profile with `deadline` stated explicitly at
+  **200 ms** — deliberately the value hypothesis 6.165 already defaults to, so behaviour is
+  unchanged and the number stops being an *unversioned* input that `hypothesis>=6.112` could
+  move in a patch release — and with `print_blob` on, so a failure prints a
+  `@reproduce_failure(...)` blob that is replayable from the log alone. CI's build matrix
+  runs `--hypothesis-show-statistics` and uploads `.hypothesis/` on a red run. A cross-run
+  cache of the example database was refused: it would let a previous run decide this one's
+  result. `HYPOTHESIS_PROFILE=debug` is the documented route when an intermittent property
+  failure recurs — no deadline, verbose, 1000 examples. No cause is claimed for the original
+  failure; this makes the next occurrence worth something.
+
 - **A conceded slice now names the cases it is made of** (roadmap 4.25,
   [ADR-0058](docs/adr/0058-decompose-a-conceded-slice-before-believing-it.md)).
   `mycelium eval --against grep` reported `still conceded: fact 0.431 vs 0.497` and left it

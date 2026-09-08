@@ -7,7 +7,9 @@
 > [`audit-2026-08-29-bootstrap.md`](audit-2026-08-29-bootstrap.md)). Boundaries marked
 > *(design)* come from the accepted design (RFC-0001 / spec docs 02 §8, 04 §6) and gain
 > their mechanical controls at the named milestone — they are modeled now so the controls
-> are built in, not bolted on. **Last revised 2026-09-07** (roadmap 4.35, PR #82): B13's
+> are built in, not bolted on. **Last revised 2026-09-08** (roadmap 4.29, PR #83): CI now
+> uploads a build artifact on a red run — the hypothesis example database — so B1 gains a row
+> for what an artifact may carry. The revision before, 2026-09-07 (roadmap 4.35, PR #82): B13's
 > control was mitigated against a *declared* narrowing and blind to an *implemented* one —
 > the plan behind a mode was a second implementation, and at `retrieval` it ran fewer gates
 > than CI. The revision before, 2026-09-04 (roadmap 4.31, PR #78):
@@ -62,6 +64,7 @@
 | Denial of service | A refusal that scrolls past, so a hostile file is neither fixed nor noticed | B4 | Spec 02 §5's first verb: every refusal writes a quarantine record naming its stage, kept until the source succeeds or is explicitly forgotten, never swept by `mycelium gc`, and surfaced by `mycelium doctor` as a warning rather than a failure | ✅ mitigated (4.6) |
 | Information disclosure — can data leak? | Secrets committed to the repo | B1 | Secret-pattern grep clean this audit; `.gitignore` excludes local agent settings; **no repository secrets configured**; ingestion-time secret scanning is live from 4.6, and this repository's own `docs/` tree is the scanner's asserted-clean negative corpus — a rule that started flagging our writing would fail the suite | ✅ mitigated |
 | Information disclosure | CI leaking data from a private repo | B1/B2 | ci.yml `permissions: contents: read`; no secrets available to PR workflows; telemetry: none (D-017) | ✅ mitigated |
+| Information disclosure | A CI artifact carrying repository content out of the run | B1 | One artifact exists (roadmap 4.29): `.hypothesis/`, uploaded only `if: failure()`, 14-day retention. It holds bytes produced by hypothesis *strategies* — generated test inputs, not corpus content, not configuration, and there are no secrets for CI to reach anyway. A future artifact is a new answer to this row, not a repeat of it (ADR-0060) | ✅ mitigated |
 | Information disclosure | Repository content sent to a third-party model | B10 | Off unless configured, and configuring it is the consent (D-013/D-017); one request per document carrying only that document's evidence; the provider, model and prompt digest of every run are recorded in tier-1 custody, so what was sent is auditable after the fact | ✅ adequate; the *decision* is the operator's |
 | Information disclosure | A candidate's claims and its evidence sent to a judge | B10 | The entailment judge rides on the *same* `[synthesis] provider` consent — no second credential, no second decision to make — and sends one claim with the section it cited, `sample_size` times per document. With no provider it is not called at all and the gate reports the component as unmeasured rather than reaching for a network (D-013/D-017) | ✅ adequate (4.5); the *decision* is the operator's |
 | Information disclosure | Indexed content served across a trust boundary | B6 (design) | v1 is single-user local (D-002) — n/a until the server profile; `trust:` filters + labels exist from M2 so consumers can exclude low-trust tiers | ▢ n/a at v1 scale (reason recorded) |
