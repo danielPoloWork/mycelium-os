@@ -1,15 +1,17 @@
 ---
 title: Working on projects
 origin: ingested
-source: "file:sources/guides/projects.html"
-source_digest: "sha256:4de721b625ddbcabaf60cb0e6610aa9883dab25a5da3552399b94c33de7c941e"
+source: "file:sources/guides/projects.docx"
+source_digest: "sha256:e41d7476031edb845f7753cd4fddf624a4b8d299fa7fd4609039d24873aef6dc"
 ---
 
 # Working on projects
 
+## Working on projects
+
 uv supports managing Python projects, which define their dependencies in a pyproject.toml file.
 
-## Creating a new project
+### Creating a new project
 
 You can create a new Python project using the uv init command:
 
@@ -39,14 +41,14 @@ uv will create the following files and directories:
         └── __init__.py
 ```
 
-The pyproject.toml defines a hello-world entrypoint referring to a simple "Hello world" program in __init__.py. Try it out with uv run:
+The pyproject.toml defines a hello-world entrypoint referring to a simple “Hello world” program in __init__.py. Try it out with uv run:
 
 ```
 $ uv run hello-world
 Hello from hello-world!
 ```
 
-## Project structure
+### Project structure
 
 A project consists of a few important parts that work together and allow uv to manage your project. In addition to the files created by uv init, uv will create a virtual environment and uv.lock file in the root of your project the first time you run a project command, i.e., uv run, uv sync, or uv lock.
 
@@ -69,17 +71,18 @@ A complete listing would look like:
 └── uv.lock
 ```
 
-### pyproject.toml
+#### pyproject.toml
 
 The pyproject.toml contains metadata about your project:
 
-```toml title="pyproject.toml" [project] name = "hello-world" version = "0.1.0" description = "Add your description here" readme = "README.md" authors = [ { name = "ferris", email = "ferris@example.org" }] requires-python = ">=3.14" dependencies = []
+```toml title=“pyproject.toml” [project] name = “hello-world” version = “0.1.0” description = “Add your description here” readme = “README.md” authors = [ { name = “ferris”, email = “ferris@example.org” }] requires-python = “>=3.14” dependencies = []
 
-[project.scripts] hello-world = "hello_world:main"
+[project.scripts] hello-world = “hello_world:main”
 
-[build-system] requires = ["uv_build>=0.12.7,<0.13"] build-backend = "uv_build"
+[build-system] requires = [“uv_build>=0.12.7,<0.13”] build-backend = “uv_build”
 
 ````
+
 You'll use this file to specify dependencies, as well as details about the project such as its
 description or license. You can edit this file manually, or use commands like `uv add` and
 `uv remove` to manage your project from the terminal.
@@ -136,7 +139,7 @@ $ # Add a git dependency
 $ uv add git+https://github.com/psf/requests
 ```
 
-If you're migrating from a requirements.txt file, you can use uv add with the -r flag to add all dependencies from the file:
+If you’re migrating from a requirements.txt file, you can use uv add with the -r flag to add all dependencies from the file:
 
 ```
 $ # Add all dependencies from `requirements.txt`.
@@ -159,9 +162,9 @@ The --upgrade-package flag will attempt to update the specified package to the l
 
 See the documentation on managing dependencies for more details.
 
-## Viewing your version
+### Viewing your version
 
-The uv version command can be used to read your package's version.
+The uv version command can be used to read your package’s version.
 
 To get the version of your package, run uv version:
 
@@ -190,7 +193,7 @@ $ uv version --output-format json
 
 See the publishing guide for details on updating your package version.
 
-## Running commands
+### Running commands
 
 uv run can be used to run arbitrary scripts or commands in your project environment.
 
@@ -213,18 +216,19 @@ $ uv run -- flask run -p 3000
 
 Or, to run a script:
 
-```python title="example.py" # Require a project dependency import flask
+```python title=“example.py” # Require a project dependency import flask
 
-print("hello world")
+print(“hello world”)
 
 ````
+
 ```console
 $ uv run example.py
 ````
 
 Alternatively, you can use uv sync to manually update the environment then activate it before executing a command:
 
-=== "macOS and Linux"
+=== “macOS and Linux”
 
 ````
 ```console
@@ -235,7 +239,7 @@ $ python example.py
 ```
 ````
 
-=== "Windows"
+=== “Windows”
 
 ````
 ```pwsh-session
@@ -254,11 +258,11 @@ The virtual environment must be active to run scripts and commands in the projec
 
 See the documentation on running commands and scripts in projects for more details.
 
-## Building distributions
+### Building distributions
 
 uv build can be used to build source distributions and binary distributions (wheel) for your project.
 
-By default, uv build will build the project in the current directory, and place the built artifacts in a dist/subdirectory:
+By default, uv build will build the project in the current directory, and place the built artifacts in a dist/ subdirectory:
 
 ```
 $ uv build
@@ -269,7 +273,7 @@ hello_world-0.1.0.tar.gz
 
 See the documentation on building projects for more details.
 
-## Next steps
+### Next steps
 
 To learn more about working on projects with uv, see the projects concept page and the command reference.
 

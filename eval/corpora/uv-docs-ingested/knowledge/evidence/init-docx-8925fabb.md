@@ -1,8 +1,8 @@
 ---
 title: Creating projects
 origin: ingested
-source: "file:sources/concepts/projects/init.html"
-source_digest: "sha256:d328c8cac4525be6403efc826faf00347b6694371fcf28c491aee6829b2f83f1"
+source: "file:sources/concepts/projects/init.docx"
+source_digest: "sha256:8925fabbb35c174e8aa2b445aa578b19b756b0ce1ff6a761edb74352c637a8e4"
 ---
 
 # Creating projects
@@ -11,7 +11,7 @@ uv supports creating a project with uv init.
 
 When creating projects, uv supports two basic templates: applications and libraries. By default, uv will create a project for an application. The --lib flag can be used to create a project for a library instead.
 
-In both cases, uv prefers to define a build system and place source files in a dedicated src/<project_name>/directory. Defining a build system allows use of various Python packaging features, such as adding command-line entry points, and avoids common points of confusion with the Python import system. Use of a build system can be disabled by using the --no-package or --bare options.
+In both cases, uv prefers to define a build system and place source files in a dedicated src/<project_name>/ directory. Defining a build system allows use of various Python packaging features, such as adding command-line entry points, and avoids common points of confusion with the Python import system. Use of a build system can be disabled by using the --no-package or --bare options.
 
 !!! note
 
@@ -21,7 +21,7 @@ Prior to v0.12, uv did not define a build system for applications by default.
 
 ## Target directory
 
-uv will create a project in the working directory, or, in a target directory by providing a name, e.g., uv init foo. The working directory can be modified with the --directory option, which will cause the target directory path to be interpreted relative to the specified working directory. If there's already a project in the target directory, i.e., if there's a pyproject.toml, uv will exit with an error.
+uv will create a project in the working directory, or, in a target directory by providing a name, e.g., uv init foo. The working directory can be modified with the --directory option, which will cause the target directory path to be interpreted relative to the specified working directory. If there’s already a project in the target directory, i.e., if there’s a pyproject.toml, uv will exit with an error.
 
 ## Applications
 
@@ -48,13 +48,14 @@ example-app/
 
 A build system is defined, so the project will be installed into the environment:
 
-```toml title="pyproject.toml" hl_lines="12-14" [project] name = "example-app" version = "0.1.0" description = "Add your description here" readme = "README.md" requires-python = ">=3.11" dependencies = []
+```toml title=“pyproject.toml” hl_lines=“12-14” [project] name = “example-app” version = “0.1.0” description = “Add your description here” readme = “README.md” requires-python = “>=3.11” dependencies = []
 
-[project.scripts] example-app = "example_app:main"
+[project.scripts] example-app = “example_app:main”
 
-[build-system] requires = ["uv_build>=0.12.7,<0.13"] build-backend = "uv_build"
+[build-system] requires = [“uv_build>=0.12.7,<0.13”] build-backend = “uv_build”
 
 ````
+
 !!! tip
 
     The `--build-backend` option can be used to request an alternative build system.
@@ -126,11 +127,12 @@ is well separated from the rest of the project source.
 
 A build system is defined, so the project will be installed into the environment:
 
-```toml title="pyproject.toml" hl_lines="12-14" [project] name = "example-lib" version = "0.1.0" description = "Add your description here" readme = "README.md" requires-python = ">=3.11" dependencies = []
+```toml title=“pyproject.toml” hl_lines=“12-14” [project] name = “example-lib” version = “0.1.0” description = “Add your description here” readme = “README.md” requires-python = “>=3.11” dependencies = []
 
-[build-system] requires = ["uv_build>=0.12.7,<0.13"] build-backend = "uv_build"
+[build-system] requires = [“uv_build>=0.12.7,<0.13”] build-backend = “uv_build”
 
 ````Python
+
 !!! tip
 
     You can select a different build backend template by using `--build-backend` with `hatchling`,
@@ -154,7 +156,7 @@ Hello from example-lib!
 
 ## Projects with extension modules
 
-Most Python projects are "pure Python", meaning they do not define modules in other languages like C, C++, FORTRAN, or Rust. However, projects with extension modules are often used for performance sensitive code.
+Most Python projects are “pure Python”, meaning they do not define modules in other languages like C, C++, FORTRAN, or Rust. However, projects with extension modules are often used for performance sensitive code.
 
 Creating a project with an extension module requires choosing an alternative build system. uv supports creating projects with the following build systems that support building extension modules:
 
@@ -201,7 +203,7 @@ If using `scikit-build-core`, you'll see CMake configuration and a `main.cpp` fi
 
 The Rust library defines a simple function:
 
-```rust title="src/lib.rs" use pyo3::prelude::*;
+```rust title=“src/lib.rs” use pyo3::prelude::*;
 
 #[pymodule] mod _core { use pyo3::prelude::*;
 
@@ -215,6 +217,7 @@ fn hello_from_bin() -> String {
 }
 
 ````Python
+
 And the Python module imports it:
 
 ```python title="src/example_ext/__init__.py"
@@ -264,17 +267,16 @@ example-app/
 
 The pyproject.toml includes basic metadata. It does not include a build system, it is not a package, and will not be installed into the environment:
 
-```
 toml title="pyproject.toml" [project] name = "example-app" version = "0.1.0" description = "Add your description here" readme = "README.md" requires-python = ">=3.11" dependencies = []
-```
 
 The sample file defines a main function with some standard boilerplate:
 
-```python title="main.py" def main(): print("Hello from example-app!")
+```python title=“main.py” def main(): print(“Hello from example-app!”)
 
-if name == " main ": main()
+if name == “main”: main()
 
 ````
+
 Python files can be executed with `uv run`:
 
 ```console
@@ -309,7 +311,7 @@ requires-python = ">=3.12"
 dependencies = []
 ```
 
-The --bare option can be used with other options like --lib or --build-backend - in these cases uv will still configure a build system but will not create the expected file structure.
+The --bare option can be used with other options like --lib or --build-backend — in these cases uv will still configure a build system but will not create the expected file structure.
 
 When --bare is used, additional features can still be used opt-in:
 

@@ -42,11 +42,11 @@
     "source_digest": "sha256:ae4ff1a344b6cef9892ccad43920a2cdcdfbe354fbec6de424470d77782f6186"
   },
   "docs/concepts/build-backend.md": {
-    "evidence": "knowledge/evidence/build-backend-html-f68e6615.md",
-    "format": "html",
-    "parser": "docling",
-    "source": "sources/concepts/build-backend.html",
-    "source_digest": "sha256:f68e661568675df14e705eeae774e52c8a1c828ba4c674aed92dd01c818b2c18"
+    "evidence": "knowledge/evidence/build-backend-pdf-ca2bf91d.md",
+    "format": "pdf",
+    "parser": "pdf",
+    "source": "sources/concepts/build-backend.pdf",
+    "source_digest": "sha256:ca2bf91d6544d12bd20de6cd8ce83115dfee24eb223c18c32188598d0d68bcdb"
   },
   "docs/concepts/cache.md": {
     "evidence": "knowledge/evidence/cache-docx-c3426c17.md",
@@ -77,11 +77,11 @@
     "source_digest": "sha256:9f8d98fc705d4ce82aca119876c3bd5b80e2d0d4423d53854b12d6e6e8fd10ef"
   },
   "docs/concepts/preview.md": {
-    "evidence": "knowledge/evidence/preview-html-2aa1bffb.md",
-    "format": "html",
+    "evidence": "knowledge/evidence/preview-docx-0017e92d.md",
+    "format": "docx",
     "parser": "docling",
-    "source": "sources/concepts/preview.html",
-    "source_digest": "sha256:2aa1bffb30632264b932a3de798222740a231dacd61f4c15573318e46ccb38d1"
+    "source": "sources/concepts/preview.docx",
+    "source_digest": "sha256:0017e92d88e6e53dd5032210add48cbc6e1c1e77a86f8cff586d330f236d50f4"
   },
   "docs/concepts/projects/build.md": {
     "evidence": "knowledge/evidence/build-html-a52e977c.md",
@@ -91,11 +91,11 @@
     "source_digest": "sha256:a52e977cd5261ce56451652e25b52de57f2a94e72430c9c135cf42c12a6c57da"
   },
   "docs/concepts/projects/config.md": {
-    "evidence": "knowledge/evidence/config-html-aaa8301d.md",
-    "format": "html",
-    "parser": "docling",
-    "source": "sources/concepts/projects/config.html",
-    "source_digest": "sha256:aaa8301df6c6f8ca5d91d146c5fa519ab826c87a98a286740df0c8a68a3c4c0b"
+    "evidence": "knowledge/evidence/config-pdf-4803c1e3.md",
+    "format": "pdf",
+    "parser": "pdf",
+    "source": "sources/concepts/projects/config.pdf",
+    "source_digest": "sha256:4803c1e3d8088955192719501f4b1db704b12d2c1006d8a7adbe6c25cda88b80"
   },
   "docs/concepts/projects/dependencies.md": {
     "evidence": "knowledge/evidence/dependencies-docx-d90e9be4.md",
@@ -119,11 +119,11 @@
     "source_digest": "sha256:abed7d106418c0dd776910ae1b05e59c2f49e1cb85dceb4f17c355fb5cd4fd42"
   },
   "docs/concepts/projects/init.md": {
-    "evidence": "knowledge/evidence/init-html-d328c8ca.md",
-    "format": "html",
+    "evidence": "knowledge/evidence/init-docx-8925fabb.md",
+    "format": "docx",
     "parser": "docling",
-    "source": "sources/concepts/projects/init.html",
-    "source_digest": "sha256:d328c8cac4525be6403efc826faf00347b6694371fcf28c491aee6829b2f83f1"
+    "source": "sources/concepts/projects/init.docx",
+    "source_digest": "sha256:8925fabbb35c174e8aa2b445aa578b19b756b0ce1ff6a761edb74352c637a8e4"
   },
   "docs/concepts/projects/layout.md": {
     "evidence": "knowledge/evidence/layout-html-02831e81.md",
@@ -364,18 +364,18 @@
     "source_digest": "sha256:4d22a1e3e75ba74d87c3852b0f4a274a481ce2f1fe30fc6ba8c83f71fa3ffb70"
   },
   "docs/guides/package.md": {
-    "evidence": "knowledge/evidence/package-html-a143e780.md",
-    "format": "html",
-    "parser": "docling",
-    "source": "sources/guides/package.html",
-    "source_digest": "sha256:a143e7804013c1e314ad1c6012dd742071d044be04a3eb0e8e7280dc0d099884"
+    "evidence": "knowledge/evidence/package-pdf-7694f0b8.md",
+    "format": "pdf",
+    "parser": "pdf",
+    "source": "sources/guides/package.pdf",
+    "source_digest": "sha256:7694f0b8599087d4c2cc6e6fe95d0e6686378b48f51407a3d30e7460cffa7e7e"
   },
   "docs/guides/projects.md": {
-    "evidence": "knowledge/evidence/projects-html-4de721b6.md",
-    "format": "html",
+    "evidence": "knowledge/evidence/projects-docx-e41d7476.md",
+    "format": "docx",
     "parser": "docling",
-    "source": "sources/guides/projects.html",
-    "source_digest": "sha256:4de721b625ddbcabaf60cb0e6610aa9883dab25a5da3552399b94c33de7c941e"
+    "source": "sources/guides/projects.docx",
+    "source_digest": "sha256:e41d7476031edb845f7753cd4fddf624a4b8d299fa7fd4609039d24873aef6dc"
   },
   "docs/guides/scripts.md": {
     "evidence": "knowledge/evidence/scripts-pdf-5dcfc70b.md",

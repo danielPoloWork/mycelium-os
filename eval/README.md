@@ -23,10 +23,18 @@ Six of them: a **dev** and a **release** set per corpus (spec 04 §7.1, ADR-0027
 |---|---:|---|
 | [`dev.jsonl`](dev.jsonl) | 20 | this repository's documentation |
 | [`release.jsonl`](release.jsonl) | 19 | this repository's documentation |
-| [`corpora/uv-docs/eval/dev.jsonl`](corpora/uv-docs/eval/dev.jsonl) | 12 | [`uv`'s documentation](corpora/uv-docs/README.md) |
+| [`corpora/uv-docs/eval/dev.jsonl`](corpora/uv-docs/eval/dev.jsonl) | 22 | [`uv`'s documentation](corpora/uv-docs/README.md) |
 | [`corpora/uv-docs/eval/release.jsonl`](corpora/uv-docs/eval/release.jsonl) | 25 | the same |
-| [`corpora/uv-docs-ingested/eval/dev.jsonl`](corpora/uv-docs-ingested/eval/dev.jsonl) | 12 | [the same documents, ingested](corpora/uv-docs-ingested/README.md) |
+| [`corpora/uv-docs-ingested/eval/dev.jsonl`](corpora/uv-docs-ingested/eval/dev.jsonl) | 22 | [the same documents, ingested](corpora/uv-docs-ingested/README.md) |
 | [`corpora/uv-docs-ingested/eval/release.jsonl`](corpora/uv-docs-ingested/eval/release.jsonl) | 25 | the same |
+
+`uv/dev` was twelve of those cases until roadmap 4.39, with one `exact` case, one `symbol`
+case and no `relationship` case at all — thin enough that a field-weight change scored
+*exactly* the baseline on it, whatever the setting (ADR-0058). Ten cases written from the
+documents brought the thin slices to four each, which is the threshold ADR-0052 arms a slice
+at, and the effect was immediate: the leaf-heading weight the dev set could not see before now
+peaks visibly at 3.0 and is **refused** at 4.0 (ADR-0067). Read that ADR before adding cases —
+it also records the design mistake in four of the ten, kept rather than corrected.
 
 The third corpus is the second one **put through `mycelium ingest`** — the same 81 upstream
 documents rendered into DOCX, HTML and PDF, and scored as the evidence documents the
@@ -190,6 +198,15 @@ the change merges it away. Five cases were re-anchored on that basis at 4.12 and
 was widened; the reasoning, and the one case where it overrides ADR-0029's caution with the
 cost measured, is in
 [ADR-0043](../docs/adr/0043-judge-across-the-configurations-a-set-is-scored-under.md).
+
+**A `relationship` case relates two things, and does not also test vocabulary.** Four cases
+written at roadmap 4.39 took `u-1022`'s note — *"the query uses neither's noun"* — as a design
+rule and applied it to all four, which made every one of them a vocabulary-gap case as well.
+The slice reads 0.090 against grep's 0.093: neither retriever serves it, so it discriminates
+nothing. Testing two failures at once measures neither. The four are kept, because they were
+found wanting *after* they were committed and rewriting a case that scored badly is
+indistinguishable from fitting the set — the reasoning is in
+[ADR-0067](../docs/adr/0067-grow-the-dev-set-before-asking-it-a-question.md).
 
 **A judgment names where the thing is documented, not where it is framed.** The unit rule
 above says chunk-or-section; this one says *which* chunk or section. A `symbol` case — a

@@ -12,6 +12,10 @@
       "coverage": 0.9792,
       "twin": "knowledge/evidence/http-pdf-6ddd4d71.md#/0"
     },
+    "docs/concepts/build-backend.md#using-the-uv-build-backend/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/build-backend-pdf-ca2bf91d.md#/0"
+    },
     "docs/concepts/cache.md#cache-directory/": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/cache-docx-c3426c17.md#cache-directory/0"
@@ -48,6 +52,22 @@
       "coverage": 0.8972,
       "twin": "knowledge/evidence/indexes-pdf-9f8d98fc.md#via-an-environment-variable/1"
     },
+    "docs/concepts/preview.md#enabling-preview-features/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/preview-docx-0017e92d.md#enabling-preview-features/0"
+    },
+    "docs/concepts/projects/build.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/build-html-a52e977c.md#/0"
+    },
+    "docs/concepts/projects/build.md#using-uv-build/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/build-html-a52e977c.md#using-uv-build/0"
+    },
+    "docs/concepts/projects/config.md#project-environment-path/": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/config-pdf-4803c1e3.md#/1"
+    },
     "docs/concepts/projects/dependencies.md#adding-dependencies/": {
       "coverage": 0.8738,
       "twin": "knowledge/evidence/dependencies-docx-d90e9be4.md#adding-dependencies/0"
@@ -59,6 +79,34 @@
     "docs/concepts/projects/dependencies.md#dependency-specifiers/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/dependencies-docx-d90e9be4.md#virtual-dependencies/1"
+    },
+    "docs/concepts/projects/init.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/init-docx-8925fabb.md#/0"
+    },
+    "docs/concepts/projects/init.md#applications/": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/init-docx-8925fabb.md#applications/0"
+    },
+    "docs/concepts/projects/init.md#creating-a-minimal-project/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/init-docx-8925fabb.md#creating-a-minimal-project/0"
+    },
+    "docs/concepts/projects/init.md#libraries/": {
+      "coverage": 0.9343,
+      "twin": "knowledge/evidence/init-docx-8925fabb.md#libraries/0"
+    },
+    "docs/concepts/projects/layout.md#the-lockfile/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/layout-html-02831e81.md#the-lockfile/0"
+    },
+    "docs/concepts/projects/layout.md#the-lockfile/relationship-to-pylock-toml/": {
+      "coverage": 0.9091,
+      "twin": "knowledge/evidence/layout-html-02831e81.md#the-lockfile/relationship-to-pylock-toml/0"
+    },
+    "docs/concepts/projects/layout.md#the-pyproject-toml/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/layout-html-02831e81.md#the-pyproject-toml/0"
     },
     "docs/concepts/projects/run.md#/0": {
       "coverage": 1.0,
@@ -112,6 +160,18 @@
       "coverage": 0.6207,
       "twin": "knowledge/evidence/features-html-b3a656a3.md#uv-python-pin-pin-the-current-project-to-use-a-specific-python-version/0"
     },
+    "docs/getting-started/features.md#the-pip-interface/0": {
+      "coverage": 0.5269,
+      "twin": "knowledge/evidence/features-html-b3a656a3.md#uv-pip-compile-compile-requirements-into-a-lockfile/0"
+    },
+    "docs/guides/package.md#building-your-package/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/package-pdf-7694f0b8.md#/0"
+    },
+    "docs/guides/projects.md#creating-a-new-project/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/projects-docx-e41d7476.md#working-on-projects/creating-a-new-project/0"
+    },
     "docs/guides/scripts.md#/": {
       "coverage": 0.9697,
       "twin": "knowledge/evidence/scripts-pdf-5dcfc70b.md#/0"
@@ -127,6 +187,18 @@
     "docs/pip/compatibility.md#/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/compatibility-html-2dd53b8c.md#/0"
+    },
+    "docs/pip/environments.md#creating-a-virtual-environment/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/environments-html-2179e0a8.md#creating-a-virtual-environment/0"
+    },
+    "docs/pip/environments.md#discovery-of-python-environments/0": {
+      "coverage": 0.9143,
+      "twin": "knowledge/evidence/environments-html-2179e0a8.md#an-activated-conda-environment-based-on-the-conda-prefix-environment-variable/0"
+    },
+    "docs/pip/environments.md#using-arbitrary-python-environments/": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/environments-html-2179e0a8.md#using-arbitrary-python-environments/0"
     },
     "docs/reference/policies/platforms.md#/0": {
       "coverage": 1.0,

@@ -1,8 +1,8 @@
 ---
 title: Preview features
 origin: ingested
-source: "file:sources/concepts/preview.html"
-source_digest: "sha256:2aa1bffb30632264b932a3de798222740a231dacd61f4c15573318e46ccb38d1"
+source: "file:sources/concepts/preview.docx"
+source_digest: "sha256:0017e92d88e6e53dd5032210add48cbc6e1c1e77a86f8cff586d330f236d50f4"
 ---
 
 # Preview features
@@ -50,7 +50,7 @@ $ UV_PREVIEW_FEATURES=foo,bar uv run ...
 Preview features can also be enabled in uv.toml, or under [tool.uv] in pyproject.toml and PEP 723 metadata:
 
 ```
-preview-features = [ "foo" , "bar" ]
+preview-features = ["foo", "bar"]
 ```
 
 Set preview-features = true to enable all preview features.
@@ -67,7 +67,7 @@ Often, preview features can be used without changing any preview settings if the
 
 The following preview features are available:
 
--8<- "docs/reference/.preview-features.md"
+–8<– “docs/reference/.preview-features.md”
 
 ## Disabling preview features
 

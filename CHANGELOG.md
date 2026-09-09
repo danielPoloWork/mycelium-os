@@ -10,6 +10,36 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Added
+
+- **`uv/dev` grows from 12 judged cases to 22** (roadmap 4.39,
+  [ADR-0067](docs/adr/0067-grow-the-dev-set-before-asking-it-a-question.md)). It had one
+  `exact` case, one `symbol` case and no `relationship` case at all — thin enough that a
+  field-weight change scored *exactly* the baseline on it whatever the setting, which is why
+  ADR-0063 shipped one parameter and refused the other. Ten cases written from the documents
+  bring the thin slices to four each, the threshold ADR-0052 arms a slice at, and eight of them
+  name documents that carried no judgement before (corpus coverage 20 → 26 of 81 documents).
+  The derived ingested set follows at 22.
+
+  The dev/release gap on this corpus closes from +0.069 to **+0.005**, and uv/dev's headline
+  falls 0.710 → 0.609 because the new cases are harder than the old twelve. The leaf-heading
+  weight is now visible — and the same measurement **refuses** the setting the release sets
+  prefer, which is a dev set doing its job. Nothing in the product changes; the candidate it
+  unblocks is roadmap 4.42.
+
+  Four of the ten are `relationship` cases that read 0.090 against grep's 0.093 and therefore
+  discriminate nothing — a case-design mistake, kept rather than corrected because it was
+  found after they were committed. The reasoning, and the rule it produced, are in the ADR and
+  in `eval/README.md`.
+
+  **The ingested twin re-rendered six documents and its baseline is re-blessed with the
+  change.** Newly judged documents append to the append-only format rotation and take a real
+  assigned format instead of the HTML every distractor gets (docx/html/pdf now 10/62/9), which
+  moved that corpus's digest and switched gate G3 there from enforcing to reporting — so the
+  bless rides along, as ADR-0056 requires: 0.6306 → 0.6341, three cases moved, worst slice
+  movement `fact` −1.20 % (inside the −2 % bar). The Markdown corpus's release set is untouched
+  and G3 still enforces on it.
+
 ### Changed
 
 - **A fourteenth ranking family is measured and refused — nothing in the query path changes**

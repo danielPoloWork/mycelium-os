@@ -18,5 +18,14 @@
   "docs/reference/storage.md",
   "docs/concepts/projects/run.md",
   "docs/concepts/projects/sync.md",
-  "docs/getting-started/features.md"
+  "docs/getting-started/features.md",
+  "docs/concepts/build-backend.md",
+  "docs/concepts/preview.md",
+  "docs/concepts/projects/build.md",
+  "docs/concepts/projects/config.md",
+  "docs/concepts/projects/init.md",
+  "docs/concepts/projects/layout.md",
+  "docs/guides/package.md",
+  "docs/guides/projects.md",
+  "docs/pip/environments.md"
 ]
