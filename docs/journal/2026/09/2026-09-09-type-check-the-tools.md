@@ -71,6 +71,33 @@ The path lists are now compared too, and verified by mutation: dropping `tools` 
 side fails with both lists named. The generalisation is uncomfortable and worth writing down —
 a guard against duplication is itself duplicated until something compares its two halves.
 
+## And then CI found the thing I could not
+
+The lint job — the one job this PR changes — went red on the first run, on one line:
+
+```
+tools/build_ingested_corpus.py:191: error: Cannot find implementation or library stub
+for module named "typst"  [import-not-found]
+```
+
+`typst` is imported behind a `try/except ImportError` that names the install command, and it
+is declared **nowhere**: not a dependency, not an extra, because it is a generator-only tool a
+maintainer installs by hand to re-render the PDF fixtures. It is on this machine because I
+have rendered them. It is not in CI and cannot be.
+
+The fix is one line — the sixth entry in an `ignore_missing_imports` list that already held
+five guarded optional imports for exactly this reason, missing only because nothing
+type-checked `tools/`. I verified it under CI's condition rather than mine, by hiding the
+installed package from mypy and re-running.
+
+What it costs me is a claim I made earlier in this same session. `verify.py` promises that *"a
+contributor who passes the local loop cannot then be told something new by CI"*, and I spent
+the afternoon making that more true — comparing the path lists so the two callers cannot
+disagree. It holds for **what** runs. It does not hold for the **environment**, and no
+comparison of plans will ever catch that: an optional dependency present locally hides a CI
+failure, and the more of the toolchain a contributor has installed the more it can hide. The
+docstring's other half is the one that applied — *let CI be the authority on the rest*.
+
 ## What I did not do
 
 `tests/` stays unchecked, measured rather than waved off: **81 errors in 24 of 66 files**, and

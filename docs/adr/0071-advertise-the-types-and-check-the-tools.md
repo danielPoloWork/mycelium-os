@@ -133,6 +133,26 @@ rather than trust them.
 - **A step in the plan is no longer free to disagree with CI.** The ladder test compares the
   three path lists, verified by mutation: dropping `tools` from either side fails it with the
   names of both lists.
+- **And CI found one thing the local loop could not**, which is worth more than the line it
+  cost. `tools/build_ingested_corpus.py` imports `typst` behind a `try/except ImportError`
+  that names the install command, and `typst` is declared *nowhere* — not a dependency, not an
+  extra — because it is a generator-only tool a maintainer installs by hand to re-render the
+  PDF fixtures. So it is present on a machine that has rendered them and absent everywhere
+  else. `mypy --strict tools` passed here and failed in CI on that one import.
+
+  It is the sixth entry in an `ignore_missing_imports` list that already held five guarded
+  optional imports for the same reason, and it was missing only because nothing type-checked
+  `tools/`. Verified under CI's condition rather than mine, by hiding the installed package
+  from mypy and re-running.
+
+  The general point is a correction to `verify.py`'s own promise — *"a contributor who passes
+  the local loop cannot then be told something new by CI"*. That holds for **what** runs,
+  which ADR-0059 and this ADR make checkable, and it does not hold for the **environment** it
+  runs in: an optional dependency present locally can hide a CI failure, and no amount of
+  comparing the two plans will catch it. The docstring's other half is the one that applies —
+  *let CI be the authority on the rest* — and this is a real instance of it rather than a
+  hypothetical.
+
 - **`consistency_lint.py` gained a `TypedDict`.** The EADOS `CONFIG` block was
   `dict[str, object]` by inference, which made `CONFIG["version_file"].split("/")` an error
   and every other read an `Any`; four lines of declaration are what let the ten checks below

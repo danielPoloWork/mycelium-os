@@ -145,8 +145,23 @@ strict = true
 python_version = "3.12"
 files = ["src"]
 
-# onnxruntime and tokenizers ship no stubs; they are optional dependencies loaded
-# behind a runtime guard, so their surface is narrow and checked by tests instead.
+# Optional dependencies loaded behind a runtime guard, none of which ship stubs. Their
+# surface is narrow and checked by tests instead.
+#
+# `typst` is the odd one and the reason this list grew at roadmap 4.43: it is declared
+# *nowhere* — not a dependency, not an extra — because it is a generator-only tool a
+# maintainer installs by hand to re-render the PDF fixtures, guarded by a try/except that
+# names the install command. So it is present on a machine that has rendered them and
+# absent everywhere else, including CI. That asymmetry is worth stating rather than
+# smoothing: `mypy --strict tools` passed locally and failed in CI on this one import, so
+# the local loop is a superset of CI only where the two environments agree (ADR-0071).
 [[tool.mypy.overrides]]
-module = ["onnxruntime.*", "tokenizers.*", "watchdog.*", "docling.*", "pypdfium2.*"]
+module = [
+    "onnxruntime.*",
+    "tokenizers.*",
+    "watchdog.*",
+    "docling.*",
+    "pypdfium2.*",
+    "typst.*",
+]
 ignore_missing_imports = true

@@ -36,6 +36,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   `str` in its generator, so a typo produced a value that failed only at construction. It is now
   `mycelium.eval.tasks.TaskKind`.
 
+  `typst` joins the `ignore_missing_imports` list — a generator-only tool declared nowhere and
+  installed by hand to re-render the PDF fixtures, so it is present on a machine that has
+  rendered them and absent in CI. It is the one thing here the local loop could not have found,
+  and the reason it is worth a line: the loop is a superset of CI for *what* runs, not for the
+  environment it runs in.
+
 - **The leaf heading field weight rises from 2.0 to 3.0** (roadmap 4.42,
   [ADR-0070](docs/adr/0070-take-the-leaf-heading-weight-on-the-third-asking.md)). Refused
   twice — by ADR-0058 and again by ADR-0063 — on the ground that it gained on the held-out
