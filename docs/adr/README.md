@@ -85,3 +85,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0067](0067-grow-the-dev-set-before-asking-it-a-question.md) | Grow the dev set before asking it a question, and keep the cases that embarrass it | Accepted |
 | [0068](0068-give-gate-g2-a-runner-by-dating-its-verdict.md) | Give gate G2 a runner by dating its verdict, not by re-running it everywhere | Accepted |
 | [0069](0069-read-g2s-slices-case-by-case-and-keep-the-bar.md) | Read G2's slices case by case, and keep the bar they trip | Accepted |
+| [0070](0070-take-the-leaf-heading-weight-on-the-third-asking.md) | Take the leaf heading weight on the third asking, because the dev set can now see it | Accepted |

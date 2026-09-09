@@ -163,9 +163,14 @@ def test_explain_reports_the_plan_that_ran(repo: Path) -> None:
     assert explained["stages"] == ["lexical"]
     assert explained["degraded"] == []  # a deliberate choice is not a degradation
     assert explained["fusion"] == {"method": "rrf", "k": 60}
+    # Pinned as literals on purpose, and read from the ranker on the other side.
+    # This assertion is the only thing standing between a field-weight change and
+    # an `explain` payload that describes a ranking the product no longer does —
+    # which is exactly what happened at roadmap 4.42, when both dictionaries were
+    # hand-typed and agreed with each other rather than with the ranker.
     assert explained["field_weights"] == {
         "title": 3.0,
-        "heading": 2.0,
+        "heading": 3.0,
         "body": 1.0,
         "ancestors": 0.5,
     }
@@ -347,7 +352,7 @@ def test_explain_reports_the_plan_the_timings_and_the_config(repo: Path) -> None
     assert "total" in payload["timings_ms"]
     assert payload["config"]["field_weights"] == {
         "title": 3.0,
-        "heading": 2.0,
+        "heading": 3.0,
         "body": 1.0,
         "ancestors": 0.5,
     }

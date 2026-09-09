@@ -273,6 +273,75 @@ def test_an_unbuilt_corpus_says_it_was_not_compared(
     assert any("not built here" in note for note in notes)
 
 
+def compare(
+    record: dict[str, Any], measured: list[g2.SetVerdict], notes: list[str] | None = None
+) -> list[str]:
+    return g2.compare_measurement(record, measured, notes)
+
+
+def _verdict(name: str, *, passed: bool) -> g2.SetVerdict:
+    """A measured verdict for one set, carrying only what the comparison reads."""
+    return g2.SetVerdict(
+        name=name,
+        lexical=0.5,
+        hybrid=0.4 if not passed else 0.9,
+        passed=passed,
+        detail="",
+        regressions=(),
+        cases=4,
+        cases_digest="sha256:" + "0" * 64,
+        per_slice={},
+    )
+
+
+def test_a_flipped_verdict_fails_on_a_dated_corpus(committed: dict[str, Any]) -> None:
+    """A frozen corpus that changes its mind means something the fingerprints missed."""
+    recorded = str(committed["sets"]["uv/release"]["verdict"])
+    measured = [_verdict("uv/release", passed=recorded != "pass")]
+    failures = compare(committed, measured)
+    assert any("uv/release: recorded" in failure for failure in failures)
+
+
+def test_a_flipped_verdict_is_only_noted_on_our_own_corpus(committed: dict[str, Any]) -> None:
+    """The carve-out roadmap 4.42 found missing (ADR-0070).
+
+    `ours` is this repository, so a pull request that writes an ADR moves the
+    corpus the verdict was measured on — and the flip that follows is *expected*.
+    Gating it fails `verify.py` for a contributor who has the embedding model,
+    while CI, which has none and never re-measures, sees nothing: the
+    local-versus-CI divergence ADR-0059 exists to remove.
+    """
+    recorded = str(committed["sets"]["ours/release"]["verdict"])
+    measured = [_verdict("ours/release", passed=recorded != "pass")]
+    notes: list[str] = []
+    assert compare(committed, measured, notes) == []
+    assert any("ours/release: recorded" in note for note in notes)
+    assert any("undated corpus" in note for note in notes)
+
+
+def test_a_flipped_verdict_without_a_notes_list_is_still_not_a_failure(
+    committed: dict[str, Any],
+) -> None:
+    """`notes` is optional, and dropping it must not re-arm the gate."""
+    recorded = str(committed["sets"]["ours/release"]["verdict"])
+    assert compare(committed, [_verdict("ours/release", passed=recorded != "pass")]) == []
+
+
+def test_a_moved_decision_fails_wherever_the_drift_came_from(
+    committed: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The one thing the carve-out does not excuse.
+
+    An undated corpus may flip a *set*; it may not quietly change which retrieval
+    profile the measurement supports. That is checked over every set at once, so
+    it survives the note above.
+    """
+    monkeypatch.setattr(g2, "decision_of", lambda verdicts: "hybrid")
+    measured = [_verdict(name, passed=True) for name in committed["sets"]]
+    failures = compare(committed, measured)
+    assert any("now supports 'hybrid'" in failure for failure in failures)
+
+
 class _Fingerprint:
     """The two folds `corpus_fingerprint_of` returns, without a store to fold."""
 

@@ -64,18 +64,27 @@ STORE_FILENAME: Final = "store.db"
 
 _FTS_TERM: Final = re.compile(r"\w+", re.UNICODE)
 
-_SURFACE_WEIGHTS: Final = (0.0, 1.0, 3.0, 2.0, 0.5)
+_SURFACE_WEIGHTS: Final = (0.0, 1.0, 3.0, 3.0, 0.5)
 """Column order is (anchor, text, title, heading, ancestors).
 
 Spec 04 §3 sets three of them — title 3.0, heading 2.0, body 1.0 — and the fourth
 is this project's own, because the spec's `heading_path` is one field where there
 are two kinds of evidence (roadmap 4.36, ADR-0063). A chunk's path is its whole
 ancestor chain, so a subsection's heading field was a strict *superset* of its
-parent's: the leaf's own words never got to distinguish it. `heading` keeps the
-spec's 2.0 — the dev sets show no gain from raising it, and raising it is what
-ADR-0058 refused — and `ancestors` sits at 0.5, in the middle of the plateau the
-dev sets are flat across (0.25 to 0.75 score identically; 0.0 loses 0.017 nDCG
-and three points of R@10, so the ancestors carry real signal)."""
+parent's: the leaf's own words never got to distinguish it. `ancestors` sits at
+0.5, in the middle of the plateau the dev sets are flat across (0.25 to 0.75
+score identically; 0.0 loses 0.017 nDCG and three points of R@10, so where a
+chunk sits is real evidence — just weaker than what it is about).
+
+`heading` is **3.0**, above the spec's 2.0, and that value took three attempts
+(ADR-0070). ADR-0058 and ADR-0063 both refused it, correctly: it gained on the
+held-out sets and scored *exactly* the baseline on the only dev set that could
+have proposed it, which is indistinguishable from a value read off the held-out
+set. Roadmap 4.39 grew uv/dev from twelve judged cases to twenty-two and the
+parameter became visible there — 0.614 against 0.609, R@10 0.717 against 0.692 —
+and, the half that makes it evidence rather than a trend, **4.0 reads 0.599, below
+the baseline**. The dev set can distinguish 3.0 from 4.0, so it can choose; the
+release sets prefer 4.0, and are not asked."""
 
 STEM_WEIGHT: Final = 0.05
 """How much a stem match counts against a surface match of the same field.
@@ -118,7 +127,7 @@ def field_weights() -> dict[str, float]:
 
 
 def describe_field_weights() -> str:
-    """``title=3.0,heading=2.0,body=1.0,ancestors=0.5`` — for a run manifest.
+    """``title=3.0,heading=3.0,body=1.0,ancestors=0.5`` — for a run manifest.
 
     One home for a string that had two, both of them typed by hand beside the
     numbers they claimed to describe. That is the shape of defect roadmap 4.40 is

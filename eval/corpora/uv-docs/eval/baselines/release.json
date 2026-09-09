@@ -60,12 +60,12 @@
     }
   },
   "mycelium": {
-    "blessed_from_snapshot": "01M20FXZ4TJ0XW8Q0VGQ6DT91K",
+    "blessed_from_snapshot": "01M235S62BBX30ZQMY77V4F13R",
     "cases": 25,
     "cases_digest": "sha256:c94a2405626a5be10cdcbc3a1cb6a25dbc0f8578269450b5a95f2f51513a2be1",
     "content_digest": "sha256:44895398cedfc30a39759a8dfd9ab59ec2df26e6d251e8e619a6bc3ea4af2b06",
     "corpus_digest": "sha256:3083b97f9d6983bba978df8cb09b48fc872666379faa7808b9be1ed6f7bf6282",
-    "overall_ndcg_at_10": 0.603521,
+    "overall_ndcg_at_10": 0.610856,
     "per_case": {
       "conceptual": {
         "u-1002": 1.0,
@@ -74,7 +74,7 @@
         "u-1023": 0.0
       },
       "exact": {
-        "u-1003": 0.333333,
+        "u-1003": 0.356207,
         "u-1015": 1.0,
         "u-1018": 1.0,
         "u-1020": 1.0,
@@ -82,7 +82,7 @@
       },
       "fact": {
         "u-1001": 0.676361,
-        "u-1004": 0.333333,
+        "u-1004": 0.386853,
         "u-1006": 0.430677,
         "u-1008": 0.356207,
         "u-1010": 0.787155,
@@ -96,7 +96,7 @@
         "u-1024": 0.0
       },
       "symbol": {
-        "u-1007": 0.374195,
+        "u-1007": 0.466521,
         "u-1017": 1.0,
         "u-1019": 0.70981,
         "u-1025": 0.63093
@@ -108,10 +108,10 @@
     },
     "per_slice": {
       "conceptual": 0.658801,
-      "exact": 0.733333,
-      "fact": 0.43063,
+      "exact": 0.737908,
+      "fact": 0.438276,
       "relationship": 0.65923,
-      "symbol": 0.678734,
+      "symbol": 0.701815,
       "unanswerable": 0.0
     },
     "toolchain": {
