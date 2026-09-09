@@ -82,3 +82,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0064](0064-measure-the-gate-that-decides-the-default.md) | Measure the gate that decides the default, and find it cannot decide | Accepted |
 | [0065](0065-one-section-cannot-document-two-commands.md) | One section cannot be the documenting home of two commands | Accepted |
 | [0066](0066-refuse-the-length-split-and-name-the-anti-correlation.md) | Refuse the length split, and name the anti-correlation it exposed | Accepted |
+| [0067](0067-grow-the-dev-set-before-asking-it-a-question.md) | Grow the dev set before asking it a question, and keep the cases that embarrass it | Accepted |

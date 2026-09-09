@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-09 — ten cases, and a mistake kept (roadmap 4.39)](2026/09/2026-09-09-ten-cases-and-a-mistake-kept.md)
 - [2026-09-09 — the two cases disagree (roadmap 4.38)](2026/09/2026-09-09-the-two-cases-disagree.md)
 - [2026-09-09 — one section, two commands (roadmap 4.37)](2026/09/2026-09-09-one-section-two-commands.md)
 - [2026-09-08 — the gate that never ran (roadmap 4.33)](2026/09/2026-09-08-the-gate-that-never-ran.md)
