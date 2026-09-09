@@ -80,3 +80,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0062](0062-a-symbol-judgment-names-where-the-thing-is-documented.md) | A `symbol` judgment names where the thing is documented, not where it is framed | Accepted |
 | [0063](0063-split-the-leaf-heading-from-its-ancestors.md) | Split the leaf heading from its ancestors, and take only the weight dev can see | Accepted |
 | [0064](0064-measure-the-gate-that-decides-the-default.md) | Measure the gate that decides the default, and find it cannot decide | Accepted |
+| [0065](0065-one-section-cannot-document-two-commands.md) | One section cannot be the documenting home of two commands | Accepted |

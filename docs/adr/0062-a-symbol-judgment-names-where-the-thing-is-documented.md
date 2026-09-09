@@ -52,6 +52,18 @@ convention. And the anchor it did name is the right one for a *different* query:
 The section that defines `uvx` is not the section that documents `uv tool install`, and the
 judgment reused it as though it were.
 
+> **Narrowed at roadmap 4.37 ([ADR-0065](0065-one-section-cannot-document-two-commands.md)).**
+> The clause "grades that same section 3, correctly" was reasoned in passing about a case
+> this ADR deferred, and it does not survive the rule this ADR wrote. A section's subject
+> does not change with the query asked of it: if
+> `concepts/tools.md#the-uv-tool-interface` is *framing* for `uv tool install` — which is
+> why it is graded 2 here — it is framing for `uvx` too. `uvx` is documented by
+> `guides/tools.md#running-tools` (*"The uvx command invokes a tool without installing it"*),
+> the direct counterpart of the `#installing-tools` section this ADR promoted. What survives
+> is everything else: the rule, `u-1007`'s re-judging, and the observation that the section
+> *defines* the alias — which is why it keeps a grade 2 in `u-0006` rather than losing its
+> place.
+
 ## Decision
 
 **A `symbol` judgment names the section that documents the named thing.** A page that

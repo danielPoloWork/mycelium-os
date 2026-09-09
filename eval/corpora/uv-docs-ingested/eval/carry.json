@@ -116,13 +116,13 @@
       "coverage": 0.9697,
       "twin": "knowledge/evidence/scripts-pdf-5dcfc70b.md#/0"
     },
-    "docs/guides/tools.md#/0": {
-      "coverage": 1.0,
-      "twin": "knowledge/evidence/tools-docx-cf7bdde6.md#using-tools/0"
-    },
     "docs/guides/tools.md#installing-tools/": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/tools-docx-cf7bdde6.md#using-tools/installing-tools/0"
+    },
+    "docs/guides/tools.md#running-tools/": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/tools-docx-cf7bdde6.md#using-tools/running-tools/0"
     },
     "docs/pip/compatibility.md#/0": {
       "coverage": 1.0,

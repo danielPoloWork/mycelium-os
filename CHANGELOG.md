@@ -10,6 +10,24 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **`u-0006` (`uvx`) is re-judged on the convention its siblings follow** (roadmap 4.37,
+  [ADR-0065](docs/adr/0065-one-section-cannot-document-two-commands.md)). It had scored
+  0.0000 on uv/dev since it was written, with its grade-3 anchor at rank 13 and its grade-2
+  anchor — 25 tokens of overview that never names `uvx` — outside the candidate set, while
+  the section that documents the command sat at rank 3 unjudged. ADR-0062 had asserted the
+  old grade-3 anchor was correct here; that sentence is narrowed, because it required one
+  section to be the *documenting* home of two sibling commands while being graded as the
+  *framing* of one of them. Now: `guides/tools.md#running-tools/` at 3, the framing section
+  at 2 (the grade it already carries in `u-1007`), the feature-list entry at 1.
+
+  **It makes a loss visible rather than hiding one.** `u-0006` goes 0.0000 → 0.3726 and the
+  incumbent 0.2275 → 0.4650, so `symbol` on both dev sets now reports `conceded on 1 of 1
+  case(s)`: grep was already ahead while we scored nothing. uv/dev 0.673 → 0.710,
+  uv-docs-ingested/dev 0.634 → 0.668. No retrieval code changes, no baseline is blessed, and
+  the alternative that keeps the old grade is priced in the ADR as what to revert to.
+
 ### Fixed
 
 - **Two published claims about gate G2 were wrong, and are corrected** (roadmap 4.33,
