@@ -118,6 +118,22 @@ def test_the_committed_verdict_records_what_it_was_measured_under(
     }
 
 
+def test_a_tripped_slice_in_the_record_names_its_cases(committed: dict[str, Any]) -> None:
+    """Roadmap 4.41: a percentage over four cases cannot tell a reader whether it is
+    noise or a destroyed answer, and the item was filed believing the wrong one.
+
+    Model-free, so it runs in CI: the record is the one place a tripped slice's
+    cases are readable without re-measuring (ADR-0069).
+    """
+    tripped = [
+        regression for row in committed["sets"].values() for regression in row["regressions"]
+    ]
+    assert tripped, "every set passing would make this test vacuous - check the record"
+    assert all("->" in regression for regression in tripped), (
+        f"a slice trips without naming a case: {tripped}"
+    )
+
+
 def test_the_recorded_decision_is_the_shipped_default(committed: dict[str, Any]) -> None:
     """A decision the product does not follow is not a decision."""
     assert committed["decision"] == committed["shipped_profile"]

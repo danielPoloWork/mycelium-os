@@ -1,8 +1,8 @@
 {
   "corpora": {
     "ours": {
-      "chunks_digest": "sha256:3d847dce9bf4c2449586702eaa81bebe3b7c91aada1df12e0d7a0b2ed831811c",
-      "content_digest": "sha256:bb619a1adade6b0d2f603165903e0bd218c62506c8e578fcdb3e618c09eca2e8",
+      "chunks_digest": "sha256:5d944ef1c2362c7436fb8124a2b2c8f05a9e61f4d5ab4698b4340d24496f537c",
+      "content_digest": "sha256:53acbf0dbaea366c97217e6457ba5fec8083d0851851f33d41460629e81d8f1c",
       "dated": false
     },
     "uv": {
@@ -29,9 +29,9 @@
     "ours/dev": {
       "cases": 16,
       "cases_digest": "sha256:c39aa93ef694f6a9b63dfeb51deb7024993a6c38346808dfff6e1839077ddd64",
-      "detail": "+6.7% overall (needs +5%); regressions past -2%: fact -5.6%",
+      "detail": "+6.6% overall (needs +5%); regressions past -2%: fact -5.7% (q-0005 0.6309->0.5000, q-0008 0.0413->0.0000)",
       "hybrid_ndcg_at_10": 0.576188,
-      "lexical_ndcg_at_10": 0.540169,
+      "lexical_ndcg_at_10": 0.540287,
       "per_slice": {
         "conceptual": {
           "cases": 5,
@@ -46,7 +46,7 @@
         "fact": {
           "cases": 4,
           "hybrid": 0.456689,
-          "lexical": 0.483886
+          "lexical": 0.484359
         },
         "injection": {
           "cases": 1,
@@ -65,7 +65,7 @@
         }
       },
       "regressions": [
-        "fact -5.6%"
+        "fact -5.7% (q-0005 0.6309->0.5000, q-0008 0.0413->0.0000)"
       ],
       "verdict": "fail"
     },
@@ -139,7 +139,7 @@
     "uv-ingested/release": {
       "cases": 23,
       "cases_digest": "sha256:5ef0fd53a16e8fec20e56a1454c5de06ed9f7d8c691790fa54647f9ee485adb3",
-      "detail": "-3.1% overall (needs +5%); regressions past -2%: conceptual -7.5%, exact -7.3%, relationship -11.2%, symbol -3.6%",
+      "detail": "-3.1% overall (needs +5%); regressions past -2%: conceptual -7.5% (u-1016 0.6352->0.4375), exact -7.3% (u-1021 0.3155->0.0000), relationship -11.2% (u-1022 0.8847->0.4257), symbol -3.6% (u-1019 0.3962->0.1310)",
       "hybrid_ndcg_at_10": 0.614325,
       "lexical_ndcg_at_10": 0.634104,
       "per_slice": {
@@ -170,10 +170,10 @@
         }
       },
       "regressions": [
-        "conceptual -7.5%",
-        "exact -7.3%",
-        "relationship -11.2%",
-        "symbol -3.6%"
+        "conceptual -7.5% (u-1016 0.6352->0.4375)",
+        "exact -7.3% (u-1021 0.3155->0.0000)",
+        "relationship -11.2% (u-1022 0.8847->0.4257)",
+        "symbol -3.6% (u-1019 0.3962->0.1310)"
       ],
       "verdict": "fail"
     },
@@ -216,7 +216,7 @@
     "uv/release": {
       "cases": 23,
       "cases_digest": "sha256:14c00af069b07c9369b294a1d9195f8400eb917164a66953cdd6e23441193dab",
-      "detail": "+10.7% overall (needs +5%); regressions past -2%: conceptual -13.1%, symbol -4.5%",
+      "detail": "+10.7% overall (needs +5%); regressions past -2%: conceptual -13.1% (u-1016 0.6352->0.2894), symbol -4.5% (u-1019 0.7098->0.5897, u-1025 0.6309->0.5000)",
       "hybrid_ndcg_at_10": 0.668015,
       "lexical_ndcg_at_10": 0.603521,
       "per_slice": {
@@ -247,8 +247,8 @@
         }
       },
       "regressions": [
-        "conceptual -13.1%",
-        "symbol -4.5%"
+        "conceptual -13.1% (u-1016 0.6352->0.2894)",
+        "symbol -4.5% (u-1019 0.7098->0.5897, u-1025 0.6309->0.5000)"
       ],
       "verdict": "fail"
     }

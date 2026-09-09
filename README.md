@@ -137,6 +137,18 @@ cannot re-measure it, so it enforces the next best thing — that the recorded v
 describes this product — and a ranking change now has to re-record G2 before it can land
 ([ADR-0068](docs/adr/0068-give-gate-g2-a-runner-by-dating-its-verdict.md)).
 
+The most uncomfortable part is last. G2's second condition — *no slice worse than −2 %* —
+sounds like a statement about a category of question, and at four to seven cases a slice it
+is a statement about **one**: a slice trips when a single case loses more than `0.02·n·m`,
+which here is a median of 0.053 against a median losing case of 0.126. Hybrid worsens 15 % of
+the judged cases, so something trips on nearly any set. **The bar is kept anyway** — read case
+by case the trips are real, including one where hybrid loses the answer outright (0.316 →
+0.000), so it is catching harm rather than noise. What that means plainly: hybrid cannot be
+promoted until the judged sets are several times larger, and the lexical default rests on a
+burden that cannot currently be discharged rather than on a weighing that came out against it
+([ADR-0069](docs/adr/0069-read-g2s-slices-case-by-case-and-keep-the-bar.md); the sets are
+roadmap 6.8).
+
 So the shipped default is `[retrieval] profile = "lexical"`. Turn hybrid on with one setting
 or `mycelium search --hybrid` — on a natural-language question it can be the difference
 between an answer and none: one judged case has its answer at vector rank 3 of 568 and

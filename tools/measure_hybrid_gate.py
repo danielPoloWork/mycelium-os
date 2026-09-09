@@ -55,9 +55,11 @@ lexical-only" is a legitimate G2 outcome — the milestone goal says so in as ma
 words — so a runner that exited non-zero on it would be red on every correct
 build. What it fails on is a verdict that no longer describes the product, which
 is a mistake someone can act on. That distinction is why `mycelium eval
---retriever hybrid --gate` could never have been the runner: `--gate` exits
-non-zero when *any* gate reports `passed=False`, and for G2 that is the shipped
-configuration (roadmap 4.41 carries what the gate's boolean should mean).
+--retriever hybrid --gate` could not have been the runner: `--gate` exits
+non-zero when *any* gate reports `passed=False`, and for G2 that was the shipped
+configuration. G2 reports rather than fails since roadmap 4.41, so that command
+runs — but it still cannot be the runner, because one set cannot decide a default
+decided over every frozen release set (ADR-0069).
 
 The measurement itself needs the embedding model. Without it the table cannot be
 printed at all, and the file says so rather than printing a lexical-only one that
@@ -91,6 +93,7 @@ from mycelium.eval.harness import (  # noqa: E402
     G2_SLICE_FLOOR,
     case_set_digest,
     corpus_fingerprint_of,
+    g2_regressions,
 )
 from mycelium.eval.metrics import credit_judgments, ndcg_at_k  # noqa: E402
 from mycelium.eval.retrievers import build_retriever  # noqa: E402
@@ -161,13 +164,28 @@ def _relative(after: float, before: float) -> float:
     return (after - before) / before
 
 
-def _verdict(hybrid: Scored, lexical: Scored) -> tuple[bool, str, list[str]]:
+def _verdict(
+    hybrid: Scored, lexical: Scored, slices: Mapping[str, Sequence[str]] | None = None
+) -> tuple[bool, str, list[str]]:
+    """The two conditions, and the cases behind any slice that trips the second.
+
+    Naming them is what roadmap 4.41 turned out to need: it was filed believing
+    the trips were noise a thin slice cannot distinguish from a change, and
+    `conceptual -13.1%` on its own cannot tell you either way. Decomposed, six of
+    the seven are one case, and every one is a large real loss (ADR-0069).
+    """
     overall = _relative(hybrid.overall, lexical.overall)
-    regressions = [
-        f"{name} {_relative(score, lexical.per_slice[name]):+.1%}"
-        for name, score in sorted(hybrid.per_slice.items())
-        if name in lexical.per_slice and _relative(score, lexical.per_slice[name]) < G2_SLICE_FLOOR
-    ]
+    regressions = g2_regressions(
+        hybrid.per_slice,
+        lexical.per_slice,
+        {
+            name: [
+                (case_id, lexical.per_case.get(case_id, 0.0), hybrid.per_case.get(case_id, 0.0))
+                for case_id in ids
+            ]
+            for name, ids in (slices or {}).items()
+        },
+    )
     passed = overall >= G2_OVERALL_MIN and not regressions
     detail = f"{overall:+.1%} overall (needs {G2_OVERALL_MIN:+.0%})"
     if regressions:
@@ -256,7 +274,12 @@ def _measure_set(label: str, root: Path, set_name: str, embedder: Embedder) -> S
     finally:
         store.close()
 
-    passed, detail, regressions = _verdict(hybrid, lexical)
+    by_slice: dict[str, list[str]] = {}
+    for case in cases:
+        for name in case.slices:
+            by_slice.setdefault(name, []).append(case.case_id)
+
+    passed, detail, regressions = _verdict(hybrid, lexical, by_slice)
     return SetVerdict(
         name=f"{label}/{set_name}",
         lexical=lexical.overall,

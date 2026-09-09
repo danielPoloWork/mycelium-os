@@ -152,6 +152,38 @@ outcome, so the failures above are all the same kind of thing: a recorded claim 
 longer describes the product. The remedy is one command —
 `python tools/measure_hybrid_gate.py --record`, which needs the model.
 
+### What a −2 % slice bar means over four cases
+
+Both G2 and G3 carry spec 04 §7.3's second condition — *no slice worse than −2 %* — and it is
+worth stating what that demands at the sizes these sets have, because the words suggest
+something about a *category* of question and the arithmetic says something about **one**
+question.
+
+A slice of `n` cases with a lexical mean of `m` trips when a single case loses more than
+`0.02 · n · m`. Measured across the six judged sets at roadmap 4.41, that threshold runs from
+**0.007 to 0.089** nDCG with a median of **0.053** — against a median losing case of
+**0.126**. So a *typical* losing case trips its slice on its own: at four to seven cases the
+condition is a **per-case veto** wearing a percentage's clothes.
+
+For it to require more than one case to move, at the losses actually observed, a slice needs
+**n ≥ 35** — five to nine times what it has. That is the direction spec 04 §7.6 already
+points (≥ 1 000 cases at 1.0), and it is filed as roadmap 6.8.
+
+Two things follow, and they are the reason neither bar is moved:
+
+- **The trips are real.** Decomposed case by case, six of the seven slices hybrid trips are
+  *one* case each, and every one is a large loss — `u-1016` 0.635 → 0.289, `u-1022`
+  0.885 → 0.426, `u-1021` 0.316 → **0.000**. The condition is catching harm, not noise. G2
+  in particular has no confounder: it compares two retrievers on the same cases, the same
+  snapshot, the same instant.
+- **And it is unmeetable.** Hybrid moves 55 % of the 119 answerable cases and worsens 15 %,
+  so over five or six slices something trips on almost any set. G2 therefore cannot promote
+  hybrid until the sets grow — which is a burden that cannot be discharged, not a weighing
+  that came out against it.
+
+The mitigation in the meantime is that every verdict now **names** the cases behind a tripped
+slice, so a reader can make the distinction the arithmetic cannot (ADR-0069).
+
 ### Which sets a gate can live on
 
 G3 needs the corpus held fixed, and **this repository's documentation is its own corpus** —
@@ -433,7 +465,7 @@ though the missing gates passed.
 | Gate | Status |
 |---|---|
 | G1 Citations | **Enforced** — every returned anchor must resolve; must be 1.00 |
-| G2 Earn hybrid | **Measured by hand where the model is; its *currency* is enforced everywhere** (roadmap 4.40, ADR-0068). G2 is a comparison — hybrid against the lexical baseline on the same cases (ADR-0017) — and it cannot be an ordinary pass/fail step, because `passed=False` means "ship lexical-only", which is the shipped configuration: `--gate` would be red on every correct build. So the verdict is **committed** in [`g2-verdict.json`](g2-verdict.json) with the fingerprints that date it, and `python tools/measure_hybrid_gate.py --check` — run by `tools/verify.py` at `retrieval` and by CI — fails when the retrieval configuration, a vendored corpus or a judged set has moved since, never because hybrid lost. Where the model is present it re-measures too, comparing *verdicts* rather than floats (ONNX is not promised identical across machines). Re-record with `--record`; the bare form still prints the full table and `--cases` still shows where a judged anchor sits in the lexical, vector and fused lists. The verdict itself **cannot currently decide**: three of six judged sets pass, and every failure but one is the per-slice condition tripping over a four-to-seven-case slice (ADR-0064; the gate's own design question is roadmap 4.41) |
+| G2 Earn hybrid | **Reported per set; the decision is enforced across corpora** (roadmap 4.40/4.41, ADR-0068/0069). Both of spec 04 §7.3's conditions are computed whenever the hybrid retriever runs, and the cases behind any tripped slice are **named**. The gate line itself does not fail, for two reasons: "ship lexical-only" is a legitimate outcome, so a boolean would be red on the shipped configuration; and one set cannot decide a default that is decided over every frozen release set — today `ours/release` clears both conditions while both `uv` release sets fail. The verdict is **committed** in [`g2-verdict.json`](g2-verdict.json) with the fingerprints that date it, and `python tools/measure_hybrid_gate.py --check` — run by `tools/verify.py` at `retrieval` and by CI — fails when the retrieval configuration, a vendored corpus or a judged set has moved since, or when the decision the release rows support disagrees with the shipped profile. Never because hybrid lost. Where the model is present it re-measures too, comparing *verdicts* rather than floats (ONNX is not promised identical across machines). Re-record with `--record`; the bare form still prints the full table and `--cases` still shows where a judged anchor sits in the lexical, vector and fused lists. **At these set sizes G2 cannot promote hybrid** — *What a −2 % slice bar means over four cases*, above, is why that is the sets' fault and not the bar's |
 | G3 No regression | **Enforced against `baselines/<set>.json`** when the corpus *and the judgements* are the ones the baseline was taken on, and only on the slices that can carry it — no enforced slice may fall more than 2 %, and a slice that is `unanswerable`, blessed at 0.0000, or thinner than four cases is reported by name with the reason (ADR-0052). "The same corpus" means the same *documents*, not the same chunk boundaries, so a chunking change is gated rather than excused (roadmap 4.13, ADR-0045) and the verdict names the re-cut. "The same judgements" means the same cases with the same grades: a slice's score is a mean over its cases, so a set that grew reads as a regression unless the gate can tell the two apart (roadmap 4.24, ADR-0051). When either has changed the numbers are not comparable, so the gate *reports* the movement instead of failing on it — and calls it movement, not regression. `--bless` writes a baseline and records all three fingerprints |
 | G4 Abstention | **Enforced** — false-answer rate on `unanswerable` ≤ 5 % |
 | G5 Performance | **Enforced, with its limit stated** — query p95 ≤ 150 ms, reported with the corpus size it was measured on. The budget is defined at the 10⁵-chunk reference profile, so passing here is a floor rather than the measurement spec 04 §1 asks for |

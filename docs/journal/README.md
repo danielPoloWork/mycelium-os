@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-09 — the bar was right and the item was wrong (roadmap 4.41)](2026/09/2026-09-09-g2-slices-read-case-by-case.md)
 - [2026-09-09 — the gate that could not have been wired (roadmap 4.40)](2026/09/2026-09-09-gate-g2-runner.md)
 - [2026-09-09 — ten cases, and a mistake kept (roadmap 4.39)](2026/09/2026-09-09-ten-cases-and-a-mistake-kept.md)
 - [2026-09-09 — the two cases disagree (roadmap 4.38)](2026/09/2026-09-09-the-two-cases-disagree.md)
