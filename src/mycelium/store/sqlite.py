@@ -55,6 +55,8 @@ __all__ = [
     "StoreError",
     "StoreVersionError",
     "TermHits",
+    "describe_field_weights",
+    "field_weights",
 ]
 
 STORE_DIRNAME: Final = ".mycelium"
@@ -92,6 +94,42 @@ duplication, so the nominal weight is now the effective one and the same balance
 is 0.05: on the dev sets the curve peaks over 0.05-0.075 and a `conceptual` case
 loses its definition to a passage that merely says "this means that" at 0.09 and
 above (ADR-0054)."""
+
+_FIELD_LABELS: Final = ("anchor", "body", "title", "heading", "ancestors")
+"""What spec 04 §3 calls each of :data:`_SURFACE_WEIGHTS`' columns.
+
+`text` is the column's name in the DDL and `body` is the spec's word for it; the
+spec's word is what a run manifest records, so it is the one used here."""
+
+
+def field_weights() -> dict[str, float]:
+    """The BM25 field weights a run was scored under, by their spec names.
+
+    A *function* rather than a constant so a test can move :data:`_SURFACE_WEIGHTS`
+    and see this follow, which is what makes
+    :func:`mycelium.retrieval.retrieval_identity` a real fingerprint rather than a
+    restatement (roadmap 4.40).
+    """
+    return {
+        label: weight
+        for label, weight in zip(_FIELD_LABELS, _SURFACE_WEIGHTS, strict=True)
+        if label != "anchor"
+    }
+
+
+def describe_field_weights() -> str:
+    """``title=3.0,heading=2.0,body=1.0,ancestors=0.5`` — for a run manifest.
+
+    One home for a string that had two, both of them typed by hand beside the
+    numbers they claimed to describe. That is the shape of defect roadmap 4.40 is
+    about: gate G2's verdict names the retrieval configuration it was measured
+    under, and a hand-written summary of that configuration cannot be trusted to
+    move when the configuration does — so the next weight change would have left
+    the verdict looking current while the arm underneath it had shifted.
+    """
+    weights = field_weights()
+    return ",".join(f"{name}={weights[name]}" for name in ("title", "heading", "body", "ancestors"))
+
 
 _BM25_WEIGHTS: Final = (
     *_SURFACE_WEIGHTS,

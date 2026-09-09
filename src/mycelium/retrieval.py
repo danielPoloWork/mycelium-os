@@ -33,15 +33,28 @@ from typing import Final
 
 from mycelium.config import RetrievalConfig
 from mycelium.embedding import Embedder
-from mycelium.store import SearchFilters, SearchHit, SqliteStore, TermHits
+from mycelium.sdk.identity import digest_json
+from mycelium.sdk.types import Sha256Digest
+from mycelium.store import (
+    SCHEMA_VERSION,
+    STEM_WEIGHT,
+    SearchFilters,
+    SearchHit,
+    SqliteStore,
+    TermHits,
+    field_weights,
+)
 
 __all__ = [
     "DEFAULT_LIMIT",
+    "RRF_K",
     "STOPWORDS",
+    "VECTOR_CANDIDATES",
     "FusedHit",
     "SearchOutcome",
     "query_terms",
     "reciprocal_rank_fusion",
+    "retrieval_identity",
     "search",
 ]
 
@@ -114,6 +127,48 @@ decision from adopting it.
 
 The **vector** leg still sees the whole question: an embedder is asked in the
 words it was trained on, and the grammar is what it reads."""
+
+
+def retrieval_identity() -> Sha256Digest:
+    """Digest everything that decides a ranking, so a measurement can date itself.
+
+    Gate G2 is a *comparison* of the vector-fused ranking against the lexical one,
+    and its verdict is only about the product for as long as both arms are the
+    ones that ship. They were not: the verdict recorded at ADR-0017 was carried as
+    prose for three milestones while the lexical leg moved four times underneath
+    it — chunk packing (roadmap 4.15), stemming (4.19), function-word stripping
+    (4.28) and the heading split (4.36) — and nothing anywhere could notice,
+    because nothing recorded what the verdict had been measured *under*
+    (ADR-0064, roadmap 4.40).
+
+    This is that record. Every field is read from the module that owns it, at call
+    time, so the digest cannot agree with a configuration that has changed:
+
+    - the BM25 field weights and the stem weight — the ranking's own arithmetic;
+    - the stopword *membership*, not its size: swapping one word for another
+      changes what the lexical leg searches on and leaves a count identical;
+    - the fusion constants, which decide what the vector leg contributes;
+    - the FTS schema version, because a change to the indexed columns is a change
+      to what BM25 can see.
+
+    Each of the four changes above moves at least one of them, which is the check
+    that this fingerprint is a fingerprint rather than a decoration. What it
+    cannot see is a knob nobody added here — no digest can — so a new ranking
+    parameter belongs in this dict in the same commit that introduces it.
+
+    Deliberately *not* included: the shipped `[retrieval] profile`. A default flip
+    and a stale measurement are different mistakes with different remedies, so
+    they are reported separately rather than folded into one digest.
+    """
+    return digest_json(
+        {
+            "fts_schema": SCHEMA_VERSION,
+            "field_weights": field_weights(),
+            "fusion": {"rrf_k": RRF_K, "vector_candidates": VECTOR_CANDIDATES},
+            "stem_weight": STEM_WEIGHT,
+            "stopwords": sorted(STOPWORDS),
+        }
+    )
 
 
 def query_terms(query: str) -> list[str]:

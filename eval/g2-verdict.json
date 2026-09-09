@@ -1,0 +1,260 @@
+{
+  "corpora": {
+    "ours": {
+      "chunks_digest": "sha256:3d847dce9bf4c2449586702eaa81bebe3b7c91aada1df12e0d7a0b2ed831811c",
+      "content_digest": "sha256:bb619a1adade6b0d2f603165903e0bd218c62506c8e578fcdb3e618c09eca2e8",
+      "dated": false
+    },
+    "uv": {
+      "chunks_digest": "sha256:3083b97f9d6983bba978df8cb09b48fc872666379faa7808b9be1ed6f7bf6282",
+      "content_digest": "sha256:44895398cedfc30a39759a8dfd9ab59ec2df26e6d251e8e619a6bc3ea4af2b06",
+      "dated": true
+    },
+    "uv-ingested": {
+      "chunks_digest": "sha256:2eeeb3f412058084dadd981d1c6923aef38808520bade5b4f13830f2c18164ed",
+      "content_digest": "sha256:bcc5ac4fc23b281b80dde32d92e6c876670ea0dbbb5d4f9d48cccdc018303aee",
+      "dated": true
+    }
+  },
+  "dated_corpora": [
+    "uv",
+    "uv-ingested"
+  ],
+  "decision": "lexical",
+  "model_id": "bge-small-en-v1.5",
+  "recorded_at": "2026-09-09",
+  "retrieval_identity": "sha256:1469a9437afa87478ea9befd5d516f71d55aa3f31493193c3066d22d482f420b",
+  "schema_version": "mycelium/g2-verdict/v0",
+  "sets": {
+    "ours/dev": {
+      "cases": 16,
+      "cases_digest": "sha256:c39aa93ef694f6a9b63dfeb51deb7024993a6c38346808dfff6e1839077ddd64",
+      "detail": "+6.7% overall (needs +5%); regressions past -2%: fact -5.6%",
+      "hybrid_ndcg_at_10": 0.576188,
+      "lexical_ndcg_at_10": 0.540169,
+      "per_slice": {
+        "conceptual": {
+          "cases": 5,
+          "hybrid": 0.620924,
+          "lexical": 0.58671
+        },
+        "exact": {
+          "cases": 2,
+          "hybrid": 0.761871,
+          "lexical": 0.73785
+        },
+        "fact": {
+          "cases": 4,
+          "hybrid": 0.456689,
+          "lexical": 0.483886
+        },
+        "injection": {
+          "cases": 1,
+          "hybrid": 0.0,
+          "lexical": 0.0
+        },
+        "relationship": {
+          "cases": 2,
+          "hybrid": 0.464951,
+          "lexical": 0.416492
+        },
+        "symbol": {
+          "cases": 3,
+          "hybrid": 0.813471,
+          "lexical": 0.657535
+        }
+      },
+      "regressions": [
+        "fact -5.6%"
+      ],
+      "verdict": "fail"
+    },
+    "ours/release": {
+      "cases": 17,
+      "cases_digest": "sha256:5d5cb038211bac12ea7f23ee90195442877f166bb6203db8cc5be44edef88d09",
+      "detail": "+20.9% overall (needs +5%)",
+      "hybrid_ndcg_at_10": 0.617834,
+      "lexical_ndcg_at_10": 0.510827,
+      "per_slice": {
+        "conceptual": {
+          "cases": 4,
+          "hybrid": 0.693199,
+          "lexical": 0.520873
+        },
+        "exact": {
+          "cases": 4,
+          "hybrid": 0.831614,
+          "lexical": 0.758157
+        },
+        "fact": {
+          "cases": 6,
+          "hybrid": 0.587481,
+          "lexical": 0.460239
+        },
+        "relationship": {
+          "cases": 4,
+          "hybrid": 0.380229,
+          "lexical": 0.285964
+        }
+      },
+      "regressions": [],
+      "verdict": "pass"
+    },
+    "uv-ingested/dev": {
+      "cases": 20,
+      "cases_digest": "sha256:aabf86387916b0d70abf0344df625d41d22943232c755985a9fd7de9a82ccf6d",
+      "detail": "+23.1% overall (needs +5%)",
+      "hybrid_ndcg_at_10": 0.674588,
+      "lexical_ndcg_at_10": 0.548095,
+      "per_slice": {
+        "conceptual": {
+          "cases": 4,
+          "hybrid": 0.815465,
+          "lexical": 0.704382
+        },
+        "exact": {
+          "cases": 4,
+          "hybrid": 0.703866,
+          "lexical": 0.704382
+        },
+        "fact": {
+          "cases": 5,
+          "hybrid": 0.926186,
+          "lexical": 0.81917
+        },
+        "relationship": {
+          "cases": 4,
+          "hybrid": 0.323525,
+          "lexical": 0.118808
+        },
+        "symbol": {
+          "cases": 4,
+          "hybrid": 0.622351,
+          "lexical": 0.438942
+        }
+      },
+      "regressions": [],
+      "verdict": "pass"
+    },
+    "uv-ingested/release": {
+      "cases": 23,
+      "cases_digest": "sha256:5ef0fd53a16e8fec20e56a1454c5de06ed9f7d8c691790fa54647f9ee485adb3",
+      "detail": "-3.1% overall (needs +5%); regressions past -2%: conceptual -7.5%, exact -7.3%, relationship -11.2%, symbol -3.6%",
+      "hybrid_ndcg_at_10": 0.614325,
+      "lexical_ndcg_at_10": 0.634104,
+      "per_slice": {
+        "conceptual": {
+          "cases": 4,
+          "hybrid": 0.609387,
+          "lexical": 0.658801
+        },
+        "exact": {
+          "cases": 5,
+          "hybrid": 0.8,
+          "lexical": 0.863093
+        },
+        "fact": {
+          "cases": 7,
+          "hybrid": 0.599114,
+          "lexical": 0.513787
+        },
+        "relationship": {
+          "cases": 4,
+          "hybrid": 0.574707,
+          "lexical": 0.647286
+        },
+        "symbol": {
+          "cases": 4,
+          "hybrid": 0.538782,
+          "lexical": 0.558805
+        }
+      },
+      "regressions": [
+        "conceptual -7.5%",
+        "exact -7.3%",
+        "relationship -11.2%",
+        "symbol -3.6%"
+      ],
+      "verdict": "fail"
+    },
+    "uv/dev": {
+      "cases": 20,
+      "cases_digest": "sha256:4e0d7259b0714ffe6aed86156ab3f05c9c333dfedb42d92b496f1c237f57b883",
+      "detail": "+23.2% overall (needs +5%)",
+      "hybrid_ndcg_at_10": 0.75031,
+      "lexical_ndcg_at_10": 0.609206,
+      "per_slice": {
+        "conceptual": {
+          "cases": 4,
+          "hybrid": 0.825257,
+          "lexical": 0.657732
+        },
+        "exact": {
+          "cases": 4,
+          "hybrid": 0.995711,
+          "lexical": 0.907732
+        },
+        "fact": {
+          "cases": 5,
+          "hybrid": 0.926186,
+          "lexical": 0.892984
+        },
+        "relationship": {
+          "cases": 4,
+          "hybrid": 0.31104,
+          "lexical": 0.089975
+        },
+        "symbol": {
+          "cases": 4,
+          "hybrid": 0.711807,
+          "lexical": 0.524362
+        }
+      },
+      "regressions": [],
+      "verdict": "pass"
+    },
+    "uv/release": {
+      "cases": 23,
+      "cases_digest": "sha256:14c00af069b07c9369b294a1d9195f8400eb917164a66953cdd6e23441193dab",
+      "detail": "+10.7% overall (needs +5%); regressions past -2%: conceptual -13.1%, symbol -4.5%",
+      "hybrid_ndcg_at_10": 0.668015,
+      "lexical_ndcg_at_10": 0.603521,
+      "per_slice": {
+        "conceptual": {
+          "cases": 4,
+          "hybrid": 0.572346,
+          "lexical": 0.658801
+        },
+        "exact": {
+          "cases": 5,
+          "hybrid": 0.726186,
+          "lexical": 0.733333
+        },
+        "fact": {
+          "cases": 7,
+          "hybrid": 0.723267,
+          "lexical": 0.43063
+        },
+        "relationship": {
+          "cases": 4,
+          "hybrid": 0.686344,
+          "lexical": 0.65923
+        },
+        "symbol": {
+          "cases": 4,
+          "hybrid": 0.647903,
+          "lexical": 0.678734
+        }
+      },
+      "regressions": [
+        "conceptual -13.1%",
+        "symbol -4.5%"
+      ],
+      "verdict": "fail"
+    }
+  },
+  "shipped_profile": "lexical",
+  "toolchain": {
+    "mycelium": "0.3.0"
+  }
+}

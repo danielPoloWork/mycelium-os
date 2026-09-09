@@ -83,3 +83,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0065](0065-one-section-cannot-document-two-commands.md) | One section cannot be the documenting home of two commands | Accepted |
 | [0066](0066-refuse-the-length-split-and-name-the-anti-correlation.md) | Refuse the length split, and name the anti-correlation it exposed | Accepted |
 | [0067](0067-grow-the-dev-set-before-asking-it-a-question.md) | Grow the dev set before asking it a question, and keep the cases that embarrass it | Accepted |
+| [0068](0068-give-gate-g2-a-runner-by-dating-its-verdict.md) | Give gate G2 a runner by dating its verdict, not by re-running it everywhere | Accepted |

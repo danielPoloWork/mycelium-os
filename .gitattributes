@@ -46,3 +46,9 @@ eval/corpora/uv-docs-ingested/sources/**/* binary
 eval/corpora/uv-docs-ingested/knowledge/evidence/*.md text eol=lf
 eval/corpora/uv-docs-ingested/eval/*.jsonl text eol=lf
 eval/corpora/uv-docs-ingested/provenance.json text eol=lf
+
+# Gate G2's committed verdict (roadmap 4.40). Its formatting is asserted rather
+# than assumed - a record whose bytes drift produces a diff on every
+# re-measurement and hides the one line that actually moved - so it is pinned for
+# the same reason the determinism golden is.
+eval/g2-verdict.json text eol=lf

@@ -28,7 +28,7 @@ from mycelium.config import RetrievalConfig
 from mycelium.embedding import Embedder
 from mycelium.retrieval import RRF_K, STOPWORDS, VECTOR_CANDIDATES, query_terms
 from mycelium.retrieval import search as run_search
-from mycelium.store import STEM_WEIGHT, SqliteStore
+from mycelium.store import STEM_WEIGHT, SqliteStore, describe_field_weights
 
 __all__ = [
     "GrepRetriever",
@@ -90,7 +90,11 @@ class MyceliumRetriever:
     def config(self) -> dict[str, str | int | float | bool]:
         return {
             "engine": "fts5-bm25",
-            "weights": "title=3.0,heading=2.0,body=1.0,ancestors=0.5",
+            # Rendered from the store's own weights rather than typed here
+            # (roadmap 4.40): a hand-written summary of the ranking's arithmetic
+            # is exactly what does not move when the arithmetic does, and gate
+            # G2's verdict is dated by this value.
+            "weights": describe_field_weights(),
             # Recorded because it is part of what produced the numbers: the run
             # manifest is how a reader of an old result knows which index it was
             # measured on (roadmap 4.19, ADR-0048).
@@ -177,7 +181,7 @@ class HybridRetriever:
     def config(self) -> dict[str, str | int | float | bool]:
         return {
             "engine": "fts5-bm25 + vector",
-            "weights": "title=3.0,heading=2.0,body=1.0,ancestors=0.5",
+            "weights": describe_field_weights(),
             "hybrid": True,
             "fusion": "rrf",
             "rrf_k": RRF_K,

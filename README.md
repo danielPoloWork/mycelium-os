@@ -129,6 +129,14 @@ benchmark cannot currently make. What that costs, and what would fix it, is
 [ADR-0064](docs/adr/0064-measure-the-gate-that-decides-the-default.md); re-run it yourself
 with `python tools/measure_hybrid_gate.py`.
 
+That verdict is now **written down and dated**, in [`eval/g2-verdict.json`](eval/g2-verdict.json),
+with fingerprints of the retrieval configuration, the corpora and the judgements it was
+measured under. It had to be: G2 needs the embedding model, CI does not have one, and the
+lexical leg it is measured *against* changed four times while the verdict sat in prose. CI
+cannot re-measure it, so it enforces the next best thing — that the recorded verdict still
+describes this product — and a ranking change now has to re-record G2 before it can land
+([ADR-0068](docs/adr/0068-give-gate-g2-a-runner-by-dating-its-verdict.md)).
+
 So the shipped default is `[retrieval] profile = "lexical"`. Turn hybrid on with one setting
 or `mycelium search --hybrid` — on a natural-language question it can be the difference
 between an answer and none: one judged case has its answer at vector rank 3 of 568 and
