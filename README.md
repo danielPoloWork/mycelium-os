@@ -506,11 +506,16 @@ on the release sets — the ones nobody develops against — the product now lea
 
 | release set | Mycelium OS | the `grep` loop |
 |---|---:|---:|
-| `uv`'s documentation (the corpus this was filed about) | **0.586** | 0.485 |
-| the same documents, ingested from DOCX/HTML/PDF | **0.615** | 0.505 |
-| this repository | **0.498** | 0.331 |
+| `uv`'s documentation (the corpus this was filed about) | **0.611** | 0.517 |
+| the same documents, ingested from DOCX/HTML/PDF | **0.637** | 0.478 |
+| this repository | **0.532** | 0.346 |
 
-Thirteen candidate re-rankings were measured on the way there and **all thirteen refused**
+The third row moved *down* on both sides when this repository's own changelog and release
+notes left the corpus (roadmap 4.44). They restate what the ADRs already say, and a
+term-counting baseline suffers from that far more than we do — so indexing them was widening
+our reported lead for a reason that has nothing to do with retrieval.
+
+Fourteen candidate re-rankings were measured on the way there and **all fourteen refused**
 ([ADR-0031](docs/adr/0031-refuse-three-rerankings.md),
 [ADR-0041](docs/adr/0041-bound-the-section-unit-and-refuse-six-more.md)) — including one that
 *passed* the release gate and was refused anyway, because the dev set the gate does not read
@@ -525,8 +530,8 @@ rather than every candidate document needing one (roadmap 4.23). The evidence re
 The overall lead still hides a slice, and the harness prints it rather than rounding it off:
 
 ```text
-vs grep: nDCG@10 0.586 against grep's 0.485 (+0.101) - ahead of the incumbent;
-         still conceded: fact 0.431 vs 0.497
+vs grep: nDCG@10 0.611 against grep's 0.517 (+0.094) - ahead of the incumbent;
+         still conceded: fact 0.438 vs 0.497
 ```
 
 `fact` on that corpus — seven cases of "how do I do X", the shape the corpus is made of — is

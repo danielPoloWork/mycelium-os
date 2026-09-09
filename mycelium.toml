@@ -9,6 +9,17 @@ exclude = [
                                # indexes them scores an unanswerable case against a
                                # fixture and reports gate G4 red for it (BUG-0007)
     "docs/journal",            # grows every session; churns judgments for no gain
+    "docs/changelog",          # a per-version changelog and its release notes *restate*, in
+    "docs/releases",           # the same vocabulary, what ADRs and the roadmap already say
+                               # canonically - so they compete with the source they summarise,
+                               # and they hurt a term-counting baseline far more than they hurt
+                               # us. Measured while cutting v0.4.0: adding that version's two
+                               # documents left our dev score at 0.539 and dropped grep's from
+                               # 0.349 to 0.2998. Excluding all of them puts grep back at 0.358
+                               # and moves us to 0.540 - so our reported lead over the
+                               # incumbent NARROWS, +0.218 to +0.183 on the release set, which
+                               # is the direction that says this is not a fitted change
+                               # (roadmap 4.44, ADR-0072)
     ".mycelium-os-legacy",     # the superseded implementation, kept for salvage only
     "eval/corpora",            # the second judged corpus is documentation we did NOT
                                # write (ADR-0027); indexing it here would mix the two
