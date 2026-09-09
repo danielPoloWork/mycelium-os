@@ -196,10 +196,23 @@ above says chunk-or-section; this one says *which* chunk or section. A `symbol` 
 query that is a named thing — names the section that documents it at grade 3; a page that
 frames it, defines a sibling, or mentions it in passing is a lesser grade or none, never the
 primary anchor. `u-1007` (`uv tool install`) broke it and scored 0.0000 for four milestones:
-its one anchor was a section whose subject is the *interface*, and which is the correct
-grade-3 home of a different query (`u-0006`, `uvx`, which it defines). Re-judged at roadmap
-4.34, with the reasoning and the honesty note — the incumbent gains twice what we do — in
+its one anchor was a section whose subject is the *interface* rather than the command.
+Re-judged at roadmap 4.34, with the reasoning and the honesty note — the incumbent gains
+twice what we do — in
 [ADR-0062](../docs/adr/0062-a-symbol-judgment-names-where-the-thing-is-documented.md).
+
+That ADR added, in passing, that the same section is the correct grade-3 home of `u-0006`
+(`uvx`, which it defines). **It is not, and roadmap 4.37 is where that was settled**: a
+section's subject does not change with the query asked of it, so one section cannot be the
+*documenting* home of two sibling commands under a rule that gives grade 3 to the section
+that documents the thing. `uvx` is documented by `guides/tools.md#running-tools` — *"The
+uvx command invokes a tool without installing it"* — the counterpart of the
+`#installing-tools` section 4.34 promoted, and the framing section keeps a 2 in both cases.
+Re-judging it turned a silent zero into a **visible concession**: `symbol` on uv/dev now
+reports `conceded on 1 of 1 case(s): u-0006 0.373 vs 0.465`, because grep was already ahead
+on the case while we scored nothing. The three grades, the alternative that was priced and
+rejected, and what to revert to if you read the two sections the other way are in
+[ADR-0065](../docs/adr/0065-one-section-cannot-document-two-commands.md).
 
 **Freezing is a conjunction, not an immutability.** Sets have to grow, so
 `tools/check_frozen_release_sets.py` refuses a change that edits a release set *and* touches

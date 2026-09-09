@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-09 — one section, two commands (roadmap 4.37)](2026/09/2026-09-09-one-section-two-commands.md)
 - [2026-09-08 — the gate that never ran (roadmap 4.33)](2026/09/2026-09-08-the-gate-that-never-ran.md)
 - [2026-09-08 — a smaller question (roadmap 4.36)](2026/09/2026-09-08-a-smaller-question.md)
 - [2026-09-08 — the section that defines a sibling (roadmap 4.34)](2026/09/2026-09-08-the-section-that-defines-a-sibling.md)
