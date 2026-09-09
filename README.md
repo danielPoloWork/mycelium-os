@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/Status-v0.3.0-blue)
+![Status](https://img.shields.io/badge/Status-v0.4.0-blue)
 [![CI](https://github.com/danielPoloWork/mycelium-os/actions/workflows/ci.yml/badge.svg)](https://github.com/danielPoloWork/mycelium-os/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/danielPoloWork/mycelium-os?include_prereleases)](https://github.com/danielPoloWork/mycelium-os/releases)
 [![License](https://img.shields.io/github/license/danielPoloWork/mycelium-os)](LICENSE)
@@ -26,7 +26,7 @@ govern the code, and assemble context by heuristics with no citations and no way
 quality. Teams compensate by hand-maintaining `CLAUDE.md` and `AGENTS.md` files — knowledge
 compilation *by hand*. The practice proves the need; the tooling is missing.
 
-Mycelium OS compiles authored Markdown (and, from Milestone 4, ingested PDF/DOCX/HTML) into
+Mycelium OS compiles authored Markdown and ingested PDF/DOCX/HTML into
 a deterministic, versioned, queryable substrate, and serves it over CLI and MCP. It is a
 knowledge **compiler and serving layer** — not an agent runtime, not a RAG framework, not a
 chat product (D-001). v1 targets repo-scale, local-first, single-tenant corpora of
@@ -492,13 +492,15 @@ setup.
 
 ## Status
 
-Pre-1.0 and milestone-driven. **Milestone 3 is complete**: the compiler is incremental —
-a single-document edit recompiles that document's chain, not the corpus, and the output is
-byte-equal to a clean build by tested construction (ADR-0015) — snapshots are restorable,
-watch mode rebuilds on save with a manual build's guarantees, and a local embedder ships
-with hybrid retrieval *switched off*, because gate G2 said it had not earned the default.
-The evaluation now spans three corpora, two of them documentation this project did not
-write, with a frozen dev/release split gating CI. The five stable contracts freeze at 1.0.
+Pre-1.0 and milestone-driven. **Milestone 4 is complete**: the compiler now ingests the
+documents you were given as well as the ones you wrote — PDF, DOCX, HTML and everything
+pandoc reads — keeping the original bytes in custody, accounting for every element as
+represented, opaque, dropped by policy or failed, and projecting a Markdown document it then
+compiles like any other. Hostile sources quarantine instead of stopping a build, secrets are
+found at ingestion, and a synthesis lane authors candidate documents that cite the evidence
+layer or are not written at all. The evaluation spans three corpora, two of them
+documentation this project did not write, with a frozen dev/release split gating CI. The five
+stable contracts freeze at 1.0.
 
 For two milestones the honest part of that paragraph was what was missing from it: on the
 second corpus a plain `grep` loop ranked better than we did. **It no longer does.** Measured
@@ -558,7 +560,7 @@ anchor space — instead of by diffing two runs and hoping nothing else changed.
 | 1 | Project bootstrap & CI | ✅ done |
 | 2 | Walking skeleton (spec Phase 0) | ✅ done |
 | 3 | v0.1 — The compiler (spec Phase 1) | ✅ done |
-| 4 | v0.2 — Ingestion (spec Phase 2) | 🚧 in progress |
+| 4 | v0.2 — Ingestion (spec Phase 2) | ✅ done |
 | 5 | v0.3 — Structure (spec Phase 3) | ⏳ planned |
 | 6 | v1.0 — Stable (spec Phase 4) | ⏳ planned |
 | 7 | v2.x — Team & platform (spec Phase 5; separate RFC cycle) | ⏳ planned |
