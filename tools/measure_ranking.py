@@ -33,28 +33,32 @@ plain` is the control — an in-memory rebuild of the pre-4.19 index, which is w
 it now scores *below* `baseline (ships)`.
 
 The twelfth is the **heading** family (roadmap 4.25), and it is the second thing
-in this file to ship — in part. A chunk's `heading_path` was its whole ancestor
-chain, so a subsection's heading field was a strict superset of its parent's;
-splitting the leaf heading from the ancestors stops a query that matches an
-ancestor from boosting every descendant. What shipped is `heading 2.0/0.5`, so
-the rows below now read against a *split* baseline: `baseline (ships)` and
-`heading 2.0/0.5` are the same index, and the row is kept because it is the
-control that says so.
+in this file to ship — over three items, one parameter at a time. A chunk's
+`heading_path` was its whole ancestor chain, so a subsection's heading field was
+a strict superset of its parent's; splitting the leaf heading from the ancestors
+stops a query that matches an ancestor from boosting every descendant. What ships
+now is `heading 3.0/0.5`, so that row and `baseline (ships)` are the same index
+and must score identically — the control that says this family is measuring the
+field split and nothing else. **`heading 2.0/0.5` is now the revert control**: it
+is what shipped between roadmap 4.36 and 4.42, and its row prices going back.
 
-Three results, all worth keeping. It does **not** move the case it was built for
+Four results, all worth keeping. It does **not** move the case it was built for
 — `u-1006` sits at 0.431 at every setting, including ancestors at zero, because
 the child never won on the heading field at all (it wins on `text`, at 164 tokens
-against 385). Its own parameter was chosen where dev could see it: on ours/dev
-the ancestor weight is a **plateau**, 0.25 through 0.75 scoring identically
-(0.540/0.581/0.719 against the unsplit 0.537/0.572/0.719) and 0.0 collapsing to
-0.523/0.577/0.688, so the ancestors carry real signal and 0.5 is the middle of
-the flat part rather than a fitted optimum. And the **leaf** weight is still
-refused: `heading 3.0/0.5` and `heading 4.0/0.5` gain more on both release sets
-and score *exactly* the shipped setting on both dev sets, which is the pair
-ADR-0058 refused and ADR-0063 refuses again. The unsplit controls
-(`heading 3.0/3.0`, `heading 4.0/4.0`) fail gate G3 on `exact`, which is what
-says the split is what makes a higher leaf weight safe rather than the weight
-doing it alone — and it is why the leaf weight is now *askable* at all.
+against 385). The **ancestor** weight was chosen where dev could see it: on
+ours/dev it is a **plateau**, 0.25 through 0.75 scoring identically and 0.0
+collapsing (0.539/0.577/0.719 against 0.523/0.577/0.688 at the leaf weight of the
+day), so the ancestors carry real signal and 0.5 is the middle of the flat part
+rather than a fitted optimum. The **leaf** weight was refused twice on the same
+ground — it gained on the release sets and scored *exactly* the baseline on the
+dev sets, which is a value read off the held-out set — and roadmap 4.39 removed
+that ground by growing uv/dev from twelve judged cases to twenty-two. It reads
+0.614 there against 0.609, and **4.0/0.5 reads 0.599, below the baseline**: an
+interior optimum, on the dev side, disagreeing with the release sets, which is
+what a dev set is for (roadmap 4.42, ADR-0070). The unsplit controls
+(`heading 3.0/3.0`, `heading 4.0/4.0`) fail gate G3 on `exact`, which says the
+split is what makes a higher leaf weight safe rather than the weight doing it
+alone.
 
 The thirteenth is the **length** family (roadmap 4.38), and **all five settings
 are refused**. It began from a fact worth keeping on its own: `bm25()` normalises
@@ -955,13 +959,14 @@ HEADING_FAMILY: Final[tuple[tuple[str, Ranking], ...]] = (
     ("heading 4.0/0.5", heading_split(4.0, 0.5)),
     ("heading 4.0/4.0", heading_split(4.0, 4.0)),
 )
-"""Two controls, and they now bracket the shipped setting from both sides.
+"""Three controls, and they bracket the shipped setting on every side.
 
 `heading 2.0/2.0` is the *unsplit* control: one field split in two, both halves
 at the weight the single field had, which is what the index did before roadmap
-4.36. `heading 2.0/0.5` is what ships, so it must score what `baseline (ships)`
-scores — if it does not, this family is measuring something other than the field
-split (ADR-0063)."""
+4.36. `heading 2.0/0.5` is the **revert** control — what shipped between 4.36 and
+4.42 — so its row is the price of going back. `heading 3.0/0.5` is what ships
+now, so it must score what `baseline (ships)` scores; if it does not, this family
+is measuring something other than the field weights (ADR-0063, ADR-0070)."""
 
 
 # ---------------------------------------------------------------------------

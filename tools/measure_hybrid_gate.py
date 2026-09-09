@@ -536,7 +536,9 @@ def _check_sets(record: Mapping[str, Any], notes: list[str]) -> list[str]:
     return failures
 
 
-def compare_measurement(record: Mapping[str, Any], measured: Sequence[SetVerdict]) -> list[str]:
+def compare_measurement(
+    record: Mapping[str, Any], measured: Sequence[SetVerdict], notes: list[str] | None = None
+) -> list[str]:
     """Does a fresh measurement still reach the recorded verdicts?
 
     Verdicts, not floats. ADR-0017 declares the embedder non-deterministic across
@@ -544,6 +546,19 @@ def compare_measurement(record: Mapping[str, Any], measured: Sequence[SetVerdict
     fourth decimal; what may not differ is whether hybrid clears the bar. The
     numbers are printed beside the recorded ones so drift is visible without being
     gated on.
+
+    **A flip on an undated corpus is a note, not a failure**, which is the same
+    carve-out :func:`_check_corpora` and :func:`_check_sets` make and for the
+    reason :data:`DATED_CORPORA` states: `ours` is this repository, so every pull
+    request moves it. This function did not make it, and the omission had a shape
+    — CI has no model and never re-measures, so only a contributor who *has* one
+    saw it, and what they saw was `verify.py` going red because they wrote the ADR
+    documenting their own change. That is the local-versus-CI divergence ADR-0059
+    exists to remove, arriving through the one path that runs in only one of the
+    two (roadmap 4.42, ADR-0070).
+
+    What stays a failure is the **decision**: if the measurement no longer supports
+    the default the record names, that is true wherever the drift came from.
     """
     failures: list[str] = []
     recorded = record.get("sets")
@@ -555,12 +570,17 @@ def compare_measurement(record: Mapping[str, Any], measured: Sequence[SetVerdict
             failures.append(f"{verdict.name} is measured here and absent from the record")
             continue
         was, now = str(entry.get("verdict")), "pass" if verdict.passed else "fail"
-        if was != now:
-            failures.append(
-                f"{verdict.name}: recorded {was}, measured {now} "
-                f"(lexical {entry.get('lexical_ndcg_at_10')} -> {verdict.lexical:.4f}, "
-                f"hybrid {entry.get('hybrid_ndcg_at_10')} -> {verdict.hybrid:.4f})"
-            )
+        if was == now:
+            continue
+        moved = (
+            f"{verdict.name}: recorded {was}, measured {now} "
+            f"(lexical {entry.get('lexical_ndcg_at_10')} -> {verdict.lexical:.4f}, "
+            f"hybrid {entry.get('hybrid_ndcg_at_10')} -> {verdict.hybrid:.4f})"
+        )
+        if verdict.name.split("/", 1)[0] in DATED_CORPORA:
+            failures.append(moved)
+        elif notes is not None:
+            notes.append(f"{moved} - undated corpus, reported (see DATED_CORPORA)")
     supported = decision_of({verdict.name: verdict for verdict in measured})
     if len(measured) == len(recorded) and supported != record.get("decision"):
         failures.append(
@@ -608,10 +628,13 @@ def run_check() -> int:
             for set_name in SETS
             if (verdict := _measure_set(label, root, set_name, embedder)) is not None
         ]
-        drift = compare_measurement(record, measured)
+        reported: list[str] = []
+        drift = compare_measurement(record, measured, reported)
         failures.extend(drift)
+        for note in reported:
+            print(f"  {note}")
         if not drift:
-            print(f"  G2 re-measured on {len(measured)} set(s): every verdict reproduced")
+            print(f"  G2 re-measured on {len(measured)} set(s): every gated verdict reproduced")
         for verdict in measured:
             _print_set(verdict)
 

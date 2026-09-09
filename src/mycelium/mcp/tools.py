@@ -31,7 +31,13 @@ from mycelium.retrieval import search as run_search
 from mycelium.sdk.identity import IdentityError, anchor, citation_uri, doc_ref, parse_anchor
 from mycelium.sdk.identity import parse_citation_uri as parse_uri
 from mycelium.sdk.types import Chunk, EdgeType, TrustClass, VerificationStatus
-from mycelium.store import STORE_DIRNAME, SearchFilters, SqliteStore, StoreError
+from mycelium.store import (
+    STORE_DIRNAME,
+    SearchFilters,
+    SqliteStore,
+    StoreError,
+    field_weights,
+)
 
 __all__ = [
     "NOTICE",
@@ -409,7 +415,12 @@ def handle_search(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
             ),
             "stages": list(outcome.legs),
             "fusion": {"method": "rrf", "k": RRF_K},
-            "field_weights": {"title": 3.0, "heading": 2.0, "body": 1.0, "ancestors": 0.5},
+            # Read from the ranker rather than restated beside it. A hand-typed
+            # copy of this dictionary is how `mycelium_explain` came to report
+            # `heading 2.0` while the ranker used 3.0 — the debugging surface
+            # describing a product that no longer existed (roadmap 4.42, and the
+            # same defect ADR-0068 fixed in the run manifest).
+            "field_weights": field_weights(),
             "degraded": list(outcome.degraded),
             "notes": list(outcome.notes),
             "tokens_returned": spent,
@@ -553,7 +564,7 @@ def handle_explain(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
         "fusion": {"method": "rrf", "k": RRF_K, "vector_candidates": VECTOR_CANDIDATES},
         "timings_ms": dict(outcome.timings_ms),
         "config": {
-            "field_weights": {"title": 3.0, "heading": 2.0, "body": 1.0, "ancestors": 0.5},
+            "field_weights": field_weights(),
             "embedding_model": settings.embedding.model_id,
             "embedding_provider": settings.embedding.provider,
         },

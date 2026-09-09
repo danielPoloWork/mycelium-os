@@ -12,6 +12,42 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The leaf heading field weight rises from 2.0 to 3.0** (roadmap 4.42,
+  [ADR-0070](docs/adr/0070-take-the-leaf-heading-weight-on-the-third-asking.md)). Refused
+  twice — by ADR-0058 and again by ADR-0063 — on the ground that it gained on the held-out
+  sets while scoring *exactly* the baseline on the dev sets. Roadmap 4.39 grew `uv/dev` to
+  twenty-two judged cases and removed that ground: the setting reads **0.614 there against
+  0.609**, R@10 0.717 against 0.692, and `heading 4.0` reads **0.599, below the baseline** —
+  an interior optimum the dev set can see, disagreeing with the release sets, which prefer
+  4.0.
+
+  Gate G3 was read against the committed baselines *before* anything was re-blessed:
+  uv/release **0.6035 → 0.6109** with no enforced slice regressing, uv-ingested/release
+  **0.6341 → 0.6370**. Both frozen baselines are re-blessed; this repository's own is not
+  (ADR-0053). Across all six judged sets fourteen of 119 answerable cases move, nine up and
+  five down — and the two losses, plus a `conceptual` slice that sits 2.1 % lower on our own
+  reported set, are decomposed case by case in the ADR rather than averaged away.
+
+  Spec 04 §3 is amended with it: the third amendment to that section's field weights, and the
+  first that moves a number the section itself set.
+
+- **Gate G2's runner no longer fails on this repository's own corpus.**
+  `tools/measure_hybrid_gate.py --check` re-measures where the embedding model is present, and
+  compared verdicts on *every* set — including `ours`, which every pull request moves. So
+  writing the ADR that documents a retrieval change flipped `ours/release` and failed the
+  check, and only a contributor with the model could see it, because CI has none and never
+  re-measures. A verdict flip on an undated corpus is now reported with its numbers, the same
+  carve-out `DATED_CORPORA` already declares for content and judgement drift; a flip on a
+  frozen corpus still fails, and the *decision* comparison is unchanged.
+
+- **`mycelium_explain` reads the field weights from the ranker instead of restating them.**
+  Both its `explain` payload and its `config` block carried a hand-typed copy, so the weight
+  change above made the debugging surface describe a ranking the product was not doing —
+  while 1559 tests stayed green, because the assertions pinning those weights were literals
+  agreeing with literals. Same defect
+  [ADR-0068](docs/adr/0068-give-gate-g2-a-runner-by-dating-its-verdict.md) swept out of the
+  run manifest, in the two places that sweep missed.
+
 - **Gate G2 reports per set; the decision is enforced across corpora** (roadmap 4.41,
   [ADR-0069](docs/adr/0069-read-g2s-slices-case-by-case-and-keep-the-bar.md)). `_gate_g2`
   still computes both of spec 04 §7.3's conditions and states its reading, but no longer

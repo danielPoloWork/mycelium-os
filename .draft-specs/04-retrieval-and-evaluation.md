@@ -60,14 +60,20 @@ behavior is auditable and debuggable rather than folkloric.
 
 ## 3. Candidate generation and fusion
 
-- **Lexical:** FTS5 BM25, field-weighted (title 3.0, heading 2.0, body 1.0,
+- **Lexical:** FTS5 BM25, field-weighted (title 3.0, heading 3.0, body 1.0,
   ancestors 0.5), unicode61 tokenizer + prefix support for identifiers, and a stem
   column beside each surface field at 0.05 of its weight.
-  *Two amendments to the original three weights, both measured:* the stem columns
-  are what lets `signs` reach `signed` (roadmap 4.19, ADR-0048), and
-  `heading_path` is split into the leaf `heading` and its `ancestors` because one
-  field for the whole chain made a subsection's heading a strict superset of its
-  parent's (roadmap 4.36, ADR-0063). The three original weights are unchanged.
+  *Three amendments to the original three weights, all measured:* the stem columns
+  are what lets `signs` reach `signed` (roadmap 4.19, ADR-0048); `heading_path` is
+  split into the leaf `heading` and its `ancestors` because one field for the whole
+  chain made a subsection's heading a strict superset of its parent's (roadmap
+  4.36, ADR-0063); and the leaf `heading` then rises from this section's original
+  2.0 to **3.0** (roadmap 4.42, ADR-0070). The third amendment is the only one that
+  moves a number this section set, and it was refused twice before it was taken:
+  it gained on the held-out sets while scoring *exactly* the baseline on the dev
+  sets, and became proposable only once roadmap 4.39 grew uv/dev to twenty-two
+  judged cases and the parameter acquired an interior optimum there — 3.0 above the
+  baseline, 4.0 below it. `title` and `body` are still as this section set them.
 - **Vector:** kNN over `vectors` for the configured `model_id` (sqlite-vec), k=50 default.
 - **Symbol:** exact lookup in `symbols` for identifier-like tokens.
 - **Fusion:** Reciprocal Rank Fusion, k=60, over rank lists — raw scores from different
