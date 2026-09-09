@@ -87,3 +87,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0069](0069-read-g2s-slices-case-by-case-and-keep-the-bar.md) | Read G2's slices case by case, and keep the bar they trip | Accepted |
 | [0070](0070-take-the-leaf-heading-weight-on-the-third-asking.md) | Take the leaf heading weight on the third asking, because the dev set can now see it | Accepted |
 | [0071](0071-advertise-the-types-and-check-the-tools.md) | Advertise the types, then check the tools with them | Accepted |
+| [0072](0072-keep-our-own-restatements-out-of-our-own-benchmark.md) | Keep our own restatements out of our own benchmark | Accepted |

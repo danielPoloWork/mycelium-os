@@ -21,6 +21,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **This repository's own changelog and release notes are no longer part of the corpus it is
+  evaluated on** (roadmap 4.44,
+  [ADR-0072](docs/adr/0072-keep-our-own-restatements-out-of-our-own-benchmark.md)). They
+  restate, in the same vocabulary, what the ADRs and the roadmap already say canonically — so
+  they competed with the sources they summarise, and they hurt a term-counting baseline far
+  more than they hurt us. Indexing them was widening our reported lead over the `grep`
+  incumbent every time a release was cut, for a reason that has nothing to do with retrieval.
+
+  Found by cutting v0.4.0, whose two documents dropped grep's dev score from 0.349 to 0.2998
+  and tripped the guard that checks the baseline is competent. Excluding them puts it at 0.358
+  and **narrows** our reported lead on the release set from +0.218 to +0.186. The guard's
+  threshold is unchanged.
+
 - **`tools/` is now formatted, linted and type-checked** alongside `src` and `tests`
   (roadmap 4.43, [ADR-0071](docs/adr/0071-advertise-the-types-and-check-the-tools.md)).
   Eighteen files that build the ingested corpus, carry the judgements, measure the ranking and

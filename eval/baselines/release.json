@@ -51,38 +51,38 @@
     }
   },
   "mycelium": {
-    "blessed_from_snapshot": "01M1NV7C1XQ7GRVYAHEWM9X33H",
+    "blessed_from_snapshot": "01M23FQ5GSE7873R6WMN03DF92",
     "cases": 19,
     "cases_digest": "sha256:ff37c047a54df80f2a022bcee0f3cc20ee29d4167a81fd8fe3acd82ad65cf2f9",
-    "content_digest": "sha256:d460945dbd3a9f1f8a7be0ed1ea1179916cb006e7ef7bcab563d6cf25e88edbe",
-    "corpus_digest": "sha256:d1519930c8fce8e35afdaa1b844a8fe49545dc235df6002bb99988cb34eaf69f",
-    "overall_ndcg_at_10": 0.498205,
+    "content_digest": "sha256:99a622b4e22a831f3e1bb187b771a4684e72a84a48d7f5cf67b162131da583af",
+    "corpus_digest": "sha256:752f2b60049c539693fb6f5b3f3aabf433976bdaaa3d1858a37ff94d190e9d1f",
+    "overall_ndcg_at_10": 0.532449,
     "per_case": {
       "conceptual": {
-        "r-0004": 0.315465,
+        "r-0004": 0.386853,
         "r-0005": 0.315465,
         "r-0006": 0.337352,
         "r-0009": 1.0
       },
       "exact": {
-        "r-0003": 0.994183,
+        "r-0003": 1.0,
         "r-0015": 1.0,
         "r-0016": 0.70981,
-        "r-0017": 0.333064
+        "r-0017": 0.383194
       },
       "fact": {
         "r-0001": 1.0,
         "r-0002": 1.0,
         "r-0007": 0.0,
-        "r-0008": 0.130506,
-        "r-0010": 0.63093,
+        "r-0008": 0.112451,
+        "r-0010": 1.0,
         "r-0012": 0.0
       },
       "relationship": {
         "r-0006": 0.337352,
         "r-0011": 0.265165,
         "r-0018": 0.0,
-        "r-0019": 0.437548
+        "r-0019": 0.54134
       },
       "unanswerable": {
         "r-0013": 0.0,
@@ -90,10 +90,10 @@
       }
     },
     "per_slice": {
-      "conceptual": 0.49207,
-      "exact": 0.759264,
-      "fact": 0.460239,
-      "relationship": 0.260016,
+      "conceptual": 0.509917,
+      "exact": 0.773251,
+      "fact": 0.518742,
+      "relationship": 0.285964,
       "unanswerable": 0.0
     },
     "toolchain": {
