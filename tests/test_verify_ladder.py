@@ -21,6 +21,12 @@ reproduction check and the carried cases'. That is ADR-0059's defect surviving i
 the jobs it did not look at, which is the argument for widening the reading rather
 than exempting them.
 
+Until roadmap 4.43 it read only *which* gates ran, never *what they read*. The
+formatter, the linter and the type checker each take a path list, and those lists
+lived twice as well — in `plan()` and in the lint job's shell line — so adding
+`tools/` in one place and not the other would have passed this file while leaving
+CI checking less than the local loop. The path lists are now compared too.
+
 Record-keeping steps are deliberately excluded: a step ending `|| true` cannot
 fail, so it is not a gate and the local loop owes nothing to it.
 """
@@ -123,6 +129,52 @@ def local_targets(mode: str) -> set[tuple[str, ...]]:
 
 
 # ---------------------------------------------------------------------------
+
+
+def checked_paths(command: str, tool: str) -> tuple[str, ...] | None:
+    """The path list a `ruff`/`mypy` invocation reads, or `None` if it is not one.
+
+    Positional arguments only: a flag says what the tool does, a path says what it
+    does it to, and this compares the second.
+    """
+    words = command.split()
+    if tool not in words:
+        return None
+    rest = words[words.index(tool) + 1 :]
+    if tool == "ruff":
+        rest = rest[1:]  # the subcommand: `check` or `format`
+    return tuple(word for word in rest if not word.startswith("-") and word != "&&")
+
+
+@pytest.mark.parametrize(
+    ("step", "tool"), [("format", "ruff"), ("lint", "ruff"), ("types", "mypy")]
+)
+def test_ci_checks_the_same_paths_the_local_plan_does(
+    workflow: dict[str, Any], step: str, tool: str
+) -> None:
+    """A path list is a claim about coverage, and it lived in two files.
+
+    Roadmap 4.43 added `tools/` to all three. Doing that in `plan()` alone would
+    have left CI checking `src tests` while the local loop checked
+    `src tests tools` — the same shape of drift ADR-0059 found in *which* gates
+    ran, one level down in what they read, and invisible to every other test here.
+    """
+    local = next(
+        checked_paths(" ".join(command), tool)
+        for name, command in verify.plan("code")
+        if name == step
+    )
+    assert local, f"the local plan's {step!r} step names no paths"
+    in_ci = [
+        paths
+        for command in commands_of(workflow["jobs"]["lint"])
+        for part in command.split("&&")
+        if (paths := checked_paths(part, tool)) is not None
+    ]
+    assert local in in_ci, (
+        f"the local {step!r} step checks {local} and ci.yml's lint job checks {in_ci}; "
+        "a path list is a coverage claim and it must not live in two files that disagree"
+    )
 
 
 def test_the_modes_the_workflow_names_are_the_modes_the_tool_has(workflow: dict[str, Any]) -> None:

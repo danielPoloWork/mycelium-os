@@ -239,7 +239,7 @@ def main() -> int:  # noqa: C901 - a report is a sequence of stated steps
     if check_only:
         # The point of --check: a derived artifact whose generator no longer
         # reproduces it is the defect, not the trigger for a quiet regeneration.
-        differences = []
+        differences: list[str] = []
         for name in ("dev", "release"):
             path = destination / f"{name}.jsonl"
             expected = encode_cases(written[name])
@@ -253,8 +253,8 @@ def main() -> int:  # noqa: C901 - a report is a sequence of stated steps
         print(summary)
         if differences:
             print("the carried set does not reproduce from this tree:")
-            for path in differences:
-                print(f"  {path}")
+            for relative in differences:
+                print(f"  {relative}")
             print("re-run `python tools/build_ingested_cases.py` and review the diff")
             return 1
         print("carried set reproduces byte-for-byte")

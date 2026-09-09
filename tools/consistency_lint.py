@@ -40,11 +40,30 @@ import os
 import re
 import subprocess
 import sys
+from collections.abc import Callable
+from typing import Final, TypedDict
+
+
+class Config(TypedDict):
+    """The shape EADOS fills in below.
+
+    A `TypedDict` rather than a bare literal because the block is heterogeneous —
+    a path, a regex, a root, a flag — and a plain dict infers `dict[str, object]`,
+    which makes `CONFIG["version_file"].split("/")` an error and every read of it
+    an `Any`. Stating the shape costs four lines and is the only thing that lets
+    `mypy --strict` check the ten checks below (roadmap 4.43).
+    """
+
+    version_file: str | None
+    version_regex: str
+    src_main: str
+    i18n_enabled: bool
+
 
 # ---------------------------------------------------------------------------
 # CONFIG — filled by EADOS at generation time from orchestrator/project.yaml.
 # ---------------------------------------------------------------------------
-CONFIG = {
+CONFIG: Config = {
     # The file holding the version constant, relative to the repo root, or None if the
     # version lives only in a build manifest the lint should not parse. When None (or the
     # file is absent), version-lockstep derives the source version from the README badge.
@@ -57,24 +76,24 @@ CONFIG = {
     "i18n_enabled": True,
 }
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-failures = []  # list of (check_name, message)
+ROOT: Final = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+failures: list[tuple[str, str]] = []
 
 
-def fail(check, message):
+def fail(check: str, message: str) -> None:
     failures.append((check, message))
 
 
-def read(*parts):
+def read(*parts: str) -> str:
     with open(os.path.join(ROOT, *parts), encoding="utf-8") as handle:
         return handle.read()
 
 
-def exists(rel):
+def exists(rel: str) -> bool:
     return os.path.exists(os.path.join(ROOT, rel))
 
 
-def git(*args):
+def git(*args: str) -> str | None:
     try:
         out = subprocess.run(["git", "-C", ROOT, *args], capture_output=True, text=True, check=True)
         return out.stdout.strip()
@@ -82,15 +101,29 @@ def git(*args):
         return None
 
 
-def semver_tuple(text):
+def semver_tuple(text: str) -> tuple[int, ...] | None:
     m = re.search(r"(\d+)\.(\d+)\.(\d+)", text)
     return tuple(int(g) for g in m.groups()) if m else None
+
+
+def newest(versions: list[str]) -> str | None:
+    """The highest `X.Y.Z` among `versions`, ignoring anything unparseable.
+
+    Both callers used `max(versions, key=semver_tuple)`, and that key returns
+    `None` for a string carrying no version — so one unparseable entry would
+    compare `None` against a tuple and crash the whole lint. Unreachable today,
+    because both lists are built from a regex that guarantees the shape, and
+    unreachable is not the same as impossible: nothing type-checked this file, so
+    nothing said so (roadmap 4.43).
+    """
+    keyed = [(key, text) for text in versions if (key := semver_tuple(text)) is not None]
+    return max(keyed)[1] if keyed else None
 
 
 # ---------------------------------------------------------------------------
 # 1. Version lockstep
 # ---------------------------------------------------------------------------
-def check_version_lockstep():
+def check_version_lockstep() -> None:
     name = "version-lockstep"
     readme = read("README.md")
     bm = re.search(r"Status-v(\d+\.\d+\.\d+)", readme)
@@ -116,15 +149,14 @@ def check_version_lockstep():
     cl_dir = os.path.join(ROOT, "docs", "changelog")
     cl = []
     if os.path.isdir(cl_dir):
-        for cur, _d, files in os.walk(cl_dir):
+        for _dirpath, _dirnames, files in os.walk(cl_dir):
             for fn in files:
                 m = re.fullmatch(r"v(\d+\.\d+\.\d+)\.md", fn)
                 if m:
                     cl.append(m.group(1))
-    if cl:
-        latest = max(cl, key=semver_tuple)
-        if latest != source:
-            fail(name, f"latest docs/changelog v{latest} != source version {source}")
+    latest = newest(cl)
+    if latest is not None and latest != source:
+        fail(name, f"latest docs/changelog v{latest} != source version {source}")
 
     # Latest release-notes file, if any exist.
     rel_dir = os.path.join(ROOT, "docs", "releases")
@@ -134,16 +166,15 @@ def check_version_lockstep():
             m = re.fullmatch(r"v(\d+\.\d+\.\d+)\.md", fn)
             if m:
                 rel.append(m.group(1))
-    if rel:
-        latest = max(rel, key=semver_tuple)
-        if latest != source:
-            fail(name, f"latest docs/releases/v{latest}.md != source version {source}")
+    latest = newest(rel)
+    if latest is not None and latest != source:
+        fail(name, f"latest docs/releases/v{latest}.md != source version {source}")
 
 
 # ---------------------------------------------------------------------------
 # 2. ADR index bijection + sequential numbering
 # ---------------------------------------------------------------------------
-def check_adr_index():
+def check_adr_index() -> None:
     name = "adr-index"
     adr_dir = os.path.join(ROOT, "docs", "adr")
     if not os.path.isdir(adr_dir):
@@ -170,7 +201,7 @@ def check_adr_index():
 # ---------------------------------------------------------------------------
 # 3. Catalogued patterns -> ADR + code location (tolerant of an empty catalogue)
 # ---------------------------------------------------------------------------
-def check_patterns():
+def check_patterns() -> None:
     name = "patterns"
     if not exists("docs/patterns/README.md"):
         fail(name, "docs/patterns/README.md is missing")
@@ -199,7 +230,7 @@ def check_patterns():
 # ---------------------------------------------------------------------------
 # 4. Spec Coverage Map — no dangling row
 # ---------------------------------------------------------------------------
-def check_spec_map():
+def check_spec_map() -> None:
     name = "spec-map"
     roadmap = read("ROADMAP.md")
     block = re.search(r"## Spec Coverage Map.*?(?=\n## |\Z)", roadmap, re.DOTALL)
@@ -228,7 +259,7 @@ def check_spec_map():
 # ---------------------------------------------------------------------------
 # 5. ROADMAP <-> README milestone completion consistency
 # ---------------------------------------------------------------------------
-def check_milestones():
+def check_milestones() -> None:
     name = "milestones"
     readme = read("README.md")
     roadmap = read("ROADMAP.md")
@@ -275,7 +306,7 @@ BUG_REPORTERS = {"internal", "third-party"}
 BUG_REQUIRED = ("id", "title", "status", "severity", "reporter", "discovered")
 
 
-def _parse_frontmatter(text):
+def _parse_frontmatter(text: str) -> dict[str, str] | None:
     if not text.startswith("---"):
         return None
     end = text.find("\n---", 3)
@@ -290,7 +321,7 @@ def _parse_frontmatter(text):
     return fields
 
 
-def check_bugs():
+def check_bugs() -> None:
     name = "bugs"
     bugs_dir = os.path.join(ROOT, "docs", "bugs")
     if not os.path.isdir(bugs_dir):
@@ -298,13 +329,13 @@ def check_bugs():
     index_path = os.path.join(bugs_dir, "README.md")
     index = read("docs", "bugs", "README.md") if os.path.exists(index_path) else ""
     numbers = []
-    for cur, _d, files in os.walk(bugs_dir):
+    for dirpath, _dirnames, files in os.walk(bugs_dir):
         for fn in files:
             m = re.fullmatch(r"BUG-(\d{4})-[a-z0-9-]+\.md", fn)
             if not m:
                 continue
             num = int(m.group(1))
-            rel = os.path.relpath(os.path.join(cur, fn), bugs_dir).replace(os.sep, "/")
+            rel = os.path.relpath(os.path.join(dirpath, fn), bugs_dir).replace(os.sep, "/")
             fm = _parse_frontmatter(read("docs", "bugs", *rel.split("/")))
             if fm is None:
                 fail(name, f"{rel}: missing or malformed YAML frontmatter")
@@ -346,7 +377,7 @@ def check_bugs():
 # ---------------------------------------------------------------------------
 # 7. i18n freshness (only when enabled)
 # ---------------------------------------------------------------------------
-def check_i18n_freshness():
+def check_i18n_freshness() -> None:
     name = "i18n-freshness"
     if not CONFIG.get("i18n_enabled"):
         return
@@ -389,7 +420,7 @@ def check_i18n_freshness():
 _ENTERPRISE_MARKER = "enterprise governance posture"
 
 
-def check_roadmap_numbering():
+def check_roadmap_numbering() -> None:
     """Every ROADMAP item number is unique, and sits in the milestone it names.
 
     `ROADMAP.md` says new work takes a fresh `<milestone>.<task>` number and that
@@ -412,7 +443,7 @@ def check_roadmap_numbering():
     if len(sections) < 3:
         fail(name, "no '## Milestone N' sections parsed from ROADMAP.md")
         return
-    seen = {}
+    seen: dict[str, str] = {}
     for i in range(1, len(sections), 2):
         milestone = int(sections[i])
         body = sections[i + 1].split("\n## ")[0]
@@ -436,7 +467,7 @@ def check_roadmap_numbering():
         fail(name, "no numbered ROADMAP items parsed")
 
 
-def check_threat_boundaries():
+def check_threat_boundaries() -> None:
     """Every threat-model boundary id is unique, and every STRIDE row cites one that exists.
 
     The sibling of `roadmap-numbering`, and filed for the same reason: `B10` was
@@ -454,7 +485,7 @@ def check_threat_boundaries():
         return  # the register is optional until the posture declares it
     model = read("docs", "security", "threat-model.md")
 
-    declared = {}
+    declared: dict[str, str] = {}
     for m in re.finditer(r"^\|\s*\*\*(B\d+)\s+—\s+([^*]+?)\*\*", model, re.MULTILINE):
         boundary, title = m.group(1), m.group(2).strip()
         if boundary in declared:
@@ -479,7 +510,7 @@ def check_threat_boundaries():
                 fail(name, f"a STRIDE row cites {cited}, which no boundary declares")
 
 
-def check_posture():
+def check_posture() -> None:
     name = "posture"
     agents = read("AGENTS.md") if exists("AGENTS.md") else ""
     declared = _ENTERPRISE_MARKER in agents
@@ -498,7 +529,7 @@ def check_posture():
         )
 
 
-CHECKS = [
+CHECKS: Final[tuple[Callable[[], None], ...]] = (
     check_version_lockstep,
     check_adr_index,
     check_patterns,
@@ -509,10 +540,10 @@ CHECKS = [
     check_bugs,
     check_i18n_freshness,
     check_posture,
-]
+)
 
 
-def main():
+def main() -> int:
     for fn in CHECKS:
         try:
             fn()

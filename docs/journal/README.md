@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-09 — the directory that decides which gates run (roadmap 4.43)](2026/09/2026-09-09-type-check-the-tools.md)
 - [2026-09-09 — the third asking (roadmap 4.42)](2026/09/2026-09-09-leaf-heading-weight.md)
 - [2026-09-09 — the bar was right and the item was wrong (roadmap 4.41)](2026/09/2026-09-09-g2-slices-read-case-by-case.md)
 - [2026-09-09 — the gate that could not have been wired (roadmap 4.40)](2026/09/2026-09-09-gate-g2-runner.md)

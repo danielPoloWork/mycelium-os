@@ -193,7 +193,11 @@ jobs:
         with: { python-version: '3.12' }
       - uses: astral-sh/setup-uv@v7
       - run: uv sync --all-extras --dev
-      - run: uv run ruff format --check src tests && uv run ruff check src tests && uv run mypy --strict src
+      # `tools` joined at roadmap 4.43, priced at zero: the eighteen files that build
+      # the ingested corpus, carry the judgements, measure the ranking and decide gate
+      # G2's currency were reviewed and checked by nothing. `tests/test_verify_ladder.py`
+      # asserts this line and tools/verify.py's plan name the same paths.
+      - run: uv run ruff format --check src tests tools && uv run ruff check src tests tools && uv run mypy --strict src tools
 
   # ---------------------------------------------------------------------------
   # Gate G6 — byte-identical rebuild (spec 04 §7, D-008). The determinism tests also

@@ -213,9 +213,12 @@ def main() -> int:
     print(f"{'set':<14} {'anchors kept':>13} {'broken cases'}")
     comparable: dict[tuple[str, str], list[str]] = {}
     for corpus in corpora(ours):
-        after = changed[corpus.label][1]
+        # A distinct name: `after` above is the *chunks* of the packed build, and
+        # this is the *anchors* of it. Reusing the name type-checked as nothing
+        # and read as a continuation of the loop above (roadmap 4.43).
+        packed_anchors = changed[corpus.label][1]
         for set_name in ("dev", "release"):
-            kept, total, broken = survival(corpus.root, set_name, after)
+            kept, total, broken = survival(corpus.root, set_name, packed_anchors)
             cases = [
                 case.case_id
                 for case in load_cases(corpus.root / "eval" / f"{set_name}.jsonl")

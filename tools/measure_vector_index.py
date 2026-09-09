@@ -24,6 +24,7 @@ ADR, one of the two is wrong and the ADR is the one that cannot be re-run.
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -74,13 +75,19 @@ def exact_top(matrix: np.ndarray, query: np.ndarray) -> set[int]:
     return set(np.argsort(-(matrix @ query))[:TOP_K].tolist())
 
 
-def recall_of(matrix: np.ndarray, queries: np.ndarray, select) -> float:
+type Select = Callable[[np.ndarray], np.ndarray]
+"""One approximate mechanism: a query vector in, the rows it would return out."""
+
+
+def recall_of(matrix: np.ndarray, queries: np.ndarray, select: Select) -> float:
     """Fraction of the exact top-50 an index actually returns."""
     hits = sum(len(exact_top(matrix, q) & set(select(q).tolist())) for q in queries)
     return hits / (TOP_K * len(queries))
 
 
-def ivf(matrix: np.ndarray, nlist: int, seed: int = 20260831, iters: int = 12):
+def ivf(
+    matrix: np.ndarray, nlist: int, seed: int = 20260831, iters: int = 12
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Coarse quantisation: k-means centroids, then probe the nearest lists."""
     rng = np.random.default_rng(seed)
     centroids = matrix[rng.choice(len(matrix), nlist, replace=False)].copy()
@@ -111,9 +118,11 @@ def report_recall(root: Path) -> None:
     for nprobe in (2, 4, 8, 16, 24, 32):
         if nprobe > nlist:
             break
-        touched = []
+        touched: list[float] = []
 
-        def select(query: np.ndarray, nprobe: int = nprobe, touched=touched) -> np.ndarray:
+        def select_ivf(
+            query: np.ndarray, nprobe: int = nprobe, touched: list[float] = touched
+        ) -> np.ndarray:
             probes = np.argsort(-(centroids @ query))[:nprobe]
             rows = np.concatenate([order[bounds[c] : bounds[c + 1]] for c in probes])
             touched.append(len(rows) / count)
@@ -121,7 +130,7 @@ def report_recall(root: Path) -> None:
             keep = min(TOP_K, len(scores))
             return rows[np.argpartition(-scores, keep - 1)[:keep]]
 
-        value = recall_of(matrix, queries, select)
+        value = recall_of(matrix, queries, select_ivf)
         print(f"  {'IVF, nprobe=' + str(nprobe):<44} {np.mean(touched) * 100:6.1f}% {value:10.3f}")
 
     mean = matrix.mean(axis=0)
@@ -131,7 +140,11 @@ def report_recall(root: Path) -> None:
         projection = np.ascontiguousarray(components[:reduced].T)
         projected = np.ascontiguousarray(centred @ projection)
 
-        def select(query: np.ndarray, projected=projected, projection=projection) -> np.ndarray:
+        def select_pca(
+            query: np.ndarray,
+            projected: np.ndarray = projected,
+            projection: np.ndarray = projection,
+        ) -> np.ndarray:
             approx = projected @ ((query - mean) @ projection)
             candidates = np.argpartition(-approx, 199)[:200]
             scores = matrix[candidates] @ query
@@ -139,21 +152,22 @@ def report_recall(root: Path) -> None:
 
         label = f"PCA d'={reduced}, rescore 200 exactly"
         print(
-            f"  {label:<44} {reduced / dim * 100:6.1f}% {recall_of(matrix, queries, select):10.3f}"
+            f"  {label:<44} {reduced / dim * 100:6.1f}% "
+            f"{recall_of(matrix, queries, select_pca):10.3f}"
         )
 
     scale = float(np.abs(matrix).max())
     quantised = np.clip(np.round(matrix / scale * 127), -127, 127).astype(np.int8)
     for candidates in (100, 200):
 
-        def select(query: np.ndarray, candidates: int = candidates) -> np.ndarray:
+        def select_int8(query: np.ndarray, candidates: int = candidates) -> np.ndarray:
             coarse = quantised.astype(np.float32) @ query
             picked = np.argpartition(-coarse, candidates - 1)[:candidates]
             scores = matrix[picked] @ query
             return picked[np.argpartition(-scores, TOP_K - 1)[:TOP_K]]
 
         label = f"int8 first pass, rescore {candidates} exactly"
-        print(f"  {label:<44} {25.0:6.1f}% {recall_of(matrix, queries, select):10.3f}")
+        print(f"  {label:<44} {25.0:6.1f}% {recall_of(matrix, queries, select_int8):10.3f}")
 
 
 def timed(label: str, mode: str, scratch: Path, rounds: int = 5) -> float:

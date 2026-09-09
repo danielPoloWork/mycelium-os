@@ -27,11 +27,11 @@ sys.path.insert(0, str(ROOT / "tools"))
 from build_eval_cases import stage_corpus  # noqa: E402
 
 from mycelium.build import build  # noqa: E402
-from mycelium.eval.tasks import AgentTask, write_tasks  # noqa: E402
+from mycelium.eval.tasks import AgentTask, TaskKind, write_tasks  # noqa: E402
 from mycelium.store import SqliteStore  # noqa: E402
 
 # (task_id, kind, prompt, required anchors, note)
-TASKS: tuple[tuple[str, str, str, tuple[str, ...], str], ...] = (
+TASKS: tuple[tuple[str, TaskKind, str, tuple[str, ...], str], ...] = (
     (
         "t-0001",
         "answer",
@@ -104,7 +104,7 @@ TASKS: tuple[tuple[str, str, str, tuple[str, ...], str], ...] = (
     ),
 )
 
-LOCATE_AND_RELATE: tuple[tuple[str, str, str, tuple[str, ...], str], ...] = (
+LOCATE_AND_RELATE: tuple[tuple[str, TaskKind, str, tuple[str, ...], str], ...] = (
     (
         "t-0011",
         "locate",

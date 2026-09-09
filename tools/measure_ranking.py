@@ -1078,7 +1078,7 @@ def stem_frequencies(root: Path, case_set: str) -> list[tuple[str, int, int, set
         for row in connection.execute(
             "SELECT text_stem, title_stem, heading_path_stem FROM chunks_fts"
         ):
-            carried = set()
+            carried: set[str] = set()
             for column in row:
                 carried.update((column or "").split())
             for stem in stems:
