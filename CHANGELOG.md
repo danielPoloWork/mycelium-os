@@ -10,7 +10,31 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Added
+
+- **`mycelium-os` now advertises its types** (PEP 561; roadmap 4.43,
+  [ADR-0071](docs/adr/0071-advertise-the-types-and-check-the-tools.md)). A package whose whole
+  pitch is typed record contracts shipped no `py.typed` marker, so every `from mycelium…` in a
+  consumer resolved as untyped and everything downstream of it as `Any`. The marker is present
+  in both the wheel and the sdist; no configuration change was needed for it. This closes a
+  packaging gap the 1.0 freeze would have had to close anyway.
+
 ### Changed
+
+- **`tools/` is now formatted, linted and type-checked** alongside `src` and `tests`
+  (roadmap 4.43, [ADR-0071](docs/adr/0071-advertise-the-types-and-check-the-tools.md)).
+  Eighteen files that build the ingested corpus, carry the judgements, measure the ranking and
+  decide gate G2's currency in CI were reviewed and checked by nothing: `mypy --strict tools`
+  reported 184 errors, and after the `py.typed` marker above, 109 genuine ones. All are fixed.
+  The rung is priced at zero — three cold `mypy` runs put `src tools` inside the run-to-run
+  spread of `src` alone — and `tests/test_verify_ladder.py` now asserts that the local plan and
+  the CI workflow name the same paths, which it never compared before.
+
+  Two latent defects surfaced. `tools/consistency_lint.py` ranked versions with a key function
+  that returns `None` for an unparseable string, so one such entry would have crashed the whole
+  congruence lint; and `AgentTask.kind`'s vocabulary was spelled once in the record and again as
+  `str` in its generator, so a typo produced a value that failed only at construction. It is now
+  `mycelium.eval.tasks.TaskKind`.
 
 - **The leaf heading field weight rises from 2.0 to 3.0** (roadmap 4.42,
   [ADR-0070](docs/adr/0070-take-the-leaf-heading-weight-on-the-third-asking.md)). Refused

@@ -46,11 +46,22 @@ from mycelium.store import SqliteStore
 __all__ = [
     "DEFAULT_BUDGET_TOKENS",
     "AgentTask",
+    "TaskKind",
     "TaskOutcome",
     "TaskSuiteReport",
     "load_tasks",
     "run_task_suite",
 ]
+
+type TaskKind = Literal["answer", "locate", "relate"]
+"""What a task asks for: `answer` a question, `locate` a definition, `relate` two
+documents.
+
+Named rather than inlined because `tools/build_agent_tasks.py` declares the same
+three strings when it writes the suite, and a vocabulary spelled twice is a
+vocabulary that can disagree with itself — a typo there produced a `str` that only
+failed at construction, and only once someone type-checked the generator
+(roadmap 4.43)."""
 
 DEFAULT_BUDGET_TOKENS: Final = 4_000
 """The packing budget spec 04 §4 gives a caller by default."""
@@ -78,8 +89,7 @@ class AgentTask(BaseModel):
 
     task_id: str
     prompt: str = Field(description="What the agent is asked to do, in a user's words.")
-    kind: Literal["answer", "locate", "relate"] = "answer"
-    """`answer` a question, `locate` a definition, `relate` two documents."""
+    kind: TaskKind = "answer"
     requires: tuple[str, ...] = Field(
         default=(), description="Anchors whose text the agent must have been given."
     )

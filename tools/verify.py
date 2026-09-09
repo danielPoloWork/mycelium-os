@@ -53,7 +53,7 @@ The rungs, and what each adds:
 |---|---|
 | `docs` | the congruence lint |
 | `code` | format, lint, types, the suite, the two ingestion reproductions |
-| `retrieval` | the frozen-set rule, every corpus built and gated, gate G2's currency, the agent-task suite |
+| `retrieval` | the frozen-set rule, every corpus built and gated, gate G2's currency, the tasks |
 | `full` | the benchmarks, alone rather than beside four hundred other tests |
 """
 
@@ -62,6 +62,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Final
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -98,6 +99,25 @@ list and the CI workflow's `eval` job and asserts they agree. The mode has alway
 been one implementation with two callers; the *plan* was two implementations
 with one name, which is how they came to disagree (roadmap 4.35, ADR-0059)."""
 
+
+CHECKED_PATHS: Final = ("src", "tests", "tools")
+"""What the formatter and the linter read.
+
+`tools/` joined at roadmap 4.43, and the reason it had not is that nobody priced
+it: the eighteen files that build the ingested corpus, carry the judgements,
+measure the ranking and decide gate G2's currency were reviewed and nothing else.
+Measured before adding them — `ruff check` and `ruff format --check` are under a
+second either way, and the difference between the two target lists is smaller than
+the run-to-run spread of either one."""
+
+TYPED_PATHS: Final = ("src", "tools")
+"""What `mypy --strict` reads. No `tests/`, and that is a separate question.
+
+`tools/` cost nothing measurable to add: three cold runs read 79.2 / 58.3 / 56.5 s
+for `src` against 60.0 / 58.3 / 57.4 s for `src tools`, because the time goes into
+the third-party graph — pydantic, numpy, typer — which `src` already imports and
+`tools/` reuses. Eighteen more files, 87 checked to 105, no measurable cost
+(roadmap 4.43)."""
 
 MYCELIUM = [sys.executable, "-c", "from mycelium.cli import main; main()"]
 """How to invoke the CLI without depending on a console script being on PATH.
@@ -196,9 +216,9 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
     if mode == "docs":
         return steps
     steps += [
-        ("format", [python, "-m", "ruff", "format", "--check", "src", "tests"]),
-        ("lint", [python, "-m", "ruff", "check", "src", "tests"]),
-        ("types", [python, "-m", "mypy", "--strict", "src"]),
+        ("format", [python, "-m", "ruff", "format", "--check", *CHECKED_PATHS]),
+        ("lint", [python, "-m", "ruff", "check", *CHECKED_PATHS]),
+        ("types", [python, "-m", "mypy", "--strict", *TYPED_PATHS]),
         ("tests", [python, "-m", "pytest", "-q"]),
         # The two derived-artifact reproductions CI's `ingest / lanes` job runs at
         # this mode. They were CI-only, which is ADR-0059's drift still live in
