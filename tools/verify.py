@@ -52,8 +52,8 @@ The rungs, and what each adds:
 | mode | adds |
 |---|---|
 | `docs` | the congruence lint |
-| `code` | format, lint, types, the suite |
-| `retrieval` | the frozen-set rule, and every corpus built and gated, and the agent-task suite |
+| `code` | format, lint, types, the suite, the two ingestion reproductions |
+| `retrieval` | the frozen-set rule, every corpus built and gated, gate G2's currency, the agent-task suite |
 | `full` | the benchmarks, alone rather than beside four hundred other tests |
 """
 
@@ -200,6 +200,14 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
         ("lint", [python, "-m", "ruff", "check", "src", "tests"]),
         ("types", [python, "-m", "mypy", "--strict", "src"]),
         ("tests", [python, "-m", "pytest", "-q"]),
+        # The two derived-artifact reproductions CI's `ingest / lanes` job runs at
+        # this mode. They were CI-only, which is ADR-0059's drift still live in
+        # another job: a change to docling, pandoc, PDFium or the projector fails
+        # them, and until now it failed them for the first time in CI. Measured at
+        # 64 s and 15 s on this machine - real, and the safe direction is the one
+        # this tool takes everywhere else (roadmap 4.40).
+        ("ingested corpus", [python, "tools/build_ingested_corpus.py", "--check"]),
+        ("carried cases", [python, "tools/build_ingested_cases.py", "--check"]),
     ]
     if mode == "code":
         return steps
@@ -230,6 +238,12 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
                 ],
             ),
         ]
+    # Gate G2, which until now had no runner at all (roadmap 4.40). It goes after
+    # the corpora because it fingerprints them, and it does not need the embedding
+    # model: what it checks is whether the *recorded* verdict still describes this
+    # product. Where the model happens to be present it re-measures as well, and
+    # says which of the two it did.
+    steps.append(("gate G2", [python, "tools/measure_hybrid_gate.py", "--check"]))
     steps.append(("agent tasks", [*MYCELIUM, "eval", ".", "--tasks"]))
     if mode == "retrieval":
         return steps

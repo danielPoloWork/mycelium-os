@@ -119,6 +119,39 @@ baseline enforce, and reading it as a mismatch would disarm the gate everywhere 
 `tools/stamp_baseline_fingerprints.py` arms an older baseline without re-blessing, and
 refuses when it cannot verify that the corpus or the case set was frozen before the bless.
 
+### What gate G2's verdict records
+
+`eval/g2-verdict.json` is the same idea one gate along, and it exists because G2 has no
+automated *measurement* — only an automated *check* (roadmap 4.40, ADR-0068). One file, all
+six judged sets:
+
+| field | what it holds | what `--check` does with it |
+|---|---|---|
+| `sets.<corpus>/<set>` | both arms' nDCG@10, the per-slice figures, the verdict, the case count | compares the **verdict** where a re-measurement is possible |
+| `decision` | which profile the *release* rows support | **fails** when it disagrees with `shipped_profile` |
+| `shipped_profile` | `[retrieval] profile`'s built-in default when the verdict was taken | **fails** when the default has since moved |
+| `retrieval_identity` | a digest of the field weights, stem weight, stopword membership, fusion constants and FTS schema | **fails** when the lexical arm has moved |
+| `corpora.<name>.content_digest` | what each corpus *said* | **fails** for a `dated` corpus; reports for `ours` |
+| `corpora.<name>.chunks_digest` | how it was *cut* | reports a re-cut |
+| `sets.….cases_digest` | which judgements the means were over | **fails** for a dated corpus; reports for `ours` |
+| `recorded_at`, `model_id`, `toolchain` | provenance a reader can act on | prints it |
+
+`dated_corpora` is the two vendored ones. `ours` is measured and recorded but never gated,
+for the reason the next section gives about G3: this repository's corpus moves on every pull
+request, and a control that fires on everything selects for being ignored.
+
+Two fields deliberately do **not** match their namesakes in `baselines/<set>.json`, and a
+reader comparing them should know why. `cases_digest` here is taken over the *answerable*
+cases only, because G2 compares two retrievers' rankings and an `unanswerable` case has no
+ranking to compare — abstention is G4's gate, not this one. The corpus digests, by contrast,
+match the baselines exactly, and that is the evidence this record reproduces in CI: those are
+the fingerprints G3 already enforces against on a Linux runner.
+
+**The check never fails because hybrid lost.** "Ship lexical-only" is a legitimate G2
+outcome, so the failures above are all the same kind of thing: a recorded claim that no
+longer describes the product. The remedy is one command —
+`python tools/measure_hybrid_gate.py --record`, which needs the model.
+
 ### Which sets a gate can live on
 
 G3 needs the corpus held fixed, and **this repository's documentation is its own corpus** —
@@ -400,7 +433,7 @@ though the missing gates passed.
 | Gate | Status |
 |---|---|
 | G1 Citations | **Enforced** — every returned anchor must resolve; must be 1.00 |
-| G2 Earn hybrid | **Enforced when `--retriever hybrid` runs — and nothing runs it** — it scores the lexical baseline on the same cases and compares (ADR-0017). No automation passes that flag: the hybrid arm needs the 133 MB embedding model, which CI deliberately does not have (D-013), and `tools/verify.py` has no step for it either. So this gate is run by hand or not at all, and its verdict went three milestones and four lexical changes without being recomputed. Re-run it with `python tools/measure_hybrid_gate.py`, which also shows where a judged anchor sits in the lexical, vector and fused lists. Measured that way at roadmap 4.33 it **cannot currently decide**: three of six judged sets pass, and every failure but one is the per-slice condition tripping over a four-to-seven-case slice (ADR-0064; the gate's own design question is roadmap 4.41) |
+| G2 Earn hybrid | **Measured by hand where the model is; its *currency* is enforced everywhere** (roadmap 4.40, ADR-0068). G2 is a comparison — hybrid against the lexical baseline on the same cases (ADR-0017) — and it cannot be an ordinary pass/fail step, because `passed=False` means "ship lexical-only", which is the shipped configuration: `--gate` would be red on every correct build. So the verdict is **committed** in [`g2-verdict.json`](g2-verdict.json) with the fingerprints that date it, and `python tools/measure_hybrid_gate.py --check` — run by `tools/verify.py` at `retrieval` and by CI — fails when the retrieval configuration, a vendored corpus or a judged set has moved since, never because hybrid lost. Where the model is present it re-measures too, comparing *verdicts* rather than floats (ONNX is not promised identical across machines). Re-record with `--record`; the bare form still prints the full table and `--cases` still shows where a judged anchor sits in the lexical, vector and fused lists. The verdict itself **cannot currently decide**: three of six judged sets pass, and every failure but one is the per-slice condition tripping over a four-to-seven-case slice (ADR-0064; the gate's own design question is roadmap 4.41) |
 | G3 No regression | **Enforced against `baselines/<set>.json`** when the corpus *and the judgements* are the ones the baseline was taken on, and only on the slices that can carry it — no enforced slice may fall more than 2 %, and a slice that is `unanswerable`, blessed at 0.0000, or thinner than four cases is reported by name with the reason (ADR-0052). "The same corpus" means the same *documents*, not the same chunk boundaries, so a chunking change is gated rather than excused (roadmap 4.13, ADR-0045) and the verdict names the re-cut. "The same judgements" means the same cases with the same grades: a slice's score is a mean over its cases, so a set that grew reads as a regression unless the gate can tell the two apart (roadmap 4.24, ADR-0051). When either has changed the numbers are not comparable, so the gate *reports* the movement instead of failing on it — and calls it movement, not regression. `--bless` writes a baseline and records all three fingerprints |
 | G4 Abstention | **Enforced** — false-answer rate on `unanswerable` ≤ 5 % |
 | G5 Performance | **Enforced, with its limit stated** — query p95 ≤ 150 ms, reported with the corpus size it was measured on. The budget is defined at the 10⁵-chunk reference profile, so passing here is a floor rather than the measurement spec 04 §1 asks for |
@@ -408,9 +441,12 @@ though the missing gates passed.
 | G7 Grounding | Not applicable — it gates a *synthesized document's* promotion, and the synthesis lane arrives at 4.4 |
 
 CI runs G1, G3, G4, G5 and G6 on every push (`eval / gates G1-G6`), reports the grep
-baseline without gating on it, and runs the agent-task suite. **G2 is the exception and the
-job's name overstates it**: hybrid needs a model CI does not fetch, so G2 has no automated
-runner at all (ADR-0064, roadmap 4.40).
+baseline without gating on it, and runs the agent-task suite. **G2 is the exception, and the
+job's name is still slightly generous**: hybrid needs a model CI does not fetch, so what CI
+enforces is that G2's *committed* verdict still describes this product — not the measurement
+itself, which is taken where the model is (ADR-0068, roadmap 4.40). Whether a runner should
+pay for the model is argued in that ADR rather than assumed: the cost is small (127.6 MB,
+12-25 s) and the reason it does not is comparability.
 
 ## The agent-task suite
 

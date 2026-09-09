@@ -12,6 +12,50 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Gate G2 has a runner** (roadmap 4.40,
+  [ADR-0068](docs/adr/0068-give-gate-g2-a-runner-by-dating-its-verdict.md)). G2 decides the
+  product's default retrieval profile and nothing had run it for three milestones: it needs
+  the embedding model, CI has none (D-013), and `tools/verify.py` had no step for it. It also
+  could not have been wired as an ordinary gate — `--gate` exits non-zero on any
+  `passed=False`, and for G2 that is the *shipped* configuration.
+
+  So the verdict is committed in `eval/g2-verdict.json` — all six judged sets, both arms,
+  the per-slice figures, the decision — with the fingerprints that date it, and
+  `python tools/measure_hybrid_gate.py --check` fails when the retrieval configuration, a
+  vendored corpus or a judged set has moved since. It never fails because hybrid lost.
+  `tools/verify.py`'s `retrieval` mode and CI's `eval` job both run it; where the embedding
+  model is present it re-measures as well and compares *verdicts* rather than floats, since
+  ONNX is not promised identical across machines. Re-record with `--record`.
+
+  A ranking change must therefore re-record G2 to land. The verdict itself is unchanged:
+  three of six sets pass, the release rows put the default at `lexical`.
+
+- **`mycelium.retrieval.retrieval_identity()`** — a digest of everything that decides a
+  ranking (field weights, stem weight, stopword membership, fusion constants, FTS schema),
+  read from the modules that own them at call time. It is what makes the check above a check.
+
+- **`mycelium.store.field_weights()` and `describe_field_weights()`**, and `G2_OVERALL_MIN` /
+  `G2_SLICE_FLOOR` on `mycelium.eval.harness` — the ranking's weights and the gate's
+  thresholds, each with one home.
+
+### Fixed
+
+- **A run manifest's `retriever_config` described the field weights from memory.**
+  `"weights": "title=3.0,heading=2.0,body=1.0,ancestors=0.5"` was a hand-typed string in two
+  places beside the numbers it claimed to describe, and `stopwords` was recorded as a *count*,
+  so a weight change or a stopword swap left the record looking correct. Both are now derived
+  from the values themselves. The rendered string is byte-identical to what the literals held,
+  so no manifest digest moves and no baseline is re-blessed (roadmap 4.40).
+
+### Changed
+
+- **`tools/verify.py` gained three steps.** `retrieval` runs gate G2's currency check;
+  `code` runs the two ingestion reproductions (`build_ingested_corpus.py --check`,
+  `build_ingested_cases.py --check`) that CI has always run and the local loop never did —
+  about +79 s on the maintainer's machine. `tests/test_verify_ladder.py` now reads gates
+  written as **scripts** as well as `mycelium` invocations, which is how those two stayed
+  CI-only (roadmap 4.40, ADR-0068).
+
 - **`uv/dev` grows from 12 judged cases to 22** (roadmap 4.39,
   [ADR-0067](docs/adr/0067-grow-the-dev-set-before-asking-it-a-question.md)). It had one
   `exact` case, one `symbol` case and no `relationship` case at all — thin enough that a

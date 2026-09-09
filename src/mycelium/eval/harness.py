@@ -79,6 +79,8 @@ from mycelium.store import STORE_DIRNAME, SqliteStore
 
 __all__ = [
     "BASELINES_DIRNAME",
+    "G2_OVERALL_MIN",
+    "G2_SLICE_FLOOR",
     "G3_REPORTED_SLICES",
     "MIN_ENFORCEABLE_SLICE_CASES",
     "EVAL_DIRNAME",
@@ -206,6 +208,17 @@ def _evaluate_case(case: EvalCase, retriever: Retriever, resolvable: set[str]) -
     )
 
 
+G2_OVERALL_MIN: Final = 0.05
+G2_SLICE_FLOOR: Final = -0.02
+"""Spec 04 §7.3's two conditions for gate G2, and its only home.
+
+They were restated in `tools/measure_hybrid_gate.py` so that it could print a
+verdict without reaching into this module's private helpers. That is the shape of
+drift ADR-0059 named: two implementations with one name. Published here so the
+tool that dates the gate's verdict and the gate itself cannot disagree about what
+the gate says (roadmap 4.40)."""
+
+
 def _gate_g2(
     hybrid: MetricSummary,
     baseline: MetricSummary,
@@ -226,10 +239,10 @@ def _gate_g2(
         if before is None:
             continue
         delta = _relative(summary.ndcg_at_10, before.ndcg_at_10)
-        if delta < -0.02:
+        if delta < G2_SLICE_FLOOR:
             regressions.append(f"{name} {delta:+.1%}")
 
-    passed = overall_delta >= 0.05 and not regressions
+    passed = overall_delta >= G2_OVERALL_MIN and not regressions
     verdict = "earns the default" if passed else "does not earn the default; ship lexical-only"
     detail = (
         f"hybrid nDCG@10 {hybrid.ndcg_at_10:.4f} vs lexical {baseline.ndcg_at_10:.4f} "

@@ -15,6 +15,12 @@ everything CI would do at a mode is something the local plan does too. A
 contributor who passes `tools/verify.py` cannot then be told something new by CI —
 which is the whole promise the local loop makes.
 
+Until roadmap 4.40 the comparison read only `mycelium` invocations, so a gate CI
+ran as a **script** was invisible to it — and two were: the ingested corpus's
+reproduction check and the carried cases'. That is ADR-0059's defect surviving in
+the jobs it did not look at, which is the argument for widening the reading rather
+than exempting them.
+
 Record-keeping steps are deliberately excluded: a step ending `|| true` cannot
 fail, so it is not a gate and the local loop owes nothing to it.
 """
@@ -34,6 +40,13 @@ WORKFLOW = Path(__file__).parent.parent / ".github" / "workflows" / "ci.yml"
 
 _MODE_EQUALS = re.compile(r"outputs\.mode\s*==\s*'([a-z]+)'")
 _MODE_NOT_EQUALS = re.compile(r"outputs\.mode\s*!=\s*'([a-z]+)'")
+
+EXCLUDED_TOOLS = frozenset({"tools/verify.py"})
+"""`verify.py` is the thing being compared, not a gate it runs.
+
+CI's `bootstrap` job invokes it to *derive the mode* — the one call that cannot
+appear in its own plan without recursion. Every other tool in the workflow is a
+gate and must appear."""
 
 
 @pytest.fixture(scope="module")
@@ -70,14 +83,30 @@ def commands_of(job: dict[str, Any]) -> list[str]:
 
 
 def gate_targets(command: str) -> tuple[str, ...]:
-    """The `mycelium` verification a command performs, in a runner-free form.
+    """The verification a command performs, in a runner-free form.
 
     CI says `uv run mycelium eval X --gate`; the local plan says
     `<python> -c "…" eval X --gate`. Comparing the two means dropping however the
     interpreter was reached and keeping what was asked of the product.
+
+    Two shapes count. A `mycelium` invocation that builds or gates — and a
+    **repository tool**, because a tool CI runs is a gate whatever it is written
+    in, and reading only `mycelium` commands is how two of them stayed CI-only
+    (roadmap 4.40).
+
+    For a tool, the path and its **flags** are compared and its positional
+    arguments are not: `measure_hybrid_gate.py --check` asks a different question
+    from the bare form and must not match it, while
+    `check_frozen_release_sets.py` legitimately takes the PR's base SHA in CI and
+    `origin/main` locally. A flag changes what a tool does; a ref changes what it
+    does it to.
     """
     words = command.split()
     for index, word in enumerate(words):
+        if word.startswith("tools/") and word.endswith(".py"):
+            if word in EXCLUDED_TOOLS:
+                return ()
+            return (word, *sorted(a for a in words[index + 1 :] if a.startswith("--")))
         if word.endswith("mycelium") or word == "main()":
             rest = words[index + 1 :]
             if rest and rest[0] in {"build", "eval"} and "--gate" in rest or rest[:1] == ["build"]:

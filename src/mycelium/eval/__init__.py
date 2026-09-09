@@ -17,6 +17,8 @@ from mycelium.eval.cases import load_cases, write_cases
 from mycelium.eval.harness import (
     BASELINES_DIRNAME,
     EVAL_DIRNAME,
+    G2_OVERALL_MIN,
+    G2_SLICE_FLOOR,
     G3_REPORTED_SLICES,
     MAX_FALSE_ANSWER_RATE,
     MIN_ENFORCEABLE_SLICE_CASES,
@@ -49,6 +51,8 @@ from mycelium.eval.tasks import AgentTask, TaskSuiteReport, load_tasks, run_task
 
 __all__ = [
     "BASELINES_DIRNAME",
+    "G2_OVERALL_MIN",
+    "G2_SLICE_FLOOR",
     "G3_REPORTED_SLICES",
     "MIN_ENFORCEABLE_SLICE_CASES",
     "EVAL_DIRNAME",

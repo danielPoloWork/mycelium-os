@@ -409,6 +409,21 @@ jobs:
       - name: Gates G1-G6 on the frozen release set — the ingested corpus
         shell: bash
         run: uv run mycelium eval eval/corpora/uv-docs-ingested --set eval/release.jsonl --gate --against grep
+      # Gate G2's runner, and the first one it has ever had (roadmap 4.40). CI
+      # cannot *re-measure* G2 — the hybrid arm needs the 133 MB embedding model
+      # and D-013 downloads nothing unless configured — so what it checks is that
+      # the committed verdict still describes this product: the same retrieval
+      # configuration, the same vendored corpora, the same judgements. Every one
+      # of the four lexical changes that moved the verdict underneath itself
+      # (packing, stemming, function-word stripping, the heading split) moves one
+      # of those, so each would have failed here and asked for a re-measurement.
+      #
+      # It does *not* fail because hybrid lost: "ship lexical-only" is a legitimate
+      # G2 outcome and a gate that were red on the shipped configuration is a gate
+      # everyone learns to ignore (ADR-0068).
+      - name: Gate G2's recorded verdict still describes this product
+        shell: bash
+        run: uv run python tools/measure_hybrid_gate.py --check
       - name: What projection costs, for the record (roadmap 4.10)
         shell: bash
         # Reported, never gated: with two to five cases per format there is no
