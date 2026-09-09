@@ -56,6 +56,35 @@ ADR-0058 refused and ADR-0063 refuses again. The unsplit controls
 says the split is what makes a higher leaf weight safe rather than the weight
 doing it alone — and it is why the leaf weight is now *askable* at all.
 
+The thirteenth is the **length** family (roadmap 4.38), and **all five settings
+are refused**. It began from a fact worth keeping on its own: `bm25()` normalises
+by the *row's* total token count, not per column — two rows with an identical
+matching heading and bodies of 20 against 400 tokens score -3.060e-6 and
+-1.151e-6 on heading-only weights. So a heading match is damped by how long the
+body is, and after 4.36 three of the four surface columns are a handful of tokens
+against a `text` that runs to hundreds. Putting the short fields in their own
+table is the only lever on that denominator which is neither a re-ranking nor a
+change of unit.
+
+It fails, and *how* it fails is the finding. The two cases 4.38 named are
+**anti-correlated** under it: every setting that moves `u-1006` (0.431 → 0.631,
+and `length rrf` takes it to **1.0000**, the incumbent's own score and the first
+thing in this file ever to close it) makes `u-1007` *worse* (0.374 → 0.319 or
+0.202). So the standing observation — a long section that answers a query
+concedes to shorter ones — does not have one mechanism behind it, and a single
+fix was never going to move both. `u-1007`'s heading match was being *helped* by
+the joint computation more than it was hurt by the shared denominator, which is
+the opposite of the hypothesis.
+
+And the failure is not the scale error it looks like. Adding two BM25 scores from
+tables with different average lengths is not a fusion, so `length rrf` fuses the
+rank lists instead at spec 04 §3's k=60 — scale-free, no new constant — and it is
+**worse**: uv/dev 0.646 against the baseline's 0.710, and `relationship` −53.8 %
+and −61.3 % on the two release sets. Any split of the fields, added or fused,
+loses the reinforcement a multi-part query needs between a chunk's heading and
+its body. That is a stronger reason for ADR-0048's one-table decision than the
+one it gave.
+
 **One thing this file cannot see**: it scores answerable cases only, so gate G4
 is outside its view. Open expansion wins three of four sets here and answers a
 question the corpus cannot answer, which only the real `mycelium eval --gate`
@@ -714,6 +743,205 @@ def heading_split(leaf: float, ancestors: float) -> Ranking:
     return rank
 
 
+# ---------------------------------------------------------------------------
+# The length family (roadmap 4.38) — same chunks, same weights, one denominator
+# split in two
+#
+# `bm25()` normalises by the **row's** total token count, not per column. That is
+# a measured fact, not a reading of the docs: two rows with an identical matching
+# heading and text of 20 against 400 tokens score -3.060e-6 and -1.151e-6 on
+# heading-only weights. So a heading match's contribution is damped by how long
+# the *body* is — a property of the section, not of the heading match.
+#
+# After roadmap 4.36 the index has four surface columns and three of them are
+# short: `title`, `heading`, `ancestors` are a handful of tokens each while
+# `text` runs to hundreds. They share one denominator, so the long section that
+# answers a query is penalised on every field at once. That is the mechanism
+# behind both of 4.38's named cases — `u-1007`'s judged chunk is the longest in
+# its candidate set at 409 tokens and its heading is literally "Installing
+# tools"; `u-1006`'s is 385 against a 164-token sibling.
+#
+# The candidate is the only lever that touches the denominator without touching
+# the ranking function or the unit of indexing (the two families already refused,
+# ADR-0031/0041): put the short fields in their own table so they normalise
+# against comparable lengths, and add the two BM25 scores. Adding is where it
+# gets its free parameter, so `length 1.0` — equal weight, no constant to tune —
+# is the row that either works or does not.
+# ---------------------------------------------------------------------------
+
+_LENGTH_INDEX: dict[tuple[int, str], sqlite3.Connection] = {}
+
+_SHORT_SURFACE: Final = "{title heading ancestors}"
+_SHORT_STEMS: Final = "{title_stem heading_stem ancestors_stem}"
+_BODY_SURFACE: Final = "{text}"
+_BODY_STEMS: Final = "{text_stem}"
+
+
+def _length_indexes(store: SqliteStore) -> tuple[sqlite3.Connection, sqlite3.Connection]:
+    """The shipping columns, split into a short-field table and a body table."""
+    key = (id(store), "length")
+    cached = _LENGTH_INDEX.get(key)
+    if cached is not None:
+        return cached, _LENGTH_INDEX[(id(store), "length-body")]
+
+    rows = _split_chunk_rows(store)
+    short = sqlite3.connect(":memory:")
+    short.row_factory = sqlite3.Row
+    short.execute(
+        """
+        CREATE VIRTUAL TABLE chunks_fts USING fts5(
+            anchor UNINDEXED, title, heading, ancestors,
+            title_stem, heading_stem, ancestors_stem,
+            tokenize='unicode61', prefix='2 3 4'
+        )
+        """
+    )
+    short.executemany(
+        "INSERT INTO chunks_fts(anchor, title, heading, ancestors,"
+        " title_stem, heading_stem, ancestors_stem) VALUES(?,?,?,?,?,?,?)",
+        [
+            (anchor, title, heading, ancestors, *(_stemmed(f) for f in (title, heading, ancestors)))
+            for anchor, _text, title, heading, ancestors in rows
+        ],
+    )
+    body = sqlite3.connect(":memory:")
+    body.row_factory = sqlite3.Row
+    body.execute(
+        """
+        CREATE VIRTUAL TABLE chunks_fts USING fts5(
+            anchor UNINDEXED, text, text_stem,
+            tokenize='unicode61', prefix='2 3 4'
+        )
+        """
+    )
+    body.executemany(
+        "INSERT INTO chunks_fts(anchor, text, text_stem) VALUES(?,?,?)",
+        [(anchor, text, _stemmed(text)) for anchor, text, *_ in rows],
+    )
+    short.commit()
+    body.commit()
+    _LENGTH_INDEX[key] = short
+    _LENGTH_INDEX[(id(store), "length-body")] = body
+    return short, body
+
+
+def length_split(weight: float) -> Ranking:
+    """The shipping index with the short fields normalised on their own lengths.
+
+    `weight` scales the short-field table's contribution before the two BM25
+    scores are added. At 0.0 this is `text` alone, which is the control that says
+    how much the short fields were contributing at all.
+    """
+
+    def rank(store: SqliteStore, query: str) -> list[str]:
+        terms = terms_of(query)
+        if not terms:
+            return []
+        surface = " OR ".join(f'"{term}"' for term in terms)
+        stems = " OR ".join(f'"{term}"' for term in dict.fromkeys(stem_text(terms)))
+        short, body = _length_indexes(store)
+
+        # The shipped abstention gate, asked of the same fields it is asked of
+        # today: a literal foothold anywhere in the row.
+        probe = body.execute(
+            "SELECT 1 FROM chunks_fts WHERE chunks_fts MATCH ? LIMIT 1",
+            [f"{_BODY_SURFACE} : ({surface})"],
+        ).fetchone()
+        if probe is None:
+            probe = short.execute(
+                "SELECT 1 FROM chunks_fts WHERE chunks_fts MATCH ? LIMIT 1",
+                [f"{_SHORT_SURFACE} : ({surface})"],
+            ).fetchone()
+        if probe is None:
+            return []
+
+        scores: dict[str, float] = {}
+        for conn, fields, stem_fields, weights in (
+            (body, _BODY_SURFACE, _BODY_STEMS, (1.0,)),
+            (short, _SHORT_SURFACE, _SHORT_STEMS, (3.0, 2.0, 0.5)),
+        ):
+            scale = 1.0 if conn is body else weight
+            if scale == 0.0:
+                continue
+            match = f"{fields} : ({surface}) OR {stem_fields} : ({stems})"
+            columns = [0.0, *weights, *(STEM_WEIGHT * w for w in weights)]
+            placeholders = ", ".join("?" for _ in columns)
+            for row in conn.execute(
+                f"""
+                SELECT anchor, bm25(chunks_fts, {placeholders}) AS score
+                FROM chunks_fts WHERE chunks_fts MATCH ?
+                """,
+                [*columns, match],
+            ):
+                scores[str(row["anchor"])] = scores.get(str(row["anchor"]), 0.0) + scale * float(
+                    row["score"]
+                )
+        return [anchor for anchor, _ in sorted(scores.items(), key=lambda item: item[1])][:DEPTH]
+
+    return rank
+
+
+def length_rrf(store: SqliteStore, query: str) -> list[str]:
+    """The same two tables, fused by RRF instead of added.
+
+    The obvious answer to why `length 1.0` breaks `relationship`: two BM25 scores
+    over tables with different average lengths are not on one scale, so adding
+    them is a scale error rather than a fusion. RRF at spec 04 §3's k=60 is
+    scale-free by construction and needs no new constant — it is the only
+    combination this project already sanctions.
+    """
+    terms = terms_of(query)
+    if not terms:
+        return []
+    surface = " OR ".join(f'"{term}"' for term in terms)
+    stems = " OR ".join(f'"{term}"' for term in dict.fromkeys(stem_text(terms)))
+    short, body = _length_indexes(store)
+    if (
+        body.execute(
+            "SELECT 1 FROM chunks_fts WHERE chunks_fts MATCH ? LIMIT 1",
+            [f"{_BODY_SURFACE} : ({surface})"],
+        ).fetchone()
+        is None
+        and short.execute(
+            "SELECT 1 FROM chunks_fts WHERE chunks_fts MATCH ? LIMIT 1",
+            [f"{_SHORT_SURFACE} : ({surface})"],
+        ).fetchone()
+        is None
+    ):
+        return []
+
+    fused: dict[str, float] = {}
+    for conn, fields, stem_fields, weights in (
+        (body, _BODY_SURFACE, _BODY_STEMS, (1.0,)),
+        (short, _SHORT_SURFACE, _SHORT_STEMS, (3.0, 2.0, 0.5)),
+    ):
+        match = f"{fields} : ({surface}) OR {stem_fields} : ({stems})"
+        columns = [0.0, *weights, *(STEM_WEIGHT * w for w in weights)]
+        placeholders = ", ".join("?" for _ in columns)
+        ranked = conn.execute(
+            f"""
+            SELECT anchor, bm25(chunks_fts, {placeholders}) AS score
+            FROM chunks_fts WHERE chunks_fts MATCH ?
+            ORDER BY score LIMIT ?
+            """,
+            [*columns, match, DEPTH],
+        ).fetchall()
+        for position, row in enumerate(ranked, 1):
+            anchor = str(row["anchor"])
+            fused[anchor] = fused.get(anchor, 0.0) + 1.0 / (RRF_K + position)
+    return [anchor for anchor, _ in sorted(fused.items(), key=lambda item: -item[1])][:DEPTH]
+
+
+LENGTH_FAMILY: Final[tuple[tuple[str, Ranking], ...]] = (
+    ("length 0.0", length_split(0.0)),
+    ("length 0.5", length_split(0.5)),
+    ("length 1.0", length_split(1.0)),
+    ("length 2.0", length_split(2.0)),
+    ("length rrf", length_rrf),
+)
+"""`length 0.0` is the control — `text` alone, no short fields at all."""
+
+
 HEADING_FAMILY: Final[tuple[tuple[str, Ranking], ...]] = (
     ("heading 2.0/2.0", heading_split(2.0, 2.0)),
     ("heading 2.0/1.0", heading_split(2.0, 1.0)),
@@ -875,6 +1103,7 @@ def main() -> int:
         *QUERY_FAMILY,
         *TOKENIZER_FAMILY,
         *HEADING_FAMILY,
+        *LENGTH_FAMILY,
         *SECTION_FAMILY,
         ("length>=60", length_prior(60)),
         ("length>=120", length_prior(120)),

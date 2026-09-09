@@ -12,6 +12,22 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **A fourteenth ranking family is measured and refused — nothing in the query path changes**
+  (roadmap 4.38,
+  [ADR-0066](docs/adr/0066-refuse-the-length-split-and-name-the-anti-correlation.md)).
+  `bm25()` normalises by the *row's* total token count rather than per column — two rows with
+  an identical matching heading and bodies of 20 against 400 tokens score −3.060e-6 and
+  −1.151e-6 under heading-only weights — so a heading match is damped by how long the body is,
+  and a column weighted 0.0 is still not free. Putting the three short fields in their own FTS
+  table is the only lever on that denominator which is neither a re-ranking nor a change of
+  unit, and all five settings fail gate G3 on both release sets, including one fused by RRF
+  rather than added.
+
+  The finding is that 4.38's two named cases are **anti-correlated**: every setting that moves
+  `u-1006` (to 1.0000 under RRF — the incumbent's own score, and the first candidate ever to
+  close it) makes `u-1007` worse. A single fix was never going to move both.
+  `python tools/measure_ranking.py --release` re-runs the evidence.
+
 - **`u-0006` (`uvx`) is re-judged on the convention its siblings follow** (roadmap 4.37,
   [ADR-0065](docs/adr/0065-one-section-cannot-document-two-commands.md)). It had scored
   0.0000 on uv/dev since it was written, with its grade-3 anchor at rank 13 and its grade-2

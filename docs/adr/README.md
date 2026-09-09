@@ -81,3 +81,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0063](0063-split-the-leaf-heading-from-its-ancestors.md) | Split the leaf heading from its ancestors, and take only the weight dev can see | Accepted |
 | [0064](0064-measure-the-gate-that-decides-the-default.md) | Measure the gate that decides the default, and find it cannot decide | Accepted |
 | [0065](0065-one-section-cannot-document-two-commands.md) | One section cannot be the documenting home of two commands | Accepted |
+| [0066](0066-refuse-the-length-split-and-name-the-anti-correlation.md) | Refuse the length split, and name the anti-correlation it exposed | Accepted |
