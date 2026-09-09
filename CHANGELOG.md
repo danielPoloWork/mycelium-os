@@ -10,6 +10,35 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **Gate G2 reports per set; the decision is enforced across corpora** (roadmap 4.41,
+  [ADR-0069](docs/adr/0069-read-g2s-slices-case-by-case-and-keep-the-bar.md)). `_gate_g2`
+  still computes both of spec 04 §7.3's conditions and states its reading, but no longer
+  contributes a *failure*: "ship lexical-only" is a legitimate outcome, so a boolean there was
+  red on the shipped configuration, and one set cannot decide a default that is decided over
+  every frozen release set. `mycelium eval --retriever hybrid --gate` is therefore runnable.
+  The decision stays enforced by `tools/measure_hybrid_gate.py --check`.
+
+- **Every G2 verdict now names the cases behind a tripped slice** — in the gate line, in the
+  tool's table and in `eval/g2-verdict.json`: `conceptual -13.1% (u-1016 0.6352->0.2894)`
+  rather than `conceptual -13.1%`. A percentage over four cases cannot tell a reader whether
+  it is noise or a destroyed answer, and roadmap 4.41 was filed believing the wrong one.
+
+  Decomposed, six of the seven slices hybrid trips are **one case each**, and every one is a
+  large real loss — `u-1021` is hybrid losing the answer outright, 0.316 → 0.000. The −2 %
+  bar is **not** moved: it is catching harm. What the measurement also shows is that at four
+  to seven cases a slice it is a *per-case veto* (a slice trips when one case loses more than
+  `0.02·n·m`, median 0.053, against a median losing case of 0.126), so G2 cannot promote
+  hybrid until the sets grow. That denominator is filed as roadmap 6.8 with the number:
+  ~35 cases a slice.
+
+  The rule has one home: `mycelium.eval.harness.g2_regressions()` takes plain floats, and
+  `tools/measure_hybrid_gate.py` calls it rather than restating it — the same reason ADR-0068
+  moved G2's thresholds there.
+
+  No retrieval code changes, no baseline is re-blessed, and the lexical default is unchanged.
+
 ### Added
 
 - **Gate G2 has a runner** (roadmap 4.40,

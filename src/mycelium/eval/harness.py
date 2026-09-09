@@ -14,10 +14,16 @@ were satisfied:
 ======  ==========================================================================
 G1      **Enforced.** Citation coverage must be 1.00 — every returned anchor
         resolves in the snapshot. It is the failure this product cannot tolerate.
-G2      **Enforced when the hybrid retriever runs** (roadmap 3.3). Hybrid must
-        beat the lexical baseline by ≥ 5 % nDCG@10 with no slice worse than
-        −2 %, on the same cases and the same snapshot; otherwise the shipped
-        default is lexical-only and says so.
+G2      **Reported here, enforced across corpora.** Spec 04 §7.3's two
+        conditions — ≥ +5 % nDCG@10 against the lexical leg on the same cases
+        and the same snapshot, no slice worse than −2 % — are computed whenever
+        the hybrid retriever runs, and the cases behind any tripped slice are
+        named. What is not decided here is the *default*: one set cannot decide
+        it, and "ship lexical-only" is a legitimate outcome rather than a
+        failure, so a boolean here would have been red on the shipped
+        configuration. `tools/measure_hybrid_gate.py --check` enforces the
+        decision the frozen release sets support against the shipped profile
+        (roadmap 4.40/4.41, ADR-0068/0069).
 G3      **Enforced against a committed baseline** (roadmap 3.7). No slice may
         regress more than 2 % against `eval/baselines/<set>.json`. Without one
         the gate says so rather than passing silently; `--bless` writes it.
@@ -89,6 +95,7 @@ __all__ = [
     "baseline_path",
     "case_set_digest",
     "corpus_fingerprint_of",
+    "g2_regressions",
     "read_baseline",
     "write_baseline",
     "write_run",
@@ -219,38 +226,115 @@ tool that dates the gate's verdict and the gate itself cannot disagree about wha
 the gate says (roadmap 4.40)."""
 
 
+def g2_regressions(
+    hybrid: Mapping[str, float],
+    lexical: Mapping[str, float],
+    slice_cases: Mapping[str, Sequence[tuple[str, float, float]]] | None = None,
+) -> list[str]:
+    """Spec 04 §7.3's second condition, with the cases behind each trip named.
+
+    Plain floats, and one home. `tools/measure_hybrid_gate.py` computes the same
+    verdict for the committed record and would otherwise have to restate this
+    rule — which is what its two thresholds used to do, and what ADR-0059 named:
+    two implementations with one name drift, and here they would drift about what
+    a gate says. `slice_cases` maps a slice to `(case_id, lexical, hybrid)` for
+    the cases it is a mean over.
+
+    The naming is not decoration. Roadmap 4.41 was filed believing these trips
+    were "one or two cases moving" — noise a thin slice cannot tell from a real
+    change — and it could be filed that way because the verdict printed
+    `conceptual -13.1%` and nothing else. Decomposed, six of the seven tripping
+    slices are **one case each**, and every one is a large, real loss: `u-1016`
+    0.635 → 0.289, `u-1022` 0.885 → 0.426, `u-1021` 0.316 → **0.000**. The
+    condition was catching genuine harm and reporting it in a form nobody could
+    check (ADR-0069, and ADR-0058's method).
+
+    A slice the lexical leg scores 0 on cannot regress, so it reads as an
+    improvement rather than a division by zero.
+    """
+    regressions: list[str] = []
+    for name, after in sorted(hybrid.items()):
+        if name not in lexical:
+            continue
+        delta = _relative(after, lexical[name])
+        if delta >= G2_SLICE_FLOOR:
+            continue
+        worse = [
+            f"{case_id} {was:.4f}->{now:.4f}"
+            for case_id, was, now in sorted((slice_cases or {}).get(name, ()))
+            if now < was
+        ]
+        regressions.append(f"{name} {delta:+.1%}" + (f" ({', '.join(worse)})" if worse else ""))
+    return regressions
+
+
 def _gate_g2(
     hybrid: MetricSummary,
     baseline: MetricSummary,
     hybrid_slices: dict[str, MetricSummary],
     baseline_slices: dict[str, MetricSummary],
+    slice_cases: Mapping[str, Sequence[CaseResult]] | None = None,
+    lexical_per_case: Mapping[str, float] | None = None,
 ) -> GateResult:
-    """Gate G2 — hybrid must *earn* the default (spec 04 §7.3).
+    """Gate G2 — hybrid's reading on **one** set, reported rather than enforced.
 
-    Two conditions, both relative to the lexical baseline on the same cases:
-    ≥ +5 % nDCG@10 overall, and no slice worse than −2 %. A slice the baseline
-    scores 0 on cannot regress, so it is reported as an improvement rather than a
-    division by zero.
+    Spec 04 §7.3 states the conditions hybrid must clear to *earn* the default:
+    ≥ +5 % nDCG@10 overall against the lexical leg on the same cases, and no
+    slice worse than −2 %. Both are computed here. What is *not* decided here is
+    the default, and this gate no longer pretends otherwise, for two reasons that
+    took until roadmap 4.40/4.41 to separate (ADR-0068, ADR-0069):
+
+    **"Hybrid did not earn it" is a legitimate outcome, not a failure.** Milestone
+    3's exit gate says so in as many words. While this gate reported
+    ``passed=False`` for it, `mycelium eval --retriever hybrid --gate` exited
+    non-zero on the shipped configuration — so nothing could ever run it, and for
+    three milestones nothing did.
+
+    **One set cannot decide the default anyway.** The decision is over every
+    frozen release set together, and they disagree: this repository's release set
+    reads +20.9 % with no regression while both `uv` release sets fail. A boolean
+    computed from one set would have to be either wrong or silent.
+
+    So this reports, in the vocabulary G6 already uses for a gate enforced
+    elsewhere, and names the cases behind any slice that trips. The enforcement
+    is `tools/measure_hybrid_gate.py --check`, which compares the decision the
+    *release rows together* support against the shipped default and fails when
+    they disagree.
     """
     overall_delta = _relative(hybrid.ndcg_at_10, baseline.ndcg_at_10)
-    regressions = []
-    for name, summary in sorted(hybrid_slices.items()):
-        before = baseline_slices.get(name)
-        if before is None:
-            continue
-        delta = _relative(summary.ndcg_at_10, before.ndcg_at_10)
-        if delta < G2_SLICE_FLOOR:
-            regressions.append(f"{name} {delta:+.1%}")
-
-    passed = overall_delta >= G2_OVERALL_MIN and not regressions
-    verdict = "earns the default" if passed else "does not earn the default; ship lexical-only"
+    regressions = g2_regressions(
+        {name: summary.ndcg_at_10 for name, summary in hybrid_slices.items()},
+        {name: summary.ndcg_at_10 for name, summary in baseline_slices.items()},
+        {
+            name: [
+                (
+                    result.case_id,
+                    (lexical_per_case or {}).get(result.case_id, 0.0),
+                    result.ndcg_at_10,
+                )
+                for result in results
+            ]
+            for name, results in (slice_cases or {}).items()
+        },
+    )
+    earns = overall_delta >= G2_OVERALL_MIN and not regressions
+    reading = "earns the default here" if earns else "does not earn the default here"
     detail = (
         f"hybrid nDCG@10 {hybrid.ndcg_at_10:.4f} vs lexical {baseline.ndcg_at_10:.4f} "
-        f"({overall_delta:+.1%}; needs +5.0%)"
+        f"({overall_delta:+.1%}; needs {G2_OVERALL_MIN:+.0%})"
     )
     if regressions:
-        detail += f"; slice regressions beyond -2%: {', '.join(regressions)}"
-    return GateResult(gate="G2 Earn hybrid", passed=passed, detail=f"{detail} - {verdict}")
+        detail += f"; slice regressions beyond {G2_SLICE_FLOOR:.0%}: {', '.join(regressions)}"
+    return GateResult(
+        gate="G2 Earn hybrid",
+        passed=True,
+        detail=(
+            f"{detail} - {reading}; reported, not enforced: one set cannot decide the "
+            "default and shipping lexical-only is a legitimate outcome. The decision is "
+            "over every frozen release set and is enforced by "
+            "`tools/measure_hybrid_gate.py --check` (ADR-0069)"
+        ),
+    )
 
 
 def _relative(after: float, before: float) -> float:
@@ -1066,10 +1150,19 @@ def run_evaluation(
         gates.append(_gate_g5(overall, chunks))
         gates.append(_gate_g6())
         if retriever_name == "hybrid":
-            _, lexical, lexical_slices = _score(
+            lexical_results, lexical, lexical_slices = _score(
                 cases, build_retriever("mycelium", store), resolvable
             )
-            gates.append(_gate_g2(overall, lexical, per_slice, lexical_slices))
+            gates.append(
+                _gate_g2(
+                    overall,
+                    lexical,
+                    per_slice,
+                    lexical_slices,
+                    _slice_cases(cases, results),
+                    {item.case_id: item.ndcg_at_10 for item in lexical_results},
+                )
+            )
 
         incumbent_overall = None
         incumbent_slices: dict[str, MetricSummary] = {}

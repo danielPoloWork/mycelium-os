@@ -37,6 +37,7 @@ from mycelium.eval import (
     write_cases,
     write_run,
 )
+from mycelium.eval.harness import _gate_g2, g2_regressions
 from mycelium.sdk.types import (
     CaseResult,
     EvalCase,
@@ -653,6 +654,128 @@ def test_slices_do_not_dilute_ranking_metrics(corpus: Path) -> None:
     full = run_evaluation(corpus, cases).overall
     only_answerable = run_evaluation(corpus, answerable).overall
     assert full.ndcg_at_10 == pytest.approx(only_answerable.ndcg_at_10)
+
+
+# ---------------------------------------------------------------------------
+# Gate G2 reports; it does not decide the default (roadmap 4.41, ADR-0069)
+# ---------------------------------------------------------------------------
+
+
+def g2(
+    *,
+    overall_before: float,
+    overall_after: float,
+    slices_before: dict[str, float],
+    slices_after: dict[str, float],
+    slice_cases: dict[str, list[CaseResult]] | None = None,
+    lexical_per_case: dict[str, float] | None = None,
+):  # type: ignore[no-untyped-def]
+    return _gate_g2(
+        summary(ndcg=overall_after),
+        summary(ndcg=overall_before),
+        {name: summary(ndcg=value) for name, value in slices_after.items()},
+        {name: summary(ndcg=value) for name, value in slices_before.items()},
+        slice_cases,
+        lexical_per_case,
+    )
+
+
+def test_g2_passes_when_hybrid_loses_because_that_is_the_shipped_answer() -> None:
+    """The reason G2 had no runner for three milestones (ADR-0068).
+
+    `--gate` exits non-zero on any `passed=False`, and "hybrid did not earn the
+    default" is the *shipped* configuration — so a boolean here was red on every
+    correct build, and nothing could be wired to it.
+    """
+    result = g2(
+        overall_before=0.60,
+        overall_after=0.50,
+        slices_before={"fact": 0.60},
+        slices_after={"fact": 0.40},
+    )
+    assert result.passed
+    assert "does not earn the default here" in result.detail
+    assert "reported, not enforced" in result.detail
+
+
+def test_g2_passes_when_hybrid_wins_too_and_still_does_not_decide() -> None:
+    """One set cannot decide: today `ours/release` clears both conditions while
+    both `uv` release sets fail, and the default is over all three."""
+    result = g2(
+        overall_before=0.50,
+        overall_after=0.70,
+        slices_before={"fact": 0.50},
+        slices_after={"fact": 0.60},
+    )
+    assert result.passed
+    assert "earns the default here" in result.detail
+    assert "every frozen release set" in result.detail
+
+
+def test_g2_computes_both_of_the_specs_conditions() -> None:
+    """Reporting is not the same as not measuring: both conditions still run."""
+    too_small = g2(
+        overall_before=0.500,
+        overall_after=0.510,  # +2.0 %, under the +5 % bar
+        slices_before={"fact": 0.50},
+        slices_after={"fact": 0.51},
+    )
+    assert "does not earn the default here" in too_small.detail
+    assert "slice regressions" not in too_small.detail
+
+    slice_lost = g2(
+        overall_before=0.50,
+        overall_after=0.70,
+        slices_before={"fact": 0.50, "exact": 0.80},
+        slices_after={"fact": 0.90, "exact": 0.70},  # exact -12.5 %
+    )
+    assert "does not earn the default here" in slice_lost.detail
+    assert "exact -12.5%" in slice_lost.detail
+
+
+def test_g2_names_the_cases_behind_a_tripped_slice() -> None:
+    """What roadmap 4.41 needed and did not have.
+
+    The item was filed believing the trips were noise a four-case slice cannot
+    tell from a real change — and `conceptual -13.1%` alone cannot tell you
+    either way. Decomposed, six of the seven were one case, and every one was a
+    large real loss (ADR-0069, ADR-0058's method).
+    """
+    result = g2(
+        overall_before=0.50,
+        overall_after=0.70,
+        slices_before={"conceptual": 0.60},
+        slices_after={"conceptual": 0.50},
+        slice_cases={"conceptual": [scored("u-1016", 0.2894), scored("u-1017", 0.9)]},
+        lexical_per_case={"u-1016": 0.6352, "u-1017": 0.8},
+    )
+    assert "u-1016 0.6352->0.2894" in result.detail
+    assert "u-1017" not in result.detail, "only the cases that got worse are named"
+
+
+def test_g2_regressions_trips_only_past_the_floor() -> None:
+    assert g2_regressions({"a": 0.495, "b": 0.48}, {"a": 0.50, "b": 0.50}) == ["b -4.0%"]
+
+
+def test_g2_regressions_names_only_the_cases_that_got_worse() -> None:
+    """One home for the rule: the gate line and the committed record are the same
+    computation, so they cannot drift about what a gate says (ADR-0059)."""
+    named = g2_regressions(
+        {"conceptual": 0.50},
+        {"conceptual": 0.60},
+        {"conceptual": [("u-1016", 0.6352, 0.2894), ("u-1017", 0.8, 0.9)]},
+    )
+    assert named == ["conceptual -16.7% (u-1016 0.6352->0.2894)"]
+
+
+def test_a_slice_the_lexical_leg_scores_zero_on_cannot_regress() -> None:
+    """Division by zero reads as an improvement, which is the honest direction."""
+    assert g2_regressions({"a": 0.0}, {"a": 0.0}) == []
+    assert g2_regressions({"a": 0.3}, {"a": 0.0}) == []
+
+
+def test_a_slice_the_hybrid_arm_does_not_have_is_not_invented() -> None:
+    assert g2_regressions({"a": 0.1}, {}) == []
 
 
 # ---------------------------------------------------------------------------
