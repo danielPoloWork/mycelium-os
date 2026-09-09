@@ -79,3 +79,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0061](0061-count-the-population-before-decorating-it.md) | Count the population before decorating it, then guard the shape | Accepted |
 | [0062](0062-a-symbol-judgment-names-where-the-thing-is-documented.md) | A `symbol` judgment names where the thing is documented, not where it is framed | Accepted |
 | [0063](0063-split-the-leaf-heading-from-its-ancestors.md) | Split the leaf heading from its ancestors, and take only the weight dev can see | Accepted |
+| [0064](0064-measure-the-gate-that-decides-the-default.md) | Measure the gate that decides the default, and find it cannot decide | Accepted |
