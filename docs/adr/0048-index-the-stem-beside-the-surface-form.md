@@ -147,6 +147,15 @@ rather than approximated with a heuristic here.
   ADR-0041 have refused ten times between them. Columns in one table express the same
   trade-off through the field-weight mechanism spec 04 §3 already uses, with one BM25
   computation and nothing to tune but the weight this ADR measures.
+
+  > **Strengthened at roadmap 4.38 ([ADR-0066](0066-refuse-the-length-split-and-name-the-anti-correlation.md)).**
+  > This was argued on the tuning surface — one weight rather than two — and the measurement
+  > says the reason is stronger than that. A two-table split was tried on the *field* axis
+  > (short fields apart from the body) and refused at every setting, **including one fused by
+  > RRF**, which is scale-free and adds no constant. `relationship` fell 53.8 % and 61.3 % on
+  > the two release sets whichever way the two scores were combined: the fields carry joint
+  > evidence inside one BM25 computation that a multi-part query depends on, and no
+  > combination reconstructs it. One table is right for a reason no weight count captures.
 - **A stemmer dependency (`snowballstemmer`, `PyStemmer`).** Rejected: the lexical path is
   the *default* path, so this would be a hard runtime dependency on a closure kept to four
   packages (D-013). Porter (1980) is 200 lines, and SQLite's own C implementation of the
