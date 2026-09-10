@@ -953,6 +953,10 @@ def search(
         detail(f"   {result['uri']}")
         if explain:
             detail(f"   via {'+'.join(fused.legs)} at {fused.ranks}")
+            if fused.via_edge:
+                # Spec 04 §5's `via_edge`: the one result whose provenance is a
+                # derivation rather than a match, so it says so in words.
+                detail(f"   proposed by the graph: {fused.via_edge}")
         typer.echo(f"   {_snippet(str(result['text']))}")
 
 
@@ -1538,7 +1542,11 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
         "eval/release.jsonl"
     ),
     retriever: Annotated[
-        str, typer.Option("--retriever", help="mycelium | grep (the D-010 baseline).")
+        str,
+        typer.Option(
+            "--retriever",
+            help="mycelium | grep (the D-010 baseline) | graph (expansion on) | hybrid.",
+        ),
     ] = "mycelium",
     against: Annotated[
         str | None,

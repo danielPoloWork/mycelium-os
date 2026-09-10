@@ -15,7 +15,10 @@ for this protocol, is what would make that phase a rewrite.
 from collections.abc import Iterable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+if TYPE_CHECKING:  # the hit record lives beside the implementation that builds it
+    from mycelium.store.sqlite import SearchHit
 
 from mycelium.sdk.types import (
     Chunk,
@@ -178,6 +181,12 @@ class Store(Protocol):
     def all_edges(self) -> tuple[Edge, ...]: ...
 
     def all_symbols(self) -> tuple[Symbol, ...]: ...
+
+    def rank_anchors(
+        self, query: str, anchors: Sequence[str], *, limit: int = 1
+    ) -> tuple["SearchHit", ...]: ...
+
+    def anchors_of_paths(self, paths: Sequence[str]) -> dict[str, tuple[str, ...]]: ...
 
     def get_symbol(self, symbol: str) -> Symbol | None: ...
 

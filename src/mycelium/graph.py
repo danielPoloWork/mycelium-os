@@ -72,6 +72,7 @@ __all__ = [
     "extract_links",
     "merge_edges",
     "neighbours",
+    "nodes_of_anchor",
     "resolve_edges",
     "resolve_graph",
     "section_ref",
@@ -113,6 +114,27 @@ def section_ref(path: str, slug: str) -> str:
     across re-chunking.
     """
     return f"{doc_ref(path)}#{slug}"
+
+
+def nodes_of_anchor(anchor: str) -> tuple[str, ...]:
+    """The graph nodes a chunk anchor belongs to: its section, then its document.
+
+    A chunk is not a node — chunk boundaries are a packing decision and the graph
+    refuses to key on them (ADR-0018) — so a retrieval candidate reaches the
+    graph through the two nodes that contain it. Section first, because it is the
+    more specific of the two, and a walk that starts there reaches the document
+    anyway through the containment edge (`part_of`, ADR-0074).
+
+    A chunk in a document's preamble has no heading, and then the document is the
+    only node it has.
+    """
+    path, _, rest = anchor.partition("#")
+    if not path:
+        return ()
+    slug = rest.rsplit("/", 1)[0] if rest else ""
+    if not slug:
+        return (doc_ref(path),)
+    return (section_ref(path, slug), doc_ref(path))
 
 
 def split_section_ref(reference: str) -> tuple[str, str] | None:

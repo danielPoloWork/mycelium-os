@@ -26,11 +26,20 @@ from typing import Final, Protocol
 
 from mycelium.config import RetrievalConfig
 from mycelium.embedding import Embedder
-from mycelium.retrieval import RRF_K, STOPWORDS, VECTOR_CANDIDATES, query_terms
+from mycelium.retrieval import (
+    GRAPH_DISCOUNT,
+    GRAPH_NODES,
+    GRAPH_SEEDS,
+    RRF_K,
+    STOPWORDS,
+    VECTOR_CANDIDATES,
+    query_terms,
+)
 from mycelium.retrieval import search as run_search
 from mycelium.store import STEM_WEIGHT, SqliteStore, describe_field_weights
 
 __all__ = [
+    "ExpandedRetriever",
     "GrepRetriever",
     "HybridRetriever",
     "MyceliumRetriever",
@@ -205,12 +214,52 @@ class HybridRetriever:
         return [fused.hit.chunk.anchor for fused in outcome.hits]
 
 
+@dataclass(frozen=True, slots=True)
+class ExpandedRetriever:
+    """The product with graph expansion on — the arm of 5.3's ablation.
+
+    Scored against :class:`MyceliumRetriever`, and for the same reason gate G2
+    scores hybrid against lexical rather than against grep: spec 04 §5 asks
+    whether *this* addition earns the default, which is a question about the
+    difference one leg makes and about nothing else. The bar is its own:
+    ≥ +3 % nDCG@10 on the `relationship` slice with no overall regression.
+    """
+
+    store: SqliteStore
+    name: str = "graph"
+
+    @property
+    def config(self) -> dict[str, str | int | float | bool]:
+        return {
+            "engine": "fts5-bm25 + graph",
+            "weights": describe_field_weights(),
+            "stem_weight": STEM_WEIGHT,
+            "stopwords": len(STOPWORDS),
+            "hybrid": False,
+            "graph_expansion": True,
+            # The three constants that decide what the leg does, recorded
+            # because a run manifest is how a reader of an old number knows what
+            # it was measured under (ADR-0064's lesson, ADR-0075).
+            "graph_seeds": GRAPH_SEEDS,
+            "graph_nodes": GRAPH_NODES,
+            "graph_discount": GRAPH_DISCOUNT,
+        }
+
+    def search(self, query: str, limit: int) -> list[str]:
+        outcome = run_search(
+            self.store, query, limit=limit, config=RetrievalConfig(graph_expansion=True)
+        )
+        return [fused.hit.chunk.anchor for fused in outcome.hits]
+
+
 def build_retriever(name: str, store: SqliteStore, embedder: Embedder | None = None) -> Retriever:
     """Resolve a retriever by name, refusing anything unknown."""
     if name == "mycelium":
         return MyceliumRetriever(store=store)
     if name == "grep":
         return GrepRetriever(store=store)
+    if name == "graph":
+        return ExpandedRetriever(store=store)
     if name == "hybrid":
         if embedder is None:
             msg = (
@@ -220,7 +269,7 @@ def build_retriever(name: str, store: SqliteStore, embedder: Embedder | None = N
             )
             raise ValueError(msg)
         return HybridRetriever(store=store, embedder=embedder)
-    msg = f"unknown retriever {name!r}; expected 'mycelium', 'grep', or 'hybrid'"
+    msg = f"unknown retriever {name!r}; expected 'mycelium', 'grep', 'graph', or 'hybrid'"
     raise ValueError(msg)
 
 

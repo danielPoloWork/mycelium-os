@@ -1407,6 +1407,86 @@ class SqliteStore:
         ).fetchone()
         return int(row["documents"]), int(row["chunks"])
 
+    def rank_anchors(
+        self,
+        query: str,
+        anchors: Sequence[str],
+        *,
+        limit: int = 1,
+    ) -> tuple[SearchHit, ...]:
+        """Rank a *named* set of chunks against `query`, best first (roadmap 5.3).
+
+        The same BM25 arithmetic :meth:`search_chunks` uses, restricted to
+        anchors the caller already holds. Graph expansion is what needs it: the
+        graph names a *document* adjacent to a strong hit, and which of that
+        document's six chunks answers the query is a ranking question the graph
+        cannot answer — so the graph proposes the node and this disposes of the
+        chunk (ADR-0075).
+
+        Two deliberate differences from :meth:`search_chunks`. There is **no
+        foothold probe**: the caller reached here because the corpus already
+        answered this query, and re-asking a question that was answered a
+        millisecond ago would only cost a scan. And an empty result is the
+        expected outcome rather than an abstention — a proposed node whose
+        chunks contain none of the query's words has nothing to contribute, and
+        dropping it is how the graph is stopped from adding noise.
+        """
+        if not anchors:
+            return ()
+        match = expanded_query(query)
+        if not match:
+            return ()
+        placeholders = ", ".join("?" for _ in anchors)
+        rows = self._connection.execute(
+            f"""
+            SELECT c.*, d.path AS doc_path, d.title AS doc_title,
+                   d.trust_class AS doc_trust, d.verification_status AS doc_status,
+                   bm25(chunks_fts, ?, ?, ?, ?, ?, ?, ?, ?, ?) AS score
+            FROM chunks_fts
+            JOIN chunks c ON c.anchor = chunks_fts.anchor
+            JOIN documents d ON d.doc_id = c.doc_id
+            WHERE chunks_fts MATCH ? AND chunks_fts.anchor IN ({placeholders})
+            ORDER BY score
+            LIMIT ?
+            """,
+            [*_BM25_WEIGHTS, match, *anchors, limit],
+        ).fetchall()
+        return tuple(
+            SearchHit(
+                chunk=_chunk_from_row(row),
+                score=-float(row["score"]),
+                path=str(row["doc_path"]),
+                title=str(row["doc_title"]),
+                trust_class=TrustClass(row["doc_trust"]),
+                verification_status=VerificationStatus(row["doc_status"]),
+            )
+            for row in rows
+        )
+
+    def anchors_of_paths(self, paths: Sequence[str]) -> dict[str, tuple[str, ...]]:
+        """Every chunk anchor of each named document, in anchor order.
+
+        One query for the whole set rather than one per document: expansion asks
+        this of up to ten documents on every query that runs it, and ten
+        round-trips inside a 30 ms budget is a cost with no reason (spec 04 §5).
+        """
+        if not paths:
+            return {}
+        placeholders = ", ".join("?" for _ in paths)
+        rows = self._connection.execute(
+            f"""
+            SELECT d.path AS doc_path, c.anchor AS anchor
+            FROM chunks c JOIN documents d ON d.doc_id = c.doc_id
+            WHERE d.path IN ({placeholders})
+            ORDER BY d.path, c.anchor
+            """,
+            list(paths),
+        ).fetchall()
+        found: dict[str, list[str]] = {}
+        for row in rows:
+            found.setdefault(str(row["doc_path"]), []).append(str(row["anchor"]))
+        return {path: tuple(anchors) for path, anchors in found.items()}
+
     def search_chunks(
         self,
         query: str,

@@ -285,6 +285,29 @@ what the spec wrote it for. Nothing reads it at query time yet — the symbol le
 roadmap 5.9, its own measured change
 ([ADR-0073](docs/adr/0073-take-the-grammars-word-for-a-definition-and-the-headings-for-a-name.md)).
 
+### The graph can widen a search, and it did not earn the right to
+
+Spec 04 §5 describes graph expansion — walk one hop from the best hits over the typed edges,
+and let what you find compete — and it describes the gate the feature has to clear before it
+ships on: **+3 % nDCG@10 on the `relationship` slice with no overall regression**. Roadmap 5.3
+built the feature and ran the gate. It lost, on all six judged case sets across all three
+corpora, so `[retrieval] graph_expansion` ships **off** and this section says so rather than
+quietly omitting the number.
+
+What it does when you turn it on: the graph proposes *nodes* — a neighbouring section,
+document or symbol — and the ranking disposes of *chunks*, because a document holds six of
+them and which one answers your question is not something an edge knows. Every proposal is
+ranked by the same BM25 as everything else, at most ten survive, one per document, and each
+is labelled in `--explain` with the edge and the hit that reached it. It adds passages the
+ranking buried; it never re-votes for one already found.
+
+The honest numbers: it rescues the case it was filed for (`r-0018`, whose two documents hold
+the two halves of an answer, 0.0000 → 0.2275) and loses six other relationship cases doing
+it, for −0.0 % to −4.1 % overall. Re-run it yourself with
+`python tools/measure_graph_expansion.py`; CI runs the same measurement and fails if the
+shipped default ever stops matching it
+([ADR-0075](docs/adr/0075-let-the-graph-propose-and-the-ranking-dispose-and-report-that-it-lost.md)).
+
 ### Ingestion picks its parser, and you pick which one
 
 Non-Markdown sources are compiled by adapters over engines that already exist — Mycelium OS

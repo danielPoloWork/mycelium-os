@@ -63,6 +63,7 @@ TUNING_PATHS = (
     "src/mycelium/retrieval.py",
     "src/mycelium/chunking.py",
     "src/mycelium/config.py",
+    "src/mycelium/graph.py",
     "src/mycelium/store/",
     "src/mycelium/embedding/",
     "src/mycelium/eval/",
@@ -77,6 +78,13 @@ all. That is not hypothetical: PR #81 changed it and CI reported `eval / gates
 G1-G6` as *skipping* (roadmap 4.35, ADR-0059). A directory is the right unit here
 for the same reason `store/` and `embedding/` are: the question is not which file
 holds the ranking today.
+
+`graph.py` joined at roadmap 5.3, when the edges it derives stopped being a
+read-only tool surface and became a candidate generator: with
+`[retrieval] graph_expansion` on, an edge added or removed changes what a query
+returns. It was outside this list while `mycelium_neighbors` was its only reader,
+and leaving it there once retrieval could walk it would be the same gap
+`harness.py` was (ADR-0059).
 
 `config.py` is here because a shipped *default* changes the retriever as surely as
 the algorithm does: `[chunking] pack_atomic` moves every chunk boundary, and its
