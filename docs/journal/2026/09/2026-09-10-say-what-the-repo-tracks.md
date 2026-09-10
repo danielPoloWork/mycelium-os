@@ -3,7 +3,7 @@
 - **Session scope:** a maintainer report — "refusing to merge unrelated histories", right after
   the v0.4.0 release — that turned out to be a working-directory slip, and the repository audit
   it prompted (roadmap 5.8; AGENTS.md §4, §13).
-- **PR:** #97 (`chore/say-what-the-repo-tracks`). Follows #96 (the v0.4.0 cut), merged as
+- **PR:** #98 (`chore/say-what-the-repo-tracks`). Follows #96 (the v0.4.0 cut), merged as
   `5a99abe`.
 - **Milestone 5:** 5.8 done. Nothing else in M5 has started.
 
