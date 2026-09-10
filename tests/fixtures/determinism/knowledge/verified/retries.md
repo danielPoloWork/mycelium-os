@@ -42,6 +42,6 @@ the build's own budget. See ![[architecture]] for where this sits in the pipelin
 ## Worked example
 
 ```python
-snapshot = build(root, clean=True)
-assert snapshot.counts.chunks > 0
+policy = build_policy(attempts=5)
+assert policy.delay(4) == 16.0
 ```

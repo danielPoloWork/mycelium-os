@@ -70,8 +70,9 @@ Reach for it when you are measuring a corpus rather than authoring one. Every re
 takes `--json`, exits 0/1/2 (ok / failed / usage), and honours `NO_COLOR`.
 
 Point an MCP-capable agent at `mycelium serve` and it gets four read-only tools —
-`mycelium_search`, `mycelium_fetch`, `mycelium_neighbors` (the graph of links your documents
-actually contain), and `mycelium_explain` (how a query was planned, why, and what each of
+`mycelium_search`, `mycelium_fetch`, `mycelium_neighbors` (the typed graph your documents
+actually contain — links, sections, citations, and the symbols they define and use), and
+`mycelium_explain` (how a query was planned, why, and what each of
 its words actually reached in the index) — returning
 verbatim passages with `mycelium://` citations, trust class, and verification status. Every response states in words that its
 content is data, never instructions: retrieved text is quoted evidence, and injection
@@ -229,6 +230,33 @@ not tell a function word from a corpus's own nouns (`what` reaches 37 % of this 
 chunks; `adr` reaches 60 %). The numbers, the refusals and the two instruments that re-run
 them are in
 [ADR-0057](docs/adr/0057-drop-the-function-words-and-score-the-seam-that-ships.md).
+
+### The graph is typed, and every type is derived from something you wrote
+
+D-014 fixes a vocabulary of eight edge types and no graph database. Six of them are derived, each
+from a fact rather than a guess: `links_to` and `cites` from the links you write (a link into
+`knowledge/evidence/` is a citation), `part_of` from a document's own headings, `derived_from`
+from the frontmatter that marks a document synthesized, and `defines`/`references` from what the
+code fences declare and use.
+
+```bash
+mycelium neighbors docs/api.md                  # links out and in, sections, citations
+mycelium neighbors sym:python:RetryPolicy       # where it is defined, and what uses it
+mycelium neighbors docs/api.md --type defines    # one type at a time
+```
+
+Every edge says whether a human asserted it or a machine found it. `links_to`, `cites`,
+`part_of` and `derived_from` are **authored** — they come from your links, your headings, your
+frontmatter. `defines` and `references` are **extracted**, because a grammar found them, and
+spec 03 §6's rule is that extracted never becomes authored silently. The two remaining types are
+unemitted on purpose: `mentions` belongs to the optional entity stage, and `supersedes` would
+need a frontmatter field the contract deliberately does not have.
+
+The measured effect on the vendored uv documentation: **76 linked sections** that were traversal
+dead ends are now joined to their documents, which is what a `[[doc#Heading]]` link should have
+meant all along. Weights are all 1.0 today — the field is served because the contract promises
+it, and what the numbers should be is a ranking question the graph-expansion ablation will answer
+([ADR-0074](docs/adr/0074-give-every-edge-type-a-derivation-or-a-reason-it-has-none.md)).
 
 ### A fence that defines something becomes a symbol, and so does a heading that names one
 

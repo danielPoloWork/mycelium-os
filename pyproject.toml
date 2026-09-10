@@ -66,9 +66,15 @@ synthesis = ["anthropic>=1.2"]
 # the one binding. Which of them is installed, and at which version, enters the build
 # key, so the symbols a snapshot holds are a function of the corpus and of these
 # versions - and a build without them compiles, says it is degraded, and names this
-# extra. `tree-sitter>=0.25` is the release that moved matching onto `QueryCursor`.
+# extra. `tree-sitter>=0.25` is the release that moved matching onto `QueryCursor`;
+# `<0.26` is a defect pin, not caution: 0.26.0 faults with an access violation while
+# reading a fence of the vendored ingested corpus, deterministically, and takes the
+# whole build process with it. 0.25.2 reads the same bytes repeatedly and produces
+# byte-identical definitions ([BUG-0022], roadmap 5.2). Lift the pin only against a
+# release that survives `uv run pytest -m determinism` plus a build of
+# eval/corpora/uv-docs-ingested.
 symbols = [
-    "tree-sitter>=0.25",
+    "tree-sitter>=0.25,<0.26",
     "tree-sitter-c>=0.23",
     "tree-sitter-cpp>=0.23",
     "tree-sitter-go>=0.23",
@@ -119,7 +125,7 @@ dev = [
     # every grammar on every platform, and gate G6's golden is blessed with them
     # installed - the gate refuses to run without them rather than compare a
     # degraded snapshot against it (roadmap 5.1).
-    "tree-sitter>=0.25",
+    "tree-sitter>=0.25,<0.26",
     "tree-sitter-c>=0.23",
     "tree-sitter-cpp>=0.23",
     "tree-sitter-go>=0.23",

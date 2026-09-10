@@ -74,8 +74,12 @@ CHUNK_STAGE_VERSION: Final = 2
 ASSEMBLE_STAGE_VERSION: Final = 1
 """Bump when Document-record derivation (title, stats, trust, …) changes."""
 
-EXTRACT_STAGE_VERSION: Final = 1
+EXTRACT_STAGE_VERSION: Final = 2
 """Bump when link or symbol extraction changes output for unchanged input.
+
+v1 → v2: extraction also yields what a fence *uses*, and every definition
+records which syntax carried it, so an unchanged document produces a larger
+artifact than it did at roadmap 5.1 (5.2, ADR-0074).
 
 The grammars are inputs of their own: their versions enter the environment
 through :attr:`BuildEnv.grammars`, so a grammar release invalidates without a

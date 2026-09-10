@@ -119,17 +119,23 @@ TOOL_SCHEMAS: Final[list[dict[str, Any]]] = [
     {
         "name": "mycelium_neighbors",
         "description": (
-            "Show what a document links to and what links to it, over the graph "
-            "of links their authors actually wrote. Every edge carries its type, "
-            "its status (authored), and where in the text the link appears. Use "
-            "it to follow a topic, not to search for one."
+            "Show a document's typed neighbourhood: what it links to and what "
+            "links to it, which of its sections are linked, what it was derived "
+            "from, and which symbols it defines or uses. Accepts a symbol id "
+            "(sym:python:RetryPolicy) as well, which is how to ask where a thing "
+            "is defined and what else uses it. Every edge carries its type, its "
+            "status - 'authored' for what a human wrote, 'extracted' for what a "
+            "grammar found - and where in the text it appears. Use it to follow a "
+            "topic, not to search for one."
         ),
         "inputSchema": {
             "type": "object",
             "properties": {
                 "uri": {
                     "type": "string",
-                    "description": "A mycelium:// URI, a document path, or a doc: reference.",
+                    "description": (
+                        "A mycelium:// URI, a document path, a doc: reference, or a sym: symbol id."
+                    ),
                 },
                 "types": {
                     "type": "array",
@@ -473,8 +479,22 @@ def _edge_types(raw: Any) -> list[EdgeType] | None:
 
 
 def _graph_ref(store: SqliteStore, target: str) -> str:
-    """Resolve what the caller named into the reference the graph keys on."""
+    """Resolve what the caller named into the reference the graph keys on.
+
+    A path, a `mycelium://` URI, a chunk anchor, a `doc:` reference, or a `sym:`
+    symbol id all name a node to a reader; the graph keys on `doc:<path>` for a
+    document and on the symbol id for a symbol, and making the caller learn that
+    would be a leak, not a contract.
+
+    A `sym:` id is checked against the symbol table (roadmap 5.2): a symbol this
+    snapshot does not hold has to be `NOT_FOUND`, because an empty neighbourhood
+    reads as "nothing defines it" — a different and wrong answer.
+    """
     if target.startswith("doc:"):
+        return target
+    if target.startswith("sym:"):
+        if store.get_symbol(target) is None:
+            raise McpToolError(ErrorCode.NOT_FOUND, f"no symbol {target} in this snapshot")
         return target
     if target.startswith("mycelium://"):
         try:

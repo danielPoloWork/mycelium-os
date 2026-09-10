@@ -42,6 +42,7 @@ from mycelium.sdk.identity import symbol_id
 from mycelium.sdk.types import Symbol
 from mycelium.store import SqliteStore
 from mycelium.symbols import (
+    CODE_FENCE,
     EXTRA,
     GRAMMARS,
     MAX_FENCE_BYTES,
@@ -535,11 +536,21 @@ def test_an_oversized_fence_is_a_warning_on_the_document_not_a_lost_document(
 class _State:
     path: str
     symbols: tuple[Mapping[str, object], ...]
+    symbol_uses: tuple[Mapping[str, object], ...] = ()
     symbol_gaps: tuple[str, ...] = ()
+    origin: str = "authored"
 
 
 def _refs(*items: tuple[str, str, str, int, str]) -> tuple[Mapping[str, object], ...]:
-    return tuple(encode_symbols([SymbolRef(*item) for item in items]))
+    """(language, name, kind, line, anchor) -> the stored form, read from a fence."""
+    return tuple(
+        encode_symbols(
+            [
+                SymbolRef(language, name, kind, CODE_FENCE, line, anchor)
+                for language, name, kind, line, anchor in items
+            ]
+        )
+    )
 
 
 def test_resolution_merges_definitions_across_documents_in_path_order() -> None:

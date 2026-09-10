@@ -1,14 +1,14 @@
 {
   "artifact_digests": {
-    "chunks": "sha256:4061a8b30e017aa85bc65d613c854d0bd1585fd287c06255ca1a85f46181cc36",
-    "documents": "sha256:537bf6a2fce0df9ee1f3b1b3948069ff6c2e97ac008196c330f6d26976c3c248",
-    "edges": "sha256:affafbe117794906052a95ffc2df212aa1c696836fc4c47e2636f1ca49867103",
+    "chunks": "sha256:227a16959825a1904919d01539a647698203d1eb8e8858abdb80f2d2ab634c7e",
+    "documents": "sha256:70cb1779d5b526dbef2c56103ff5870ef76fedffdfe42fce9dada471b5b0d1cf",
+    "edges": "sha256:c7d8ebb6e5f918dc7b334d34652918adf7c92aa97b88f4cbab6cabb8e31ce32d",
     "symbols": "sha256:2b8bed4e739e2408846a22fbf4c43b4bb6e2044890299952ce0011f06fae6033"
   },
   "chunks": [
     {
       "anchor": "knowledge/candidate/synthesis.md#/0",
-      "chunk_digest": "sha256:9347e98c021c95d8a603c211f63e09ba5be1e52a9b1db938daec42bc61d9f7e4",
+      "chunk_digest": "sha256:5763ad064e468f81eae5cd87208c454bd61d1387028616721d2b98e7495b745d",
       "heading_path": [
         "Delivery Semantics (draft)"
       ],
@@ -17,7 +17,7 @@
         11,
         15
       ],
-      "tokens": 47
+      "tokens": 52
     },
     {
       "anchor": "knowledge/candidate/synthesis.md#open-questions/0",
@@ -338,7 +338,7 @@
     },
     {
       "anchor": "knowledge/verified/retries.md#worked-example/0",
-      "chunk_digest": "sha256:c28c9b8c23d31b7af2752a13c2de7b20bb46f58dcd69751d1d6dfddafe7affea",
+      "chunk_digest": "sha256:d41e08dde8da8ee8384105a7574c6af9b9196dbd6c877d1613eadc14ca00a8f4",
       "heading_path": [
         "Retry Policy",
         "Worked example"
@@ -348,28 +348,28 @@
         42,
         47
       ],
-      "tokens": 20
+      "tokens": 22
     }
   ],
   "config_digest": "sha256:0090a058c5d4bd5b3d2a1b15618576d03bdf44ce366a284ca61e6711677096a4",
   "counts": {
     "chunks": 25,
     "documents": 7,
-    "edges": 5,
+    "edges": 18,
     "quarantined": 0,
     "symbols": 8,
     "vectors": 0
   },
   "documents": [
     {
-      "content_digest": "sha256:2f1fe6b0002fc0a8d4693aed1d043b8e517ce73eaaf0b6954dcbea5fde203421",
+      "content_digest": "sha256:3a71f1239556901a877a61899bb0ab78c5bd6798881b185078c98f698062fc2a",
       "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/candidate/synthesis.md",
       "stats": {
         "chunks": 2,
         "headings": 2,
         "links_out": 2,
-        "tokens": 73
+        "tokens": 78
       },
       "tags": [
         "delivery"
@@ -474,14 +474,14 @@
       "verification_status": "verified"
     },
     {
-      "content_digest": "sha256:9834906ac894c793bdfe1cc69ff05f44be3a4ad9cfa89aae79a727550457a33a",
+      "content_digest": "sha256:4d89f48ef18b930f1d17c7a54f4651284d22bd17d119d5a76cd8575ec1149e00",
       "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/verified/retries.md",
       "stats": {
         "chunks": 4,
         "headings": 4,
         "links_out": 1,
-        "tokens": 151
+        "tokens": 153
       },
       "tags": [
         "delivery",
@@ -491,6 +491,206 @@
       "trust_class": "authored",
       "updated_at": "2026-01-01T00:00:00Z",
       "verification_status": "verified"
+    }
+  ],
+  "edges": [
+    {
+      "from": "doc:knowledge/candidate/synthesis.md",
+      "provenance": {
+        "anchor": "knowledge/candidate/synthesis.md#/0",
+        "kind": "wikilink"
+      },
+      "status": "authored",
+      "to": "doc:knowledge/evidence/extract.md",
+      "type": "cites",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/candidate/synthesis.md",
+      "provenance": {
+        "anchor": null,
+        "kind": "frontmatter"
+      },
+      "status": "authored",
+      "to": "doc:knowledge/evidence/extract.md",
+      "type": "derived_from",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/candidate/synthesis.md",
+      "provenance": {
+        "anchor": "knowledge/candidate/synthesis.md#/0",
+        "kind": "wikilink"
+      },
+      "status": "authored",
+      "to": "doc:knowledge/evidence/extract.md#section-4-3",
+      "type": "cites",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/evidence/extract.md#section-4-3",
+      "provenance": {
+        "anchor": null,
+        "kind": "heading"
+      },
+      "status": "authored",
+      "to": "doc:knowledge/evidence/extract.md",
+      "type": "part_of",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/api.md",
+      "provenance": {
+        "anchor": "knowledge/verified/api.md#retrypolicy/0",
+        "kind": "heading"
+      },
+      "status": "extracted",
+      "to": "sym:doc:RetryPolicy",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/api.md",
+      "provenance": {
+        "anchor": "knowledge/verified/api.md#terms/0",
+        "kind": "definition_list"
+      },
+      "status": "extracted",
+      "to": "sym:doc:anchor",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/api.md",
+      "provenance": {
+        "anchor": "knowledge/verified/api.md#terms/0",
+        "kind": "definition_list"
+      },
+      "status": "extracted",
+      "to": "sym:doc:snapshot",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/api.md",
+      "provenance": {
+        "anchor": "knowledge/verified/api.md#retrypolicy/0",
+        "kind": "code_fence"
+      },
+      "status": "extracted",
+      "to": "sym:python:RetryPolicy",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/api.md",
+      "provenance": {
+        "anchor": "knowledge/verified/api.md#retrypolicy/0",
+        "kind": "code_fence"
+      },
+      "status": "extracted",
+      "to": "sym:python:RetryPolicy.delay",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/api.md",
+      "provenance": {
+        "anchor": "knowledge/verified/api.md#retrypolicy/0",
+        "kind": "code_fence"
+      },
+      "status": "extracted",
+      "to": "sym:python:build_policy",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/api.md",
+      "provenance": {
+        "anchor": "knowledge/verified/api.md#retrypolicy/0",
+        "kind": "code_fence"
+      },
+      "status": "extracted",
+      "to": "sym:rust:RetryPolicy",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/api.md",
+      "provenance": {
+        "anchor": "knowledge/verified/api.md#retrypolicy/0",
+        "kind": "code_fence"
+      },
+      "status": "extracted",
+      "to": "sym:rust:RetryPolicy.delay",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/architecture.md",
+      "provenance": {
+        "anchor": "knowledge/verified/architecture.md#/0",
+        "kind": "wikilink"
+      },
+      "status": "authored",
+      "to": "doc:knowledge/verified/multilingual.md",
+      "type": "links_to",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/architecture.md",
+      "provenance": {
+        "anchor": "knowledge/verified/architecture.md#/0",
+        "kind": "wikilink"
+      },
+      "status": "authored",
+      "to": "doc:knowledge/verified/retries.md",
+      "type": "links_to",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/retries.md",
+      "provenance": {
+        "anchor": "knowledge/verified/retries.md#configuration/0",
+        "kind": "embed"
+      },
+      "status": "authored",
+      "to": "doc:knowledge/verified/architecture.md",
+      "type": "links_to",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/retries.md",
+      "provenance": {
+        "anchor": "knowledge/verified/retries.md#configuration/0",
+        "kind": "code_fence"
+      },
+      "status": "extracted",
+      "to": "sym:python:RetryPolicy",
+      "type": "references",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/retries.md",
+      "provenance": {
+        "anchor": "knowledge/verified/retries.md#worked-example/0",
+        "kind": "code_fence"
+      },
+      "status": "extracted",
+      "to": "sym:python:RetryPolicy.delay",
+      "type": "references",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/retries.md",
+      "provenance": {
+        "anchor": "knowledge/verified/retries.md#worked-example/0",
+        "kind": "code_fence"
+      },
+      "status": "extracted",
+      "to": "sym:python:build_policy",
+      "type": "references",
+      "weight": 1.0
     }
   ],
   "schema_versions": {

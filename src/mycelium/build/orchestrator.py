@@ -79,6 +79,7 @@ from mycelium.graph import (
     edges_digest,
     encode_links,
     extract_links,
+    merge_edges,
     resolve_graph,
 )
 from mycelium.ingest.custody import Custody
@@ -129,6 +130,7 @@ from mycelium.symbols import (
     extract_symbols,
     grammar_fingerprint,
     resolve_symbols,
+    symbol_edges,
     symbols_digest,
 )
 
@@ -222,8 +224,12 @@ class _Entry:
     headings: tuple[str, ...] = ()
     symbols: tuple[SymbolRef, ...] = ()
     """What the document defines, extracted with it and resolved globally (roadmap 5.1)."""
+    symbol_uses: tuple[SymbolRef, ...] = ()
+    """What its fences use — the `references` edges' input (roadmap 5.2)."""
     symbol_gaps: tuple[str, ...] = ()
     """Fence languages no installed grammar could read — the snapshot's `degraded` input."""
+    origin: str = ProvenanceOrigin.AUTHORED.value
+    """The document's `provenance.origin`; `derived_from` cannot be derived without it."""
 
 
 @dataclass
@@ -578,7 +584,9 @@ def _state_of(entry: "_Entry", env_digest: str) -> DocState:
         aliases=entry.aliases,
         headings=entry.headings,
         symbols=tuple(encode_symbols(entry.symbols)),
+        symbol_uses=tuple(encode_symbols(entry.symbol_uses)),
         symbol_gaps=entry.symbol_gaps,
+        origin=entry.origin,
     )
 
 
@@ -928,7 +936,9 @@ def _build_locked(
                 entry.aliases = prev.aliases
                 entry.headings = prev.headings
                 entry.symbols = decode_symbols(prev.symbols)
+                entry.symbol_uses = decode_symbols(prev.symbol_uses)
                 entry.symbol_gaps = prev.symbol_gaps
+                entry.origin = prev.origin
 
         # -- compile what is dirty, through the cache -------------------------
         parsed_count = parse_hits = chunked_count = chunk_hits = 0
@@ -988,8 +998,10 @@ def _build_locked(
             # folded into records at publication over the whole corpus (5.1).
             extraction = extract_symbols(parsed.kir, chunks, doc_path=entry.doc_path)
             entry.symbols = extraction.symbols
+            entry.symbol_uses = extraction.references
             entry.symbol_gaps = extraction.gaps
             entry.warnings = (*entry.warnings, *extraction.warnings)
+            entry.origin = str(parsed.frontmatter.origin or ProvenanceOrigin.AUTHORED.value)
             entry.aliases = parsed.frontmatter.aliases
             entry.headings = tuple(
                 heading_slug(node.text)
@@ -1073,10 +1085,10 @@ def _build_locked(
             # global: adding one document can settle a dangling link in a
             # document this build never touched (ADR-0018). Extraction stayed
             # per-document and cached, so this is dictionary work, not parsing.
-            edges, link_warnings = resolve_graph(tuple(live_states.values()), namespace, root=root)
+            authored, link_warnings = resolve_graph(
+                tuple(live_states.values()), namespace, root=root
+            )
             manifest_warnings.extend(link_warnings)
-            store.clear_edges()
-            store.put_edges(edges)
             timer.lap("graph")
 
             # Symbols are resolved and republished whole for the same reason: a
@@ -1085,6 +1097,13 @@ def _build_locked(
             symbols = resolve_symbols(tuple(live_states.values()), namespace)
             store.clear_symbols()
             store.put_symbols(symbols)
+            # The extracted half of the graph rides on the resolved table: a use
+            # becomes an edge only when the corpus defines what it names, so the
+            # symbols must exist before the edges over them do (ADR-0074).
+            extracted = symbol_edges(tuple(live_states.values()), symbols, namespace)
+            edges = merge_edges(authored, extracted)
+            store.clear_edges()
+            store.put_edges(edges)
             timer.lap("symbols")
 
             embedded = 0

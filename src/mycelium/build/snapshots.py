@@ -44,12 +44,18 @@ from mycelium.build.publish import (
     read_manifest,
     swap_current,
 )
-from mycelium.graph import edges_digest, resolve_graph
+from mycelium.graph import edges_digest, merge_edges, resolve_graph
 from mycelium.sdk.identity import canonical_json, digest_json
-from mycelium.sdk.types import Chunk, Document, Sha256Digest, SnapshotManifest
+from mycelium.sdk.types import (
+    Chunk,
+    Document,
+    ProvenanceOrigin,
+    Sha256Digest,
+    SnapshotManifest,
+)
 from mycelium.store import STORE_DIRNAME, DocState, SnapshotState, SqliteStore
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
-from mycelium.symbols import resolve_symbols, symbols_digest
+from mycelium.symbols import resolve_symbols, symbol_edges, symbols_digest
 
 __all__ = [
     "DEFAULT_CACHE_MAX_AGE_DAYS",
@@ -109,7 +115,9 @@ def encode_snapshot_state(states: tuple[DocState, ...]) -> str:
                 # And its contribution to the symbol table (roadmap 5.1), for
                 # the same reason: rollback re-resolves rather than restores.
                 "symbols": [dict(symbol) for symbol in state.symbols],
+                "symbol_uses": [dict(use) for use in state.symbol_uses],
                 "symbol_gaps": list(state.symbol_gaps),
+                "origin": state.origin,
             }
             for state in sorted(states, key=lambda state: state.path)
         ]
@@ -131,7 +139,9 @@ def decode_snapshot_state(text: str) -> tuple[DocState, ...]:
             aliases=tuple(item.get("aliases", ())),
             headings=tuple(item.get("headings", ())),
             symbols=tuple(item.get("symbols", ())),
+            symbol_uses=tuple(item.get("symbol_uses", ())),
             symbol_gaps=tuple(item.get("symbol_gaps", ())),
+            origin=str(item.get("origin", ProvenanceOrigin.AUTHORED.value)),
         )
         for item in json.loads(text)
     )
@@ -309,7 +319,9 @@ def _verify_against_manifest(
     describes — not merely something plausible found in the cache.
     """
     ordered = sorted(states, key=lambda state: state.path)
-    edges, _ = resolve_graph(ordered, namespace)
+    authored, _ = resolve_graph(ordered, namespace)
+    symbols = resolve_symbols(ordered, namespace)
+    edges = merge_edges(authored, symbol_edges(ordered, symbols, namespace))
     folded = {
         "documents": digest_json([state.document_digest for state in ordered]),
         "chunks": digest_json([state.chunks_digest for state in ordered]),
@@ -321,7 +333,7 @@ def _verify_against_manifest(
     if "symbols" in manifest.artifact_digests:
         # A snapshot published before roadmap 5.1 has no symbols digest to hold
         # it to, and is still restorable; one published since is held to it.
-        folded["symbols"] = symbols_digest(resolve_symbols(ordered, namespace))
+        folded["symbols"] = symbols_digest(symbols)
     for artifact_class, digest in folded.items():
         expected = manifest.artifact_digests.get(artifact_class)
         if expected != digest:
@@ -367,8 +379,9 @@ def rollback(
                 # about to be written are the authority on what they belong to.
                 namespace = loaded[0][1].namespace if loaded else "default"
                 _verify_against_manifest(manifest, states, namespace)
-                edges, _ = resolve_graph(states, namespace)
+                authored, _ = resolve_graph(states, namespace)
                 symbols = resolve_symbols(states, namespace)
+                edges = merge_edges(authored, symbol_edges(states, symbols, namespace))
 
                 chunk_count = 0
                 with store.transaction():

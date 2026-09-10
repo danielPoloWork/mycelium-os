@@ -89,3 +89,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0071](0071-advertise-the-types-and-check-the-tools.md) | Advertise the types, then check the tools with them | Accepted |
 | [0072](0072-keep-our-own-restatements-out-of-our-own-benchmark.md) | Keep our own restatements out of our own benchmark | Accepted |
 | [0073](0073-take-the-grammars-word-for-a-definition-and-the-headings-for-a-name.md) | Take the grammar's word for what a definition is, and the heading's for what it names | Accepted |
+| [0074](0074-give-every-edge-type-a-derivation-or-a-reason-it-has-none.md) | Give every edge type a derivation, or a reason it has none | Accepted |
