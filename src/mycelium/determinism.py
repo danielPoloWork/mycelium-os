@@ -7,9 +7,11 @@ unit test needs two things the assertion alone does not give: a statement of wha
 "identical" covers, and an artifact a human can review when it legitimately changes.
 
 **What is claimed.** The compiler's *outputs* are a pure function of its inputs:
-artifact digests, counts, every chunk and document record, and — since roadmap
-5.1 — every symbol record, which is where a grammar's behaviour would show if a
-wheel changed underneath the gate. Three manifest
+artifact digests, counts, every chunk and document record, every symbol record
+(roadmap 5.1) and every edge (5.2). The last two are where a grammar's or a
+binding's behaviour would show if a wheel changed underneath the gate — and a
+folded digest alone would report *that* something moved without saying what,
+which is the opposite of the reviewable artifact this gate exists to produce. Three manifest
 fields are deliberately excluded because they are not outputs of compilation —
 ``snapshot_id`` is a fresh ULID by design, ``created_at`` is the wall clock, and
 ``timings_ms`` is a measurement of the machine. A gate that demanded those be
@@ -65,6 +67,7 @@ class DeterminismObservation:
     documents: tuple[dict[str, Any], ...]
     chunks: tuple[dict[str, Any], ...]
     symbols: tuple[dict[str, Any], ...] = ()
+    edges: tuple[dict[str, Any], ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -76,6 +79,7 @@ class DeterminismObservation:
             "documents": list(self.documents),
             "chunks": list(self.chunks),
             "symbols": list(self.symbols),
+            "edges": list(self.edges),
         }
 
 
@@ -165,6 +169,17 @@ def _observe(root: Path, manifest: SnapshotManifest) -> DeterminismObservation:
             }
             for symbol in store.all_symbols()
         ]
+        edges = [
+            {
+                "from": edge.from_,
+                "to": edge.to,
+                "type": edge.type.value,
+                "status": edge.status.value,
+                "weight": edge.weight,
+                "provenance": edge.provenance.model_dump(mode="json"),
+            }
+            for edge in store.all_edges()
+        ]
 
     return DeterminismObservation(
         artifact_digests=dict(manifest.artifact_digests),
@@ -175,6 +190,11 @@ def _observe(root: Path, manifest: SnapshotManifest) -> DeterminismObservation:
         documents=tuple(sorted(documents, key=lambda item: str(item["path"]))),
         chunks=tuple(sorted(chunks, key=lambda item: str(item["anchor"]))),
         symbols=tuple(symbols),
+        # Ordered for a reader rather than by edge id: the store's own order is
+        # the digest of each assertion, which is stable and unreadable.
+        edges=tuple(
+            sorted(edges, key=lambda item: (str(item["from"]), str(item["to"]), str(item["type"])))
+        ),
     )
 
 

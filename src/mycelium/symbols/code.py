@@ -60,10 +60,13 @@ __all__ = [
     "GRAMMARS",
     "MAX_FENCE_BYTES",
     "CodeDefinition",
+    "CodeReference",
+    "FenceContents",
     "Grammar",
     "GrammarStatus",
     "LoadedGrammar",
     "extract_definitions",
+    "extract_references",
     "grammar_fingerprint",
     "grammar_for",
     "grammar_statuses",
@@ -332,6 +335,38 @@ class CodeDefinition:
 
 
 @dataclass(frozen=True, slots=True)
+class CodeReference:
+    """One *use* a tags query found in a fence — the other half of spec 03 §6.
+
+    Deliberately **not** qualified. A definition's identity is its place in the
+    tree, so nesting belongs in its name; a use is a call site, and where the
+    call sits says nothing about what it calls. The name is what the grammar
+    captured — ``delay`` for ``policy.delay(2)``, since every tags query captures
+    an attribute call's last segment — and resolving that to a qualified symbol
+    is the corpus's job, not the fence's (:func:`mycelium.symbols.symbol_edges`).
+    """
+
+    kind: str
+    """The tags query's own word: `call`, `class`, `type`, `implementation`."""
+    name: str
+    """The name as captured, unqualified."""
+    row: int
+    """0-based line of the reference within the fence."""
+
+
+@dataclass(frozen=True, slots=True)
+class FenceContents:
+    """What one parse of one fence yields: what it defines, and what it uses.
+
+    Both come from the same tree, because parsing a fence twice to ask two
+    questions of it would double the only real cost in this module.
+    """
+
+    definitions: tuple[CodeDefinition, ...]
+    references: tuple[CodeReference, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class _Scope:
     name: str
     kind: str
@@ -439,10 +474,20 @@ def _enclosing_scopes(
 
 
 def extract_definitions(loaded: LoadedGrammar, source: bytes) -> tuple[CodeDefinition, ...]:
-    """Every definition the grammar's tags queries find in `source`, qualified.
+    """Every definition the grammar's tags queries find in `source`, qualified."""
+    return read_fence(loaded, source).definitions
 
-    Deterministic: the result is ordered by position, then name, and the parse
-    is a pure function of the bytes and the grammar version — which is why that
+
+def extract_references(loaded: LoadedGrammar, source: bytes) -> tuple[CodeReference, ...]:
+    """Every use the grammar's tags queries find in `source`, unqualified."""
+    return read_fence(loaded, source).references
+
+
+def read_fence(loaded: LoadedGrammar, source: bytes) -> FenceContents:
+    """Parse one fence once and answer both questions of it.
+
+    Deterministic: each list is ordered by position, then name, and the parse is
+    a pure function of the bytes and the grammar version — which is why that
     version sits in the build key (:func:`grammar_fingerprint`).
     """
     import tree_sitter
@@ -454,19 +499,24 @@ def extract_definitions(loaded: LoadedGrammar, source: bytes) -> tuple[CodeDefin
     # and the `assignment` it holds cover the same bytes, and a span key would
     # make the assignment its own enclosing scope (`CONSTANT.CONSTANT`).
     found: dict[int, _Match] = {}
+    uses: dict[int, _Match] = {}
     for query in loaded.queries:
         for _, captures in tree_sitter.QueryCursor(query).matches(root):
             names = captures.get("name")
             if not names:
                 continue
             for capture, nodes in captures.items():
-                if not capture.startswith("definition."):
+                if capture.startswith("definition."):
+                    target, prefix = found, "definition."
+                elif capture.startswith("reference."):
+                    target, prefix = uses, "reference."
+                else:
                     continue
-                kind = capture.removeprefix("definition.")
+                kind = capture.removeprefix(prefix)
                 for node in nodes:
-                    current = found.get(node.id)
+                    current = target.get(node.id)
                     if current is None or _KIND_RANK.get(kind, 0) > _KIND_RANK.get(current.kind, 0):
-                        found[node.id] = _Match(node, names[0], kind)
+                        target[node.id] = _Match(node, names[0], kind)
 
     definitions: list[CodeDefinition] = []
     for match in found.values():
@@ -481,4 +531,20 @@ def extract_definitions(loaded: LoadedGrammar, source: bytes) -> tuple[CodeDefin
             kind = "method"
         name = ".".join([*(scope.name for scope in scopes), local])
         definitions.append(CodeDefinition(kind=kind, name=name, row=match.node.start_point.row))
-    return tuple(sorted(definitions, key=lambda item: (item.row, item.name, item.kind)))
+
+    references: list[CodeReference] = []
+    for match in uses.values():
+        # The captured token, not `_local_name`: a use is resolved by name and
+        # `RetryPolicy::new` in a call position should reach the same symbol as
+        # `new` does, through the corpus index rather than through the fence.
+        local = _text(match.name_node).replace("::", ".")
+        if not local:
+            continue
+        references.append(
+            CodeReference(kind=match.kind, name=local, row=match.node.start_point.row)
+        )
+
+    return FenceContents(
+        definitions=tuple(sorted(definitions, key=lambda item: (item.row, item.name, item.kind))),
+        references=tuple(sorted(references, key=lambda item: (item.row, item.name, item.kind))),
+    )

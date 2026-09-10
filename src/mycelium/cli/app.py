@@ -1016,7 +1016,7 @@ def neighbors(
     limit: Annotated[int, typer.Option("-k", "--limit", min=1, help="Maximum results.")] = 20,
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
-    """Show the typed neighbourhood of a document or section."""
+    """Show the typed neighbourhood of a document, a section, or a symbol."""
     store = _open_store(path)
     try:
         origin = _graph_ref(store, target)
@@ -1030,7 +1030,7 @@ def neighbors(
         return
     if not results:
         typer.echo(f"No neighbors of {origin}.")
-        detail("  (edges come from authored links; run `mycelium build` after adding some)")
+        detail("  (edges come from links, structure, and what the fences define)")
         return
     typer.echo(f"{origin}")
     for item in results:
@@ -1045,11 +1045,20 @@ def neighbors(
 def _graph_ref(store: SqliteStore, target: str) -> str:
     """Turn what a human typed into the reference the graph uses.
 
-    A path, a `mycelium://` URI, a chunk anchor, or an already-formed `doc:` ref
-    all name the same thing to a reader; the graph keys on `doc:<path>`, and
-    making the caller know that would be a leak, not a contract.
+    A path, a `mycelium://` URI, a chunk anchor, a `doc:` reference, or a `sym:`
+    symbol id all name a node to a reader; the graph keys on `doc:<path>` for a
+    document and on the symbol id for a symbol, and making the caller learn that
+    would be a leak, not a contract.
+
+    A `sym:` id is checked against the symbol table (roadmap 5.2): a symbol this
+    snapshot does not hold has to be `NOT_FOUND`, because an empty neighbourhood
+    reads as "nothing defines it" — a different and wrong answer.
     """
     if target.startswith("doc:"):
+        return target
+    if target.startswith("sym:"):
+        if store.get_symbol(target) is None:
+            raise fail(f"no symbol {target} in this snapshot")
         return target
     if target.startswith("mycelium://"):
         try:

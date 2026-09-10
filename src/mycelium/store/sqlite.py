@@ -32,6 +32,7 @@ from mycelium.sdk.types import (
     Edge,
     EdgeStatus,
     EdgeType,
+    ProvenanceOrigin,
     Symbol,
     TrustClass,
     VerificationStatus,
@@ -762,7 +763,9 @@ class SqliteStore:
                         "aliases": list(state.aliases),
                         "headings": list(state.headings),
                         "symbols": [dict(item) for item in state.symbols],
+                        "symbol_uses": [dict(item) for item in state.symbol_uses],
                         "symbol_gaps": list(state.symbol_gaps),
+                        "origin": state.origin,
                     }
                 ),
             ),
@@ -854,6 +857,19 @@ class SqliteStore:
         """Every symbol, ordered by id — what `mycelium export` writes."""
         rows = self._connection.execute("SELECT * FROM symbols ORDER BY symbol").fetchall()
         return tuple(_symbol_from_row(row) for row in rows)
+
+    def get_symbol(self, symbol: str) -> Symbol | None:
+        """One symbol by its id, or ``None``.
+
+        The lookup `mycelium neighbors sym:python:RetryPolicy` needs: a caller
+        may name a symbol node, and naming one that this snapshot does not hold
+        must be a typed `NOT_FOUND` rather than an empty neighbourhood, which
+        reads as "nothing links to it" (roadmap 5.2).
+        """
+        row = self._connection.execute(
+            "SELECT * FROM symbols WHERE symbol = ?", (symbol,)
+        ).fetchone()
+        return None if row is None else _symbol_from_row(row)
 
     def edges_of(
         self, ref: str, types: Sequence[EdgeType] | None = None
@@ -1512,7 +1528,9 @@ def _doc_state_from_row(row: sqlite3.Row) -> DocState:
         aliases=tuple(graph.get("aliases", ())),
         headings=tuple(graph.get("headings", ())),
         symbols=tuple(graph.get("symbols", ())),
+        symbol_uses=tuple(graph.get("symbol_uses", ())),
         symbol_gaps=tuple(graph.get("symbol_gaps", ())),
+        origin=str(graph.get("origin", ProvenanceOrigin.AUTHORED.value)),
     )
 
 

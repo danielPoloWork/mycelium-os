@@ -39,3 +39,4 @@ a `fixed` record names its `fixed-in`) is enforced by the consistency lint's `bu
 | [BUG-0019](2026/09/BUG-0019-pack-atomic-does-not-invalidate-the-chunk-cache.md) | turning `pack_atomic` on against an existing store changes nothing, and the build reports success | high | fixed | 0.4.0 |
 | [BUG-0020](2026/09/BUG-0020-the-rebuild-loop-guard-was-covered-by-a-vacuous-test.md) | the watcher's infinite-rebuild guard was covered by a test that passes with the guard deleted | medium | fixed | 0.4.0 |
 | [BUG-0021](2026/09/BUG-0021-a-property-test-fails-its-deadline-on-store-creation.md) | a property test fails hypothesis's deadline on SQLite store creation, not on the property it asserts | high | fixed | 0.4.0 |
+| [BUG-0022](2026/09/BUG-0022-tree-sitter-0-26-faults-on-a-projected-fence.md) | tree-sitter 0.26.0 faults with an access violation on a projected PDF fence, killing the build process | high | confirmed | — |

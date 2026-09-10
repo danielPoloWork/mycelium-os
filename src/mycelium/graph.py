@@ -4,12 +4,21 @@
 
 Spec 03 §6 makes edges **facts, not entities**: an edge's identity is the digest
 of ``(from, to, type, provenance_digest)``, so the same assertion observed twice
-is the same edge and re-deriving it is how a rebuild converges. This module
-derives them from what a human actually wrote — wikilinks, embeds, and Markdown
-links — and nothing else. Mining edges out of prose is an *extractor's* job
-(roadmap 5.1/5.2), and spec 03 §6's status discipline exists to keep the two
-apart: everything here is ``authored``, and extracted edges never gain that
-status silently.
+is the same edge and re-deriving it is how a rebuild converges. Everything this
+module derives is ``authored``: what a human wrote (wikilinks, embeds, Markdown
+links), what a document's own structure says (a section belongs to its
+document), and what its frontmatter declares (a synthesized document was written
+from its evidence). Mining assertions out of prose or code is an *extractor's*
+job — :mod:`mycelium.symbols` derives ``defines`` and ``references`` and marks
+them ``extracted`` — and spec 03 §6's status discipline exists to keep the two
+apart: extracted edges never gain authored status silently.
+
+Four of the eight types in D-014's vocabulary are emitted here (``links_to``,
+``cites``, ``part_of``, ``derived_from``), two by the symbol stage, and
+``mentions`` waits for the entity extractor it belongs to (roadmap 5.4). Every
+weight is 1.0: the field is served because spec 05 §3.3 promises it, and what
+the values should be is a ranking question for the ablation that will use them
+(roadmap 5.3, ADR-0074).
 
 **Extraction and resolution are separate on purpose, and the seam is the whole
 design.** Extraction reads one document's KIR and yields :class:`LinkRef`s — what
@@ -42,6 +51,7 @@ from mycelium.sdk.types import (
     KirDocument,
     KirNode,
     NodeKind,
+    ProvenanceOrigin,
     Sha256Digest,
 )
 
@@ -60,10 +70,12 @@ __all__ = [
     "edges_digest",
     "encode_links",
     "extract_links",
+    "merge_edges",
     "neighbours",
     "resolve_edges",
     "resolve_graph",
     "section_ref",
+    "split_section_ref",
 ]
 
 MAX_DEPTH: Final = 3
@@ -101,6 +113,21 @@ def section_ref(path: str, slug: str) -> str:
     across re-chunking.
     """
     return f"{doc_ref(path)}#{slug}"
+
+
+def split_section_ref(reference: str) -> tuple[str, str] | None:
+    """``doc:a.md#retries`` → ``("doc:a.md", "retries")``; ``None`` for anything else.
+
+    The inverse of :func:`section_ref`, and the test for *is this node a section*
+    that ``part_of`` resolution needs. A document reference has no fragment and a
+    ``sym:`` node has no document, so both answer ``None``.
+    """
+    if not reference.startswith("doc:"):
+        return None
+    document, separator, slug = reference.partition("#")
+    if not separator or not slug:
+        return None
+    return document, slug
 
 
 # ---------------------------------------------------------------------------
@@ -353,12 +380,16 @@ def resolve_edges(
     *,
     namespace: str = "default",
     root: Path | None = None,
+    origins: Mapping[str, str] | None = None,
 ) -> tuple[tuple[Edge, ...], tuple[str, ...]]:
     """Turn the corpus's link references into edges, plus warnings for the rest.
 
     Deterministic by construction: documents are visited in path order, links in
     document order, and identical assertions collapse to one edge because the
     edge id is a digest of the assertion (spec 03 §6).
+
+    `origins` maps a document's path to its `provenance.origin`, and it is what
+    makes ``derived_from`` expressible — see :func:`_derived_from_edges`.
     """
     edges: dict[Sha256Digest, Edge] = {}
     warnings: list[str] = []
@@ -402,10 +433,121 @@ def resolve_edges(
             )
             edges[edge_identity(edge)] = edge
 
+    for edge in (
+        *_part_of_edges(edges.values(), namespace),
+        *_derived_from_edges(edges.values(), origins or {}, namespace),
+    ):
+        edges[edge_identity(edge)] = edge
+
     ordered = sorted(
         edges.items(), key=lambda item: (item[1].from_, item[1].to, str(item[1].type), item[0])
     )
     return tuple(edge for _, edge in ordered), tuple(warnings)
+
+
+def _part_of_edges(edges: Iterable[Edge], namespace: str) -> tuple[Edge, ...]:
+    """``part_of`` from every section this graph already names to its document.
+
+    A heading link (`[[doc#Heading]]`) resolves to a *section* reference, which
+    is finer than a document and coarser than a chunk (ADR-0018) — and until this
+    item that node was a **dead end**: nothing connected it to the document it
+    sits in, so a walk that reached a section could go no further, while a walk
+    that reached a whole document carried on through its links. On the vendored
+    uv corpus that is 290 of 657 links, 226 distinct sections (ADR-0074).
+
+    Emitted only for sections some edge already names, which is what keeps the
+    node set unchanged: one `part_of` per heading in the corpus would add
+    thousands of edges nobody asked about and would crowd every neighbour query
+    that has a limit. The containment is structural, so it is `authored` — the
+    author wrote the heading and the link, and nothing here was inferred.
+    """
+    documents = {edge.from_ for edge in edges} | {
+        split_section_ref(edge.to)[0]  # type: ignore[index]
+        for edge in edges
+        if split_section_ref(edge.to) is not None
+    }
+    sections: set[str] = set()
+    for edge in edges:
+        for endpoint in (edge.from_, edge.to):
+            parts = split_section_ref(endpoint)
+            if parts is not None and parts[0] in documents:
+                sections.add(endpoint)
+
+    return tuple(
+        Edge.model_validate(
+            {
+                "from": section,
+                "to": split_section_ref(section)[0],  # type: ignore[index]
+                "type": EdgeType.PART_OF,
+                "status": EdgeStatus.AUTHORED,
+                "provenance": EdgeProvenance(kind="heading"),
+                "namespace": namespace,
+            }
+        )
+        for section in sorted(sections)
+    )
+
+
+def _derived_from_edges(
+    edges: Iterable[Edge], origins: Mapping[str, str], namespace: str
+) -> tuple[Edge, ...]:
+    """``derived_from`` from a synthesized document to each document it cites.
+
+    ADR-0018 deferred this type with a precise reason: at document granularity it
+    was *"the deduplicated projection of the `cites` edges already here — the same
+    assertion at lower resolution"*, and the distinction spec 03 §6 actually
+    wants — a synthesized document versus an authored one citing evidence — was
+    not expressible until the graph's per-document state carried `origin`. It
+    does now (roadmap 5.2), so the type says what it was meant to say: **this
+    document was written from that one**, which is a fact about the document, not
+    about any one of its claims.
+
+    `authored`, because it is derived from frontmatter the ingest lane wrote
+    (spec 03 §6 counts frontmatter as authored) — and orthogonal to whether the
+    prose has been checked, which `verification_status` carries per document.
+    """
+    synthesized = {
+        doc_ref(path) for path, origin in origins.items() if origin == ProvenanceOrigin.SYNTHESIZED
+    }
+    if not synthesized:
+        return ()
+
+    targets: dict[str, set[str]] = {}
+    for edge in edges:
+        if edge.type is not EdgeType.CITES or edge.from_ not in synthesized:
+            continue
+        parts = split_section_ref(edge.to)
+        targets.setdefault(edge.from_, set()).add(parts[0] if parts is not None else edge.to)
+
+    return tuple(
+        Edge.model_validate(
+            {
+                "from": source,
+                "to": target,
+                "type": EdgeType.DERIVED_FROM,
+                "status": EdgeStatus.AUTHORED,
+                "provenance": EdgeProvenance(kind="frontmatter"),
+                "namespace": namespace,
+            }
+        )
+        for source in sorted(targets)
+        for target in sorted(targets[source])
+    )
+
+
+def merge_edges(*groups: Sequence[Edge]) -> tuple[Edge, ...]:
+    """Every edge from every group, deduplicated by identity and ordered.
+
+    The graph is published whole and its digest is folded from the record list
+    (:func:`edges_digest`), so the *order* of two independently-derived groups —
+    the authored ones here, the extracted ones from the symbol stage — has to be
+    settled in one place rather than by whichever caller concatenates them.
+    """
+    edges = {edge_identity(edge): edge for group in groups for edge in group}
+    ordered = sorted(
+        edges.items(), key=lambda item: (item[1].from_, item[1].to, str(item[1].type), item[0])
+    )
+    return tuple(edge for _, edge in ordered)
 
 
 @runtime_checkable
@@ -430,6 +572,9 @@ class GraphState(Protocol):
     @property
     def headings(self) -> tuple[str, ...]: ...
 
+    @property
+    def origin(self) -> str: ...
+
 
 def resolve_graph(
     states: Sequence[GraphState], namespace: str = "default", root: Path | None = None
@@ -449,6 +594,7 @@ def resolve_graph(
         index,
         namespace=namespace,
         root=root,
+        origins={state.path: state.origin for state in states},
     )
 
 

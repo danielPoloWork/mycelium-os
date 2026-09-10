@@ -11,8 +11,8 @@ tags: [delivery]
 # Delivery Semantics (draft)
 
 An unreviewed synthesis of the delivery guarantees, awaiting `mycelium verify`. Every
-claim below cites the evidence it came from: retries are bounded at five attempts
-([[retries#Schedule]]), and quarantine preserves provenance ([[retries]]).
+claim below cites the evidence it came from: delivery attempts are bounded
+([[extract#Section 4.3]]), and the final attempt quarantines rather than drops ([[extract]]).
 
 ## Open questions
 

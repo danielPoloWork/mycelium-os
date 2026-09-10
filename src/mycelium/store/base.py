@@ -17,7 +17,15 @@ from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
-from mycelium.sdk.types import Chunk, Document, Edge, EdgeType, Sha256Digest, Symbol
+from mycelium.sdk.types import (
+    Chunk,
+    Document,
+    Edge,
+    EdgeType,
+    ProvenanceOrigin,
+    Sha256Digest,
+    Symbol,
+)
 
 __all__ = ["CacheEntry", "DocState", "SnapshotState", "Store"]
 
@@ -67,10 +75,18 @@ class DocState:
     document, which is what keeps "add a file and every dangling link to it
     resolves" true without giving up incrementality (ADR-0018).
 
-    ``symbols`` and ``symbol_gaps`` are the same arrangement for the symbol table
-    (roadmap 5.1): what this document defines, and which of its code fences no
-    installed grammar could read. One symbol may be defined by several documents,
-    so the record is folded globally from these on every build (ADR-0073).
+    ``symbols``, ``symbol_uses`` and ``symbol_gaps`` are the same arrangement for
+    the symbol table (roadmap 5.1/5.2): what this document defines, what its
+    fences use, and which of its code fences no installed grammar could read. One
+    symbol may be defined by several documents, so both the record and the typed
+    edges over it are folded globally from these on every build (ADR-0073,
+    ADR-0074).
+
+    ``origin`` is the document's `provenance.origin`, and it is here for the one
+    edge type that cannot be derived without it: a `derived_from` edge says a
+    *synthesized* document was written from its evidence, which is a different
+    assertion from an authored document citing the same evidence (ADR-0018
+    deferred the type for exactly this reason; roadmap 5.2).
     """
 
     doc_id: str
@@ -89,8 +105,12 @@ class DocState:
     """This document's heading slugs, so `[[doc#Heading]]` can target a section."""
     symbols: tuple[Mapping[str, object], ...] = ()
     """The definitions this document makes, as extracted from its KIR."""
+    symbol_uses: tuple[Mapping[str, object], ...] = ()
+    """The symbols its fences use — the input to the `references` edges."""
     symbol_gaps: tuple[str, ...] = ()
     """Fence languages whose grammar was not installed when it was compiled."""
+    origin: str = ProvenanceOrigin.AUTHORED.value
+    """`authored`, `ingested`, or `synthesized` — absent frontmatter is authored."""
 
 
 @runtime_checkable
@@ -158,6 +178,8 @@ class Store(Protocol):
     def all_edges(self) -> tuple[Edge, ...]: ...
 
     def all_symbols(self) -> tuple[Symbol, ...]: ...
+
+    def get_symbol(self, symbol: str) -> Symbol | None: ...
 
     def edges_of(
         self, ref: str, types: Sequence[EdgeType] | None = None

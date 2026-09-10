@@ -249,7 +249,10 @@ def test_a_build_publishes_the_authored_graph(tmp_path: Path) -> None:
     root = repo(tmp_path)
     manifest = build(root).manifest
 
-    assert manifest.counts.edges == 5
+    # Five links, plus the `part_of` that connects the one linked *section* to
+    # its document (roadmap 5.2) — `edges_of` lists what documents assert, so
+    # that sixth edge is asserted below, from the section it starts at.
+    assert manifest.counts.edges == 6
     assert edges_of(root) == sorted(
         [
             (
@@ -286,6 +289,15 @@ def test_a_build_publishes_the_authored_graph(tmp_path: Path) -> None:
     )
     # The external link produced neither an edge nor a warning.
     assert not any("example.invalid" in warning for warning in manifest.warnings)
+
+    section = section_ref("knowledge/retries.md", "schedule")
+    with SqliteStore.open(root, read_only=True) as store:
+        containment = [
+            (edge.from_, edge.to, str(edge.type), edge.provenance.kind)
+            for edge, direction in store.edges_of(section)
+            if direction == "out"
+        ]
+    assert containment == [(section, doc_ref("knowledge/retries.md"), "part_of", "heading")]
 
 
 def test_adding_a_document_settles_a_dangling_link_in_an_untouched_one(tmp_path: Path) -> None:
