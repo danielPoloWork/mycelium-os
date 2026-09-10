@@ -68,6 +68,9 @@ The current plan and progress live in [`ROADMAP.md`](ROADMAP.md).
 
 ## 4. Repository Layout
 
+What a clone contains, and what it deliberately does not. Everything development needs is
+tracked; every untracked directory is a cache or a copy that one command regenerates.
+
 ```text
 .
 ├── AGENTS.md                       # this file — cross-tool agent instructions
@@ -75,21 +78,45 @@ The current plan and progress live in [`ROADMAP.md`](ROADMAP.md).
 ├── GEMINI.md                       # Gemini Antigravity adapter → defers to AGENTS.md
 ├── README.md                       # human-facing project landing page
 ├── ROADMAP.md                      # numbered checkbox roadmap, updated as work completes
-├── LICENSE
-├── src/                            # all source code lives here — see §5
-│   ├── main/python/mycelium/mycelium/
-│   ├── test/python/mycelium/mycelium/
-│   └── bench/python/mycelium/mycelium/    # where applicable
+├── CHANGELOG.md                    # [Unreleased] entries + the per-version index (§11)
+├── CONTRIBUTING.md, SECURITY.md, CODE_OF_CONDUCT.md, LICENSE
+├── pyproject.toml, uv.lock         # the package and its pinned toolchain: `uv sync --all-extras --dev`
+├── mycelium.toml                   # this repo compiles its own docs; says which Markdown is knowledge
+├── orchestrator/project.yaml       # the EADOS manifest (delivery_state)
+├── src/mycelium/                   # production sources — flat src-layout, one directory per component (§5)
+├── tests/                          # test sources; tests/bench/ holds the pytest-benchmark suites
+├── eval/                           # judged case sets, blessed baselines, the vendored second corpus and the
+│                                   #   G6 golden — tracked, so every gate runs from a clone (ADR-0013/0021/0027)
+├── tools/                          # verify.py (the gate ladder, ADR-0055), consistency_lint.py, and the
+│                                   #   generators and measurers the evaluation work runs by hand
 ├── docs/
 │   ├── adr/                        # Architecture Decision Records
+│   ├── rfc/                        # the design of record (RFC-0001)
+│   ├── specs/                      # functional/technical specification (frozen contract)
 │   ├── patterns/                   # design-patterns catalogue + taxonomy
-│   ├── specs/                      # functional/technical specifications
 │   ├── workflow/                   # git, documentation, release & maintenance conventions
 │   ├── journal/                    # dated session checkpoints
-│   └── bugs/                       # in-repo bug ledger
-├── tools/consistency_lint.py       # agent-runnable cross-artifact congruence checker
+│   ├── bugs/                       # in-repo bug ledger
+│   ├── security/                   # the threat model, beside the root SECURITY.md policy
+│   ├── changelog/, releases/       # per-version changelogs and release notes (§11)
+│   └── benchmarks/, development/, assets/, i18n/
+├── .draft-specs/                   # the specification the RFC and the ADRs cite by section — tracked
+├── .eados-core/                    # the vendored EADOS bundle — tracked here by owner decision (PR #1,
+│                                   #   2026-08-29): the pipeline runs in-repo and learning/runs/ is the
+│                                   #   project's audit trail; see the deviation note in §13
+├── .claude/commands/eados/         # the Claude Code adapters for the §13 commands — tracked, same decision
 └── .github/                        # CI + release workflows, PR/issue templates, CODEOWNERS, Dependabot
 ```
+
+**Not tracked, and not needed from a clone** (`.gitignore`): `.venv/` — `uv sync` rebuilds it.
+`.mycelium/` — the compiled store of this repository's own documentation; `mycelium build`
+rebuilds it. `.hypothesis/` and `.benchmarks/` — Hypothesis's example database and
+pytest-benchmark's autosave storage, refilled by running the suites (CI keeps the falsifying
+example as an artifact, ADR-0060). `.mycelium-os-legacy/` — a clone of the superseded
+implementation, kept for salvage only; its history lives on GitHub as `mycelium-os-legacy`, and
+it is a repository of its own, so never run a sync inside it — address this one as
+`git -C <root>` rather than `cd`-ing below it. IDE directories. A teammate needs the clone,
+Python 3.12+, `uv`, and pandoc for the ingest lane — nothing else.
 
 ## 5. Source Tree & Cross-Language Layout
 
@@ -355,7 +382,8 @@ A factual **claim** follows the evidence; a human **decision** follows the maint
 ## 13. EADOS commands
 
 The governed entry points this repository was generated with. **This table is the list** — you do
-not need to go and find it in the vendored `.eados-core/` bundle, which is not committed here.
+not need to go and find it in the vendored `.eados-core/` bundle. (That bundle *is* committed here,
+by owner decision — see the deviation note below, and §4.)
 
 | Command | Class | What it does |
 |---|---|---|
@@ -390,10 +418,15 @@ not need to go and find it in the vendored `.eados-core/` bundle, which is not c
 Commands marked *agent-authored* produce code, tests or a ledger entry — a CLI cannot run them. Read
 the procedure and follow it.
 
-**Your host's command tree is not committed** (ADR-0019, 2026-07-27 addendum). It is generated, and
-it is generated *per host* — so a tree committed by whoever set this repo up would do nothing for a
-teammate on a different one, and its pointers would dangle for anyone who has not installed the
-`.eados-core/` bundle (which this repo also does not commit). Generate your own:
+**Host command trees are generated, per host** (ADR-0019, 2026-07-27 addendum): a tree committed
+by whoever set a repo up does nothing for a teammate on a different host, and its pointers dangle
+for anyone who has not installed the `.eados-core/` bundle. The rendered EADOS default therefore
+gitignores both. **This repository deviates from that default, by owner decision (PR #1, merged
+2026-08-29):** the `.eados-core/` bundle is vendored *tracked*, because the delivery pipeline runs
+in-repo and the run records under `.eados-core/learning/runs/` are the project's own audit trail;
+and the **Claude Code** tree (`.claude/commands/eados/`) is tracked with it, because Claude Code is
+this repo's active host and the bundle its pointers resolve against survives a clone. Every other
+host's tree stays ignored (`.gitignore` names them) — generate your own:
 
 ```bash
 python .eados-core/tools/adapter_render.py --list          # what your host supports
@@ -401,7 +434,6 @@ python .eados-core/tools/adapter_render.py --host <id>     # your tree, in one c
 ```
 
 Nothing above depends on it: the table you are reading is the list, and the CLI works everywhere.
-A team that would rather share one tree deletes the matching lines from `.gitignore`.
 
 ## 14. Tool-Specific Notes
 

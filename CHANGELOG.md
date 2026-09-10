@@ -14,6 +14,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **`AGENTS.md` now says what a clone contains** (roadmap 5.8). §4 draws the tree that exists —
+  flat `src/mycelium/`, `eval/`, `tools/`, `.draft-specs/`, the vendored `.eados-core/` bundle and
+  the Claude Code adapters — and names what is deliberately untracked and how each is regenerated;
+  §13 states the owner's deviation from the EADOS default (bundle and Claude Code tree tracked,
+  PR #1) instead of contradicting it three times. `.benchmarks/` is ignored, so a benchmark
+  autosave no longer surfaces as untracked noise.
+
 ### Deprecated
 
 ### Removed
