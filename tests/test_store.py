@@ -245,7 +245,14 @@ def test_deleting_a_document_removes_its_chunks_and_index_entries(store: SqliteS
     seed(store, make_chunk("a.md#x/0", "findable text"))
     with store.transaction():
         store.delete_document(DOC_ID)
-    assert store.counts() == {"documents": 0, "chunks": 0, "symbols": 0, "edges": 0, "vectors": 0}
+    assert store.counts() == {
+        "documents": 0,
+        "chunks": 0,
+        "symbols": 0,
+        "entities": 0,
+        "edges": 0,
+        "vectors": 0,
+    }
     assert store.search_chunks("findable") == ()
 
 
@@ -576,7 +583,16 @@ def test_the_store_file_is_a_plain_sqlite_database(tmp_path: Path) -> None:
         tables = {
             row[0] for row in raw.execute("SELECT name FROM sqlite_master WHERE type='table'")
         }
-    assert {"documents", "chunks", "vectors", "symbols", "edges", "build_cache", "meta"} <= tables
+    assert {
+        "documents",
+        "chunks",
+        "vectors",
+        "symbols",
+        "entities",
+        "edges",
+        "build_cache",
+        "meta",
+    } <= tables
 
 
 # ---------------------------------------------------------------------------

@@ -2,7 +2,8 @@
   "artifact_digests": {
     "chunks": "sha256:227a16959825a1904919d01539a647698203d1eb8e8858abdb80f2d2ab634c7e",
     "documents": "sha256:70cb1779d5b526dbef2c56103ff5870ef76fedffdfe42fce9dada471b5b0d1cf",
-    "edges": "sha256:c7d8ebb6e5f918dc7b334d34652918adf7c92aa97b88f4cbab6cabb8e31ce32d",
+    "edges": "sha256:72392bcce4735995673e8926eeab5a401c90cb4a69a106cd824153f8f3a0333e",
+    "entities": "sha256:0d951193643100963cc66d23d467f1a39100b2d73154539b1b2620005e4a70b7",
     "symbols": "sha256:2b8bed4e739e2408846a22fbf4c43b4bb6e2044890299952ce0011f06fae6033"
   },
   "chunks": [
@@ -355,7 +356,8 @@
   "counts": {
     "chunks": 25,
     "documents": 7,
-    "edges": 18,
+    "edges": 23,
+    "entities": 8,
     "quarantined": 0,
     "symbols": 8,
     "vectors": 0
@@ -542,6 +544,17 @@
       "from": "doc:knowledge/verified/api.md",
       "provenance": {
         "anchor": "knowledge/verified/api.md#retrypolicy/0",
+        "kind": "prose"
+      },
+      "status": "extracted",
+      "to": "ent:retries",
+      "type": "mentions",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/api.md",
+      "provenance": {
+        "anchor": "knowledge/verified/api.md#retrypolicy/0",
         "kind": "heading"
       },
       "status": "extracted",
@@ -649,6 +662,39 @@
       "weight": 1.0
     },
     {
+      "from": "doc:knowledge/verified/architecture.md",
+      "provenance": {
+        "anchor": "knowledge/verified/architecture.md#/0",
+        "kind": "prose"
+      },
+      "status": "extracted",
+      "to": "ent:compiler",
+      "type": "mentions",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/architecture.md",
+      "provenance": {
+        "anchor": "knowledge/verified/architecture.md#/0",
+        "kind": "prose"
+      },
+      "status": "extracted",
+      "to": "ent:delivery",
+      "type": "mentions",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/architecture.md",
+      "provenance": {
+        "anchor": "knowledge/verified/architecture.md#/0",
+        "kind": "prose"
+      },
+      "status": "extracted",
+      "to": "ent:retries",
+      "type": "mentions",
+      "weight": 1.0
+    },
+    {
       "from": "doc:knowledge/verified/retries.md",
       "provenance": {
         "anchor": "knowledge/verified/retries.md#configuration/0",
@@ -657,6 +703,17 @@
       "status": "authored",
       "to": "doc:knowledge/verified/architecture.md",
       "type": "links_to",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/retries.md",
+      "provenance": {
+        "anchor": "knowledge/verified/retries.md#configuration/0",
+        "kind": "prose"
+      },
+      "status": "extracted",
+      "to": "ent:architecture",
+      "type": "mentions",
       "weight": 1.0
     },
     {
@@ -691,6 +748,103 @@
       "to": "sym:python:build_policy",
       "type": "references",
       "weight": 1.0
+    }
+  ],
+  "entities": [
+    {
+      "aliases": [],
+      "doc_refs": [
+        "doc:knowledge/verified/api.md"
+      ],
+      "entity_id": "0000000000SE4BEWHZRVCT3GFC",
+      "kind": "tag",
+      "name": "api",
+      "slug": "api",
+      "status": "authored"
+    },
+    {
+      "aliases": [
+        "architecture",
+        "Arch"
+      ],
+      "doc_refs": [
+        "doc:knowledge/verified/architecture.md",
+        "doc:knowledge/verified/multilingual.md"
+      ],
+      "entity_id": "0000000000X6C8KCY8ZX5YN168",
+      "kind": "topic",
+      "name": "Architecture",
+      "slug": "architecture",
+      "status": "authored"
+    },
+    {
+      "aliases": [],
+      "doc_refs": [
+        "doc:knowledge/verified/api.md",
+        "doc:knowledge/verified/build-keys.md"
+      ],
+      "entity_id": "00000000001NSYEJ0X2VQ9HKQ6",
+      "kind": "tag",
+      "name": "compiler",
+      "slug": "compiler",
+      "status": "authored"
+    },
+    {
+      "aliases": [],
+      "doc_refs": [
+        "doc:knowledge/candidate/synthesis.md",
+        "doc:knowledge/evidence/extract.md",
+        "doc:knowledge/verified/retries.md"
+      ],
+      "entity_id": "0000000000DG9C24W7B2D6S525",
+      "kind": "tag",
+      "name": "delivery",
+      "slug": "delivery",
+      "status": "authored"
+    },
+    {
+      "aliases": [],
+      "doc_refs": [
+        "doc:knowledge/verified/build-keys.md"
+      ],
+      "entity_id": "0000000000D5AN9C2ECN0XWY3H",
+      "kind": "tag",
+      "name": "determinism",
+      "slug": "determinism",
+      "status": "authored"
+    },
+    {
+      "aliases": [],
+      "doc_refs": [
+        "doc:knowledge/verified/architecture.md"
+      ],
+      "entity_id": "0000000000QEQZDKJ2SJ8D9WPG",
+      "kind": "tag",
+      "name": "event-bus",
+      "slug": "event-bus",
+      "status": "authored"
+    },
+    {
+      "aliases": [],
+      "doc_refs": [
+        "doc:knowledge/verified/retries.md"
+      ],
+      "entity_id": "0000000000DWPJJGE99J8ECSQ2",
+      "kind": "tag",
+      "name": "retries",
+      "slug": "retries",
+      "status": "authored"
+    },
+    {
+      "aliases": [],
+      "doc_refs": [
+        "doc:knowledge/verified/multilingual.md"
+      ],
+      "entity_id": "00000000000VXFP0A1X6WTMKA9",
+      "kind": "tag",
+      "name": "設計",
+      "slug": "設計",
+      "status": "authored"
     }
   ],
   "schema_versions": {

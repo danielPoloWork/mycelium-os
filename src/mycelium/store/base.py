@@ -25,6 +25,7 @@ from mycelium.sdk.types import (
     Document,
     Edge,
     EdgeType,
+    Entity,
     ProvenanceOrigin,
     Sha256Digest,
     Symbol,
@@ -85,6 +86,13 @@ class DocState:
     edges over it are folded globally from these on every build (ADR-0073,
     ADR-0074).
 
+    ``entities`` is the third of these (roadmap 5.4): the named things this
+    document *declares* through its tags and aliases. It is cached here whether
+    or not the optional stage is switched on, because the extraction is a few
+    frontmatter fields — so turning the stage on costs no recompile, and the
+    corpus-wide vocabulary a mention resolves against is available the moment it
+    is (ADR-0076).
+
     ``origin`` is the document's `provenance.origin`, and it is here for the one
     edge type that cannot be derived without it: a `derived_from` edge says a
     *synthesized* document was written from its evidence, which is a different
@@ -112,6 +120,8 @@ class DocState:
     """The symbols its fences use — the input to the `references` edges."""
     symbol_gaps: tuple[str, ...] = ()
     """Fence languages whose grammar was not installed when it was compiled."""
+    entities: tuple[Mapping[str, str], ...] = ()
+    """The named things this document declares — its tags and aliases (5.4)."""
     origin: str = ProvenanceOrigin.AUTHORED.value
     """`authored`, `ingested`, or `synthesized` — absent frontmatter is authored."""
 
@@ -156,6 +166,10 @@ class Store(Protocol):
 
     def clear_symbols(self) -> None: ...
 
+    def put_entities(self, entities: Iterable[Entity]) -> int: ...
+
+    def clear_entities(self) -> None: ...
+
     # -- reads -------------------------------------------------------------
 
     def get_document(self, doc_id: str) -> Document | None: ...
@@ -181,6 +195,8 @@ class Store(Protocol):
     def all_edges(self) -> tuple[Edge, ...]: ...
 
     def all_symbols(self) -> tuple[Symbol, ...]: ...
+
+    def all_entities(self) -> tuple[Entity, ...]: ...
 
     def rank_anchors(
         self, query: str, anchors: Sequence[str], *, limit: int = 1

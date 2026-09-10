@@ -28,6 +28,7 @@ every blob it ever wrote and the sweep can never collect anything.
 
 import json
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -44,14 +45,18 @@ from mycelium.build.publish import (
     read_manifest,
     swap_current,
 )
+from mycelium.entities import entities_digest, entity_mentions, resolve_entities
 from mycelium.graph import edges_digest, merge_edges, resolve_graph
 from mycelium.sdk.identity import canonical_json, digest_json
 from mycelium.sdk.types import (
     Chunk,
     Document,
+    Edge,
+    Entity,
     ProvenanceOrigin,
     Sha256Digest,
     SnapshotManifest,
+    Symbol,
 )
 from mycelium.store import STORE_DIRNAME, DocState, SnapshotState, SqliteStore
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
@@ -114,6 +119,7 @@ def encode_snapshot_state(states: tuple[DocState, ...]) -> str:
                 "headings": list(state.headings),
                 # And its contribution to the symbol table (roadmap 5.1), for
                 # the same reason: rollback re-resolves rather than restores.
+                "entities": [dict(item) for item in state.entities],
                 "symbols": [dict(symbol) for symbol in state.symbols],
                 "symbol_uses": [dict(use) for use in state.symbol_uses],
                 "symbol_gaps": list(state.symbol_gaps),
@@ -138,6 +144,7 @@ def decode_snapshot_state(text: str) -> tuple[DocState, ...]:
             links=tuple(item.get("links", ())),
             aliases=tuple(item.get("aliases", ())),
             headings=tuple(item.get("headings", ())),
+            entities=tuple(item.get("entities", ())),
             symbols=tuple(item.get("symbols", ())),
             symbol_uses=tuple(item.get("symbol_uses", ())),
             symbol_gaps=tuple(item.get("symbol_gaps", ())),
@@ -309,8 +316,41 @@ def _load_artifacts(
     return loaded
 
 
+def _restored_graph(
+    manifest: SnapshotManifest,
+    states: Sequence[DocState],
+    loaded: Sequence[tuple[DocState, Document, tuple[Chunk, ...]]],
+    namespace: str,
+) -> tuple[tuple[Edge, ...], tuple[Symbol, ...], tuple[Entity, ...]]:
+    """Re-derive everything the snapshot published *over* its documents.
+
+    One implementation for the verification and for the restore itself, so a
+    rollback cannot check one graph and write another. Whether the optional
+    entity stage ran is read from the manifest rather than from today's
+    configuration: the snapshot is the authority on what it contained, and an
+    operator who flipped `[entities] enabled` since the build must still be able
+    to roll back to it (ADR-0076).
+    """
+    ordered = sorted(states, key=lambda state: state.path)
+    authored, _ = resolve_graph(ordered, namespace)
+    symbols = resolve_symbols(ordered, namespace)
+    extracted = symbol_edges(ordered, symbols, namespace)
+    entities: tuple[Entity, ...] = ()
+    if "entities" in manifest.artifact_digests:
+        entities = resolve_entities(ordered, namespace)
+        chunks_by_path = {state.path: chunks for state, _, chunks in loaded}
+        passages = (
+            (state.path, chunk) for state in ordered for chunk in chunks_by_path.get(state.path, ())
+        )
+        extracted = merge_edges(extracted, entity_mentions(entities, passages, namespace))
+    return merge_edges(authored, extracted), symbols, entities
+
+
 def _verify_against_manifest(
-    manifest: SnapshotManifest, states: tuple[DocState, ...], namespace: str
+    manifest: SnapshotManifest,
+    states: tuple[DocState, ...],
+    loaded: Sequence[tuple[DocState, Document, tuple[Chunk, ...]]],
+    namespace: str,
 ) -> None:
     """Fold the restored per-document digests and demand the manifest's numbers.
 
@@ -319,9 +359,7 @@ def _verify_against_manifest(
     describes — not merely something plausible found in the cache.
     """
     ordered = sorted(states, key=lambda state: state.path)
-    authored, _ = resolve_graph(ordered, namespace)
-    symbols = resolve_symbols(ordered, namespace)
-    edges = merge_edges(authored, symbol_edges(ordered, symbols, namespace))
+    edges, symbols, entities = _restored_graph(manifest, ordered, loaded, namespace)
     folded = {
         "documents": digest_json([state.document_digest for state in ordered]),
         "chunks": digest_json([state.chunks_digest for state in ordered]),
@@ -334,6 +372,8 @@ def _verify_against_manifest(
         # A snapshot published before roadmap 5.1 has no symbols digest to hold
         # it to, and is still restorable; one published since is held to it.
         folded["symbols"] = symbols_digest(symbols)
+    if "entities" in manifest.artifact_digests:
+        folded["entities"] = entities_digest(entities)
     for artifact_class, digest in folded.items():
         expected = manifest.artifact_digests.get(artifact_class)
         if expected != digest:
@@ -378,22 +418,22 @@ def rollback(
                 # manifest digests it rather than naming it, and the documents
                 # about to be written are the authority on what they belong to.
                 namespace = loaded[0][1].namespace if loaded else "default"
-                _verify_against_manifest(manifest, states, namespace)
-                authored, _ = resolve_graph(states, namespace)
-                symbols = resolve_symbols(states, namespace)
-                edges = merge_edges(authored, symbol_edges(states, symbols, namespace))
+                _verify_against_manifest(manifest, states, loaded, namespace)
+                edges, symbols, entities = _restored_graph(manifest, states, loaded, namespace)
 
                 chunk_count = 0
                 with store.transaction():
                     store.clear_documents()
                     store.clear_edges()
                     store.clear_symbols()
+                    store.clear_entities()
                     for state, document, chunks in loaded:
                         store.put_document(document)
                         chunk_count += store.put_chunks(chunks)
                         store.put_doc_state(state)
                     store.put_edges(edges)
                     store.put_symbols(symbols)
+                    store.put_entities(entities)
                     store.set_meta(META_CURRENT_SNAPSHOT, snapshot_id)
                 swap_current(mycelium_dir, snapshot_id)
         except BaseException as error:

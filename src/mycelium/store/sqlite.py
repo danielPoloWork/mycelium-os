@@ -32,6 +32,7 @@ from mycelium.sdk.types import (
     Edge,
     EdgeStatus,
     EdgeType,
+    Entity,
     ProvenanceOrigin,
     Symbol,
     TrustClass,
@@ -762,6 +763,7 @@ class SqliteStore:
                         "links": [dict(item) for item in state.links],
                         "aliases": list(state.aliases),
                         "headings": list(state.headings),
+                        "entities": [dict(item) for item in state.entities],
                         "symbols": [dict(item) for item in state.symbols],
                         "symbol_uses": [dict(item) for item in state.symbol_uses],
                         "symbol_gaps": list(state.symbol_gaps),
@@ -857,6 +859,49 @@ class SqliteStore:
         """Every symbol, ordered by id — what `mycelium export` writes."""
         rows = self._connection.execute("SELECT * FROM symbols ORDER BY symbol").fetchall()
         return tuple(_symbol_from_row(row) for row in rows)
+
+    def put_entities(self, entities: Iterable[Entity]) -> int:
+        """Insert entity records, keyed by slug. In a transaction (roadmap 5.4)."""
+        written = 0
+        for entity in entities:
+            self._connection.execute(
+                """
+                INSERT INTO entities(
+                    entity_id, slug, name, aliases_json, kind, status, doc_refs_json, namespace)
+                VALUES(?,?,?,?,?,?,?,?)
+                ON CONFLICT(slug) DO UPDATE SET
+                    entity_id = excluded.entity_id, name = excluded.name,
+                    aliases_json = excluded.aliases_json, kind = excluded.kind,
+                    status = excluded.status, doc_refs_json = excluded.doc_refs_json,
+                    namespace = excluded.namespace
+                """,
+                (
+                    entity.entity_id,
+                    entity.slug,
+                    entity.name,
+                    canonical_json(list(entity.aliases)),
+                    entity.kind,
+                    entity.status.value,
+                    canonical_json(list(entity.doc_refs)),
+                    entity.namespace,
+                ),
+            )
+            written += 1
+        return written
+
+    def clear_entities(self) -> None:
+        """Empty the entity table. Call inside a :meth:`transaction`.
+
+        Republished wholesale like the symbols and the edges: one entity is one
+        row however many documents declare it, so which rows changed is not a
+        per-document question (ADR-0076).
+        """
+        self._connection.execute("DELETE FROM entities")
+
+    def all_entities(self) -> tuple[Entity, ...]:
+        """Every entity, ordered by slug — what `mycelium export` writes."""
+        rows = self._connection.execute("SELECT * FROM entities ORDER BY slug").fetchall()
+        return tuple(_entity_from_row(row) for row in rows)
 
     def get_symbol(self, symbol: str) -> Symbol | None:
         """One symbol by its id, or ``None``.
@@ -1116,7 +1161,7 @@ class SqliteStore:
 
     def counts(self) -> dict[str, int]:
         """Row counts per artifact class, for the snapshot manifest (spec 03 §7)."""
-        tables = ("documents", "chunks", "symbols", "edges", "vectors")
+        tables = ("documents", "chunks", "symbols", "entities", "edges", "vectors")
         return {
             table: int(
                 self._connection.execute(f"SELECT count(*) AS n FROM {table}").fetchone()["n"]
@@ -1607,6 +1652,7 @@ def _doc_state_from_row(row: sqlite3.Row) -> DocState:
         links=tuple(graph.get("links", ())),
         aliases=tuple(graph.get("aliases", ())),
         headings=tuple(graph.get("headings", ())),
+        entities=tuple(graph.get("entities", ())),
         symbols=tuple(graph.get("symbols", ())),
         symbol_uses=tuple(graph.get("symbol_uses", ())),
         symbol_gaps=tuple(graph.get("symbol_gaps", ())),
@@ -1633,6 +1679,19 @@ def _symbol_from_row(row: sqlite3.Row) -> Symbol:
         symbol=str(row["symbol"]),
         kind=str(row["kind"]),
         defined_in=str(row["defined_in"]),
+        doc_refs=tuple(json.loads(row["doc_refs_json"])),
+        namespace=str(row["namespace"]),
+    )
+
+
+def _entity_from_row(row: sqlite3.Row) -> Entity:
+    return Entity(
+        entity_id=str(row["entity_id"]),
+        slug=str(row["slug"]),
+        name=str(row["name"]),
+        aliases=tuple(json.loads(row["aliases_json"])),
+        kind=str(row["kind"]),
+        status=EdgeStatus(row["status"]),
         doc_refs=tuple(json.loads(row["doc_refs_json"])),
         namespace=str(row["namespace"]),
     )

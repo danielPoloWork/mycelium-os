@@ -1,0 +1,12 @@
+# The gate's corpus is compiled under this configuration (roadmap 5.4).
+#
+# One setting, and it is here for one reason: `[entities] enabled` defaults to
+# false (spec 03 §6), so a golden blessed under the defaults could never see a
+# change to the entity stage — the gate would be blind to a whole stage of the
+# compiler. The fixture therefore turns it on, and the golden carries the
+# entities and the `mentions` edges the fixture's tags and aliases produce.
+#
+# Everything else is deliberately absent: the gate's subject is the compiler's
+# defaults, and every setting added here is one the golden stops testing.
+[entities]
+enabled = true

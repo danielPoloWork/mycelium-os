@@ -308,6 +308,29 @@ it, for −0.0 % to −4.1 % overall. Re-run it yourself with
 shipped default ever stops matching it
 ([ADR-0075](docs/adr/0075-let-the-graph-propose-and-the-ranking-dispose-and-report-that-it-lost.md)).
 
+### Entities are declared by your vault, not guessed from your prose
+
+The last stage of the compiler is optional and **off by default**, and the measurement is
+why. An *entity* here is a name your corpus declares — a `#tag`, or an `aliases:` key saying
+the thing a document is about answers to other names. Turn `[entities] enabled` on and each
+one becomes a record with its other names and the documents that declare it, plus a
+`mentions` edge wherever a passage writes that name without having declared it. So
+`mycelium neighbors` answers *what does this document talk about* and *what talks about
+this*, and the export bundle carries `entities.jsonl`.
+
+What it will not do is invent one. Matching document *titles* in prose was the obvious way
+to fill the table and it was measured and refused: across the three evaluation corpora it
+produces 587 hits whose most frequent members are `README`, `Documentation`, `Changelog`,
+`Projects` and `Tools` — ordinary words, wrong in the way that reads as coverage. So the
+vocabulary is authored and the mentions over it are extracted, which is the status
+discipline the data model asks for.
+
+The honest yield on corpora that are not vaults: with the stage on, this repository declares
+**one** entity — a `#NNN` placeholder in a bug template — and the vendored uv documentation
+declares **none**. Neither uses tags or aliases; an Obsidian vault uses both, which is who
+the switch is for
+([ADR-0076](docs/adr/0076-let-the-corpus-declare-its-entities-and-refuse-to-guess-the-rest.md)).
+
 ### Ingestion picks its parser, and you pick which one
 
 Non-Markdown sources are compiled by adapters over engines that already exist — Mycelium OS

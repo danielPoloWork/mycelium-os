@@ -265,9 +265,13 @@ def test_two_query_words_sharing_a_stem_are_stated_once() -> None:
 
 
 def test_the_schema_version_records_the_new_index(store: SqliteStore) -> None:
-    # v5 rather than v4: the heading split is a column change, and FTS5 columns
-    # cannot be altered, so a foreign store is rebuilt (roadmap 4.36, ADR-0063).
-    assert SCHEMA_VERSION == "mycelium/store/v5"
+    # The heading split is a column change, and FTS5 columns cannot be altered,
+    # so a foreign store is rebuilt (roadmap 4.36, ADR-0063) — that was v5.
+    # v6 is *not* about this index: it added the `entities` table (roadmap 5.4,
+    # ADR-0076), which the columns below are deliberately unaffected by. The
+    # version is pinned here anyway, because a store version that moves without
+    # anyone noticing is a rebuild nobody asked for.
+    assert SCHEMA_VERSION == "mycelium/store/v6"
     columns = {
         row[1] for row in store._connection.execute("PRAGMA table_info(chunks_fts)").fetchall()
     }

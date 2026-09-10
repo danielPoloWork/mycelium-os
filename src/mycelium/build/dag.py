@@ -48,7 +48,14 @@ from mycelium.chunking import ChunkingPolicy
 from mycelium.markdown import Frontmatter, MarkdownDocument
 from mycelium.sdk.identity import canonical_json, digest_json
 from mycelium.sdk.schema import record_schema_version
-from mycelium.sdk.types import Chunk, Document, KirDocument, Sha256Digest, Symbol
+from mycelium.sdk.types import (
+    Chunk,
+    Document,
+    Entity,
+    KirDocument,
+    Sha256Digest,
+    Symbol,
+)
 
 __all__ = [
     "ASSEMBLE_STAGE_VERSION",
@@ -74,12 +81,16 @@ CHUNK_STAGE_VERSION: Final = 2
 ASSEMBLE_STAGE_VERSION: Final = 1
 """Bump when Document-record derivation (title, stats, trust, …) changes."""
 
-EXTRACT_STAGE_VERSION: Final = 2
+EXTRACT_STAGE_VERSION: Final = 3
 """Bump when link or symbol extraction changes output for unchanged input.
 
 v1 → v2: extraction also yields what a fence *uses*, and every definition
 records which syntax carried it, so an unchanged document produces a larger
 artifact than it did at roadmap 5.1 (5.2, ADR-0074).
+
+v2 to v3: it also yields the entity declarations a document makes, which the
+optional stage resolves and which are cached whether or not it is switched
+on (5.4, ADR-0076).
 
 The grammars are inputs of their own: their versions enter the environment
 through :attr:`BuildEnv.grammars`, so a grammar release invalidates without a
@@ -135,6 +146,7 @@ class BuildEnv:
     chunk_schema: str
     document_schema: str
     symbol_schema: str
+    entity_schema: str
     grammars: dict[str, str]
     """The tree-sitter binding and every code grammar this interpreter can load,
     each at its version — :func:`mycelium.symbols.grammar_fingerprint`. An input
@@ -162,6 +174,7 @@ class BuildEnv:
             chunk_schema=record_schema_version(Chunk),
             document_schema=record_schema_version(Document),
             symbol_schema=record_schema_version(Symbol),
+            entity_schema=record_schema_version(Entity),
             grammars=dict(sorted(grammars.items())),
         )
 
@@ -180,6 +193,7 @@ class BuildEnv:
                 "extract": {
                     "impl": EXTRACT_STAGE_VERSION,
                     "schema": self.symbol_schema,
+                    "entity_schema": self.entity_schema,
                     "grammars": self.grammars,
                 },
             }

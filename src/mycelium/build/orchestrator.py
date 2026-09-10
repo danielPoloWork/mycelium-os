@@ -45,6 +45,7 @@ every other byte of the file — never a YAML re-serialization.
 
 import platform
 import time
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
@@ -73,6 +74,15 @@ from mycelium.chunking import ChunkingPolicy, chunk_document
 from mycelium.config import MyceliumConfig, load_config
 from mycelium.corpus import CorpusScope, discover
 from mycelium.embedding import Embedder, EmbedderUnavailableError, build_embedder
+from mycelium.entities import (
+    EntityDeclaration,
+    declare_document,
+    decode_declarations,
+    encode_declarations,
+    entities_digest,
+    entity_mentions,
+    resolve_entities,
+)
 from mycelium.graph import (
     LinkRef,
     decode_links,
@@ -106,6 +116,7 @@ from mycelium.sdk.types import (
     Document,
     DocumentStats,
     EmbeddingInfo,
+    Entity,
     KirNode,
     NodeKind,
     Provenance,
@@ -226,6 +237,8 @@ class _Entry:
     """What the document defines, extracted with it and resolved globally (roadmap 5.1)."""
     symbol_uses: tuple[SymbolRef, ...] = ()
     """What its fences use — the `references` edges' input (roadmap 5.2)."""
+    entities: tuple[EntityDeclaration, ...] = ()
+    """The named things the document declares — the optional stage's input (5.4)."""
     symbol_gaps: tuple[str, ...] = ()
     """Fence languages no installed grammar could read — the snapshot's `degraded` input."""
     origin: str = ProvenanceOrigin.AUTHORED.value
@@ -583,11 +596,24 @@ def _state_of(entry: "_Entry", env_digest: str) -> DocState:
         links=tuple(encode_links(entry.links)),
         aliases=entry.aliases,
         headings=entry.headings,
+        entities=tuple(encode_declarations(entry.entities)),
         symbols=tuple(encode_symbols(entry.symbols)),
         symbol_uses=tuple(encode_symbols(entry.symbol_uses)),
         symbol_gaps=entry.symbol_gaps,
         origin=entry.origin,
     )
+
+
+def _passages(store: SqliteStore, states: Iterable[DocState]) -> Iterator[tuple[str, Chunk]]:
+    """Every live document's chunks, in a deterministic order, straight from the store.
+
+    Read back rather than kept in memory: a mention can be in a document this
+    build never recompiled, so the scan needs the whole corpus and not just the
+    dirty part. Lazy, so the corpus is never all resident at once.
+    """
+    for state in sorted(states, key=lambda item: item.path):
+        for chunk in store.chunks_of(state.doc_id):
+            yield state.path, chunk
 
 
 def _restorability(mycelium_dir: Path, states: tuple[DocState, ...]) -> tuple[bool, int]:
@@ -935,6 +961,7 @@ def _build_locked(
                 entry.links = decode_links(prev.links)
                 entry.aliases = prev.aliases
                 entry.headings = prev.headings
+                entry.entities = decode_declarations(prev.entities)
                 entry.symbols = decode_symbols(prev.symbols)
                 entry.symbol_uses = decode_symbols(prev.symbol_uses)
                 entry.symbol_gaps = prev.symbol_gaps
@@ -1000,6 +1027,10 @@ def _build_locked(
             entry.symbols = extraction.symbols
             entry.symbol_uses = extraction.references
             entry.symbol_gaps = extraction.gaps
+            # Declared, not mined: the document's own tags and aliases (5.4).
+            entry.entities = declare_document(
+                parsed.kir, chunks, frontmatter=parsed.frontmatter, title=document.title
+            )
             entry.warnings = (*entry.warnings, *extraction.warnings)
             entry.origin = str(parsed.frontmatter.origin or ProvenanceOrigin.AUTHORED.value)
             entry.aliases = parsed.frontmatter.aliases
@@ -1101,10 +1132,26 @@ def _build_locked(
             # becomes an edge only when the corpus defines what it names, so the
             # symbols must exist before the edges over them do (ADR-0074).
             extracted = symbol_edges(tuple(live_states.values()), symbols, namespace)
+            timer.lap("symbols")
+
+            # The optional stage (spec 03 §6, roadmap 5.4). Its declarations are
+            # cached whatever the flag says, so this is the only part the flag
+            # gates — and the only part that costs a pass over the corpus, since
+            # a mention can be anywhere in it.
+            entities: tuple[Entity, ...] = ()
+            store.clear_entities()
+            if config.entities.enabled:
+                entities = resolve_entities(tuple(live_states.values()), namespace)
+                store.put_entities(entities)
+                extracted = merge_edges(
+                    extracted,
+                    entity_mentions(entities, _passages(store, live_states.values()), namespace),
+                )
+                timer.lap("entities")
+
             edges = merge_edges(authored, extracted)
             store.clear_edges()
             store.put_edges(edges)
-            timer.lap("symbols")
 
             embedded = 0
             if embedder is not None:
@@ -1137,6 +1184,7 @@ def _build_locked(
                     documents=counts["documents"],
                     chunks=counts["chunks"],
                     symbols=counts["symbols"],
+                    entities=counts["entities"],
                     edges=counts["edges"],
                     vectors=counts["vectors"],
                     quarantined=quarantined,
@@ -1149,6 +1197,10 @@ def _build_locked(
                     "chunks": digest_json([entry.chunks_digest for entry in live]),
                     "edges": edges_digest(edges),
                     "symbols": symbols_digest(symbols),
+                    # Present only when the stage ran, which is what makes the
+                    # manifest say whether it did — spec 03 §9's own rule for the
+                    # bundle's `entities.jsonl`, applied to the digest.
+                    **({"entities": entities_digest(entities)} if config.entities.enabled else {}),
                 },
                 degraded=tuple(degraded) if restorable else (*degraded, "snapshot_state"),
                 warnings=tuple(manifest_warnings),

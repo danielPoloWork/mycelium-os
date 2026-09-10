@@ -40,6 +40,7 @@ __all__ = [
     "ChunkingConfig",
     "ConfigError",
     "EmbeddingConfig",
+    "EntitiesConfig",
     "IngestConfig",
     "ModulesConfig",
     "MyceliumConfig",
@@ -581,6 +582,30 @@ class ModulesConfig(_Section):
         return self
 
 
+class EntitiesConfig(_Section):
+    """`[entities]` — the optional entity stage (roadmap 5.4, ADR-0076).
+
+    Spec 05 §2's file does not print this section: it predates the stage, and
+    spec 03 §6 defines the stage as *optional, off by default in v1* without
+    saying where the switch lives. It lives here, and it is one boolean, because
+    the stage has exactly one decision to offer — run or do not run. What it
+    extracts is not tunable on purpose: an entity is a name the corpus itself
+    declares, so a knob that widened the vocabulary would be a knob that invented
+    entities, which is the failure the whole design refuses (ADR-0076).
+
+    Declarations are extracted and cached whatever this says, so turning the
+    stage on publishes the table on the next build without recompiling a
+    document.
+    """
+
+    enabled: bool = False
+    """Off by default, per spec 03 §6. Measured before it was defaulted: on the
+    three corpora the evaluation runs on, turning it on publishes **no entities
+    at all** — they declare 0 frontmatter tags, 0 aliases, and 84 of their 85
+    inline `#tag`s are GitHub issue numbers. A vault that uses tags and aliases
+    is a different corpus, and this is the switch for it."""
+
+
 class MyceliumConfig(BaseModel):
     """A validated `mycelium.toml`, plus the digest that binds it to a build."""
 
@@ -603,6 +628,7 @@ class MyceliumConfig(BaseModel):
     sources: SourcesConfig = SourcesConfig()
     retrieval: RetrievalConfig = RetrievalConfig()
     modules: ModulesConfig = ModulesConfig()
+    entities: EntitiesConfig = EntitiesConfig()
     future: dict[str, JsonValue] = Field(
         default_factory=dict,
         description="Documented sections this milestone does not interpret.",
@@ -693,6 +719,7 @@ def load_config(root: Path) -> MyceliumConfig:
         "sources",
         "retrieval",
         "modules",
+        "entities",
     }
     unknown = sorted(set(raw) - honoured - UNHONOURED_SECTIONS)
     if unknown:
