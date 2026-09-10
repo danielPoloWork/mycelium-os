@@ -53,7 +53,7 @@ The rungs, and what each adds:
 |---|---|
 | `docs` | the congruence lint |
 | `code` | format, lint, types, the suite, the two ingestion reproductions |
-| `retrieval` | the frozen-set rule, every corpus built and gated, gate G2's currency, the tasks |
+| `retrieval` | the frozen-set rule, the corpora built and gated, G2, the graph ablation |
 | `full` | the benchmarks, alone rather than beside four hundred other tests |
 """
 
@@ -264,6 +264,13 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
     # product. Where the model happens to be present it re-measures as well, and
     # says which of the two it did.
     steps.append(("gate G2", [python, "tools/measure_hybrid_gate.py", "--check"]))
+    # Spec 04 §5's ablation, which decides whether graph expansion ships on
+    # (roadmap 5.3). It joins here rather than at `full` for the same reason G2
+    # did: it needs no model, it is deterministic, and what it guards is a
+    # *default* that a retrieval change can invalidate without anyone noticing.
+    # `--check` fails on the flag disagreeing with the measurement, never on the
+    # ablation being lost — losing it is the recorded outcome (ADR-0075).
+    steps.append(("graph ablation", [python, "tools/measure_graph_expansion.py", "--check"]))
     steps.append(("agent tasks", [*MYCELIUM, "eval", ".", "--tasks"]))
     if mode == "retrieval":
         return steps

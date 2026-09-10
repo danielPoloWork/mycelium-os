@@ -12,6 +12,22 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Graph expansion, measured and shipped switched off** (roadmap 5.3, [ADR-0075](docs/adr/0075-let-the-graph-propose-and-the-ranking-dispose-and-report-that-it-lost.md)).
+  `[retrieval] graph_expansion` is real: with it on, retrieval walks one hop from the fused
+  candidates over the typed edges, resolves the neighbouring sections, documents and symbols
+  back to their chunks, ranks those with the same BM25 as everything else, and labels each one
+  in `--explain` with the edge that reached it. The graph decides membership; the ranking
+  decides order; expansion adds passages the ranking buried and never re-votes for one it
+  already found.
+
+  **It is off by default because spec 04 §5's ablation says so.** The bar is ≥ +3 % nDCG@10 on
+  the `relationship` slice with no overall regression; across six case sets and three corpora
+  the slice moved between −43.1 % and +0.0 % and every set regressed overall (−0.0 % to
+  −4.1 %). It rescues the case it was filed for — `r-0018`, 0.0000 → 0.2275 — and loses six
+  other relationship cases doing it. `tools/measure_graph_expansion.py` is the re-runnable
+  ablation and its `--check` fails if the shipped default ever stops matching the
+  measurement. Nothing about the default configuration changed, so no baseline moved.
+
 - **Six of the eight edge types are now derived** (roadmap 5.2, [ADR-0074](docs/adr/0074-give-every-edge-type-a-derivation-or-a-reason-it-has-none.md)). A linked
   section is joined to its document by `part_of`, so a traversal that reaches a heading link carries
   on instead of stopping — 76 such dead ends on the vendored uv corpus. A document `defines` the

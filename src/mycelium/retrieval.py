@@ -13,7 +13,16 @@ between two units, and the exchange rate silently becomes a tuning parameter
 nobody measured. Reciprocal Rank Fusion (spec 04 §3, k=60) reads only *positions*:
 each list contributes ``1 / (k + rank)``, so a passage both legs rank highly wins,
 and a passage only one leg knows about still places. Nothing needs normalising,
-and adding the symbol and graph legs (3.4, 5.2) is one more rank list.
+and the graph leg (roadmap 5.3) is one more rank list; the symbol leg (5.9) will
+be another.
+
+**The graph leg proposes documents; BM25 disposes of chunks.** Expansion walks
+one hop from the fused seeds over the typed edges and returns *nodes* — sections,
+documents, symbols — which are not candidates, because a candidate is a chunk and
+chunk boundaries are a packing decision the graph refuses to key on (ADR-0018).
+So the node set is resolved back to its chunks and those are ranked against the
+query by the same BM25 the lexical leg uses. A proposed node whose chunks contain
+none of the query's words contributes nothing (ADR-0075).
 
 **Every result says how it got there.** A hit carries the legs that produced it
 and its rank in each, which is what makes `--explain` an audit rather than a
@@ -27,12 +36,13 @@ behaviour to measure hybrid against.
 
 import re
 import time
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence, Set
 from dataclasses import dataclass, field, replace
 from typing import Final
 
 from mycelium.config import RetrievalConfig
 from mycelium.embedding import Embedder
+from mycelium.graph import nodes_of_anchor, split_section_ref
 from mycelium.sdk.identity import digest_json
 from mycelium.sdk.types import Sha256Digest
 from mycelium.store import (
@@ -47,6 +57,9 @@ from mycelium.store import (
 
 __all__ = [
     "DEFAULT_LIMIT",
+    "GRAPH_DISCOUNT",
+    "GRAPH_NODES",
+    "GRAPH_SEEDS",
     "RRF_K",
     "STOPWORDS",
     "VECTOR_CANDIDATES",
@@ -64,8 +77,43 @@ RRF_K: Final = 60
 VECTOR_CANDIDATES: Final = 50
 """Depth of the vector leg before fusion (spec 04 §3: "k=50 default")."""
 
+GRAPH_SEEDS: Final = 10
+"""How many fused candidates open a door. Spec 04 §5 says "top-k fused
+candidates" without fixing k; 10 is the served window, and the measurement that
+sized it found rescuing seeds at ranks 1, 2, 3, 4, 5, 7 and 8 — a smaller budget
+would have thrown four of nine rescues away (ADR-0075)."""
+
+GRAPH_NODES: Final = 10
+"""Spec 04 §5's node budget, applied twice: at most this many neighbour nodes are
+carried past the walk, and at most this many chunks leave the leg."""
+
+GRAPH_DISCOUNT: Final = 0.9
+"""What a graph-proposed candidate contributes, against 1.0 for a directly
+retrieved one — spec 04 §5's discount.
+
+**The admissible range is derived; the value inside it is a choice, and the
+difference is stated rather than blurred.** RRF at k=60 is deliberately flat: a
+list's rank 1 contributes ``1/61`` and its rank 50 ``1/110``, less than a factor
+of two across the whole leg. Two bounds follow, for a served window of ten:
+
+- a passage with *only* graph evidence must not outrank one the lexical leg
+  ranked first, so ``d/61 < 1/61`` — that is, ``d < 1``;
+- and it must be able to displace the weakest passage in the window, or the leg
+  cannot change an answer at all and the ablation would be measuring nothing:
+  ``d/61 > 1/70``, that is ``d > 0.871``.
+
+So the mechanism spec 04 §5 prescribes has an operating window of roughly
+``0.87 < d < 1`` and no more. Anything at or below the coarse "half as good"
+reading of *discount* is arithmetically inert — ``0.5/61 < 1/110`` puts the
+leg's best candidate below the lexical leg's worst — which is a fact about RRF
+worth knowing before choosing a number. **0.9** is a round value inside the
+derived window; it lets the leg's first two or three proposals reach a ten-deep
+result and no more. It is not the product of a sweep, and ADR-0075 records the
+one ablation run at it rather than the best of several."""
+
 _LEXICAL: Final = "lexical"
 _VECTOR: Final = "vector"
+_GRAPH: Final = "graph"
 
 _TERM: Final = re.compile(r"\w+", re.UNICODE)
 
@@ -156,15 +204,23 @@ def retrieval_identity() -> Sha256Digest:
     cannot see is a knob nobody added here — no digest can — so a new ranking
     parameter belongs in this dict in the same commit that introduces it.
 
-    Deliberately *not* included: the shipped `[retrieval] profile`. A default flip
-    and a stale measurement are different mistakes with different remedies, so
-    they are reported separately rather than folded into one digest.
+    Deliberately *not* included: the shipped `[retrieval] profile` and
+    `[retrieval] graph_expansion`. A default flip and a stale measurement are
+    different mistakes with different remedies, so they are reported separately
+    rather than folded into one digest. The graph leg's *constants* are here,
+    because they decide a ranking whenever the flag is on and a verdict measured
+    under one set of them is not about another.
     """
     return digest_json(
         {
             "fts_schema": SCHEMA_VERSION,
             "field_weights": field_weights(),
             "fusion": {"rrf_k": RRF_K, "vector_candidates": VECTOR_CANDIDATES},
+            "graph": {
+                "seeds": GRAPH_SEEDS,
+                "nodes": GRAPH_NODES,
+                "discount": GRAPH_DISCOUNT,
+            },
             "stem_weight": STEM_WEIGHT,
             "stopwords": sorted(STOPWORDS),
         }
@@ -195,13 +251,22 @@ class FusedHit:
     """Which candidate generators produced it, in fusion order."""
     ranks: dict[str, int]
     """1-based rank within each leg that produced it."""
+    via_edge: str = ""
+    """How graph expansion reached this passage, when it did (spec 04 §5).
+
+    ``"<edge type> from <seed anchor>"`` — the label spec 04 §5 requires, and the
+    only part of a result whose provenance is a *derivation* rather than a match.
+    Empty for everything the lexical or vector legs found directly."""
 
     def explain(self) -> dict[str, object]:
-        return {
+        detail: dict[str, object] = {
             "score": round(self.score, 6),
             "legs": list(self.legs),
             "ranks": dict(sorted(self.ranks.items())),
         }
+        if self.via_edge:
+            detail["via_edge"] = self.via_edge
+        return detail
 
 
 @dataclass(frozen=True, slots=True)
@@ -241,23 +306,33 @@ class SearchOutcome:
 
 
 def reciprocal_rank_fusion(
-    lists: Sequence[tuple[str, Sequence[SearchHit]]], *, k: int = 60, limit: int = DEFAULT_LIMIT
+    lists: Sequence[tuple[str, Sequence[SearchHit]]],
+    *,
+    k: int = 60,
+    limit: int = DEFAULT_LIMIT,
+    weights: Mapping[str, float] | None = None,
 ) -> tuple[FusedHit, ...]:
     """Fuse ranked lists by Reciprocal Rank Fusion (Cormack et al., spec 04 §3).
 
     `lists` is ``(leg name, hits best-first)``. Ties break on anchor so the same
     inputs always produce the same order — fusion must not become a source of
     non-determinism just because two passages scored alike.
+
+    `weights` scales a named leg's contribution; an unnamed leg contributes 1.0.
+    It exists for the discount spec 04 §5 asks of the graph leg, and
+    :data:`GRAPH_DISCOUNT` records what this build passes and why.
     """
     scores: dict[str, float] = {}
     ranks: dict[str, dict[str, int]] = {}
     hits: dict[str, SearchHit] = {}
     legs_of: dict[str, list[str]] = {}
+    scale = weights or {}
 
     for leg, results in lists:
+        weight = scale.get(leg, 1.0)
         for position, hit in enumerate(results, start=1):
             anchor = hit.chunk.anchor
-            scores[anchor] = scores.get(anchor, 0.0) + 1.0 / (k + position)
+            scores[anchor] = scores.get(anchor, 0.0) + weight / (k + position)
             ranks.setdefault(anchor, {})[leg] = position
             legs_of.setdefault(anchor, []).append(leg)
             hits.setdefault(anchor, hit)
@@ -272,6 +347,187 @@ def reciprocal_rank_fusion(
         )
         for anchor, score in ordered[:limit]
     )
+
+
+@dataclass(frozen=True, slots=True)
+class _Proposal:
+    """One node the walk reached, and the evidence that reached it."""
+
+    node: str
+    seed_rank: int
+    """Fused rank of the candidate whose door this node was behind — the
+    strength of the evidence for looking here at all."""
+    via: str
+    """`"<edge type> from <seed anchor>"`, for the `via_edge` label."""
+
+
+def _walk(store: SqliteStore, seeds: Sequence[FusedHit]) -> tuple[_Proposal, ...]:
+    """One hop out from every seed, round by round, bounded to the node budget.
+
+    **Round-robin across seeds, not depth-first through the best one.** The first
+    implementation took the budget in seed order and a measurement threw it out:
+    on `r-0018` the top hit is an ADR that links to a dozen others, so it filled
+    all ten places by itself and the seeds at ranks 3 and 4 — the two that
+    actually reach the answer — never proposed anything. Ten seeds each
+    contributing their first neighbour is the same principle `neighbours` already
+    applies across depth (ADR-0018): spend a bounded budget on breadth, because
+    the cheapest thing to lose is a densely linked document's twelfth link.
+
+    Deterministic by construction: seeds are visited in fused order, each seed's
+    nodes in the order :func:`~mycelium.graph.nodes_of_anchor` returns them, and
+    the store orders the edges of a node. The first proposal of a node wins, so a
+    node reachable from two seeds is attributed to the better-ranked one.
+    """
+    queues: list[tuple[int, str, list[tuple[str, str]]]] = []
+    for rank, seed in enumerate(seeds, start=1):
+        anchor = seed.hit.chunk.anchor
+        own = set(nodes_of_anchor(anchor))
+        reached: list[tuple[str, str]] = []
+        for node in nodes_of_anchor(anchor):
+            for edge, direction in store.edges_of(node):
+                other = edge.to if direction == "out" else edge.from_
+                if other in own:
+                    # A node the seed already stands on is not a neighbour, and
+                    # the containment edge back to the seed's own document is
+                    # the commonest way to reach one (`part_of`, ADR-0074).
+                    continue
+                reached.append((other, str(edge.type)))
+        queues.append((rank, anchor, reached))
+
+    found: dict[str, _Proposal] = {}
+    for round_ in range(max((len(q[2]) for q in queues), default=0)):
+        for rank, anchor, reached in queues:
+            if round_ >= len(reached):
+                continue
+            node, edge_type = reached[round_]
+            if node in found:
+                continue
+            found[node] = _Proposal(node, rank, f"{edge_type} from {anchor}")
+            if len(found) >= GRAPH_NODES:
+                return tuple(found.values())
+    return tuple(found.values())
+
+
+def _candidate_anchors(
+    store: SqliteStore, proposals: Sequence[_Proposal]
+) -> tuple[dict[str, str], tuple[str, ...]]:
+    """Resolve proposed nodes to the chunks behind them.
+
+    Returns ``(anchor -> the via label that proposed it, every anchor)``. A
+    document node stands for all of its chunks, a section node for the chunks
+    under that heading, and a symbol node for the chunks that define it — which
+    is what `doc_refs` is (ADR-0073). One store round-trip for every document
+    involved, because ten inside a 30 ms budget is a cost with no reason.
+    """
+    documents: list[str] = []
+    sections: list[tuple[str, str, _Proposal]] = []
+    symbols: list[_Proposal] = []
+    for proposal in proposals:
+        section = split_section_ref(proposal.node)
+        if section is not None:
+            document, slug = section
+            path = document.removeprefix("doc:")
+            sections.append((path, slug, proposal))
+            documents.append(path)
+        elif proposal.node.startswith("doc:"):
+            documents.append(proposal.node.removeprefix("doc:"))
+        elif proposal.node.startswith("sym:"):
+            symbols.append(proposal)
+
+    by_path = store.anchors_of_paths(sorted(set(documents)))
+    symbol_refs = (
+        {symbol.symbol: symbol.doc_refs for symbol in store.all_symbols()} if symbols else {}
+    )
+
+    via: dict[str, str] = {}
+    for proposal in proposals:
+        section = split_section_ref(proposal.node)
+        if section is not None:
+            document, slug = section
+            anchors = [
+                anchor
+                for anchor in by_path.get(document.removeprefix("doc:"), ())
+                if anchor.partition("#")[2].rsplit("/", 1)[0] == slug
+            ]
+        elif proposal.node.startswith("doc:"):
+            anchors = list(by_path.get(proposal.node.removeprefix("doc:"), ()))
+        else:
+            anchors = list(symbol_refs.get(proposal.node, ()))
+        for anchor in anchors:
+            via.setdefault(anchor, proposal.via)
+    return via, tuple(via)
+
+
+def _expand(
+    store: SqliteStore,
+    seeds: Sequence[FusedHit],
+    searched: str,
+    filters: SearchFilters | None,
+    retrieved: Set[str],
+) -> tuple[tuple[SearchHit, ...], dict[str, str]]:
+    """The graph leg: one hop from the seeds, ranked by BM25, one chunk per document.
+
+    **The leg carries only passages the other legs did not return, and that is
+    the difference between an expansion and a second vote.** The first
+    implementation let a passage the lexical leg had already ranked appear in
+    this list too, and RRF then summed both contributions: a passage at lexical
+    rank 40 that happened to be adjacent to a seed scored
+    ``1/100 + 0.9/61`` and leapfrogged the passage at lexical rank 1, which
+    scored ``1/61``. Measured on six case sets, it cost between 5 % and 56 %
+    overall — cases that had been perfect fell to a third — because *being
+    adjacent* was worth nearly as much as *being the best match* (ADR-0075).
+
+    So expansion may **add** and may not **promote**. What the ranking already
+    found keeps the rank the ranking gave it.
+
+    The one-per-document rule is the diversity guard spec 04 §4 asks of the
+    result set, applied where it is cheapest: without it a single adjacent
+    document with thirty chunks could fill the whole leg, which is the opposite
+    of what an expansion is for.
+    """
+    if not seeds:
+        return (), {}
+    proposals = _walk(store, seeds)
+    if not proposals:
+        return (), {}
+    via, anchors = _candidate_anchors(store, proposals)
+    candidates = tuple(anchor for anchor in anchors if anchor not in retrieved)
+    if not candidates:
+        return (), {}
+
+    ranked = store.rank_anchors(searched, candidates, limit=len(candidates))
+    chosen: list[SearchHit] = []
+    seen_documents: set[str] = set()
+    for hit in ranked:
+        if hit.path in seen_documents:
+            continue
+        if filters is not None and not _admits(filters, hit):
+            continue
+        seen_documents.add(hit.path)
+        chosen.append(hit)
+        if len(chosen) >= GRAPH_NODES:
+            break
+    return tuple(chosen), {hit.chunk.anchor: via[hit.chunk.anchor] for hit in chosen}
+
+
+def _admits(filters: SearchFilters, hit: SearchHit) -> bool:
+    """Whether the serving policy admits an expanded hit (ADR-0024).
+
+    The other legs are filtered in SQL; this one is filtered here, because its
+    candidate set is a list of anchors rather than a query. The rule is the same
+    rule, applied at the same seam — an expanded passage may not reach a caller
+    that the configuration would not have served it to.
+    """
+    if filters.namespace is not None and hit.chunk.namespace != filters.namespace:
+        return False
+    if filters.trust_classes is not None and hit.trust_class not in filters.trust_classes:
+        return False
+    if (
+        filters.verification_statuses is not None
+        and hit.verification_status not in filters.verification_statuses
+    ):
+        return False
+    return filters.path_prefix is None or hit.path.startswith(filters.path_prefix)
 
 
 def _serve_only(
@@ -330,6 +586,12 @@ def search(
     Both legs are generated `vector_candidates` deep regardless of `limit`,
     because fusion needs depth to work with: fusing two top-10 lists throws away
     precisely the agreement that makes RRF worth doing.
+
+    The graph leg joins when `config.graph_expansion` is on — off by default,
+    because the ablation spec 04 §5 gates it on did not clear the bar
+    (ADR-0075). It runs *after* the first fusion, because its seeds are fused
+    candidates, and it never runs without them: a query the corpus cannot answer
+    has no door to walk through.
 
     `explain=True` additionally counts what each query word reaches, which is the
     one question ranking cannot answer about itself (roadmap 4.21). It is off by
@@ -407,6 +669,31 @@ def search(
     started = time.perf_counter()
     fused = reciprocal_rank_fusion(lists, k=RRF_K, limit=limit)
     timings["fusion"] = _elapsed_ms(started)
+
+    via: dict[str, str] = {}
+    if settings.graph_expansion:
+        # Expansion runs on the *fused* candidates, not on the lexical list:
+        # spec 04 §5 says "from top-k fused candidates", and a seed the vector
+        # leg promoted is as good a door as one BM25 found.
+        started = time.perf_counter()
+        seeds = reciprocal_rank_fusion(lists, k=RRF_K, limit=GRAPH_SEEDS)
+        retrieved = {hit.chunk.anchor for _, results in lists for hit in results}
+        expanded, via = _expand(store, seeds, searched, filters, retrieved)
+        timings[_GRAPH] = _elapsed_ms(started)
+        if expanded:
+            lists.append((_GRAPH, expanded))
+            started = time.perf_counter()
+            fused = reciprocal_rank_fusion(
+                lists, k=RRF_K, limit=limit, weights={_GRAPH: GRAPH_DISCOUNT}
+            )
+            timings["fusion"] += _elapsed_ms(started)
+            notes.append(
+                f"graph leg: {len(expanded)} passage(s) proposed by one hop from "
+                f"{len(seeds)} seed(s) and ranked against the query"
+            )
+        else:
+            notes.append("graph leg: one hop from the seeds proposed nothing this query matched")
+        fused = tuple(replace(hit, via_edge=via.get(hit.hit.chunk.anchor, "")) for hit in fused)
 
     terms: tuple[TermHits, ...] = ()
     if explain:

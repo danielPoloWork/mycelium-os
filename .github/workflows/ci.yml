@@ -428,6 +428,14 @@ jobs:
       - name: Gate G2's recorded verdict still describes this product
         shell: bash
         run: uv run python tools/measure_hybrid_gate.py --check
+      # Spec 04 §5's ablation decides whether graph expansion ships on, and it
+      # needs no embedding model, so unlike G2 it can be *re-measured* here
+      # rather than merely dated. It fails when the shipped flag disagrees with
+      # the measurement, never because the ablation was lost - "stays opt-in" is
+      # the recorded outcome (roadmap 5.3, ADR-0075).
+      - name: Graph expansion ships the default its ablation supports
+        shell: bash
+        run: uv run python tools/measure_graph_expansion.py --check
       - name: What projection costs, for the record (roadmap 4.10)
         shell: bash
         # Reported, never gated: with two to five cases per format there is no

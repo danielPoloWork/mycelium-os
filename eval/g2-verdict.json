@@ -1,8 +1,8 @@
 {
   "corpora": {
     "ours": {
-      "chunks_digest": "sha256:ff844e76fc50bcca9caf89c3dd384ae6d972a6ff074b6a0d8a7154a48cc1c580",
-      "content_digest": "sha256:afe87c73d0ade2e0255af1aea2829ea9ff8226482a19b91da70ddb4cb5d489b6",
+      "chunks_digest": "sha256:ef128be41489fc44ce9a61a0789d6808ef5e5e855afc6c688622b4da9be98927",
+      "content_digest": "sha256:b18d44e4861385c732a53dabd91a2a7f7d05a11580e1a132bd75637e6184d67f",
       "dated": false
     },
     "uv": {
@@ -22,20 +22,20 @@
   ],
   "decision": "lexical",
   "model_id": "bge-small-en-v1.5",
-  "recorded_at": "2026-09-09",
-  "retrieval_identity": "sha256:4c2d6b1422d978c5a49416ab4b67912cf601cc0b84e82ec548c9a18c2a089ef8",
+  "recorded_at": "2026-09-10",
+  "retrieval_identity": "sha256:b29be4bde13628e777e4f56632005d722ca3a781c340b1f76daec7e0d2aba310",
   "schema_version": "mycelium/g2-verdict/v0",
   "sets": {
     "ours/dev": {
       "cases": 16,
       "cases_digest": "sha256:c39aa93ef694f6a9b63dfeb51deb7024993a6c38346808dfff6e1839077ddd64",
-      "detail": "+7.2% overall (needs +5%); regressions past -2%: fact -3.8% (q-0005 0.6309->0.5000, q-0008 0.0413->0.0379)",
-      "hybrid_ndcg_at_10": 0.578556,
-      "lexical_ndcg_at_10": 0.539496,
+      "detail": "+9.5% overall (needs +5%); regressions past -2%: fact -6.1% (q-0005 0.6309->0.5000, q-0008 0.0379->0.0000)",
+      "hybrid_ndcg_at_10": 0.591512,
+      "lexical_ndcg_at_10": 0.539966,
       "per_slice": {
         "conceptual": {
           "cases": 5,
-          "hybrid": 0.620924,
+          "hybrid": 0.671916,
           "lexical": 0.58671
         },
         "exact": {
@@ -45,8 +45,8 @@
         },
         "fact": {
           "cases": 4,
-          "hybrid": 0.466159,
-          "lexical": 0.484359
+          "hybrid": 0.456689,
+          "lexical": 0.486238
         },
         "injection": {
           "cases": 1,
@@ -55,7 +55,7 @@
         },
         "relationship": {
           "cases": 2,
-          "hybrid": 0.464951,
+          "hybrid": 0.460057,
           "lexical": 0.410167
         },
         "symbol": {
@@ -65,36 +65,36 @@
         }
       },
       "regressions": [
-        "fact -3.8% (q-0005 0.6309->0.5000, q-0008 0.0413->0.0379)"
+        "fact -6.1% (q-0005 0.6309->0.5000, q-0008 0.0379->0.0000)"
       ],
       "verdict": "fail"
     },
     "ours/release": {
       "cases": 17,
       "cases_digest": "sha256:5d5cb038211bac12ea7f23ee90195442877f166bb6203db8cc5be44edef88d09",
-      "detail": "+15.6% overall (needs +5%)",
-      "hybrid_ndcg_at_10": 0.613777,
-      "lexical_ndcg_at_10": 0.530738,
+      "detail": "+16.0% overall (needs +5%)",
+      "hybrid_ndcg_at_10": 0.61052,
+      "lexical_ndcg_at_10": 0.526301,
       "per_slice": {
         "conceptual": {
           "cases": 4,
-          "hybrid": 0.664912,
-          "lexical": 0.509917
+          "hybrid": 0.65725,
+          "lexical": 0.488462
         },
         "exact": {
           "cases": 4,
-          "hybrid": 0.831614,
-          "lexical": 0.761468
+          "hybrid": 0.825435,
+          "lexical": 0.763908
         },
         "fact": {
           "cases": 6,
           "hybrid": 0.594842,
-          "lexical": 0.521751
+          "lexical": 0.520028
         },
         "relationship": {
           "cases": 4,
           "hybrid": 0.380229,
-          "lexical": 0.285964
+          "lexical": 0.288708
         }
       },
       "regressions": [],
@@ -255,6 +255,6 @@
   },
   "shipped_profile": "lexical",
   "toolchain": {
-    "mycelium": "0.3.0"
+    "mycelium": "0.4.0"
   }
 }

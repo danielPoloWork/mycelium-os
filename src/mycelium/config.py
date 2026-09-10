@@ -411,6 +411,20 @@ class RetrievalConfig(_Section):
     """Whether `candidate` documents are served at all; see `served_statuses`."""
 
     graph_expansion: bool = False
+    """Whether the graph leg runs (spec 04 §5). Off by default, and off because
+    it was **measured** off.
+
+    The ablation asks for ≥ +3 % nDCG@10 on the `relationship` slice with no
+    overall regression. Roadmap 5.3 ran it on six case sets across three
+    corpora and expansion cleared the bar on none of them: the relationship
+    slice moved between −43.1 % and +0.0 %, and overall between −4.1 % and
+    −0.0 %. It rescues the case it was filed for — `r-0018` 0.0000 → 0.2275 —
+    and loses six other relationship cases doing it.
+
+    Turning it on is supported, explained and honest about the price:
+    `mycelium search --explain` labels every passage the graph proposed with
+    the edge that reached it. The numbers, the discount curve, and why the
+    mechanism has no operating point under RRF are in ADR-0075."""
 
     @property
     def hybrid(self) -> bool:
@@ -431,17 +445,6 @@ class RetrievalConfig(_Section):
         if self.include_candidate:
             return None
         return frozenset({VerificationStatus.VERIFIED, VerificationStatus.EVIDENCE})
-
-    @model_validator(mode="after")
-    def _only_what_exists(self) -> Self:
-        if self.graph_expansion:
-            msg = (
-                "[retrieval] graph_expansion = true is not supported yet: there are no "
-                "edges to expand over until roadmap 5.2, and the default flips only if "
-                "the ablation gate passes (spec 04 §5)"
-            )
-            raise ValueError(msg)
-        return self
 
 
 class VerificationConfig(_Section):
