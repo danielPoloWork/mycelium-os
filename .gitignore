@@ -29,6 +29,9 @@ __pycache__/
 *.profraw
 .coverage
 htmlcov/
+# pytest-benchmark's autosave storage (`--benchmark-autosave`, `--benchmark-save`): numbers from one
+# machine, refilled by running tests/bench/ — never a source of truth (AGENTS.md §4)
+/.benchmarks/
 
 # IDE / editor
 /.idea/
