@@ -63,15 +63,15 @@ RECORD_MODELS: Mapping[str, type[Record]] = {
 ``schema_versions`` map uses (spec 03 §7)."""
 
 
-SNAPSHOT_ARTIFACT_CLASSES: Final = ("document", "chunk", "kir", "edge")
+SNAPSHOT_ARTIFACT_CLASSES: Final = ("document", "chunk", "kir", "symbol", "edge")
 """The artifact classes a snapshot manifest reports versions for (spec 03 §7).
 
 Narrower than :data:`RECORD_MODELS` on purpose: a manifest describes what *this
-snapshot published*, not every contract the project exports. `symbol` and `entity`
-join it when their stages exist (roadmap 5.1, 5.4); evaluation records never do —
-an eval run is not a snapshot artifact, and neither is a custody record or a
-fidelity report, which outlive every snapshot that ever referenced them
-(ADR-0033, ADR-0034).
+snapshot published*, not every contract the project exports. `symbol` joined at
+roadmap 5.1 with the stage that publishes it; `entity` joins when its stage
+exists (roadmap 5.4); evaluation records never do — an eval run is not a
+snapshot artifact, and neither is a custody record or a fidelity report, which
+outlive every snapshot that ever referenced them (ADR-0033, ADR-0034).
 """
 
 

@@ -1,8 +1,9 @@
 {
   "artifact_digests": {
-    "chunks": "sha256:ee2b3ae4e3667c90201c4a324c3d3a81435aa2bae4bc74ed2eb3214c2979cdbd",
-    "documents": "sha256:299371b6b295d22c137ec4711236f6dc230bbcf4245c3a896facb6f6078409f9",
-    "edges": "sha256:affafbe117794906052a95ffc2df212aa1c696836fc4c47e2636f1ca49867103"
+    "chunks": "sha256:4061a8b30e017aa85bc65d613c854d0bd1585fd287c06255ca1a85f46181cc36",
+    "documents": "sha256:537bf6a2fce0df9ee1f3b1b3948069ff6c2e97ac008196c330f6d26976c3c248",
+    "edges": "sha256:affafbe117794906052a95ffc2df212aa1c696836fc4c47e2636f1ca49867103",
+    "symbols": "sha256:2b8bed4e739e2408846a22fbf4c43b4bb6e2044890299952ce0011f06fae6033"
   },
   "chunks": [
     {
@@ -72,6 +73,61 @@
         23
       ],
       "tokens": 29
+    },
+    {
+      "anchor": "knowledge/verified/api.md#/0",
+      "chunk_digest": "sha256:6f0902ab6490fa3e67e3583c2c8d8159f525c3a3e8e2694be5714b726d4df2df",
+      "heading_path": [
+        "API Reference"
+      ],
+      "kind": "prose",
+      "lines": [
+        8,
+        12
+      ],
+      "tokens": 57
+    },
+    {
+      "anchor": "knowledge/verified/api.md#retrypolicy/0",
+      "chunk_digest": "sha256:c15eb3f60dd8463ab919c1d3d079cb1bc30ea38fa69adf3913f5a8fc6e80aaa6",
+      "heading_path": [
+        "API Reference",
+        "RetryPolicy"
+      ],
+      "kind": "prose",
+      "lines": [
+        14,
+        43
+      ],
+      "tokens": 124
+    },
+    {
+      "anchor": "knowledge/verified/api.md#terms/0",
+      "chunk_digest": "sha256:5fecfc71987b8505e9bacbeaba103adc396015079b0576519515f17956837071",
+      "heading_path": [
+        "API Reference",
+        "Terms"
+      ],
+      "kind": "prose",
+      "lines": [
+        45,
+        51
+      ],
+      "tokens": 26
+    },
+    {
+      "anchor": "knowledge/verified/api.md#worked-example/0",
+      "chunk_digest": "sha256:a82cecfc8e9b9d8f84dd399516736f6b3327671816f5426d7f5192096fb70640",
+      "heading_path": [
+        "API Reference",
+        "Worked example"
+      ],
+      "kind": "prose",
+      "lines": [
+        53,
+        60
+      ],
+      "tokens": 34
     },
     {
       "anchor": "knowledge/verified/architecture.md#/0",
@@ -297,11 +353,11 @@
   ],
   "config_digest": "sha256:0090a058c5d4bd5b3d2a1b15618576d03bdf44ce366a284ca61e6711677096a4",
   "counts": {
-    "chunks": 21,
-    "documents": 6,
+    "chunks": 25,
+    "documents": 7,
     "edges": 5,
     "quarantined": 0,
-    "symbols": 0,
+    "symbols": 8,
     "vectors": 0
   },
   "documents": [
@@ -340,6 +396,25 @@
       "trust_class": "ingested",
       "updated_at": "2026-01-01T00:00:00Z",
       "verification_status": "evidence"
+    },
+    {
+      "content_digest": "sha256:abdf2940548abf9b22b8bdf9fac107c6425cb1167357219936ac517839f18a9f",
+      "created_at": "2026-01-01T00:00:00Z",
+      "path": "knowledge/verified/api.md",
+      "stats": {
+        "chunks": 4,
+        "headings": 4,
+        "links_out": 0,
+        "tokens": 241
+      },
+      "tags": [
+        "api",
+        "compiler"
+      ],
+      "title": "API Reference",
+      "trust_class": "authored",
+      "updated_at": "2026-01-01T00:00:00Z",
+      "verification_status": "verified"
     },
     {
       "content_digest": "sha256:058b6c56322ea58e8feb930fb6d2871462cef445f5c795dcbe36b48cbb1c39c6",
@@ -422,7 +497,74 @@
     "chunk": "v0",
     "document": "v0",
     "edge": "v0",
-    "kir": "v0"
+    "kir": "v0",
+    "symbol": "v0"
   },
+  "symbols": [
+    {
+      "defined_in": "knowledge/verified/api.md#L14",
+      "doc_refs": [
+        "knowledge/verified/api.md#retrypolicy/0"
+      ],
+      "kind": "term",
+      "symbol": "sym:doc:RetryPolicy"
+    },
+    {
+      "defined_in": "knowledge/verified/api.md#L50",
+      "doc_refs": [
+        "knowledge/verified/api.md#terms/0"
+      ],
+      "kind": "term",
+      "symbol": "sym:doc:anchor"
+    },
+    {
+      "defined_in": "knowledge/verified/api.md#L47",
+      "doc_refs": [
+        "knowledge/verified/api.md#terms/0"
+      ],
+      "kind": "term",
+      "symbol": "sym:doc:snapshot"
+    },
+    {
+      "defined_in": "knowledge/verified/api.md#L20",
+      "doc_refs": [
+        "knowledge/verified/api.md#retrypolicy/0"
+      ],
+      "kind": "class",
+      "symbol": "sym:python:RetryPolicy"
+    },
+    {
+      "defined_in": "knowledge/verified/api.md#L25",
+      "doc_refs": [
+        "knowledge/verified/api.md#retrypolicy/0"
+      ],
+      "kind": "method",
+      "symbol": "sym:python:RetryPolicy.delay"
+    },
+    {
+      "defined_in": "knowledge/verified/api.md#L29",
+      "doc_refs": [
+        "knowledge/verified/api.md#retrypolicy/0"
+      ],
+      "kind": "function",
+      "symbol": "sym:python:build_policy"
+    },
+    {
+      "defined_in": "knowledge/verified/api.md#L34",
+      "doc_refs": [
+        "knowledge/verified/api.md#retrypolicy/0"
+      ],
+      "kind": "class",
+      "symbol": "sym:rust:RetryPolicy"
+    },
+    {
+      "defined_in": "knowledge/verified/api.md#L39",
+      "doc_refs": [
+        "knowledge/verified/api.md#retrypolicy/0"
+      ],
+      "kind": "method",
+      "symbol": "sym:rust:RetryPolicy.delay"
+    }
+  ],
   "warnings": []
 }

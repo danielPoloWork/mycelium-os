@@ -7,7 +7,9 @@ unit test needs two things the assertion alone does not give: a statement of wha
 "identical" covers, and an artifact a human can review when it legitimately changes.
 
 **What is claimed.** The compiler's *outputs* are a pure function of its inputs:
-artifact digests, counts, and every chunk and document record. Three manifest
+artifact digests, counts, every chunk and document record, and — since roadmap
+5.1 — every symbol record, which is where a grammar's behaviour would show if a
+wheel changed underneath the gate. Three manifest
 fields are deliberately excluded because they are not outputs of compilation —
 ``snapshot_id`` is a fresh ULID by design, ``created_at`` is the wall clock, and
 ``timings_ms`` is a measurement of the machine. A gate that demanded those be
@@ -34,6 +36,7 @@ from mycelium.build import build
 from mycelium.config import load_config
 from mycelium.sdk.types import SnapshotManifest
 from mycelium.store import SqliteStore
+from mycelium.symbols import EXTRA, missing_grammars
 
 __all__ = [
     "PINNED_MTIME",
@@ -61,6 +64,7 @@ class DeterminismObservation:
     warnings: tuple[str, ...]
     documents: tuple[dict[str, Any], ...]
     chunks: tuple[dict[str, Any], ...]
+    symbols: tuple[dict[str, Any], ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -71,6 +75,7 @@ class DeterminismObservation:
             "warnings": list(self.warnings),
             "documents": list(self.documents),
             "chunks": list(self.chunks),
+            "symbols": list(self.symbols),
         }
 
 
@@ -91,7 +96,21 @@ def observe_build(root: Path, *, pin: bool = True) -> DeterminismObservation:
     to the ambient configuration would be worse than either choice — the golden
     would then depend on whether the machine running CI happened to have a model
     cached.
+
+    The symbol stage is the opposite case and gets the opposite treatment: it
+    *is* deterministic, so the golden covers it — and it therefore has to run.
+    The observation refuses to proceed without every code grammar rather than
+    silently comparing a degraded snapshot against a golden blessed with the
+    extra installed, which would fail on a digest and explain nothing.
     """
+    missing = missing_grammars()
+    if missing:
+        names = ", ".join(status.name for status in missing)
+        msg = (
+            f"gate G6 needs every code grammar and {names} cannot be loaded here; "
+            f"install {EXTRA} (`uv sync --all-extras --dev`) and run again"
+        )
+        raise RuntimeError(msg)
     if pin:
         pin_mtimes(root)
     config = load_config(root)
@@ -137,6 +156,15 @@ def _observe(root: Path, manifest: SnapshotManifest) -> DeterminismObservation:
                         "lines": list(chunk.lines),
                     }
                 )
+        symbols = [
+            {
+                "symbol": symbol.symbol,
+                "kind": symbol.kind,
+                "defined_in": symbol.defined_in,
+                "doc_refs": list(symbol.doc_refs),
+            }
+            for symbol in store.all_symbols()
+        ]
 
     return DeterminismObservation(
         artifact_digests=dict(manifest.artifact_digests),
@@ -146,6 +174,7 @@ def _observe(root: Path, manifest: SnapshotManifest) -> DeterminismObservation:
         warnings=manifest.warnings,
         documents=tuple(sorted(documents, key=lambda item: str(item["path"]))),
         chunks=tuple(sorted(chunks, key=lambda item: str(item["anchor"]))),
+        symbols=tuple(symbols),
     )
 
 

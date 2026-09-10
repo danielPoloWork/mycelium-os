@@ -80,10 +80,10 @@ resistance is a tested property, not a promise (D-017).
 ## How it compiles
 
 ```text
-knowledge/**.md ─▶ parse ─▶ KIR ─▶ chunk ─▶ index ─▶ snapshot ─▶ CURRENT
-                    │        │       │        │         │
-              markdown-it   thin   heading-  SQLite   immutable
-              + profile     AST    bounded   FTS5     manifest
+knowledge/**.md ─▶ parse ─▶ KIR ─▶ chunk ─▶ extract ─▶ index ─▶ snapshot ─▶ CURRENT
+                    │        │       │         │          │         │
+              markdown-it   thin   heading-  links +    SQLite   immutable
+              + profile     AST    bounded   symbols    FTS5     manifest
 ```
 
 Every stage is a pure, typed function whose output is keyed by a build key — a digest over
@@ -229,6 +229,33 @@ not tell a function word from a corpus's own nouns (`what` reaches 37 % of this 
 chunks; `adr` reaches 60 %). The numbers, the refusals and the two instruments that re-run
 them are in
 [ADR-0057](docs/adr/0057-drop-the-function-words-and-score-the-seam-that-ships.md).
+
+### A fence that defines something becomes a symbol, and so does a heading that names one
+
+Spec 03 §2 gives a symbol an identity — `sym:python:RetryPolicy.delay` — and two sources:
+tree-sitter for code, definition syntax for docs. Since roadmap 5.1 the build's `extract` stage
+fills the `symbols` table from both. A code fence is read by its grammar's **own** tags query —
+the one GitHub's code navigation runs, shipped inside each tree-sitter wheel — for nine languages
+(Python, JavaScript, TypeScript and TSX, Rust, Go, Java, C, C++, Ruby), and every definition is
+qualified by its nesting, so `def delay` inside `class RetryPolicy` is the same symbol whether the
+fence is Python, Rust or Java. A heading whose text *is* an identifier (`## uv.lock`,
+`### mycelium_neighbors`) defines a documentation term, and so does a definition list — the
+Markdown construct that carries the name, measured at zero occurrences across the three evaluation
+corpora and supported anyway, because it is the syntax.
+
+Each record says where the thing is defined — the Markdown line, `docs/api.md#L20` — and which
+chunks define it; it is in the export bundle's `symbols.jsonl` and in the manifest's counts and
+digests. The grammars are an optional install (`pip install mycelium-os[symbols]`); without them a
+build still compiles, and its snapshot says `degraded: symbols` and names the extra.
+
+The yields are stated rather than implied, because they are modest: this repository's own
+documentation defines **3** symbols (all headings — its four Python fences assign and call), the
+vendored uv documentation **14** (7 terms such as `uv.lock` and `.python-version`, 5 Python
+functions, a Rust module and its method). Documentation fences mostly *use* rather than *define*;
+the table earns its keep on a corpus that documents an API with definitions in fences, which is
+what the spec wrote it for. Nothing reads it at query time yet — the symbol leg in retrieval is
+roadmap 5.9, its own measured change
+([ADR-0073](docs/adr/0073-take-the-grammars-word-for-a-definition-and-the-headings-for-a-name.md)).
 
 ### Ingestion picks its parser, and you pick which one
 
@@ -561,7 +588,7 @@ anchor space — instead of by diffing two runs and hoping nothing else changed.
 | 2 | Walking skeleton (spec Phase 0) | ✅ done |
 | 3 | v0.1 — The compiler (spec Phase 1) | ✅ done |
 | 4 | v0.2 — Ingestion (spec Phase 2) | ✅ done |
-| 5 | v0.3 — Structure (spec Phase 3) | ⏳ planned |
+| 5 | v0.3 — Structure (spec Phase 3) | 🚧 in progress |
 | 6 | v1.0 — Stable (spec Phase 4) | ⏳ planned |
 | 7 | v2.x — Team & platform (spec Phase 5; separate RFC cycle) | ⏳ planned |
 

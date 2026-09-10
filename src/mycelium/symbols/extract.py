@@ -1,0 +1,174 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Daniel Polo
+"""The extract stage, per document: KIR in, symbol references out (roadmap 5.1).
+
+This is the seam ADR-0018 cut for the link graph, cut again for symbols.
+:func:`extract_symbols` reads *one* document's KIR and that document's chunks
+and knows nothing about the corpus, so its result is cached with the document
+in ``doc_state`` and survives every build that leaves the document untouched.
+Turning the references of the whole corpus into :class:`~mycelium.sdk.types.Symbol`
+records is a global pass (:mod:`mycelium.symbols.resolve`), because the same
+symbol may be defined in two documents and the record is one row.
+
+A :class:`SymbolRef` is deliberately not a :class:`~mycelium.sdk.types.Symbol`.
+The record is the spec 03 §6 contract — one per symbol, with ``defined_in`` and
+every ``doc_refs`` — and a document cannot know it is the first to define
+something or how many others document it. The reference says what *this*
+document did: it defined `name` in `language`, of `kind`, at `line`, inside the
+chunk at `anchor`. Everything the record adds is resolution.
+"""
+
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
+
+from mycelium.graph import anchor_of
+from mycelium.sdk.types import Chunk, KirDocument, NodeKind
+from mycelium.symbols.code import (
+    MAX_FENCE_BYTES,
+    extract_definitions,
+    grammar_for,
+    load_grammar,
+)
+from mycelium.symbols.docs import DOC_LANGUAGE, TERM_KIND, definition_terms, heading_term
+
+__all__ = [
+    "Extraction",
+    "SymbolRef",
+    "decode_symbols",
+    "encode_symbols",
+    "extract_symbols",
+]
+
+
+@dataclass(frozen=True, slots=True)
+class SymbolRef:
+    """One definition, as a single document asserts it."""
+
+    language: str
+    """The symbol's language segment: a grammar's language, or `doc`."""
+    name: str
+    """The qualified name, exactly as the symbol id will carry it."""
+    kind: str
+    line: int
+    """1-based line in the Markdown source where the definition sits; 0 when the
+    KIR carried no source locator, in which case the chunk anchor stands in."""
+    anchor: str
+    """The chunk anchor holding the definition — where a reader would find it."""
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "language": self.language,
+            "name": self.name,
+            "kind": self.kind,
+            "line": self.line,
+            "anchor": self.anchor,
+        }
+
+
+def encode_symbols(symbols: Sequence[SymbolRef]) -> list[dict[str, object]]:
+    """The form `doc_state` stores, so resolution can run without re-parsing."""
+    return [symbol.as_dict() for symbol in symbols]
+
+
+def decode_symbols(raw: Iterable[Mapping[str, object]]) -> tuple[SymbolRef, ...]:
+    return tuple(
+        SymbolRef(
+            language=str(item["language"]),
+            name=str(item["name"]),
+            kind=str(item["kind"]),
+            line=int(str(item.get("line", 0))),
+            anchor=str(item.get("anchor", "")),
+        )
+        for item in raw
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class Extraction:
+    """What one document's extract stage produced, and what it could not."""
+
+    symbols: tuple[SymbolRef, ...]
+    gaps: tuple[str, ...]
+    """Languages of fences this build could not read because their grammar is
+    not installed — sorted, unique. The publication folds these into the
+    snapshot's `degraded` flag (spec 02 §4.3)."""
+    warnings: tuple[str, ...]
+    """Per-document, operator-facing: a fence over the byte ceiling, a parse that
+    raised. They travel with the document's other warnings into the manifest."""
+
+
+def _source_line(kir_node_lines: tuple[int, int] | None) -> int:
+    return kir_node_lines[0] if kir_node_lines else 0
+
+
+def extract_symbols(kir: KirDocument, chunks: Sequence[Chunk], *, doc_path: str) -> Extraction:
+    """Every symbol one document defines, in document order.
+
+    Pure and per-document, like :func:`mycelium.graph.extract_links`: it reads
+    this document's KIR and chunks, never the corpus, which is what lets the
+    result be cached with the document and resolved later against a corpus that
+    has moved on.
+
+    Code fences go to their grammar's tags queries (:mod:`mycelium.symbols.code`);
+    headings and definition-list paragraphs go to the documentation rules
+    (:mod:`mycelium.symbols.docs`). A fence whose language has no grammar here is
+    a *gap*, not an error — the document compiles, the snapshot says what it is
+    missing — and a fence over :data:`~mycelium.symbols.code.MAX_FENCE_BYTES` is a
+    warning naming the line.
+    """
+    by_id = {node.id: node for node in kir.nodes}
+    anchors = {node_id: chunk.anchor for chunk in chunks for node_id in chunk.kir_nodes}
+
+    found: list[SymbolRef] = []
+    gaps: set[str] = set()
+    warnings: list[str] = []
+    for node in kir.nodes:
+        if node.kind is NodeKind.CODE_BLOCK:
+            grammar = grammar_for(node.lang)
+            if grammar is None or not node.text:
+                continue
+            start = _source_line(node.src.lines if node.src else None)
+            source = node.text.encode("utf-8")
+            if len(source) > MAX_FENCE_BYTES:
+                warnings.append(
+                    f"{doc_path}: {grammar.name} fence at line {start} not read for symbols "
+                    f"({len(source)} bytes exceeds the {MAX_FENCE_BYTES}-byte ceiling)"
+                )
+                continue
+            loaded = load_grammar(grammar.name)
+            if loaded is None:
+                gaps.add(grammar.language)
+                continue
+            try:
+                definitions = extract_definitions(loaded, source)
+            except Exception as error:  # noqa: BLE001 - one fence failing is not a lost document
+                warnings.append(
+                    f"{doc_path}: {grammar.name} fence at line {start} not read for symbols "
+                    f"({type(error).__name__}: {error})"
+                )
+                continue
+            anchor = anchor_of(node, by_id, anchors)
+            for definition in definitions:
+                # The fence's own line is the opening ``` — content starts below it.
+                line = start + 1 + definition.row if start else 0
+                found.append(
+                    SymbolRef(grammar.language, definition.name, definition.kind, line, anchor)
+                )
+        elif node.kind is NodeKind.HEADING and node.text:
+            term = heading_term(node.text)
+            if term is None:
+                continue
+            line = _source_line(node.src.lines if node.src else None)
+            found.append(
+                SymbolRef(DOC_LANGUAGE, term, TERM_KIND, line, anchor_of(node, by_id, anchors))
+            )
+        elif node.kind is NodeKind.PARAGRAPH and node.text:
+            terms = definition_terms(node.text)
+            if not terms:
+                continue
+            start = _source_line(node.src.lines if node.src else None)
+            anchor = anchor_of(node, by_id, anchors)
+            for offset, term in terms:
+                line = start + offset if start else 0
+                found.append(SymbolRef(DOC_LANGUAGE, term, TERM_KIND, line, anchor))
+    return Extraction(symbols=tuple(found), gaps=tuple(sorted(gaps)), warnings=tuple(warnings))

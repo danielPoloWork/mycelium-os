@@ -25,6 +25,7 @@ from mycelium.config import CONFIG_FILENAME, ConfigError, load_config
 from mycelium.ingest import Custody, CustodyError, Quarantine, probe
 from mycelium.store import STORE_DIRNAME, STORE_FILENAME, SqliteStore, StoreError
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
+from mycelium.symbols import EXTRA, grammar_statuses
 from mycelium.synthesis import SynthesisError, build_provider
 from mycelium.verification import build_judge
 
@@ -160,6 +161,37 @@ def _check_parsers(root: Path) -> Check:
         "parsers",
         "ok",
         "pinned: " + ", ".join(f"{status.id} ({status.detail})" for status in statuses),
+    )
+
+
+def _check_symbols() -> Check:
+    """Report which code-fence grammars this interpreter can load (roadmap 5.1).
+
+    The symbol stage *degrades* when a grammar is missing rather than failing the
+    build, so without this check the first an operator hears of it is a
+    `degraded` flag in a manifest. The grammars are named one by one, because
+    "the extra is not installed" and "one wheel is broken" call for different
+    repairs and read differently here.
+    """
+    statuses = grammar_statuses()
+    missing = [status for status in statuses if not status.available]
+    if not missing:
+        return Check(
+            "symbols",
+            "ok",
+            "code grammars: "
+            + ", ".join(f"{status.name} ({status.detail})" for status in statuses),
+        )
+    if len(missing) == len(statuses):
+        return Check(
+            "symbols",
+            "warn",
+            f"no code grammar installed; code fences yield no symbols until {EXTRA} is",
+        )
+    return Check(
+        "symbols",
+        "warn",
+        "grammars missing: " + "; ".join(f"{status.name}: {status.detail}" for status in missing),
     )
 
 
@@ -319,6 +351,7 @@ def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> lis
         ),
         _check_config(root),
         _check_parsers(root),
+        _check_symbols(),
         _check_custody(mycelium_dir),
     ]
     quarantined = _check_quarantine(mycelium_dir)
@@ -348,6 +381,7 @@ def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> lis
                 "store",
                 "ok",
                 f"{counts['documents']} documents, {counts['chunks']} chunks, "
+                f"{counts['edges']} edges, {counts['symbols']} symbols, "
                 f"{counts['vectors']} vectors",
             )
         )

@@ -32,6 +32,7 @@ from mycelium.sdk.types import (
     Edge,
     EdgeStatus,
     EdgeType,
+    Symbol,
     TrustClass,
     VerificationStatus,
 )
@@ -760,6 +761,8 @@ class SqliteStore:
                         "links": [dict(item) for item in state.links],
                         "aliases": list(state.aliases),
                         "headings": list(state.headings),
+                        "symbols": [dict(item) for item in state.symbols],
+                        "symbol_gaps": list(state.symbol_gaps),
                     }
                 ),
             ),
@@ -808,6 +811,49 @@ class SqliteStore:
         would leave stale assertions behind (ADR-0018).
         """
         self._connection.execute("DELETE FROM edges")
+
+    def put_symbols(self, symbols: Iterable[Symbol]) -> int:
+        """Insert symbol records, keyed by their id. In a transaction.
+
+        ``doc_refs`` is stored as canonical JSON like every other denormalized
+        column here: a symbol row is a build artifact rebuilt from source
+        (roadmap 5.1), and two stores built from the same corpus must hold
+        byte-identical rows.
+        """
+        written = 0
+        for symbol in symbols:
+            self._connection.execute(
+                """
+                INSERT INTO symbols(symbol, kind, defined_in, doc_refs_json, namespace)
+                VALUES(?,?,?,?,?)
+                ON CONFLICT(symbol) DO UPDATE SET
+                    kind = excluded.kind, defined_in = excluded.defined_in,
+                    doc_refs_json = excluded.doc_refs_json, namespace = excluded.namespace
+                """,
+                (
+                    symbol.symbol,
+                    symbol.kind,
+                    symbol.defined_in,
+                    canonical_json(list(symbol.doc_refs)),
+                    symbol.namespace,
+                ),
+            )
+            written += 1
+        return written
+
+    def clear_symbols(self) -> None:
+        """Empty the symbol table. Call inside a :meth:`transaction`.
+
+        Republished wholesale on every build, as edges are: one document
+        removed may hand `defined_in` to another that was never recompiled, so
+        which rows changed is not a per-document question (ADR-0073).
+        """
+        self._connection.execute("DELETE FROM symbols")
+
+    def all_symbols(self) -> tuple[Symbol, ...]:
+        """Every symbol, ordered by id — what `mycelium export` writes."""
+        rows = self._connection.execute("SELECT * FROM symbols ORDER BY symbol").fetchall()
+        return tuple(_symbol_from_row(row) for row in rows)
 
     def edges_of(
         self, ref: str, types: Sequence[EdgeType] | None = None
@@ -1465,6 +1511,8 @@ def _doc_state_from_row(row: sqlite3.Row) -> DocState:
         links=tuple(graph.get("links", ())),
         aliases=tuple(graph.get("aliases", ())),
         headings=tuple(graph.get("headings", ())),
+        symbols=tuple(graph.get("symbols", ())),
+        symbol_gaps=tuple(graph.get("symbol_gaps", ())),
     )
 
 
@@ -1479,6 +1527,16 @@ def _edge_from_row(row: sqlite3.Row) -> Edge:
             "provenance": json.loads(row["provenance_json"]),
             "namespace": row["namespace"],
         }
+    )
+
+
+def _symbol_from_row(row: sqlite3.Row) -> Symbol:
+    return Symbol(
+        symbol=str(row["symbol"]),
+        kind=str(row["kind"]),
+        defined_in=str(row["defined_in"]),
+        doc_refs=tuple(json.loads(row["doc_refs_json"])),
+        namespace=str(row["namespace"]),
     )
 
 

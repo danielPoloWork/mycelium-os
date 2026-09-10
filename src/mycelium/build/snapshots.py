@@ -49,6 +49,7 @@ from mycelium.sdk.identity import canonical_json, digest_json
 from mycelium.sdk.types import Chunk, Document, Sha256Digest, SnapshotManifest
 from mycelium.store import STORE_DIRNAME, DocState, SnapshotState, SqliteStore
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
+from mycelium.symbols import resolve_symbols, symbols_digest
 
 __all__ = [
     "DEFAULT_CACHE_MAX_AGE_DAYS",
@@ -105,6 +106,10 @@ def encode_snapshot_state(states: tuple[DocState, ...]) -> str:
                 "links": [dict(link) for link in state.links],
                 "aliases": list(state.aliases),
                 "headings": list(state.headings),
+                # And its contribution to the symbol table (roadmap 5.1), for
+                # the same reason: rollback re-resolves rather than restores.
+                "symbols": [dict(symbol) for symbol in state.symbols],
+                "symbol_gaps": list(state.symbol_gaps),
             }
             for state in sorted(states, key=lambda state: state.path)
         ]
@@ -125,6 +130,8 @@ def decode_snapshot_state(text: str) -> tuple[DocState, ...]:
             links=tuple(item.get("links", ())),
             aliases=tuple(item.get("aliases", ())),
             headings=tuple(item.get("headings", ())),
+            symbols=tuple(item.get("symbols", ())),
+            symbol_gaps=tuple(item.get("symbol_gaps", ())),
         )
         for item in json.loads(text)
     )
@@ -311,6 +318,10 @@ def _verify_against_manifest(
         # proves the restore rebuilt the *same* graph (ADR-0018).
         "edges": edges_digest(edges),
     }
+    if "symbols" in manifest.artifact_digests:
+        # A snapshot published before roadmap 5.1 has no symbols digest to hold
+        # it to, and is still restorable; one published since is held to it.
+        folded["symbols"] = symbols_digest(resolve_symbols(ordered, namespace))
     for artifact_class, digest in folded.items():
         expected = manifest.artifact_digests.get(artifact_class)
         if expected != digest:
@@ -357,16 +368,19 @@ def rollback(
                 namespace = loaded[0][1].namespace if loaded else "default"
                 _verify_against_manifest(manifest, states, namespace)
                 edges, _ = resolve_graph(states, namespace)
+                symbols = resolve_symbols(states, namespace)
 
                 chunk_count = 0
                 with store.transaction():
                     store.clear_documents()
                     store.clear_edges()
+                    store.clear_symbols()
                     for state, document, chunks in loaded:
                         store.put_document(document)
                         chunk_count += store.put_chunks(chunks)
                         store.put_doc_state(state)
                     store.put_edges(edges)
+                    store.put_symbols(symbols)
                     store.set_meta(META_CURRENT_SNAPSHOT, snapshot_id)
                 swap_current(mycelium_dir, snapshot_id)
         except BaseException as error:

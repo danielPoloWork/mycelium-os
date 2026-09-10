@@ -676,6 +676,7 @@ def test_doctor_is_clean_after_a_build(tmp_path: Path) -> None:
         "toolchain",
         "config",
         "parsers",
+        "symbols",
         "custody",
         "store",
         "snapshot",

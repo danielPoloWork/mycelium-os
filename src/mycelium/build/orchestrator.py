@@ -11,7 +11,8 @@ part ADR-0009 fixed forever — the publication and crash-safety semantics::
     acquire .mycelium/lock                 # exactly one writer (BuildLock)
     plan: read + pin + digest every file   # per-doc source digests (spec 02 §4.2)
     compile dirty docs                     # parse → chunk cached (CAS + build_cache),
-                                           # assemble recomputed (mtime is its input)
+                                           # assemble recomputed (mtime is its input),
+                                           # links + symbols extracted into doc_state
     BEGIN IMMEDIATE                        # readers keep the old committed state
       delete removed + displaced + rebuilt rows
       insert rebuilt rows + doc_state + cache index
@@ -120,6 +121,16 @@ from mycelium.sdk.types import (
 from mycelium.sdk.types import Synthesizer as SynthesizerRecord
 from mycelium.store import STORE_DIRNAME, DocState, SqliteStore
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
+from mycelium.symbols import (
+    SymbolRef,
+    decode_symbols,
+    describe_gaps,
+    encode_symbols,
+    extract_symbols,
+    grammar_fingerprint,
+    resolve_symbols,
+    symbols_digest,
+)
 
 __all__ = ["BuildResult", "BuildStats", "build"]
 
@@ -209,6 +220,10 @@ class _Entry:
     """Authored references, extracted with the document and re-resolved globally."""
     aliases: tuple[str, ...] = ()
     headings: tuple[str, ...] = ()
+    symbols: tuple[SymbolRef, ...] = ()
+    """What the document defines, extracted with it and resolved globally (roadmap 5.1)."""
+    symbol_gaps: tuple[str, ...] = ()
+    """Fence languages no installed grammar could read — the snapshot's `degraded` input."""
 
 
 @dataclass
@@ -562,6 +577,8 @@ def _state_of(entry: "_Entry", env_digest: str) -> DocState:
         links=tuple(encode_links(entry.links)),
         aliases=entry.aliases,
         headings=entry.headings,
+        symbols=tuple(encode_symbols(entry.symbols)),
+        symbol_gaps=entry.symbol_gaps,
     )
 
 
@@ -866,7 +883,7 @@ def _build_locked(
     parent_id = read_current(mycelium_dir)
     policy = config.chunking.to_policy()
     embedder, embed_reason = _resolve_embedder(config, require_vectors=require_vectors)
-    env = BuildEnv.compute(namespace=namespace, policy=policy)
+    env = BuildEnv.compute(namespace=namespace, policy=policy, grammars=grammar_fingerprint())
     env_digest = env.digest
     sources = _discover(root, CorpusScope.of(config.project))
     timer.lap("discover")
@@ -910,6 +927,8 @@ def _build_locked(
                 entry.links = decode_links(prev.links)
                 entry.aliases = prev.aliases
                 entry.headings = prev.headings
+                entry.symbols = decode_symbols(prev.symbols)
+                entry.symbol_gaps = prev.symbol_gaps
 
         # -- compile what is dirty, through the cache -------------------------
         parsed_count = parse_hits = chunked_count = chunk_hits = 0
@@ -965,6 +984,12 @@ def _build_locked(
             entry.document_digest = cas_put(mycelium_dir, encode_document_artifact(document))
             entry.chunks_digest = chunks_digest
             entry.links = extract_links(parsed.kir, chunks)
+            # Symbols follow the links' seam: extracted here, per document, and
+            # folded into records at publication over the whole corpus (5.1).
+            extraction = extract_symbols(parsed.kir, chunks, doc_path=entry.doc_path)
+            entry.symbols = extraction.symbols
+            entry.symbol_gaps = extraction.gaps
+            entry.warnings = (*entry.warnings, *extraction.warnings)
             entry.aliases = parsed.frontmatter.aliases
             entry.headings = tuple(
                 heading_slug(node.text)
@@ -1012,6 +1037,15 @@ def _build_locked(
             degraded.append("vectors")
             reasons.append(embed_reason)
             append_journal(mycelium_dir, "build.degraded", flag="vectors", reason=embed_reason)
+        gap_reason = describe_gaps(live_states.values())
+        if gap_reason is not None:
+            # The same shape as `vectors`: the flag names what the snapshot lacks
+            # and the reason says what to install (roadmap 5.1). Counted from the
+            # documents, so a corpus without code fences is never degraded by an
+            # extra it does not need.
+            degraded.append("symbols")
+            reasons.append(gap_reason)
+            append_journal(mycelium_dir, "build.degraded", flag="symbols", reason=gap_reason)
         if not restorable:
             # Recorded as a warning rather than hidden: the snapshot publishes and
             # serves normally, it just cannot be rolled back to (ADR-0016).
@@ -1044,6 +1078,14 @@ def _build_locked(
             store.clear_edges()
             store.put_edges(edges)
             timer.lap("graph")
+
+            # Symbols are resolved and republished whole for the same reason: a
+            # symbol is one row keyed by its id, and the document that gives it
+            # `defined_in` may be one this build never recompiled (roadmap 5.1).
+            symbols = resolve_symbols(tuple(live_states.values()), namespace)
+            store.clear_symbols()
+            store.put_symbols(symbols)
+            timer.lap("symbols")
 
             embedded = 0
             if embedder is not None:
@@ -1087,6 +1129,7 @@ def _build_locked(
                     "documents": digest_json([entry.document_digest for entry in live]),
                     "chunks": digest_json([entry.chunks_digest for entry in live]),
                     "edges": edges_digest(edges),
+                    "symbols": symbols_digest(symbols),
                 },
                 degraded=tuple(degraded) if restorable else (*degraded, "snapshot_state"),
                 warnings=tuple(manifest_warnings),
