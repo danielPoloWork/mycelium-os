@@ -1,0 +1,61 @@
+[
+  {
+    "uuid": "9f0c1d2e-claude-export",
+    "name": "Anchor stability",
+    "created_at": "2026-07-31T09:02:11.482913Z",
+    "updated_at": "2026-07-31T09:14:02.117640Z",
+    "account": {
+      "uuid": "acct-1"
+    },
+    "chat_messages": [
+      {
+        "uuid": "m-1",
+        "sender": "human",
+        "created_at": "2026-07-31T09:02:11.482913Z",
+        "updated_at": "2026-07-31T09:02:11.482913Z",
+        "text": "Do citations survive a file being renamed?",
+        "attachments": [],
+        "files": []
+      },
+      {
+        "uuid": "m-2",
+        "sender": "assistant",
+        "created_at": "2026-07-31T09:02:40.001000Z",
+        "updated_at": "2026-07-31T09:02:40.001000Z",
+        "content": [
+          {
+            "type": "text",
+            "text": "Yes. A citation keys on `doc_id`, not on the path, so a rename or a promotion from candidate/ to verified/ leaves it valid."
+          },
+          {
+            "type": "thinking",
+            "thinking": "Checking the identity rules."
+          }
+        ]
+      },
+      {
+        "uuid": "m-3",
+        "sender": "human",
+        "created_at": "2026-07-31T09:10:00.000000Z",
+        "text": "Here is the config I am using, with the key redacted later:\n\nexport MYCELIUM_TOKEN=ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+        "attachments": [
+          {
+            "file_name": "mycelium.toml",
+            "file_size": 412
+          }
+        ]
+      },
+      {
+        "uuid": "m-4",
+        "sender": "assistant",
+        "created_at": "2026-07-31T09:11:30.000000Z",
+        "content": [
+          {
+            "type": "text",
+            "text": "Rotate that token: it is now in an export."
+          }
+        ]
+      }
+    ]
+  }
+]

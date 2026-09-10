@@ -565,18 +565,43 @@ def _as_trust(origin: str, value: object) -> SourceTrust:
 
 
 class ModulesConfig(_Section):
-    """`[modules]` — activatable optional modules (D-023/D-025)."""
+    """`[modules]` — activatable optional modules (D-023/D-025).
+
+    Resolution is **pinned**, like every other plugin resolution in this system
+    (spec 05 §4.2): a name here that no installed distribution registers is an
+    error naming what to install, never a silent skip. Until roadmap 5.5 this
+    section could only be empty, because no module existed to name; it now
+    resolves against the ``mycelium.modules`` entry-point group.
+
+    The check reads installed *metadata* and imports nothing, so a valid
+    configuration costs no module import — which is what lets `mycelium build`
+    stay uninterested in a module it is not using (ADR-0077).
+    """
 
     enabled: tuple[str, ...] = ()
 
     @model_validator(mode="after")
-    def _no_modules_exist_yet(self) -> Self:
-        if self.enabled:
-            # The first module arrives at roadmap 5.5. Accepting a name now would
-            # promise a load that cannot happen.
+    def _every_module_is_installed(self) -> Self:
+        if not self.enabled:
+            return self
+        duplicates = sorted({name for name in self.enabled if self.enabled.count(name) > 1})
+        if duplicates:
+            msg = f"[modules] enabled names {duplicates} twice; a module is enabled once"
+            raise ValueError(msg)
+        # Imported here rather than at module scope: `mycelium.modules` reads
+        # entry points, and a section instantiated in `MyceliumConfig`'s class
+        # body would run this while `mycelium.config` is still executing — the
+        # cycle `IngestConfig` documents, met a second time.
+        from mycelium.modules import installed_ids
+
+        installed = installed_ids()
+        missing = [name for name in self.enabled if name not in installed]
+        if missing:
+            known = ", ".join(installed) or "(none installed)"
             msg = (
-                f"[modules] enabled lists {list(self.enabled)}, but no modules exist yet "
-                "(the first ships at roadmap 5.5); leave it empty"
+                f"[modules] enabled names {missing}, which no installed module provides; "
+                f"installed: {known}. Install the distribution that registers it "
+                "(a module is a package, not a setting)"
             )
             raise ValueError(msg)
         return self
@@ -633,6 +658,28 @@ class MyceliumConfig(BaseModel):
         default_factory=dict,
         description="Documented sections this milestone does not interpret.",
     )
+    module_config: dict[str, JsonValue] = Field(
+        default_factory=dict,
+        description="Each installed module's own `[<module-id>]` table, unvalidated.",
+    )
+    """The section a module owns, carried but never interpreted here (ADR-0077).
+
+    The plugin API had no way for a module to be configured: this loader is
+    strict by design (ADR-0014) and refused every section spec 05 §2 does not
+    print, so `[chats]` was a `ConfigError` and the first real module could not
+    have a setting. Spec doc 08 §10's sixth acceptance gate anticipates exactly
+    this — *"any needed core change is an API fix, made before the 1.0 freeze"*
+    — so the fix is generic rather than a section named after one module: a
+    table whose name is an **installed module id** is accepted and handed to that
+    module through :meth:`module_settings`.
+
+    **The core carries the table and the module owns its schema.** Validating
+    `[chats]` here would put a module's field set inside the core's contract,
+    which is the coupling a module exists to avoid; so the value arrives as
+    plain data and the module validates it with a model of its own. What the
+    core still enforces is the part only it can see: the id must be installed,
+    and it may not shadow a section spec 05 §2 defines.
+    """
     source: Path | None = Field(
         default=None, description="The file this came from; None when defaulted."
     )
@@ -641,6 +688,18 @@ class MyceliumConfig(BaseModel):
     def unhonoured_sections(self) -> tuple[str, ...]:
         """Sections present in the file that nothing reads yet."""
         return tuple(sorted(self.future))
+
+    def module_settings(self, module_id: str) -> Mapping[str, JsonValue]:
+        """The `[<module-id>]` table for `module_id`, empty when the file has none.
+
+        A module reads its own settings through this and validates them itself:
+        the core knows the table exists and nothing about what is in it
+        (ADR-0077). An empty mapping means "the operator set nothing", which a
+        module must treat as its defaults rather than as an error — the same
+        rule the core follows for a missing `mycelium.toml`.
+        """
+        table = self.module_config.get(module_id)
+        return table if isinstance(table, dict) else {}
 
     @property
     def unhonoured_keys(self) -> tuple[str, ...]:
@@ -674,6 +733,7 @@ class MyceliumConfig(BaseModel):
                 "sources": self.sources.model_dump(mode="json"),
                 "retrieval": self.retrieval.model_dump(mode="json"),
                 "modules": self.modules.model_dump(mode="json"),
+                "module_config": self.module_config,
                 "future": self.future,
             }
         )
@@ -721,10 +781,22 @@ def load_config(root: Path) -> MyceliumConfig:
         "modules",
         "entities",
     }
-    unknown = sorted(set(raw) - honoured - UNHONOURED_SECTIONS)
+    # A section named after an installed module belongs to that module (ADR-0077).
+    # Read before the unknown-section refusal, so `[chats]` is a module's table
+    # rather than a typo — and *after* the core's own names, so a module can
+    # never claim `[retrieval]` and quietly change what a query returns.
+    from mycelium.modules import installed_ids
+
+    module_ids = set(installed_ids()) - honoured - UNHONOURED_SECTIONS
+    module_config = {name: value for name, value in raw.items() if name in module_ids}
+
+    unknown = sorted(set(raw) - honoured - UNHONOURED_SECTIONS - module_ids)
     if unknown:
         known = ", ".join(sorted(honoured | UNHONOURED_SECTIONS))
+        modules = ", ".join(sorted(module_ids))
         msg = f"{path}: unknown section(s) {unknown}; spec 05 §2 defines: {known}"
+        if modules:
+            msg += f"; installed modules own: {modules}"
         raise ConfigError(msg)
 
     future = {name: value for name, value in raw.items() if name in UNHONOURED_SECTIONS}
@@ -732,6 +804,7 @@ def load_config(root: Path) -> MyceliumConfig:
         return MyceliumConfig(
             **{name: value for name, value in raw.items() if name in honoured},
             future=future,
+            module_config=module_config,
             source=path,
         )
     except ValidationError as exc:

@@ -1,0 +1,3 @@
+I asked about retry ceilings and the answer was five attempts before quarantine.
+
+There was more about backoff multipliers but I only kept this part.

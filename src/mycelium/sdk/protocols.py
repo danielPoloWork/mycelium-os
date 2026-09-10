@@ -18,6 +18,13 @@ chosen to survive the platform phase rather than to be convenient today:
     adapter over an existing engine, and the adapter's whole job is to lose
     nothing silently.
 
+``Module``
+    Not an engine extension at all, and that is why it is a protocol of its own.
+    A module is a *packaged activatable capability* (D-025/D-027) — its own
+    distribution, switched on by name in ``[modules] enabled`` — and what it
+    offers the core is contributions rather than an operation the core calls in
+    a pipeline. :mod:`mycelium.modules` owns discovery and activation.
+
 ``Synthesizer``
     Turns compiled evidence into a *readable* document — the LLM lane of
     ingestion (D-020). It is the one contract here whose output is not a function
@@ -38,18 +45,22 @@ the failure would be a confusing `AttributeError` deep inside a build.
 
 from dataclasses import dataclass, field
 from pathlib import PurePosixPath
-from typing import Final, Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING, Final, Protocol, Self, runtime_checkable
 
 from pydantic import JsonValue
 
 from mycelium.sdk.identity import digest_bytes
 from mycelium.sdk.types import KirDocument, Sha256Digest, SourceTrust, Ulid
 
+if TYPE_CHECKING:
+    import typer
+
 __all__ = [
     "MYCELIUM_API_VERSION",
     "Blob",
     "Connector",
     "EvidenceDocument",
+    "Module",
     "Parser",
     "PluginMeta",
     "Synthesis",
@@ -283,5 +294,48 @@ class Synthesizer(Protocol):
         raises :class:`~mycelium.synthesis.errors.SynthesisError` rather than
         returning ungrounded prose — an uncited claim in `candidate/` is the
         failure mode the whole lane exists to prevent.
+        """
+        ...
+
+
+# ---------------------------------------------------------------------------
+# Modules (D-023's extension points, D-025/D-027's second taxonomy level)
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class Module(Protocol):
+    """A packaged activatable capability (D-025), switched on by `[modules] enabled`.
+
+    The fifth contract in this file and the only one the core never *calls in a
+    pipeline*: a module contributes surfaces, and the core's job is to discover
+    it, refuse it clearly when it cannot be resolved, and mount what it offers.
+    :mod:`mycelium.modules` is that machinery.
+
+    **One required contribution, and the shape says why.** Spec 05 §4.1.1 lists
+    four generic mechanisms — pipeline stages, lifecycle hooks, CLI
+    subcommands, MCP tools — and this protocol requires only the third, because
+    the first real module (spec doc 08) needs only the third and freezing a
+    contract against no consumer is what the 1.0 freeze must not do (ADR-0077).
+    The other three arrive as *optional* methods — `stages()`, `hooks()`,
+    `tools()` — that a later reader checks for with `hasattr`, so a module
+    written today satisfies the protocol a module written after them does.
+
+    Typer is named in the signature because spec 05 §4.1.1 names it: *"Typer
+    sub-app mounted under `mycelium <plugin> …`"*. It is imported only for type
+    checking, and `runtime_checkable` looks at attribute presence, so satisfying
+    this protocol costs a module no import it did not already want.
+    """
+
+    meta: PluginMeta
+
+    def commands(self) -> "typer.Typer":
+        """The sub-app to mount at ``mycelium <meta.id>``.
+
+        Called when the command tree is built, not at import, so a module pays
+        for its own surface only where a CLI exists to mount it. Every command
+        in it is responsible for refusing to act on a repository whose
+        `[modules] enabled` does not name this module
+        (:func:`mycelium.modules.require_enabled`).
         """
         ...

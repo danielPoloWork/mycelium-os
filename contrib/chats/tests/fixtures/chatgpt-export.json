@@ -1,0 +1,209 @@
+[
+  {
+    "title": "Webhook retry design",
+    "create_time": 1785000000.0,
+    "update_time": 1785000120.0,
+    "conversation_id": "c-webhook-1",
+    "current_node": "n4",
+    "moderation_results": [],
+    "plugin_ids": null,
+    "mapping": {
+      "root": {
+        "id": "root",
+        "parent": null,
+        "children": [
+          "n1"
+        ],
+        "message": null
+      },
+      "n1": {
+        "id": "n1",
+        "parent": "root",
+        "children": [
+          "n2",
+          "n2-abandoned"
+        ],
+        "message": {
+          "id": "n1",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1785000005.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "How should webhook retries back off?"
+            ]
+          },
+          "status": "finished_successfully",
+          "metadata": {}
+        }
+      },
+      "n2": {
+        "id": "n2",
+        "parent": "n1",
+        "children": [
+          "n3"
+        ],
+        "message": {
+          "id": "n2",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1785000030.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Exponential backoff with a ceiling.\n\n## Attempt schedule\n\n| attempt | delay |\n|---|---|\n| 1 | 1s |\n| 2 | 2s |\n\nAfter the fifth attempt, quarantine the message rather than dropping it."
+            ]
+          },
+          "status": "finished_successfully",
+          "metadata": {
+            "model_slug": "gpt-5"
+          }
+        }
+      },
+      "n2-abandoned": {
+        "id": "n2-abandoned",
+        "parent": "n1",
+        "children": [],
+        "message": {
+          "id": "n2-abandoned",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1785000025.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Linear backoff is simpler."
+            ]
+          },
+          "status": "finished_successfully",
+          "metadata": {
+            "model_slug": "gpt-5"
+          }
+        }
+      },
+      "n3": {
+        "id": "n3",
+        "parent": "n2",
+        "children": [
+          "n4"
+        ],
+        "message": {
+          "id": "n3",
+          "author": {
+            "role": "user",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1785000060.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "Does the ceiling apply per connector?"
+            ]
+          },
+          "status": "finished_successfully",
+          "metadata": {}
+        }
+      },
+      "n4": {
+        "id": "n4",
+        "parent": "n3",
+        "children": [],
+        "message": {
+          "id": "n4",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1785000090.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "A connector may lower the ceiling, never raise it past the build's budget."
+            ]
+          },
+          "status": "finished_successfully",
+          "metadata": {
+            "model_slug": "gpt-5"
+          },
+          "weight": 1.0
+        }
+      }
+    }
+  },
+  {
+    "title": "Multimodal note",
+    "create_time": 1785100000.0,
+    "conversation_id": "c-multimodal-2",
+    "current_node": "m2",
+    "mapping": {
+      "m-root": {
+        "id": "m-root",
+        "parent": null,
+        "children": [
+          "m1"
+        ],
+        "message": null
+      },
+      "m1": {
+        "id": "m1",
+        "parent": "m-root",
+        "children": [
+          "m2"
+        ],
+        "message": {
+          "id": "m1",
+          "author": {
+            "role": "user"
+          },
+          "create_time": 1785100005.0,
+          "content": {
+            "content_type": "multimodal_text",
+            "parts": [
+              "What does this diagram show?",
+              {
+                "asset_pointer": "file-service://file-abc",
+                "size_bytes": 20481
+              }
+            ]
+          }
+        }
+      },
+      "m2": {
+        "id": "m2",
+        "parent": "m1",
+        "children": [],
+        "message": {
+          "id": "m2",
+          "author": {
+            "role": "assistant",
+            "name": null,
+            "metadata": {}
+          },
+          "create_time": 1785100030.0,
+          "content": {
+            "content_type": "text",
+            "parts": [
+              "The stage DAG: discover, parse, chunk, extract, embed, index, manifest."
+            ]
+          },
+          "status": "finished_successfully",
+          "metadata": {
+            "model_slug": "gpt-5"
+          }
+        }
+      }
+    }
+  }
+]

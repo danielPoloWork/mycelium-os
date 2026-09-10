@@ -8,6 +8,11 @@ exclude = [
     "tests",                   # fixtures are test data, not knowledge: a corpus that
                                # indexes them scores an unanswerable case against a
                                # fixture and reports gate G4 red for it (BUG-0007)
+    "contrib/chats/tests",     # the same rule, one directory deeper: the module's own
+                               # fixtures include a chat transcript, which is a document
+                               # shaped exactly like documentation and is not any
+                               # (roadmap 5.5). Its README stays indexed - that one *is*
+                               # documentation, of a distribution this repository ships
     "docs/journal",            # grows every session; churns judgments for no gain
     "docs/changelog",          # a per-version changelog and its release notes *restate*, in
     "docs/releases",           # the same vocabulary, what ADRs and the roadmap already say

@@ -57,6 +57,7 @@ mycelium demote doc.md     # ...and back again, verification block removed
 mycelium eval              # score a judged case set against the snapshot
 mycelium doctor            # store, snapshot pointer, and lock health
 mycelium serve             # read-only MCP server over stdio, for your agent
+mycelium chats import ...  # ...with the `chats` module installed and enabled
 ```
 
 Write Markdown under `knowledge/` and build. The first build writes a `mycelium_id` into
@@ -330,6 +331,42 @@ The honest yield on corpora that are not vaults: with the stage on, this reposit
 declares **none**. Neither uses tags or aliases; an Obsidian vault uses both, which is who
 the switch is for
 ([ADR-0076](docs/adr/0076-let-the-corpus-declare-its-entities-and-refuse-to-guess-the-rest.md)).
+
+### Your chatbot conversations become citable knowledge, through a real plugin
+
+Knowledge lives inside conversations with chatbots — decisions, designs, research — and it
+evaporates: locked in provider silos, unsearchable across tools, deletable by a vendor. The
+**`chats` module** archives them locally and compiles them into your vault:
+
+```bash
+pip install mycelium-chats            # a distribution of its own
+# then, in mycelium.toml:  [modules]\n enabled = ["chats"]
+mycelium chats import conversations.json --project research
+mycelium build && mycelium search "what did we decide about retries"
+```
+
+Each conversation becomes two files: a canonical `chats/…/*.chat.jsonl` record — one message
+per line, lossless, the shape every chatbot API consumes — and a Markdown projection under
+`knowledge/evidence/chats/` that the compiler indexes like any other document. So a search
+result cites a **conversation and a message**, and `--collection chats/research` filters to
+one project. It reads ChatGPT and Claude exports, Markdown transcripts, pasted text, and any
+JSON through a configured field mapping; it keeps the original in custody, scans for secrets,
+and never touches the network.
+
+Four promises, each a named test: content is **verbatim** always; structure may be inferred
+and the record says so; unknown provider fields are **preserved**, not dropped; and an
+unlabelled paste gets **no invented speakers** — it is kept whole instead, because a
+fabricated attribution that reaches the index is a false statement about who said what.
+
+The module is also the reason the plugin API is worth trusting. Doc 08 says it plainly: *if
+the extension points can't support this module cleanly, they get fixed before the 1.0
+freeze*. Building it found four things — modules could not be configured at all, mounting a
+module's commands at import time created a silent cycle, the chunker does not implement the
+callout atomicity the spec promises, and a fidelity report cannot describe a source that
+produces no KIR. The first two are fixed; the other two are filed with their measurements.
+And a test now parses every line of the module's source and fails if it imports anything
+outside the published surface, so "zero core patches" is checked rather than claimed
+([ADR-0077](docs/adr/0077-give-a-module-an-entry-point-a-section-and-a-command-and-report-what-it-could-not-reach.md)).
 
 ### Ingestion picks its parser, and you pick which one
 

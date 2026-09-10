@@ -75,8 +75,8 @@ from mycelium.ingest.registry import (
 )
 from mycelium.ingest.safety import DEFAULT_LIMITS, Limits, guard
 from mycelium.ingest.secrets import RULES as SECRET_RULES
+from mycelium.ingest.secrets import Finding, redact_text, scan_kir, scan_text
 from mycelium.ingest.secrets import describe as describe_secrets
-from mycelium.ingest.secrets import scan_kir, scan_text
 
 __all__ = [
     "BUILTIN_CONNECTORS",
@@ -89,6 +89,7 @@ __all__ = [
     "DEFAULT_LIMITS",
     "INVENTORY_SCHEMA_VERSION",
     "ElementInventory",
+    "Finding",
     "InventoryDifference",
     "InventoryFile",
     "compare_inventories",
@@ -127,6 +128,7 @@ __all__ = [
     "probe",
     "project",
     "quarantine_root",
+    "redact_text",
     "scan_kir",
     "scan_text",
     "stage_of",

@@ -678,6 +678,10 @@ def test_doctor_is_clean_after_a_build(tmp_path: Path) -> None:
         "parsers",
         "symbols",
         "custody",
+        # The contrib module is a dev dependency, so it is installed here and
+        # `doctor` reports it: installed and not enabled in this repository,
+        # which is an `ok` state rather than a warning (roadmap 5.5, ADR-0077).
+        "modules",
         "store",
         "snapshot",
         "manifest",

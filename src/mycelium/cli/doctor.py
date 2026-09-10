@@ -23,6 +23,7 @@ from mycelium.build.lock import DEFAULT_STALE_AFTER_S, LOCK_FILENAME, BuildLock
 from mycelium.build.publish import manifest_path, read_current
 from mycelium.config import CONFIG_FILENAME, ConfigError, load_config
 from mycelium.ingest import Custody, CustodyError, Quarantine, probe
+from mycelium.modules import statuses as module_statuses
 from mycelium.store import STORE_DIRNAME, STORE_FILENAME, SqliteStore, StoreError
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
 from mycelium.symbols import EXTRA, grammar_statuses
@@ -162,6 +163,43 @@ def _check_parsers(root: Path) -> Check:
         "ok",
         "pinned: " + ", ".join(f"{status.id} ({status.detail})" for status in statuses),
     )
+
+
+def _check_modules(root: Path) -> Check | None:
+    """Report installed modules, whether each loads, and which are enabled (5.5).
+
+    Absent when nothing is installed, like the other optional checks here: a
+    repository that uses no module should not read a line about modules. When one
+    *is* installed the line is worth printing either way, because "its commands
+    are mounted and its effects are not" is the state an operator misreads
+    (ADR-0077).
+    """
+    try:
+        enabled: tuple[str, ...] = load_config(root).modules.enabled
+    except ConfigError:
+        # `_check_config` already reports the file; a module line derived from an
+        # unreadable configuration would be a second complaint about one fault.
+        enabled = ()
+    found = module_statuses(enabled)
+    if not found:
+        return None
+    broken = [status for status in found if not status.available]
+    if broken:
+        return Check(
+            "modules",
+            "fail",
+            "; ".join(f"{status.id}: {status.detail}" for status in broken),
+        )
+    # Installed and not enabled is **ok**, not a warning: a module is installed
+    # once per machine and enabled per repository, so a repository that does not
+    # use one is the normal case and warning about it forever would train an
+    # operator to skip this report. The line still says which is which, because
+    # "the command exists and does nothing" is the confusing state.
+    described = ", ".join(
+        f"{status.id} ({'enabled' if status.enabled else 'installed, not enabled here'})"
+        for status in found
+    )
+    return Check("modules", "ok", described)
 
 
 def _check_symbols() -> Check:
@@ -354,6 +392,9 @@ def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> lis
         _check_symbols(),
         _check_custody(mycelium_dir),
     ]
+    modules = _check_modules(root)
+    if modules is not None:
+        checks.append(modules)
     quarantined = _check_quarantine(mycelium_dir)
     if quarantined is not None:
         checks.append(quarantined)

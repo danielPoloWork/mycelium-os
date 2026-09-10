@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mycelium-chats"
+version = "0.1.0"
+description = "Mycelium Chats — a local archive of user↔chatbot conversations, compiled into your vault."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+authors = [{ name = "Daniel Polo" }]
+keywords = ["mycelium", "chat", "archive", "knowledge"]
+
+# The module's whole runtime closure is the core plus what the core already
+# brings. That is deliberate and is half of what doc 08 §10's sixth gate tests:
+# a module that needed a dependency tree of its own would be a plugin API that
+# had failed to offer something. `pydantic` and `typer` are declared rather than
+# inherited silently, because this distribution imports them directly and a
+# dependency you use is a dependency you name.
+#
+# No pin on the core beyond a floor: a module is held to the plugin API
+# generation it declares in `PluginMeta` (spec 05 §5), which the registry checks
+# at load time and reports precisely. A version pin here would be a second,
+# weaker statement of the same thing.
+dependencies = [
+    "mycelium-os>=0.4.0",
+    "pydantic>=2.11",
+    "typer>=0.15",
+]
+
+[project.urls]
+Homepage = "https://github.com/danielPoloWork/mycelium-os"
+Issues = "https://github.com/danielPoloWork/mycelium-os/issues"
+
+# How the core finds it (roadmap 5.5, ADR-0077). `mycelium.modules` is the
+# activatable-capability group, distinct from `mycelium.plugins`, which is where
+# a parser or a connector registers (D-027's two levels, two groups).
+[project.entry-points."mycelium.modules"]
+chats = "mycelium_chats:plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mycelium_chats"]
