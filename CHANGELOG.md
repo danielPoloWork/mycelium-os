@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The optional entity stage** (roadmap 5.4, [ADR-0076](docs/adr/0076-let-the-corpus-declare-its-entities-and-refuse-to-guess-the-rest.md)). The last stage spec 02
+  §4.1 draws and the last of D-014's eight edge types now exist. An entity is a name the
+  corpus **declares** — a frontmatter or inline `#tag`, or an `aliases` key naming the thing
+  a document is about — never one guessed from prose, and a `mentions` edge is emitted only
+  where a declared name is written in a passage that did not declare it. `mycelium export`
+  gains `records/entities.jsonl`, the manifest gains `counts.entities` and an `entities`
+  digest, and `mycelium neighbors` reaches `ent:` nodes.
+
+  The stage is **off by default** (`[entities] enabled`, spec 03 §6) and the default build is
+  unchanged: no rows, no edges, no digest, no file. Measured before it was defaulted — with
+  the stage on, this repository declares one entity (a `#NNN` placeholder in a template) and
+  the vendored uv documentation declares none, because neither corpus uses tags or aliases;
+  an Obsidian vault, the corpus the profile was shaped for, uses both. Turning it on costs no
+  recompile: the declarations are cached whether or not it is switched on.
+
 - **Graph expansion, measured and shipped switched off** (roadmap 5.3, [ADR-0075](docs/adr/0075-let-the-graph-propose-and-the-ranking-dispose-and-report-that-it-lost.md)).
   `[retrieval] graph_expansion` is real: with it on, retrieval walks one hop from the fused
   candidates over the typed edges, resolves the neighbouring sections, documents and symbols

@@ -204,6 +204,12 @@ budget_tokens = 4000           # default packing budget for MCP responses
 
 [modules]
 enabled = []                   # the first module ships at roadmap 5.5
+
+[entities]
+enabled = false                # the optional stage (spec 03 §6): turn it on and every #tag
+                               # and `aliases:` key in your vault becomes an entity, with a
+                               # `mentions` edge wherever a passage names one without
+                               # declaring it. Nothing is guessed from prose (ADR-0076)
 """
 
 
@@ -410,6 +416,9 @@ def _report_build(result: BuildResult, *, clean: bool = False) -> None:
     detail(
         f"  {counts.documents} documents, {counts.chunks} chunks, "
         f"{counts.edges} edges, {counts.symbols} symbols"
+        # Only when the optional stage ran (roadmap 5.4): reporting "0 entities"
+        # on every default build would advertise a stage nobody switched on.
+        f"{f', {counts.entities} entities' if 'entities' in manifest.artifact_digests else ''}"
         f"{f', {counts.quarantined} quarantined' if counts.quarantined else ''}"
         f" in {manifest.timings_ms['total']} ms"
     )

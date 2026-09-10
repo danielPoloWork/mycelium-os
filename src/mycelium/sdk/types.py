@@ -139,9 +139,18 @@ type NonEmptyStr = Annotated[str, StringConstraints(min_length=1)]
 
 type EntitySlug = Annotated[
     str,
-    StringConstraints(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$"),
+    StringConstraints(pattern=r"^[^\W_]+(?:-[^\W_]+)*$"),
 ]
-"""Readable entity slug (the ``ent:<slug>`` ID form, spec 03 §2, without prefix)."""
+"""Readable entity slug (the ``ent:<slug>`` ID form, spec 03 §2, without prefix).
+
+Exactly what :func:`~mycelium.sdk.identity.heading_slug` produces: alphanumeric
+runs in any script, single hyphens between them, no underscore and no leading or
+trailing separator. The pattern was ASCII-only until roadmap 5.4, which is where
+it first had to accept a real value and could not: the multilingual fixture tags
+a document ``設計``, and the anchor slugger keeps non-Latin scripts intact on
+purpose (D-028 — transliterating would collide every Japanese heading on the
+empty slug). Widening it cost nothing because no entity had ever been minted, so
+there was no data under the narrower rule (ADR-0076)."""
 
 type SymbolId = Annotated[
     str,
@@ -871,6 +880,11 @@ class SnapshotCounts(Record):
     edges: NonNegativeInt
     vectors: NonNegativeInt
     quarantined: NonNegativeInt
+    entities: NonNegativeInt = 0
+    """Spec 03 §7's counts do not list entities, because the stage that fills
+    them is optional and off by default (§6). The field defaults to 0 so a
+    manifest written before roadmap 5.4 still validates, and a snapshot built
+    with the stage off reports the truth rather than nothing."""
 
 
 class SnapshotManifest(Record):

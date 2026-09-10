@@ -35,9 +35,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final
 
-from mycelium.build.publish import manifest_path, read_current
+from mycelium.build.publish import manifest_path, read_current, read_manifest
 from mycelium.sdk.identity import canonical_json, digest_text
-from mycelium.sdk.types import Chunk, Document, Edge, Record, Symbol
+from mycelium.sdk.types import Chunk, Document, Edge, Entity, Record, Symbol
 from mycelium.store import STORE_DIRNAME, SqliteStore
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
 
@@ -161,7 +161,7 @@ def _published(root: Path) -> tuple[str, Path]:
 
 def _read_records(
     root: Path, snapshot_id: str
-) -> tuple[list[Document], list[Chunk], list[Edge], list[Symbol]]:
+) -> tuple[list[Document], list[Chunk], list[Edge], list[Symbol], list[Entity]]:
     """Every record the bundle carries, in the order it will be written.
 
     Documents by path and chunks by anchor, matching how the snapshot manifest
@@ -195,7 +195,8 @@ def _read_records(
         )
         edges = list(store.all_edges())
         symbols = list(store.all_symbols())
-    return documents, chunks, edges, symbols
+        entities = list(store.all_entities())
+    return documents, chunks, edges, symbols, entities
 
 
 def export_bundle(
@@ -212,7 +213,8 @@ def export_bundle(
     meets sources that no longer match the records.
     """
     snapshot_id, source_manifest = _published(root)
-    documents, chunks, edges, symbols = _read_records(root, snapshot_id)
+    documents, chunks, edges, symbols, entities = _read_records(root, snapshot_id)
+    manifest = read_manifest(root / STORE_DIRNAME, snapshot_id)
 
     bundle = (out or root / DEFAULT_EXPORT_DIRNAME) / snapshot_id
     if bundle.exists():
@@ -238,9 +240,14 @@ def export_bundle(
         "symbols": _write_records(records / "symbols.jsonl", list(symbols)),
         "edges": _write_records(records / "edges.jsonl", list(edges)),
     }
-    # `entities.jsonl` is "if present" in spec 03 §9, and entity extraction is
-    # optional and off by default (5.4) — so its absence is the honest signal
-    # that no entity stage ran, rather than an omission.
+    # `entities.jsonl` is "if present" in spec 03 §9, and the entity stage is
+    # optional and off by default (§6) — so the file's *absence* is the signal
+    # that no entity stage ran, and it is written whenever one did, empty or
+    # not. Which of the two happened is read from the manifest rather than from
+    # the row count or from today's configuration: the snapshot is the authority
+    # on what the snapshot contains (roadmap 5.4, ADR-0076).
+    if "entities" in manifest.artifact_digests:
+        counts["entities"] = _write_records(records / "entities.jsonl", list(entities))
 
     markdown_files = _copy_markdown(root, bundle, documents) if with_markdown else 0
     return ExportResult(

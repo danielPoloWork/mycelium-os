@@ -68,6 +68,7 @@ class DeterminismObservation:
     chunks: tuple[dict[str, Any], ...]
     symbols: tuple[dict[str, Any], ...] = ()
     edges: tuple[dict[str, Any], ...] = ()
+    entities: tuple[dict[str, Any], ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -80,6 +81,7 @@ class DeterminismObservation:
             "chunks": list(self.chunks),
             "symbols": list(self.symbols),
             "edges": list(self.edges),
+            "entities": list(self.entities),
         }
 
 
@@ -180,6 +182,18 @@ def _observe(root: Path, manifest: SnapshotManifest) -> DeterminismObservation:
             }
             for edge in store.all_edges()
         ]
+        entities = [
+            {
+                "entity_id": entity.entity_id,
+                "slug": entity.slug,
+                "name": entity.name,
+                "aliases": list(entity.aliases),
+                "kind": entity.kind,
+                "status": entity.status.value,
+                "doc_refs": list(entity.doc_refs),
+            }
+            for entity in store.all_entities()
+        ]
 
     return DeterminismObservation(
         artifact_digests=dict(manifest.artifact_digests),
@@ -195,6 +209,13 @@ def _observe(root: Path, manifest: SnapshotManifest) -> DeterminismObservation:
         edges=tuple(
             sorted(edges, key=lambda item: (str(item["from"]), str(item["to"]), str(item["type"])))
         ),
+        # The fixture switches the optional stage on (roadmap 5.4): a gate that
+        # only ever ran the default configuration could not see a change to a
+        # stage the default leaves off. `entity_id` is recorded because it is
+        # *derived* from the slug rather than minted (ADR-0046's mechanism), so
+        # it is a fact about the corpus and a change to the derivation belongs
+        # in this diff rather than inside an artifact digest (ADR-0076).
+        entities=tuple(entities),
     )
 
 

@@ -40,6 +40,9 @@ def workspace(tmp_path: Path, name: str = "corpus") -> Path:
     """A private copy of the fixture corpus — the committed files are never built."""
     root = tmp_path / name
     shutil.copytree(CORPUS / "knowledge", root / "knowledge")
+    # The configuration is part of the fixture: it switches the optional entity
+    # stage on, so the gate covers a stage the defaults leave off (roadmap 5.4).
+    shutil.copyfile(CORPUS / "mycelium.toml", root / "mycelium.toml")
     return root
 
 

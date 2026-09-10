@@ -16,7 +16,7 @@ two stores built from the same sources hold byte-identical column values.
 
 from typing import Final
 
-SCHEMA_VERSION: Final = "mycelium/store/v5"
+SCHEMA_VERSION: Final = "mycelium/store/v6"
 """Bumped whenever the DDL below changes. v1 migration policy is rebuild (D-016):
 a *writer* that meets a foreign version recreates the file (the store is derived
 data, D-005 — ADR-0015); a *reader* refuses and points at `mycelium build`.
@@ -27,7 +27,9 @@ v3 → v4 added the stem columns to `chunks_fts` (roadmap 4.19, ADR-0048) — a
 tokenization change is not migratable, so this is exactly the case the rebuild
 policy exists for; v4 → v5 split `heading_path` into `heading` and `ancestors`
 (roadmap 4.36, ADR-0063), for the same reason: the columns of an FTS5 table
-cannot be altered, and re-deriving them from `chunks` is what a rebuild is."""
+cannot be altered, and re-deriving them from `chunks` is what a rebuild is;
+v5 → v6 added `entities` (roadmap 5.4, ADR-0076), the one table spec 03 §8's
+layout never drew because the stage that fills it is optional."""
 
 META_SCHEMA_VERSION: Final = "schema_version"
 META_VECTORS_GENERATION: Final = "vectors_generation"
@@ -136,6 +138,26 @@ CREATE TABLE IF NOT EXISTS symbols (
     symbol        TEXT PRIMARY KEY,
     kind          TEXT NOT NULL,
     defined_in    TEXT NOT NULL,
+    doc_refs_json TEXT NOT NULL,
+    namespace     TEXT NOT NULL DEFAULT 'default'
+);
+
+-- The optional entity stage's table (roadmap 5.4, ADR-0076). Spec 03 §8 does
+-- not draw it, because §6 makes the stage optional and off by default; the rows
+-- are a pure function of the corpus's authored declarations either way, and a
+-- build with `[entities] enabled = false` simply leaves it empty.
+--
+-- `entity_id` is *derived* from the slug rather than minted, so two builds of
+-- one corpus address the same entity (ADR-0046's rule, applied where it has no
+-- alternative: a build may not write to tier 2, so there is nowhere to persist
+-- a minted id).
+CREATE TABLE IF NOT EXISTS entities (
+    entity_id     TEXT NOT NULL,
+    slug          TEXT PRIMARY KEY,
+    name          TEXT NOT NULL,
+    aliases_json  TEXT NOT NULL,
+    kind          TEXT NOT NULL,
+    status        TEXT NOT NULL,
     doc_refs_json TEXT NOT NULL,
     namespace     TEXT NOT NULL DEFAULT 'default'
 );

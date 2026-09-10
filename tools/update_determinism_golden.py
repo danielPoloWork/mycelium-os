@@ -32,6 +32,10 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as scratch:
         workspace = Path(scratch) / "corpus"
         shutil.copytree(CORPUS / "knowledge", workspace / "knowledge")
+        # The corpus is its `knowledge/` tree *and* its configuration: the gate
+        # compiles with the optional entity stage on (roadmap 5.4), so a golden
+        # blessed without the file would describe a different build.
+        shutil.copyfile(CORPUS / "mycelium.toml", workspace / "mycelium.toml")
         observation = observe_build(workspace)
 
     before = GOLDEN.read_text(encoding="utf-8") if GOLDEN.exists() else ""

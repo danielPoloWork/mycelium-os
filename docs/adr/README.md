@@ -90,4 +90,5 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0072](0072-keep-our-own-restatements-out-of-our-own-benchmark.md) | Keep our own restatements out of our own benchmark | Accepted |
 | [0073](0073-take-the-grammars-word-for-a-definition-and-the-headings-for-a-name.md) | Take the grammar's word for what a definition is, and the heading's for what it names | Accepted |
 | [0074](0074-give-every-edge-type-a-derivation-or-a-reason-it-has-none.md) | Give every edge type a derivation, or a reason it has none | Accepted |
+| [0076](0076-let-the-corpus-declare-its-entities-and-refuse-to-guess-the-rest.md) | Let the corpus declare its entities, and refuse to guess the rest | Accepted |
 | [0075](0075-let-the-graph-propose-and-the-ranking-dispose-and-report-that-it-lost.md) | Let the graph propose and the ranking dispose, and report that it lost the ablation | Accepted |
