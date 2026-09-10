@@ -21,7 +21,12 @@ touched a file.
 Nothing was at risk. The legacy history is intact on GitHub under its new name, tip for tip, and
 the clone itself was clean. The repair is one `git remote set-url` to the renamed repository, or
 deleting a folder that `mycelium.toml` already excludes from the corpus as "kept for salvage
-only". Proposed to the maintainer, not applied: the folder is theirs.
+only". Proposed to the maintainer, who chose the second: nothing in `src/`, `tests/` or `tools/`
+reads it, no open roadmap item plans to, the renamed repository contains the clone's tip and
+thirty-seven branches the clone never had, and the only local files were the IDE's. The folder
+was deleted the same day. The ignore rule and the `mycelium.toml` exclusion stay — the first as a
+guard for anyone who clones it there again, the second because a config change moves the
+determinism golden and is not this PR's to make.
 
 How the sync got there is the more useful half. The agent shell keeps its working directory
 between commands, so a `cd` made for one inspection outlived it — and the same slip reproduced

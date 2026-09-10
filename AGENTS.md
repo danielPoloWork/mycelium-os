@@ -112,11 +112,12 @@ tracked; every untracked directory is a cache or a copy that one command regener
 `.mycelium/` — the compiled store of this repository's own documentation; `mycelium build`
 rebuilds it. `.hypothesis/` and `.benchmarks/` — Hypothesis's example database and
 pytest-benchmark's autosave storage, refilled by running the suites (CI keeps the falsifying
-example as an artifact, ADR-0060). `.mycelium-os-legacy/` — a clone of the superseded
-implementation, kept for salvage only; its history lives on GitHub as `mycelium-os-legacy`, and
-it is a repository of its own, so never run a sync inside it — address this one as
-`git -C <root>` rather than `cd`-ing below it. IDE directories. A teammate needs the clone,
-Python 3.12+, `uv`, and pandoc for the ingest lane — nothing else.
+example as an artifact, ADR-0060). `.mycelium-os-legacy/` — where a clone of the superseded
+implementation sat until 2026-09-10; the rule stays because that history lives on GitHub as
+`mycelium-os-legacy` and someone may clone it there again — if so, it is a repository of its own:
+never run a sync inside it, and address this one as `git -C <root>` rather than `cd`-ing below
+it. IDE directories. A teammate needs the clone, Python 3.12+, `uv`, and pandoc for the ingest
+lane — nothing else.
 
 ## 5. Source Tree & Cross-Language Layout
 
