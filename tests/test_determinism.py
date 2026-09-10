@@ -60,6 +60,7 @@ def test_compiled_output_matches_the_golden(tmp_path: Path) -> None:
     assert observed["warnings"] == expected["warnings"], REBLESS
     assert observed["documents"] == expected["documents"], REBLESS
     assert observed["chunks"] == expected["chunks"], REBLESS
+    assert observed["symbols"] == expected["symbols"], REBLESS
     assert observed["artifact_digests"] == expected["artifact_digests"], REBLESS
 
 
@@ -151,7 +152,7 @@ def test_the_corpus_still_covers_the_profile() -> None:
     documents = golden["documents"]
     anchors = [str(chunk["anchor"]) for chunk in chunks]
 
-    assert len(documents) == 6
+    assert len(documents) == 7
     # All three kinds, and since packing became the default (ADR-0047) `code` is
     # only reachable through a section whose *only* content is a block — the
     # constraint ADR-0007 argued and packing preserves. The corpus carries one on
@@ -167,6 +168,15 @@ def test_the_corpus_still_covers_the_profile() -> None:
         "evidence",
     }
     assert {str(doc["trust_class"]) for doc in documents} == {"authored", "ingested"}
+
+    # Every symbol source the extract stage reads (roadmap 5.1, ADR-0073): a
+    # Python fence, a Rust fence, a heading that is an identifier, a definition
+    # list — and a Python fence that assigns and calls, which defines nothing.
+    symbols = golden["symbols"]
+    assert {str(symbol["symbol"]).split(":")[1] for symbol in symbols} == {"doc", "python", "rust"}
+    assert {str(symbol["kind"]) for symbol in symbols} == {"term", "class", "method", "function"}
+    assert not any(str(symbol["symbol"]).endswith(":policy") for symbol in symbols)
+    assert all(str(symbol["defined_in"]).split("#L")[1].isdigit() for symbol in symbols)
 
     # Sibling headings that slug alike are numbered, not collided.
     assert any(anchor.endswith("#event-bus/0") for anchor in anchors)

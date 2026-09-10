@@ -408,7 +408,8 @@ def _report_build(result: BuildResult, *, clean: bool = False) -> None:
     counts = manifest.counts
     success(f"published snapshot {manifest.snapshot_id}")
     detail(
-        f"  {counts.documents} documents, {counts.chunks} chunks"
+        f"  {counts.documents} documents, {counts.chunks} chunks, "
+        f"{counts.edges} edges, {counts.symbols} symbols"
         f"{f', {counts.quarantined} quarantined' if counts.quarantined else ''}"
         f" in {manifest.timings_ms['total']} ms"
     )

@@ -37,7 +37,7 @@ from typing import Final
 
 from mycelium.build.publish import manifest_path, read_current
 from mycelium.sdk.identity import canonical_json, digest_text
-from mycelium.sdk.types import Chunk, Document, Edge, Record
+from mycelium.sdk.types import Chunk, Document, Edge, Record, Symbol
 from mycelium.store import STORE_DIRNAME, SqliteStore
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
 
@@ -159,7 +159,9 @@ def _published(root: Path) -> tuple[str, Path]:
     return snapshot_id, source
 
 
-def _read_records(root: Path, snapshot_id: str) -> tuple[list[Document], list[Chunk], list[Edge]]:
+def _read_records(
+    root: Path, snapshot_id: str
+) -> tuple[list[Document], list[Chunk], list[Edge], list[Symbol]]:
     """Every record the bundle carries, in the order it will be written.
 
     Documents by path and chunks by anchor, matching how the snapshot manifest
@@ -192,7 +194,8 @@ def _read_records(root: Path, snapshot_id: str) -> tuple[list[Document], list[Ch
             key=lambda item: item.anchor,
         )
         edges = list(store.all_edges())
-    return documents, chunks, edges
+        symbols = list(store.all_symbols())
+    return documents, chunks, edges, symbols
 
 
 def export_bundle(
@@ -209,7 +212,7 @@ def export_bundle(
     meets sources that no longer match the records.
     """
     snapshot_id, source_manifest = _published(root)
-    documents, chunks, edges = _read_records(root, snapshot_id)
+    documents, chunks, edges, symbols = _read_records(root, snapshot_id)
 
     bundle = (out or root / DEFAULT_EXPORT_DIRNAME) / snapshot_id
     if bundle.exists():
@@ -228,11 +231,11 @@ def export_bundle(
     counts = {
         "documents": _write_records(records / "documents.jsonl", list(documents)),
         "chunks": _write_records(records / "chunks.jsonl", list(chunks)),
-        # The symbol stage arrives at roadmap 5.1. The file is written empty
-        # rather than omitted, because `symbols` is part of the declared layout:
-        # a consumer that must distinguish "absent because unsupported" from
-        # "absent because empty" has been handed a puzzle instead of a bundle.
-        "symbols": _write_records(records / "symbols.jsonl", []),
+        # Written even when empty, because `symbols` is part of the declared
+        # layout: a consumer that must distinguish "absent because unsupported"
+        # from "absent because empty" has been handed a puzzle instead of a
+        # bundle. Empty means the corpus defines nothing (roadmap 5.1).
+        "symbols": _write_records(records / "symbols.jsonl", list(symbols)),
         "edges": _write_records(records / "edges.jsonl", list(edges)),
     }
     # `entities.jsonl` is "if present" in spec 03 §9, and entity extraction is

@@ -53,6 +53,7 @@ __all__ = [
     "GraphState",
     "LinkRef",
     "Neighbour",
+    "anchor_of",
     "decode_links",
     "edge_identity",
     "edge_type",
@@ -152,12 +153,13 @@ def _split_fragment(target: str) -> tuple[str, str]:
     return (head.strip(), fragment.strip() if separator else "")
 
 
-def _anchor_of(node: KirNode, by_id: Mapping[str, KirNode], anchors: Mapping[str, str]) -> str:
+def anchor_of(node: KirNode, by_id: Mapping[str, KirNode], anchors: Mapping[str, str]) -> str:
     """The chunk anchor covering `node`, walking up to its enclosing block.
 
     A reference is usually listed among its chunk's own KIR nodes; when it is not
     — a link directly under a heading, whose text belongs to the heading — the
-    parent chain finds the block that was chunked.
+    parent chain finds the block that was chunked. Public because the symbol
+    stage (roadmap 5.1) asks the same question of a fence or a heading.
     """
     current: KirNode | None = node
     seen = 0
@@ -193,7 +195,7 @@ def extract_links(kir: KirDocument, chunks: Sequence[Chunk]) -> tuple[LinkRef, .
                 kind=kind,
                 target=target,
                 fragment=fragment,
-                anchor=_anchor_of(node, by_id, anchors),
+                anchor=anchor_of(node, by_id, anchors),
             )
         )
     return tuple(found)

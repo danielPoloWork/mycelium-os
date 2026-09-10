@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Code fences and headings now define symbols** (roadmap 5.1, [ADR-0073](docs/adr/0073-take-the-grammars-word-for-a-definition-and-the-headings-for-a-name.md)). A new
+  `extract` stage reads every code fence through its grammar's own tree-sitter tags query — Python,
+  JavaScript, TypeScript/TSX, Rust, Go, Java, C, C++, Ruby — and qualifies each definition by its
+  nesting (`sym:python:RetryPolicy.delay`); it also reads the documentation's own definition syntax:
+  definition lists, and headings whose text is an identifier (`## uv.lock` defines
+  `sym:doc:uv.lock`). The `symbols` table, `counts.symbols`, `artifact_digests.symbols`,
+  `schema_versions.symbol` and the export bundle's `symbols.jsonl` — empty since Milestone 2 — are
+  filled; each record says where the thing is defined (`path#L<line>`) and which chunks define it.
+  The grammars are the new optional extra **`mycelium-os[symbols]`**: without it a build compiles and
+  publishes a snapshot marked `degraded: symbols` that names the extra, `mycelium doctor` gains a
+  `symbols` check listing each grammar it can load, and installing or upgrading a grammar is a build
+  input the next build recompiles for. `mycelium build` reports edges and symbols beside documents
+  and chunks; gate G6's fixture gains a document and its golden a `symbols` section. Nothing reads
+  the table at query time yet — the retrieval leg is roadmap 5.9.
+
 ### Changed
 
 - **`AGENTS.md` now says what a clone contains** (roadmap 5.8). §4 draws the tree that exists —

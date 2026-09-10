@@ -14,13 +14,16 @@ The per-document chain in v1 is::
     parse    source text ─▶ frontmatter + KIR            (markdown-it; expensive)
     chunk    KIR ─▶ chunk records                        (heading-bounded packer)
     assemble frontmatter + KIR + chunks + mtime ─▶ Document record   (cheap)
+    extract  KIR + chunks ─▶ link and symbol references  (cheap; kept in doc_state)
 
 ``parse`` and ``chunk`` are cached (CAS blob + ``build_cache`` row); ``assemble``
-is recomputed whenever a document is dirty, because it is arithmetic over already
--cached inputs and one of its inputs — the file's mtime, which ADR-0009 turns
-into ``created_at``/``updated_at`` — is exactly the input that most often changes
-alone. Caching it would trade a dict-build for a CAS round-trip and a second
-invalidation axis; not worth it.
+and ``extract`` are recomputed whenever a document is dirty. Extraction is
+dictionary work over the KIR plus, for a code fence, a tree-sitter parse that
+costs less than reading the file (roadmap 5.1). Assemble is arithmetic over
+already-cached inputs, and one of its inputs — the file's mtime, which ADR-0009
+turns into ``created_at``/``updated_at`` — is exactly the input that most often
+changes alone. Caching either would trade a dict-build for a CAS round-trip and
+a second invalidation axis; not worth it.
 
 **Version discipline.** A stage's ``*_STAGE_VERSION`` must be bumped in the same
 commit as any change to what the stage emits for unchanged inputs — that is the
@@ -37,6 +40,7 @@ as well as ``max_tokens``, so editing either has to recompile every document.
 """
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Final
 
@@ -44,11 +48,12 @@ from mycelium.chunking import ChunkingPolicy
 from mycelium.markdown import Frontmatter, MarkdownDocument
 from mycelium.sdk.identity import canonical_json, digest_json
 from mycelium.sdk.schema import record_schema_version
-from mycelium.sdk.types import Chunk, Document, KirDocument, Sha256Digest
+from mycelium.sdk.types import Chunk, Document, KirDocument, Sha256Digest, Symbol
 
 __all__ = [
     "ASSEMBLE_STAGE_VERSION",
     "CHUNK_STAGE_VERSION",
+    "EXTRACT_STAGE_VERSION",
     "PARSE_STAGE_VERSION",
     "BuildEnv",
     "build_key",
@@ -68,6 +73,14 @@ CHUNK_STAGE_VERSION: Final = 2
 
 ASSEMBLE_STAGE_VERSION: Final = 1
 """Bump when Document-record derivation (title, stats, trust, …) changes."""
+
+EXTRACT_STAGE_VERSION: Final = 1
+"""Bump when link or symbol extraction changes output for unchanged input.
+
+The grammars are inputs of their own: their versions enter the environment
+through :attr:`BuildEnv.grammars`, so a grammar release invalidates without a
+bump here. This constant covers *our* half — the qualification rules, the
+documentation definition syntax, the fence aliases (roadmap 5.1)."""
 
 
 def build_key(
@@ -117,9 +130,18 @@ class BuildEnv:
     kir_schema: str
     chunk_schema: str
     document_schema: str
+    symbol_schema: str
+    grammars: dict[str, str]
+    """The tree-sitter binding and every code grammar this interpreter can load,
+    each at its version — :func:`mycelium.symbols.grammar_fingerprint`. An input
+    to the extract stage, because what a fence yields depends on which grammar
+    reads it and on that grammar's release; installing the extra or upgrading a
+    wheel is a change every document with a fence must see (roadmap 5.1)."""
 
     @classmethod
-    def compute(cls, *, namespace: str, policy: ChunkingPolicy) -> "BuildEnv":
+    def compute(
+        cls, *, namespace: str, policy: ChunkingPolicy, grammars: Mapping[str, str]
+    ) -> "BuildEnv":
         return cls(
             namespace=namespace,
             chunk_slice={
@@ -135,6 +157,8 @@ class BuildEnv:
             kir_schema=record_schema_version(KirDocument),
             chunk_schema=record_schema_version(Chunk),
             document_schema=record_schema_version(Document),
+            symbol_schema=record_schema_version(Symbol),
+            grammars=dict(sorted(grammars.items())),
         )
 
     @property
@@ -149,6 +173,11 @@ class BuildEnv:
                     "config": self.chunk_slice,
                 },
                 "assemble": {"impl": ASSEMBLE_STAGE_VERSION, "schema": self.document_schema},
+                "extract": {
+                    "impl": EXTRACT_STAGE_VERSION,
+                    "schema": self.symbol_schema,
+                    "grammars": self.grammars,
+                },
             }
         )
 
