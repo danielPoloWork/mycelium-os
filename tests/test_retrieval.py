@@ -18,15 +18,23 @@ actually happened, which is the difference between an audit trail and a story.
 
 from dataclasses import replace
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from fakes import FakeEmbedder
 from mycelium.build import build
 from mycelium.config import RetrievalConfig
-from mycelium.retrieval import RRF_K, STOPWORDS, query_terms, reciprocal_rank_fusion, search
+from mycelium.retrieval import (
+    RRF_K,
+    STOPWORDS,
+    query_terms,
+    reciprocal_rank_fusion,
+    retrieval_identity,
+    search,
+)
 from mycelium.sdk.types import Chunk, ChunkKind, TrustClass, VerificationStatus
-from mycelium.store import SearchHit, SqliteStore
+from mycelium.store import SearchHit, SqliteStore, schema
 
 HYBRID = RetrievalConfig(profile="hybrid")
 """Every test that exercises the vector leg asks for it explicitly.
@@ -483,3 +491,63 @@ def test_the_scored_retriever_is_the_product_seam(tmp_path: Path) -> None:
         through_seam = MyceliumRetriever(store=store).search("what is the delivery guarantee", 10)
         directly = [fused.hit.chunk.anchor for fused in search(store, "delivery guarantee").hits]
     assert through_seam == directly
+
+
+# ---------------------------------------------------------------------------
+# What the ranking's fingerprint watches (roadmap 5.12, ADR-0084)
+# ---------------------------------------------------------------------------
+
+
+def test_the_fingerprint_watches_the_index_rather_than_the_whole_store() -> None:
+    """Adding a table no query reads must not stale a retrieval verdict.
+
+    This is roadmap 5.12's whole point: `entities` (roadmap 5.4) moved the
+    store's schema version and therefore `retrieval_identity()`, so a table
+    addition silently became a re-record only a machine with the embedding model
+    could finish (D-013). The fingerprint now reads the `chunks_fts` statement.
+    """
+    before = retrieval_identity()
+    extra = schema.DDL + "\nCREATE TABLE IF NOT EXISTS later_table (id TEXT PRIMARY KEY);\n"
+    with patch.object(schema, "DDL", extra):
+        assert retrieval_identity() == before
+
+
+def test_the_fingerprint_moves_when_the_index_itself_changes() -> None:
+    """The other half, and the one that matters: every change to what BM25 can
+    see — a column, its order, the tokenizer, the prefix settings — must date
+    the verdict."""
+    before = retrieval_identity()
+    for mutation, replacement in (
+        ("ancestors_stem,", "ancestors_stem, subtitle,"),  # a new indexed column
+        ("tokenize='unicode61'", "tokenize='porter'"),  # a different tokenizer
+        ("prefix='2 3 4'", "prefix='2 3'"),  # a different prefix index
+        ("anchor UNINDEXED,", "anchor,"),  # a column that starts being indexed
+    ):
+        assert mutation in schema.DDL, mutation
+        with patch.object(schema, "DDL", schema.DDL.replace(mutation, replacement)):
+            assert retrieval_identity() != before, mutation
+
+
+def test_rewording_a_comment_is_not_a_ranking_change() -> None:
+    """Normalised rather than verbatim, for ADR-0014's reason: a comment says
+    *why* a column exists, and rewording it changes no ranking."""
+    before = retrieval_identity()
+    commented = schema.DDL.replace(
+        "-- Field-weighted lexical index (spec 04 §3).",
+        "-- Field-weighted lexical index, explained differently (spec 04 §3).",
+    )
+    assert commented != schema.DDL
+    with patch.object(schema, "DDL", commented):
+        assert retrieval_identity() == before
+
+
+def test_the_fingerprinted_statement_is_the_one_the_store_creates() -> None:
+    """The normalisation must not lose the statement it claims to describe."""
+    statement = schema.fts_schema()
+    assert statement.startswith("CREATE VIRTUAL TABLE")
+    assert schema.FTS_TABLE in statement
+    assert "--" not in statement and "\n" not in statement
+    for column in ("text", "title", "heading", "ancestors", "text_stem"):
+        assert column in statement
+    # Nothing from any other table leaked in with it.
+    assert "documents" not in statement and "entities" not in statement

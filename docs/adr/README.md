@@ -99,3 +99,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0081](0081-check-the-incumbents-reach-not-its-ranking.md) | Check the incumbent's reach, not its ranking | Accepted |
 | [0082](0082-open-the-frontmatter-contract-by-one-key-and-make-the-drift-unlandable.md) | Open the frontmatter contract by one key, and make the drift unlandable | Accepted |
 | [0083](0083-route-the-query-and-report-that-routing-cannot-save-a-lost-ablation.md) | Route the query — and report that routing cannot save a lost ablation | Accepted |
+| [0084](0084-fingerprint-the-index-a-ranking-reads-not-the-store-it-lives-in.md) | Fingerprint the index a ranking reads, not the store it lives in | Accepted |
