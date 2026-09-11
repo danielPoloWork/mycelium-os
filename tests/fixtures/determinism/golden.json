@@ -1,7 +1,7 @@
 {
   "artifact_digests": {
-    "chunks": "sha256:682003bb8be4dff738c72a5e27bed2da797cc077ff0ecf517ddbb3e76c07b680",
-    "documents": "sha256:5627667bd8590e6634944e3980a4b07046caa7bd1c6e07a9b23ffb8a21526a06",
+    "chunks": "sha256:cda748b645148bbf6849535f5e220edbfa0ad5d28a42812e7874f5e2b1dc64d5",
+    "documents": "sha256:bf9bafaa3d57d34136e8f1581b8d69a32d5595d10577ed3317b75cdf192934e5",
     "edges": "sha256:4e39e490b235d71b7cbf6ba39c5eac22c8e73da24df252703353c41bf57dc1b5",
     "entities": "sha256:8d775164de12dff80bd40111e148e81ea53f423d2d899fc724b0258aeff9f467",
     "symbols": "sha256:2b8bed4e739e2408846a22fbf4c43b4bb6e2044890299952ce0011f06fae6033"
@@ -325,16 +325,42 @@
     },
     {
       "anchor": "knowledge/verified/retries.md#/0",
-      "chunk_digest": "sha256:de7418bb1e05d1ab0a78599f7894b041b75d35d4318c884789024a0e7c64ecef",
+      "chunk_digest": "sha256:def66cb4605a60e176bf5bb6ebfb472d8dce17eb49efaf5df266667e92e71b54",
       "heading_path": [
         "Retry Policy"
       ],
       "kind": "prose",
       "lines": [
         12,
+        15
+      ],
+      "tokens": 26
+    },
+    {
+      "anchor": "knowledge/verified/retries.md#/1",
+      "chunk_digest": "sha256:6ab4ab3f4874f70cac21c58b13c65d496785d032f7c177b109a95d069e9be632",
+      "heading_path": [
+        "Retry Policy"
+      ],
+      "kind": "prose",
+      "lines": [
+        17,
         18
       ],
-      "tokens": 46
+      "tokens": 20
+    },
+    {
+      "anchor": "knowledge/verified/retries.md#/2",
+      "chunk_digest": "sha256:423c27ca3ff6067c75f48eaa2114ee255fa7199ea9ce240da0bc78e1e47f1619",
+      "heading_path": [
+        "Retry Policy"
+      ],
+      "kind": "prose",
+      "lines": [
+        20,
+        24
+      ],
+      "tokens": 36
     },
     {
       "anchor": "knowledge/verified/retries.md#configuration/0",
@@ -345,8 +371,8 @@
       ],
       "kind": "prose",
       "lines": [
-        30,
-        41
+        36,
+        47
       ],
       "tokens": 54
     },
@@ -359,8 +385,8 @@
       ],
       "kind": "table",
       "lines": [
-        20,
-        28
+        26,
+        34
       ],
       "tokens": 31
     },
@@ -373,15 +399,15 @@
       ],
       "kind": "code",
       "lines": [
-        43,
-        48
+        49,
+        54
       ],
       "tokens": 22
     }
   ],
   "config_digest": "sha256:26e3dc83dc90a6ed3196c3d859e09a3bc2601fe1c6009f64951e87f5fec561e4",
   "counts": {
-    "chunks": 27,
+    "chunks": 29,
     "documents": 8,
     "edges": 24,
     "entities": 8,
@@ -522,14 +548,14 @@
       "verification_status": "verified"
     },
     {
-      "content_digest": "sha256:3096084cc7f031cfa6792a32caec3f27094e0afe8401b74498798b78ce5fb665",
+      "content_digest": "sha256:20ae8dd605093ca1b5fb1dd40018b45c6d8201919dd4692371198828b4c4892e",
       "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/verified/retries.md",
       "stats": {
-        "chunks": 4,
+        "chunks": 6,
         "headings": 4,
         "links_out": 1,
-        "tokens": 153
+        "tokens": 189
       },
       "tags": [
         "delivery",

@@ -200,6 +200,14 @@ def test_the_corpus_still_covers_the_profile() -> None:
     assert str(replaced[0]["status"]) == "authored"
     assert str(replaced[0]["provenance"]["kind"]) == "frontmatter"
 
+    # Two consecutive callouts, each its own chunk, and the prose before them a
+    # third (roadmap 5.13). Pinned because the gate could otherwise be narrowed
+    # back by an edit that merged them, which is exactly the defect ADR-0085
+    # closed and the shape `_ATOMIC_KINDS` did not cover.
+    callouts = [c for c in chunks if str(c["anchor"]).startswith("knowledge/verified/retries.md#/")]
+    assert len(callouts) == 3
+    assert [c["lines"] for c in callouts] == [[12, 15], [17, 18], [20, 24]]
+
     # Sibling headings that slug alike are numbered, not collided.
     assert any(anchor.endswith("#event-bus/0") for anchor in anchors)
     assert any(anchor.endswith("#event-bus-2/0") for anchor in anchors)

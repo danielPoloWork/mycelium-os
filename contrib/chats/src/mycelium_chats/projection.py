@@ -20,16 +20,19 @@ So the shape below is fixed, and the chunker meets it as it finds it.
 **A heading per message, and the message's content inside a callout.** Two
 decisions, each load-bearing, and the first one is a finding.
 
-Doc 08 §7 wants the *chunking unit* to be the message. Spec 03 §3.1 says a
-callout is an "atomic chunk like a table", which would deliver exactly that —
-but the chunker implements atomicity for tables and code blocks only
-(``_ATOMIC_KINDS``, ADR-0007), so consecutive callouts pack together as prose
-and a chunk would hold several turns. Rather than patch the core — gate 6
-forbids it, and making callouts atomic moves every chunk boundary in every
-corpus that has one — the projection opens each message with its own heading,
-which the chunker *already* treats as a section boundary. One message, one
-section, one chunk, and the anchor is a message anchor: ``#12-assistant/0``.
-The spec-versus-code divergence is filed rather than absorbed (roadmap 5.13).
+Doc 08 §7 wants the *chunking unit* to be the message, and since roadmap 5.13
+the core delivers exactly that on its own: a callout **bounds** a chunk, so
+consecutive callouts are consecutive chunks and none of them merges with the
+prose beside it (ADR-0085). When this projection was written the chunker
+implemented that for tables and code blocks only, so the workaround below was
+load-bearing; it no longer is.
+
+**The heading stays, for the reason it also had.** An anchor has to be stable
+across a re-read, and a section slug is the only thing that gives a message one:
+without its own heading a conversation's messages would share one slug and be
+told apart by ordinal, so inserting or re-reading a message would move every
+anchor after it. One message, one section, one chunk, and the anchor is a
+message anchor: ``#12-assistant/0``.
 
 The content is wrapped in a callout because message text is **verbatim and
 arbitrary** — people paste Markdown into chats — and Obsidian renders it as doc
@@ -53,12 +56,14 @@ as a literal ``##``, so the rendered view and the *indexed text* both carry the
 original characters, and only the block-level meaning is gone. The record keeps
 the true bytes regardless — it always does.
 
-**What this costs, stated:** a message larger than the chunker's ceiling stays
-one chunk instead of splitting at paragraph boundaries as §7's last clause
-suggests, because a callout is one block and a block is never split (ADR-0007).
-Measured on the fixture corpus at roadmap 5.5, the largest projected message is
-well inside the 800-token ceiling; the refinement is filed with that number
-rather than guessed at.
+**What this used to cost, and no longer does:** a message larger than the
+chunker's ceiling stayed one chunk instead of splitting at paragraph boundaries
+as §7's last clause asks, because a callout was one block and a block is never
+split (ADR-0007). Roadmap 5.13 closed it — a callout's blocks pack among
+themselves, so an oversize message splits exactly where its author put a
+paragraph break (ADR-0085). Measured on the fixture corpus at roadmap 5.5, the
+largest projected message was well inside the 800-token ceiling anyway; what
+changed is that the ceiling now behaves as §7 says when a message exceeds it.
 """
 
 import re

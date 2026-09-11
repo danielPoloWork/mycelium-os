@@ -440,9 +440,13 @@ fabricated attribution that reaches the index is a false statement about who sai
 The module is also the reason the plugin API is worth trusting. Doc 08 says it plainly: *if
 the extension points can't support this module cleanly, they get fixed before the 1.0
 freeze*. Building it found four things — modules could not be configured at all, mounting a
-module's commands at import time created a silent cycle, the chunker does not implement the
-callout atomicity the spec promises, and a fidelity report cannot describe a source that
-produces no KIR. The first two are fixed; the other two are filed with their measurements.
+module's commands at import time created a silent cycle, the chunker did not give a callout a
+chunk boundary the way the profile promised, and a fidelity report cannot describe a source
+that produces no KIR. Three are fixed — the third at roadmap 5.13, where reading the two
+specifications against each other showed the promise was right about not merging callouts and
+wrong about never splitting them
+([ADR-0085](docs/adr/0085-let-a-callout-bound-a-chunk-rather-than-atomise-one.md)) — and the
+fourth is filed with its measurement.
 And a test now parses every line of the module's source and fails if it imports anything
 outside the published surface, so "zero core patches" is checked rather than claimed
 ([ADR-0077](docs/adr/0077-give-a-module-an-entry-point-a-section-and-a-command-and-report-what-it-could-not-reach.md)).

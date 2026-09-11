@@ -138,7 +138,7 @@ The authored format for everything under `knowledge/`:
 | CommonMark + GFM tables | full | Standard KIR nodes |
 | YAML frontmatter | full | Contract above; nothing else machine-read |
 | Wikilinks `[[doc]]`, `[[doc#Heading]]`, `[[doc\|label]]` | full | Resolved (basename if unique, else path, `aliases` honored) → `links_to` edges; `[[doc#Heading]]` targets anchor-level |
-| Callouts `> [!note]` | full | KIR `callout` nodes; atomic chunks like tables |
+| Callouts `> [!note]` | full | KIR `callout` nodes; **bounding** chunks — a callout never shares a chunk with anything outside it, and an oversize one splits at its own paragraph boundaries (roadmap 5.13, ADR-0085; *was* "atomic chunks like tables", which was right about the merging and wrong about the splitting) |
 | Inline tags `#tag` | full | Merged into document tag index |
 | Embeds `![[doc]]` | parsed as links | No build-time transclusion in v1 (deferred; embeds still produce `links_to` edges) |
 | Dataview/templater/other plugin syntax | tolerated | Plain text — never breaks the build, never machine-interpreted |
@@ -200,6 +200,11 @@ tokens; oversize sections split at paragraph boundaries with ordinal suffixes; t
 code blocks are never *split* (`atomic`), and since roadmap 4.15 they may **share** a chunk
 with the prose around them (`[chunking] pack_atomic`, on by default — ADR-0042, ADR-0047);
 a block that is alone in its section is still a `kind: "table" | "code"` chunk of its own.
+A **callout bounds** rather than atomises (§3.1, roadmap 5.13): its blocks pack with each
+other and never with anything outside it, so two consecutive callouts are two chunks, and an
+oversize callout splits at its own paragraph boundaries — which is what doc 08 §7 asks of a
+message. Its `kind` stays `prose`, because `kind` describes content and a callout's content
+is prose in a box (ADR-0085).
 No mid-sentence splits; overlap
 0 by default (structure replaces overlap). Invariant: ordered chunk texts ⊇ normalized
 document text (property-tested).

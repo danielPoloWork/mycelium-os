@@ -12,6 +12,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **A callout is its own chunk** (roadmap 5.13, [ADR-0085](docs/adr/0085-let-a-callout-bound-a-chunk-rather-than-atomise-one.md)). Spec 03 §3.1 promised that
+  callouts compile to *"atomic chunks like tables"* and the chunker implemented atomicity for
+  tables and code blocks only, so consecutive callouts packed together as prose and a chunk could
+  hold several of them. A callout now **bounds** a chunk: its blocks pack with each other and never
+  with anything outside it, so two consecutive callouts are two chunks and neither merges with the
+  prose beside it. An oversize callout splits at its own paragraph boundaries, which is what doc 08
+  §7 asks of a chat message and what the literal promise would have forbidden — so spec 03 §3.1 is
+  amended to say what is true: right about the merging, wrong about the splitting. No judged corpus
+  contains a callout, so no baseline moved; gate G6's fixture gains a second, consecutive callout so
+  the gate covers the rule.
+
 - **A build-side table no longer stales gate G2's verdict** (roadmap 5.12, [ADR-0084](docs/adr/0084-fingerprint-the-index-a-ranking-reads-not-the-store-it-lives-in.md)).
   `retrieval_identity()` dates the recorded verdict, and its `fts_schema` field held the whole
   store's schema version — so adding `entities` (roadmap 5.4), a table no query reads, staled a
