@@ -22,15 +22,16 @@ from typing import Any, Final
 
 from mycelium.build.publish import read_current
 from mycelium.chunking import estimate_tokens
+from mycelium.citations import chunk_uri, citation_drift
 from mycelium.config import ConfigError, MyceliumConfig, load_config
 from mycelium.embedding import Embedder, EmbeddingError, build_embedder
 from mycelium.graph import MAX_DEPTH, neighbours
 from mycelium.mcp.errors import ErrorCode, McpToolError
 from mycelium.retrieval import RRF_K, VECTOR_CANDIDATES
 from mycelium.retrieval import search as run_search
-from mycelium.sdk.identity import IdentityError, anchor, citation_uri, doc_ref, parse_anchor
+from mycelium.sdk.identity import IdentityError, anchor, doc_ref, parse_anchor
 from mycelium.sdk.identity import parse_citation_uri as parse_uri
-from mycelium.sdk.types import Chunk, EdgeType, TrustClass, VerificationStatus
+from mycelium.sdk.types import EdgeType, TrustClass, VerificationStatus
 from mycelium.store import (
     STORE_DIRNAME,
     SearchFilters,
@@ -191,7 +192,11 @@ TOOL_SCHEMAS: Final[list[dict[str, Any]]] = [
         "description": (
             "Fetch the verbatim content behind a mycelium:// URI, with its "
             "provenance. Use it to read more around a search result. If the anchor "
-            "no longer exists, the nearest surviving ancestor is returned."
+            "no longer exists, the nearest surviving ancestor is returned. If the "
+            "anchor still exists but its passage has moved since the citation was "
+            "made, the content comes back with a 'stale' block naming the URI to "
+            "cite instead - re-read it before re-quoting. A passage rewritten in "
+            "place, without moving, cannot be detected this way."
         ),
         "inputSchema": {
             "type": "object",
@@ -237,11 +242,6 @@ def _open_store(root: Path) -> SqliteStore:
         return SqliteStore.open(root, read_only=True)
     except StoreError as error:
         raise McpToolError(ErrorCode.SNAPSHOT_UNAVAILABLE, str(error)) from error
-
-
-def _chunk_uri(chunk: Chunk) -> str:
-    parts = parse_anchor(chunk.anchor)
-    return citation_uri(chunk.doc_id, parts.heading_slugs, parts.ordinal, lines=chunk.lines)
 
 
 def _require_text(arguments: dict[str, Any], key: str) -> str:
@@ -378,7 +378,7 @@ def handle_search(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
         hit = item.hit
         text = _render_text(hit.chunk.text, include_text)
         cost = estimate_tokens(text) if text else 0
-        uri = _chunk_uri(hit.chunk)
+        uri = chunk_uri(hit.chunk)
         if budget is not None and spent + cost > budget:
             if not results:
                 raise McpToolError(
@@ -549,7 +549,7 @@ def handle_explain(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
         )
         candidates = [
             {
-                "uri": _chunk_uri(item.hit.chunk),
+                "uri": chunk_uri(item.hit.chunk),
                 "path": item.hit.path,
                 "title": item.hit.title,
                 "score": round(item.score, 6),
@@ -650,10 +650,15 @@ def handle_fetch(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
         else:
             chunks = list(store.chunks_of(chunk.doc_id))
 
+        # The anchor resolved; whether it resolved to what the caller cited is the
+        # second question, and the one roadmap 5.6 found unanswered (ADR-0078).
+        drift = citation_drift(citation, chunk)
+
         return {
             "snapshot_id": snapshot,
-            "uri": _chunk_uri(chunk),
+            "uri": chunk_uri(chunk),
             "context": context,
+            "stale": None if drift is None else drift.as_dict(),
             "path": document.path,
             "title": document.title,
             "trust_class": document.trust_class.value,
@@ -663,7 +668,7 @@ def handle_fetch(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
             "fidelity_warnings": _fidelity_warnings(document.fidelity_report),
             "content": [
                 {
-                    "uri": _chunk_uri(item),
+                    "uri": chunk_uri(item),
                     "heading_path": list(item.heading_path),
                     "lines": list(item.lines),
                     "kind": item.kind.value,
@@ -691,8 +696,8 @@ def _nearest_ancestor(store: SqliteStore, doc_id: str, slugs: tuple[str, ...]) -
     for depth in range(len(slugs), -1, -1):
         candidate = by_slugs.get(slugs[:depth])
         if candidate is not None:
-            return _chunk_uri(candidate)
-    return _chunk_uri(surviving[0])
+            return chunk_uri(candidate)
+    return chunk_uri(surviving[0])
 
 
 def _fidelity_warnings(fidelity_report: str | None) -> list[str]:

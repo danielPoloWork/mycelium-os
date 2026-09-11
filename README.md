@@ -368,6 +368,32 @@ And a test now parses every line of the module's source and fails if it imports 
 outside the published surface, so "zero core patches" is checked rather than claimed
 ([ADR-0077](docs/adr/0077-give-a-module-an-entry-point-a-section-and-a-command-and-report-what-it-could-not-reach.md)).
 
+### A citation that has gone stale tells you, instead of quietly answering
+
+A `mycelium://` citation keys on the document's pinned id, so renaming the file or
+promoting it from `candidate/` to `verified/` costs nothing — the citation keeps
+resolving. What it names inside the document is a heading path and an ordinal, so
+renaming the heading kills it deliberately: you get a typed `ANCHOR_GONE` and the nearest
+surviving ancestor, never a plausible-looking wrong answer.
+
+The ordinal, though, is a *position*. Delete a paragraph above the one you cited and the
+anchor still resolves, to the passage that moved up into it. Proving the stale-anchor
+story on a corpus of eleven refactorings found six citations doing exactly that, in
+silence — including the worst shape available, renaming the first of two headings that
+slugify alike, where a citation to the first section returns the second.
+
+Every URI this product hands out already carries the line range it was minted at, and now
+the read surfaces check it. A passage that has moved comes back with a `stale` block —
+what you cited, where it is now, the URI to cite instead, and the instruction to re-read
+before re-quoting. The content still comes back, because the anchor is fine and refusing
+to serve it would punish every consumer of a document under active editing.
+
+One case stays invisible and is written down rather than hidden: a passage rewritten in
+place, without changing length, keeps its line range. Catching that needs content identity
+inside the citation, which is a change to a contract that freezes at 1.0, so it is a
+roadmap item with the measurement attached rather than a quiet extension
+([ADR-0078](docs/adr/0078-report-a-moved-citation-rather-than-serving-it-in-silence.md)).
+
 ### Ingestion picks its parser, and you pick which one
 
 Non-Markdown sources are compiled by adapters over engines that already exist — Mycelium OS

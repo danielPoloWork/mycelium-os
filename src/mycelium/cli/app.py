@@ -35,6 +35,7 @@ from mycelium.build.snapshots import (
     DEFAULT_KEEP,
     SnapshotError,
 )
+from mycelium.citations import chunk_uri, citation_drift
 from mycelium.cli.doctor import diagnose, worst_status
 from mycelium.cli.output import (
     ExitCode,
@@ -79,13 +80,12 @@ from mycelium.retrieval import search as run_search
 from mycelium.sdk.identity import (
     IdentityError,
     anchor,
-    citation_uri,
     doc_ref,
     new_ulid,
     parse_anchor,
 )
 from mycelium.sdk.identity import parse_citation_uri as parse_uri
-from mycelium.sdk.types import Chunk, EdgeType, TrustClass, VerificationStatus
+from mycelium.sdk.types import EdgeType, TrustClass, VerificationStatus
 from mycelium.store import (
     STORE_DIRNAME,
     SearchFilters,
@@ -864,11 +864,6 @@ def _open_store(path: Path) -> SqliteStore:
         raise fail(str(error)) from error
 
 
-def _chunk_uri(chunk: Chunk) -> str:
-    parts = parse_anchor(chunk.anchor)
-    return citation_uri(chunk.doc_id, parts.heading_slugs, parts.ordinal, lines=chunk.lines)
-
-
 def _snippet(text: str, limit: int = 240) -> str:
     flat = " ".join(text.split())
     return flat if len(flat) <= limit else flat[: limit - 3] + "..."
@@ -930,7 +925,7 @@ def search(
         )
         results = [
             {
-                "uri": _chunk_uri(fused.hit.chunk),
+                "uri": chunk_uri(fused.hit.chunk),
                 "path": fused.hit.path,
                 "title": fused.hit.title,
                 "heading_path": list(fused.hit.chunk.heading_path),
@@ -1123,6 +1118,12 @@ def show(
         if chunk is None:
             raise fail(_missing_anchor_help(store, resolved))
 
+        # The anchor resolved. Whether it resolved to the passage the caller cited
+        # is the second question `mycelium show` never asked (roadmap 5.6, ADR-0078).
+        drift = (
+            citation_drift(parse_uri(target), chunk) if target.startswith("mycelium://") else None
+        )
+
         document = store.get_document(chunk.doc_id)
         if document is None:  # pragma: no cover - a foreign key forbids this
             raise fail(f"chunk {resolved} has no document")
@@ -1139,8 +1140,9 @@ def show(
             chunks = list(store.chunks_of(chunk.doc_id))
 
         payload = {
-            "uri": _chunk_uri(chunk),
+            "uri": chunk_uri(chunk),
             "context": context,
+            "stale": None if drift is None else drift.as_dict(),
             "path": document.path,
             "title": document.title,
             "trust_class": document.trust_class.value,
@@ -1166,8 +1168,10 @@ def show(
     typer.echo(f"{document.title} - {document.path}")
     detail(
         f"  {document.trust_class.value} | {document.verification_status.value} "
-        f"| {_chunk_uri(chunk)}"
+        f"| {chunk_uri(chunk)}"
     )
+    if drift is not None:
+        warn(f"  {drift.reason}")
     for item in chunks:
         typer.echo("")
         detail(f"  [{item.anchor}] lines {item.lines[0]}-{item.lines[1]}")
