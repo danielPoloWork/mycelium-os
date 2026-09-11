@@ -324,7 +324,11 @@ def test_an_unlabelled_paste_invents_no_speakers(fixtures: Path) -> None:
     assert conversation.lines[0].meta["reason"] == "unsegmented_paste"
     assert conversation.structure_inferred
     assert conversation.recognised == 0
-    assert any("no turn labels found" in note for note in result.warnings)
+    # The reader flags the state and says nothing about it. Whether the paste
+    # *stays* one fragment depends on doc 08 §6's optional segmenter, which runs
+    # after the reader — so the sentence belongs to the archive (roadmap 5.16).
+    assert conversation.unsegmented
+    assert result.warnings == ()
 
 
 def test_a_single_label_is_not_a_conversation() -> None:

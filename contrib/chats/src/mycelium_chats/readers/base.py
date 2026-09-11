@@ -71,6 +71,23 @@ class ReadConversation:
     tags: tuple[str, ...] = ()
     meta: dict[str, JsonValue] = field(default_factory=dict)
     """Conversation-level export fields this schema has no home for, preserved."""
+    unsegmented: bool = False
+    """True when the reader could not find turns at all and kept the input whole.
+
+    Narrower than ``structure_inferred``, which every paste sets: this says the
+    reader *gave up* rather than guessed, so the conversation is one fragment and
+    the optional segmenter (doc 08 §6) is the thing that could improve it. A typed
+    field rather than a `meta` string, because it is a question the archive asks
+    on every import and an answer read out of prose is an answer nobody pinned
+    (roadmap 5.16)."""
+    segmenter: str | None = None
+    """``llm/<model>`` when the optional segmenter proposed these boundaries.
+
+    No *reader* sets it, and that is the point: a reader reports what the source
+    stated, and this records that something else read structure into text that
+    stated none. It travels to :attr:`mycelium_chats.record.Conversation.segmenter`,
+    which doc 08 §6 requires so a human can tell inferred structure a model
+    proposed from inferred structure a heuristic did."""
 
 
 @dataclass(frozen=True, slots=True)

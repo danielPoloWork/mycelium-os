@@ -29,7 +29,13 @@ from pydantic import ValidationError
 from mycelium.cli.output import ExitCode, detail, emit_json, fail, success, warn
 from mycelium.config import ConfigError, MyceliumConfig, load_config
 from mycelium.modules import ModuleError, require_enabled
-from mycelium.synthesis import SynthesisError, build_synthesizer
+from mycelium.synthesis import (
+    LlmProvider,
+    ProviderError,
+    SynthesisError,
+    build_provider,
+    build_synthesizer,
+)
 from mycelium_chats.archive import (
     ArchiveEntry,
     ImportOutcome,
@@ -44,6 +50,7 @@ from mycelium_chats.formats import FORMATS, render, tail
 from mycelium_chats.paths import projection_path
 from mycelium_chats.readers import READERS, ReaderError
 from mycelium_chats.record import Message
+from mycelium_chats.segment import SEGMENTER_LLM
 from mycelium_chats.settings import ChatsSettings
 
 __all__ = ["MODULE_ID", "app"]
@@ -91,6 +98,30 @@ def _settings(root: Path) -> tuple[MyceliumConfig, ChatsSettings]:
     return config, settings
 
 
+def _segmenter(
+    config: MyceliumConfig, settings: ChatsSettings
+) -> tuple[LlmProvider | None, str | None]:
+    """The optional segmenter, or the reason there is not one (doc 08 §6).
+
+    Never an error. `[chats] segmenter = "llm"` asks for an improvement on the
+    fragment floor, and a repository that cannot deliver it still archives the
+    paste exactly as it always has — so an unreachable provider is a *warning*
+    on an import that succeeded, which is the degradable failure ADR-0017 named
+    and D-020 applies to every optional lane here.
+    """
+    if settings.segmenter != SEGMENTER_LLM:
+        return None, None
+    if not config.synthesis.active:
+        return None, (
+            '[chats] segmenter = "llm" needs an LLM, and [synthesis] names no provider; '
+            "an unlabelled paste stays one fragment. Set [synthesis] provider to enable it."
+        )
+    try:
+        return build_provider(config.synthesis), None
+    except ProviderError as error:
+        return None, f'[chats] segmenter = "llm" is configured but unavailable: {error}'
+
+
 def _resolve(root: Path, conv_id: str) -> ArchiveEntry:
     try:
         entry = find(root, conv_id)
@@ -135,6 +166,9 @@ def import_(
     outcomes: list[ImportOutcome] = []
     warnings: list[str] = []
     failures: list[tuple[str, str]] = []
+    llm, note = _segmenter(config, settings)
+    if note:
+        warnings.append(note)
     for source in sources:
         try:
             text = sys.stdin.read() if source == "-" else Path(source).read_text(encoding="utf-8")
@@ -151,6 +185,7 @@ def import_(
                 title=title,
                 settings=settings,
                 knowledge_dir=config.project.knowledge_dir,
+                segmenter=llm,
             )
         except (ReaderError, ValueError) as error:
             # Per input, never the whole run: the quarantine-not-abort rule
