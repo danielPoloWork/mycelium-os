@@ -10,6 +10,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Fixed
+
+- **A build-side table no longer stales gate G2's verdict** (roadmap 5.12, [ADR-0084](docs/adr/0084-fingerprint-the-index-a-ranking-reads-not-the-store-it-lives-in.md)).
+  `retrieval_identity()` dates the recorded verdict, and its `fts_schema` field held the whole
+  store's schema version — so adding `entities` (roadmap 5.4), a table no query reads, staled a
+  *retrieval* verdict and turned a schema change into a re-record only a machine with the
+  embedding model could finish (CI has none, by design). The field now holds the `chunks_fts`
+  statement itself, normalised, which is what BM25 can actually see. The store's version was
+  strictly coarser, so this removes false positives without creating false negatives: both past
+  changes to that table still move it, and a test mutates the statement four ways to show it.
+  The shipped ranking is unchanged.
+
 ### Added
 
 - **The query path has a planner, and `explain` says which rule chose the plan** (roadmap 5.11,

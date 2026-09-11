@@ -59,13 +59,13 @@ from mycelium.planner import GRAPH, LEXICAL, RELATIONSHIP_PHRASES, SYMBOL, VECTO
 from mycelium.sdk.identity import digest_json
 from mycelium.sdk.types import Sha256Digest
 from mycelium.store import (
-    SCHEMA_VERSION,
     STEM_WEIGHT,
     SearchFilters,
     SearchHit,
     SqliteStore,
     TermHits,
     field_weights,
+    fts_schema,
 )
 from mycelium.symbols import DOC_LANGUAGE, GRAMMARS, identifier_like
 
@@ -268,8 +268,12 @@ def retrieval_identity() -> Sha256Digest:
     - the stopword *membership*, not its size: swapping one word for another
       changes what the lexical leg searches on and leaves a count identical;
     - the fusion constants, which decide what the vector leg contributes;
-    - the FTS schema version, because a change to the indexed columns is a change
-      to what BM25 can see;
+    - the `chunks_fts` statement itself, because a change to the indexed
+      columns, their order, the tokenizer or the prefix settings is a change to
+      what BM25 can see. The *statement*, not the store's schema version: that
+      version moves for every table, so adding one no query reads used to stale
+      a retrieval verdict and hand someone a re-record only the embedding model
+      could complete (roadmap 5.12, ADR-0084);
     - the graph leg's and the symbol leg's constants, which decide a ranking
       whenever their flags are on;
     - the planner's relationship phrasings, which decide *whether* the graph leg
@@ -292,7 +296,7 @@ def retrieval_identity() -> Sha256Digest:
     """
     return digest_json(
         {
-            "fts_schema": SCHEMA_VERSION,
+            "fts_schema": fts_schema(),
             "field_weights": field_weights(),
             "fusion": {"rrf_k": RRF_K, "vector_candidates": VECTOR_CANDIDATES},
             "graph": {

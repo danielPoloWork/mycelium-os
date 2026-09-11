@@ -12,7 +12,7 @@ lawful repair.
 """
 
 from mycelium.store.base import CacheEntry, DocState, SnapshotState, Store
-from mycelium.store.schema import SCHEMA_VERSION
+from mycelium.store.schema import SCHEMA_VERSION, fts_schema
 from mycelium.store.sqlite import (
     STEM_WEIGHT,
     STORE_DIRNAME,
@@ -50,4 +50,5 @@ __all__ = [
     "field_weights",
     "foothold_query",
     "fts_query",
+    "fts_schema",
 ]

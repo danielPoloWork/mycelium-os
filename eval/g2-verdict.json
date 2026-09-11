@@ -1,8 +1,8 @@
 {
   "corpora": {
     "ours": {
-      "chunks_digest": "sha256:a1bcd6fd6e98af493310a916e82a3a94925a0de85fc9568b82da15e54a5ad424",
-      "content_digest": "sha256:f3d9eb6f3f203f1686c1415e1356b44491bcdfa97c03706d6edc7f0cec4e0d86",
+      "chunks_digest": "sha256:60eda897961b173c9843a6691280771e4f2c294487eda45936742fe9803b02c7",
+      "content_digest": "sha256:86c3c79d45700fd17054bb310d1c540087a449fab79b286fbda748877cd84401",
       "dated": false
     },
     "uv": {
@@ -23,7 +23,7 @@
   "decision": "lexical",
   "model_id": "bge-small-en-v1.5",
   "recorded_at": "2026-09-11",
-  "retrieval_identity": "sha256:0f5865d5b29f48252f9bb47b229ac7f72500173fb231a23d9577fc97e5f2f478",
+  "retrieval_identity": "sha256:107e2baf3d205cefaf40ac6673fd90a4db1801005306dfc5ac6a232ebaef4072",
   "schema_version": "mycelium/g2-verdict/v0",
   "sets": {
     "ours/dev": {

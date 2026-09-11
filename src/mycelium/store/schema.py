@@ -14,6 +14,7 @@ could appear (RFC-0001, Data & schema). They are written in canonical form, so
 two stores built from the same sources hold byte-identical column values.
 """
 
+import re
 from typing import Final
 
 SCHEMA_VERSION: Final = "mycelium/store/v6"
@@ -30,6 +31,52 @@ policy exists for; v4 → v5 split `heading_path` into `heading` and `ancestors`
 cannot be altered, and re-deriving them from `chunks` is what a rebuild is;
 v5 → v6 added `entities` (roadmap 5.4, ADR-0076), the one table spec 03 §8's
 layout never drew because the stage that fills it is optional."""
+
+FTS_TABLE: Final = "chunks_fts"
+"""The one table whose shape decides a *ranking* rather than a build.
+
+Named here because :func:`fts_schema` reads the DDL below for it, and because
+naming it once is what keeps the fingerprint and the table from drifting apart.
+"""
+
+
+def fts_schema() -> str:
+    """The `chunks_fts` statement, normalised — what BM25 can actually see.
+
+    Gate G2's verdict is dated by `retrieval_identity()`, and that fingerprint
+    needs to know when the lexical index changed: the indexed columns, their
+    order, the tokenizer, the prefix settings. It used to take
+    :data:`SCHEMA_VERSION` as the proxy, which is *every* table's version — so
+    adding `entities`, a table no query reads, staled a retrieval verdict and
+    made re-recording it a task only a machine with the embedding model could
+    finish (roadmap 5.4, 5.12). The store version is strictly coarser than this:
+    the DDL policy bumps it on any schema change at all, so nothing that moves
+    this statement can fail to move it, and much that does not move this
+    statement moves it anyway.
+
+    **Normalised, not verbatim**, and for the reason ADR-0014 gives for
+    digesting resolved settings rather than file bytes: SQL comments explain
+    *why* a column exists, and rewording that explanation is not a change to
+    what BM25 reads. So comments go, whitespace collapses, and what remains is
+    the statement itself.
+
+    What this deliberately does *not* cover is stated rather than implied. The
+    query path also reads `chunks`, `documents`, `vectors`, `symbols` and
+    `edges` — but those supply filter predicates and result fields, not term
+    statistics, so their column lists do not decide an order. A change in how a
+    leg *uses* them is a change to that leg, whose own constants are in the
+    fingerprint beside this (ADR-0084).
+    """
+    statements = _COMMENT.sub("", DDL).split(";")
+    for statement in statements:
+        if FTS_TABLE in statement:
+            return " ".join(statement.split())
+    msg = f"the DDL declares no {FTS_TABLE} table"  # pragma: no cover - the DDL is a constant
+    raise AssertionError(msg)  # pragma: no cover
+
+
+_COMMENT: Final = re.compile(r"--[^\n]*")
+"""SQL line comments, removed before the statement is fingerprinted."""
 
 META_SCHEMA_VERSION: Final = "schema_version"
 META_VECTORS_GENERATION: Final = "vectors_generation"
