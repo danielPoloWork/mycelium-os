@@ -3,6 +3,7 @@ mycelium_id: 01KDVDNA020000000000000002
 title: Retry Policy
 collection: core-docs
 tags: [delivery, retries]
+supersedes: [retries-v0.md]
 verified_by: daniel
 verified_at: 2026-07-31
 grounding: 0.97

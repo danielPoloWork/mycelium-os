@@ -124,6 +124,8 @@ class DocState:
     """The named things this document declares — its tags and aliases (5.4)."""
     origin: str = ProvenanceOrigin.AUTHORED.value
     source: str = ""
+    supersedes: tuple[str, ...] = ()
+    """Documents this one declares it replaces (roadmap 5.10)."""
     """`provenance.source_uri` — where an ingested document was acquired from.
 
     Resolution needs it, and only for ingested documents: a link inside one

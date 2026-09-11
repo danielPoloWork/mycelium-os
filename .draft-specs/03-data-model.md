@@ -96,6 +96,7 @@ title: Architecture                   # human-owned; optional (H1 wins otherwise
 aliases: [Arch]                       # human-owned, optional (Obsidian-standard, feeds wikilink resolution)
 tags: [architecture]                  # human-owned, optional
 collection: core-docs                 # human-owned, optional
+supersedes: [adr/0002-old-layout.md]  # human-owned, optional; compiles to `supersedes` edges
 # ── stamped by `mycelium ingest` on generated docs; immutable thereafter ──
 origin: synthesized                   # ingested | synthesized (absent = authored)
 source: "https://docs.python.org/3/…" # source URI or path this doc derives from
@@ -110,12 +111,23 @@ grounding: 0.97                       # written by `mycelium verify`
 
 Frontmatter ownership rules (anti-drift): exactly three tool writers — `mycelium build`
 (`mycelium_id` only), `mycelium ingest` (the provenance block, write-once), `mycelium verify`/`mycelium
-promote` (the verification block); humans own title/aliases/tags/collection. There is
+promote` (the verification block); humans own title/aliases/tags/collection/supersedes. There is
 deliberately **no `status:` field**: `verification_status` is carried by the folder alone
 (§ D-021), so a file move can never disagree with a stale field. All of these appear as
 Obsidian properties, so in-vault queries like "synthesized docs not yet verified" or
 "docs from low-trust sources" work out of the box (Dataview/Bases), with no Mycelium OS tooling
 required.
+
+`supersedes:` is the one relation in §6's vocabulary that no link and no folder can express,
+because a Markdown link carries no type and nothing about a document's *location* says it has
+been replaced. It is human-owned, optional, and a list of link targets resolved exactly as a
+wikilink is (§3.1) — so it earns the `authored` status §6 already grants to a frontmatter
+assertion. The anti-drift rule that closed this field set does not reach it: `status:` was
+refused because the folder already *owns* verification status, and nothing owns supersession.
+Where a document also states the relation in prose — an ADR header, a deprecation note — the
+prose stays the canonical statement for a reader and the key is what a machine reads, which is
+the same split `title:` already has against an H1. A corpus that keeps both should assert they
+agree in its own lint rather than trusting memory.
 
 ### 3.1 Mycelium Markdown Profile v1 (Obsidian-flavored — D-022)
 

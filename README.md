@@ -234,24 +234,37 @@ them are in
 
 ### The graph is typed, and every type is derived from something you wrote
 
-D-014 fixes a vocabulary of eight edge types and no graph database. Six of them are derived, each
-from a fact rather than a guess: `links_to` and `cites` from the links you write (a link into
-`knowledge/evidence/` is a citation), `part_of` from a document's own headings, `derived_from`
-from the frontmatter that marks a document synthesized, and `defines`/`references` from what the
-code fences declare and use.
+D-014 fixes a vocabulary of eight edge types and no graph database. **All eight are derived**,
+each from a fact rather than a guess: `links_to` and `cites` from the links you write (a link
+into `knowledge/evidence/` is a citation), `part_of` from a document's own headings,
+`derived_from` from the frontmatter that marks a document synthesized, `defines`/`references`
+from what the code fences declare and use, `mentions` from the entities a document declares, and
+`supersedes` from one frontmatter key:
+
+```yaml
+---
+supersedes: [old-retry-note.md]
+---
+```
+
+That key exists because nothing else could say it. A folder can carry a document's *status*, and
+a Markdown link can say two documents are *related* — but no link says one **replaced** the
+other, because a link carries no type. So an agent reading a decision can ask the question that
+actually matters about it:
 
 ```bash
 mycelium neighbors docs/api.md                  # links out and in, sections, citations
 mycelium neighbors sym:python:RetryPolicy       # where it is defined, and what uses it
-mycelium neighbors docs/api.md --type defines    # one type at a time
+mycelium neighbors docs/adr/0002-old.md --type supersedes   # what replaced this
 ```
 
 Every edge says whether a human asserted it or a machine found it. `links_to`, `cites`,
-`part_of` and `derived_from` are **authored** — they come from your links, your headings, your
-frontmatter. `defines` and `references` are **extracted**, because a grammar found them, and
-spec 03 §6's rule is that extracted never becomes authored silently. The two remaining types are
-unemitted on purpose: `mentions` belongs to the optional entity stage, and `supersedes` would
-need a frontmatter field the contract deliberately does not have.
+`part_of`, `derived_from` and `supersedes` are **authored** — they come from your links, your
+headings, your frontmatter. `defines`, `references` and `mentions` are **extracted**, because a
+grammar or the entity stage found them, and spec 03 §6's rule is that extracted never becomes
+authored silently. The same rule decides the status of a `supersedes:` key in an *ingested*
+document: that text came from the source, not from you, so the edge is extracted and can never
+pass for your decision.
 
 The measured effect on the vendored uv documentation: **76 linked sections** that were traversal
 dead ends are now joined to their documents, which is what a `[[doc#Heading]]` link should have

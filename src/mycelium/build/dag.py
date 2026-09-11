@@ -81,7 +81,7 @@ CHUNK_STAGE_VERSION: Final = 2
 ASSEMBLE_STAGE_VERSION: Final = 1
 """Bump when Document-record derivation (title, stats, trust, …) changes."""
 
-EXTRACT_STAGE_VERSION: Final = 4
+EXTRACT_STAGE_VERSION: Final = 5
 """Bump when link or symbol extraction changes output for unchanged input.
 
 v1 → v2: extraction also yields what a fence *uses*, and every definition
@@ -98,6 +98,11 @@ Without the bump a store built before it would keep resolving those links
 against nothing — the field would stay empty on every document the build had no
 other reason to touch, which is the silent staleness this discipline exists to
 prevent.
+
+v4 to v5: the state carries the document's `supersedes:` declaration, the one
+edge type no link and no folder can express (5.10, ADR-0082). Same reason as
+v3 to v4: without the bump a document nothing else touched would keep declaring
+nothing.
 
 The grammars are inputs of their own: their versions enter the environment
 through :attr:`BuildEnv.grammars`, so a grammar release invalidates without a

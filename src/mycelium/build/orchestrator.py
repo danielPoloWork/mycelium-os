@@ -232,6 +232,8 @@ class _Entry:
     links: tuple[LinkRef, ...] = ()
     """Authored references, extracted with the document and re-resolved globally."""
     aliases: tuple[str, ...] = ()
+    supersedes: tuple[str, ...] = ()
+    """Documents this one's frontmatter declares it replaces (roadmap 5.10)."""
     headings: tuple[str, ...] = ()
     symbols: tuple[SymbolRef, ...] = ()
     """What the document defines, extracted with it and resolved globally (roadmap 5.1)."""
@@ -606,6 +608,7 @@ def _state_of(entry: "_Entry", env_digest: str) -> DocState:
         symbol_gaps=entry.symbol_gaps,
         origin=entry.origin,
         source=entry.source,
+        supersedes=entry.supersedes,
     )
 
 
@@ -965,6 +968,7 @@ def _build_locked(
                 # part in the graph (ADR-0018).
                 entry.links = decode_links(prev.links)
                 entry.aliases = prev.aliases
+                entry.supersedes = prev.supersedes
                 entry.headings = prev.headings
                 entry.entities = decode_declarations(prev.entities)
                 entry.symbols = decode_symbols(prev.symbols)
@@ -1044,6 +1048,7 @@ def _build_locked(
             # ingested document's links resolve against it (roadmap 5.7).
             entry.source = document.provenance.source_uri or ""
             entry.aliases = parsed.frontmatter.aliases
+            entry.supersedes = parsed.frontmatter.supersedes
             entry.headings = tuple(
                 heading_slug(node.text)
                 for node in parsed.kir.nodes

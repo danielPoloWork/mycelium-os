@@ -28,6 +28,7 @@ title: Architecture
 aliases: [Arch, "The Architecture"]
 tags: [architecture, event-bus]
 collection: core-docs
+supersedes: [old-architecture.md]
 origin: synthesized
 source: "https://docs.python.org/3/"
 source_trust: high
@@ -49,6 +50,7 @@ def test_full_contract_round_trip() -> None:
     assert fm.aliases == ("Arch", "The Architecture")
     assert fm.tags == ("architecture", "event-bus")
     assert fm.collection == "core-docs"
+    assert fm.supersedes == ("old-architecture.md",)
     assert fm.origin is ProvenanceOrigin.SYNTHESIZED
     assert fm.source == "https://docs.python.org/3/"
     assert fm.source_trust is SourceTrust.HIGH
@@ -76,6 +78,9 @@ def test_field_owners_covers_exactly_the_contract() -> None:
         "human",
     }
     assert "status" not in FIELD_OWNERS
+    # The one key added since the set was closed, and human-owned like the rest
+    # of its row: no tool writes a supersession (roadmap 5.10, ADR-0082).
+    assert FIELD_OWNERS["supersedes"] == "human"
 
 
 def test_absent_frontmatter_is_not_invented() -> None:
@@ -394,3 +399,46 @@ def test_any_verification_block_written_reads_back(score: float, who: str) -> No
     assert parsed.grounding == round(score, 4)
     assert parsed.verified_by == who
     assert parsed.verified_at == date(2026, 9, 1)
+
+
+SINGLE = """---
+supersedes: old.md
+---
+body
+"""
+
+MANY = """---
+supersedes: [a.md, b.md]
+---
+body
+"""
+
+MALFORMED = """---
+supersedes: {not: a list}
+---
+body
+"""
+
+
+def test_a_supersession_is_read_as_a_list_however_it_is_written() -> None:
+    """One target or several, and a bare scalar is the common Obsidian spelling."""
+    single = parse_frontmatter(SINGLE)
+    many = parse_frontmatter(MANY)
+
+    assert single.frontmatter.supersedes == ("old.md",)
+    assert many.frontmatter.supersedes == ("a.md", "b.md")
+    assert single.warnings == () and many.warnings == ()
+
+
+def test_a_malformed_supersession_warns_and_is_dropped() -> None:
+    """The lopsided-failure rule: a human's typo in a human-owned key must not
+    stop a build, so it warns and is dropped exactly as `tags` does."""
+    result = parse_frontmatter(MALFORMED)
+
+    assert result.frontmatter.supersedes == ()
+    assert len(result.warnings) == 1
+    assert "supersedes" in result.warnings[0]
+
+
+def test_an_absent_supersession_is_empty_never_invented() -> None:
+    assert parse_frontmatter("---\ntitle: A\n---\nbody\n").frontmatter.supersedes == ()

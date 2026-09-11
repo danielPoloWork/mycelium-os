@@ -1,3 +1,7 @@
+---
+supersedes: [0002-adopt-cross-language-source-layout.md]
+---
+
 # ADR-0003: Adopt the flat Python src-layout (supersedes ADR-0002)
 
 - **Status:** Accepted

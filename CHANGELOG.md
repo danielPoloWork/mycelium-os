@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **A document can declare what it replaces** (roadmap 5.10, [ADR-0082](docs/adr/0082-open-the-frontmatter-contract-by-one-key-and-make-the-drift-unlandable.md)).
+  The frontmatter contract gains one human-owned key — `supersedes: [old-note.md]` —
+  which compiles to the `supersedes` edge D-014's vocabulary promised and nothing could
+  emit: no folder says a document has been replaced, and a Markdown link carries no
+  type. Targets resolve exactly as wikilinks do, an unresolvable or ambiguous or
+  self-referential declaration warns and emits nothing, and an ingested document's
+  declaration is `extracted` rather than `authored`. `mycelium_neighbors` answers both
+  directions — *what replaced this* and *what did this replace* — with
+  `types: ["supersedes"]`. **All eight edge types now have a derivation**, and the
+  determinism gate carries all eight. For a corpus that also states the relation in
+  prose, `tools/consistency_lint.py` refuses a disagreement between the two.
+
 - **A query's names can be looked up in the symbol table** (roadmap 5.9,
   [ADR-0080](docs/adr/0080-look-a-name-up-exactly-and-report-that-the-table-points-at-naming-sites.md)). Spec 04 §3's third candidate generator exists: an
   identifier-like token in a query (`RetryPolicy`, `uv.lock`, `mycelium_neighbors`) is

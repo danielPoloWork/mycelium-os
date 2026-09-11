@@ -768,6 +768,7 @@ class SqliteStore:
                         "symbol_uses": [dict(item) for item in state.symbol_uses],
                         "symbol_gaps": list(state.symbol_gaps),
                         "origin": state.origin,
+                        "supersedes": list(state.supersedes),
                         "source": state.source,
                     }
                 ),
@@ -1679,6 +1680,7 @@ def _doc_state_from_row(row: sqlite3.Row) -> DocState:
         symbol_uses=tuple(graph.get("symbol_uses", ())),
         symbol_gaps=tuple(graph.get("symbol_gaps", ())),
         origin=str(graph.get("origin", ProvenanceOrigin.AUTHORED.value)),
+        supersedes=tuple(graph.get("supersedes", ())),
         source=str(graph.get("source", "")),
     )
 
