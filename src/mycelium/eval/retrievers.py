@@ -32,6 +32,9 @@ from mycelium.retrieval import (
     GRAPH_SEEDS,
     RRF_K,
     STOPWORDS,
+    SYMBOL_CANDIDATES,
+    SYMBOL_DISCOUNT,
+    SYMBOL_PROMOTE,
     VECTOR_CANDIDATES,
     query_terms,
 )
@@ -252,6 +255,43 @@ class ExpandedRetriever:
         return [fused.hit.chunk.anchor for fused in outcome.hits]
 
 
+@dataclass(frozen=True, slots=True)
+class SymbolRetriever:
+    """The product with the symbol leg on — the arm of 5.9's ablation.
+
+    Scored against :class:`MyceliumRetriever`, for the reason every ablation in
+    this project is: the question is what *this* addition does, which is a
+    question about one difference and nothing else (ADR-0075's shape, ADR-0080's
+    subject).
+    """
+
+    store: SqliteStore
+    name: str = "symbol"
+
+    @property
+    def config(self) -> dict[str, str | int | float | bool]:
+        return {
+            "engine": "fts5-bm25 + symbol",
+            "weights": describe_field_weights(),
+            "stem_weight": STEM_WEIGHT,
+            "stopwords": len(STOPWORDS),
+            "hybrid": False,
+            "symbol_lookup": True,
+            # Recorded for the reason the graph arm records its three: a run
+            # manifest is how a reader of an old number knows what it was
+            # measured under, and `promote` is the one that changes the answer.
+            "symbol_candidates": SYMBOL_CANDIDATES,
+            "symbol_discount": SYMBOL_DISCOUNT,
+            "symbol_promote": SYMBOL_PROMOTE,
+        }
+
+    def search(self, query: str, limit: int) -> list[str]:
+        outcome = run_search(
+            self.store, query, limit=limit, config=RetrievalConfig(symbol_lookup=True)
+        )
+        return [fused.hit.chunk.anchor for fused in outcome.hits]
+
+
 def build_retriever(name: str, store: SqliteStore, embedder: Embedder | None = None) -> Retriever:
     """Resolve a retriever by name, refusing anything unknown."""
     if name == "mycelium":
@@ -260,6 +300,8 @@ def build_retriever(name: str, store: SqliteStore, embedder: Embedder | None = N
         return GrepRetriever(store=store)
     if name == "graph":
         return ExpandedRetriever(store=store)
+    if name == "symbol":
+        return SymbolRetriever(store=store)
     if name == "hybrid":
         if embedder is None:
             msg = (
@@ -269,7 +311,7 @@ def build_retriever(name: str, store: SqliteStore, embedder: Embedder | None = N
             )
             raise ValueError(msg)
         return HybridRetriever(store=store, embedder=embedder)
-    msg = f"unknown retriever {name!r}; expected 'mycelium', 'grep', 'graph', or 'hybrid'"
+    msg = f"unknown retriever {name!r}; expected 'mycelium', 'grep', 'graph', 'symbol' or 'hybrid'"
     raise ValueError(msg)
 
 

@@ -37,7 +37,13 @@ from mycelium.symbols.code import (
     missing_grammars,
     read_fence,
 )
-from mycelium.symbols.docs import DOC_LANGUAGE, TERM_KIND, definition_terms, heading_term
+from mycelium.symbols.docs import (
+    DOC_LANGUAGE,
+    TERM_KIND,
+    definition_terms,
+    heading_term,
+    identifier_like,
+)
 from mycelium.symbols.extract import (
     CODE_FENCE,
     DEFINITION_LIST,
@@ -84,6 +90,7 @@ __all__ = [
     "grammar_for",
     "grammar_statuses",
     "heading_term",
+    "identifier_like",
     "load_grammar",
     "missing_grammars",
     "read_fence",

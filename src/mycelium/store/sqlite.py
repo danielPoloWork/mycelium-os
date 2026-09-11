@@ -861,6 +861,27 @@ class SqliteStore:
         rows = self._connection.execute("SELECT * FROM symbols ORDER BY symbol").fetchall()
         return tuple(_symbol_from_row(row) for row in rows)
 
+    def symbols_by_id(self, ids: Sequence[str]) -> tuple[Symbol, ...]:
+        """The symbols among `ids` this snapshot holds, ordered by id.
+
+        An exact primary-key lookup, which is what spec 04 §3 asks of the symbol
+        leg: *"exact lookup in `symbols` for identifier-like tokens"*. The caller
+        composes the ids, because only it knows the languages a bare query token
+        might name (roadmap 5.9) — the store's job is to answer in one round
+        trip rather than to be asked once per candidate.
+
+        Returns empty for an empty `ids`, without touching the database.
+        """
+        if not ids:
+            return ()
+        unique = sorted(set(ids))
+        placeholders = ",".join("?" * len(unique))
+        rows = self._connection.execute(
+            f"SELECT * FROM symbols WHERE symbol IN ({placeholders}) ORDER BY symbol",  # noqa: S608 - placeholders only
+            unique,
+        ).fetchall()
+        return tuple(_symbol_from_row(row) for row in rows)
+
     def put_entities(self, entities: Iterable[Entity]) -> int:
         """Insert entity records, keyed by slug. In a transaction (roadmap 5.4)."""
         written = 0

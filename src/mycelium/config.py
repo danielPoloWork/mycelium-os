@@ -427,6 +427,24 @@ class RetrievalConfig(_Section):
     the edge that reached it. The numbers, the discount curve, and why the
     mechanism has no operating point under RRF are in ADR-0075."""
 
+    symbol_lookup: bool = False
+    """Whether the symbol leg runs (spec 04 §3). Off by default, and off because
+    it was **measured** off.
+
+    Spec 04 §3 asks for an exact lookup in the `symbols` table for a query's
+    identifier-like tokens, and §2 routes such a query to it first. Roadmap 5.9
+    built the leg and ran the ablation on six case sets across three corpora.
+    It cannot fire on a single judged `symbol` case: the eleven of them name
+    CLI commands and classes discussed in prose, and what a documentation corpus
+    *defines* is `uv.lock`, `pyproject.toml` and `PyPI`. Where it does fire — two
+    cases, in the `fact` and `relationship` slices — the definition site is a
+    structural listing that names the thing, never the section that documents it,
+    so promoting it costs those cases and gains nothing.
+
+    Turning it on is supported and explained: `mycelium search --explain` labels
+    every passage the lookup offered with the symbol it defines. The numbers and
+    the two readings of *"symbol lookup first"* are in ADR-0080."""
+
     @property
     def hybrid(self) -> bool:
         """Whether the vector leg participates in candidate generation."""

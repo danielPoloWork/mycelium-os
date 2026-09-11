@@ -965,9 +965,14 @@ def search(
         if explain:
             detail(f"   via {'+'.join(fused.legs)} at {fused.ranks}")
             if fused.via_edge:
-                # Spec 04 §5's `via_edge`: the one result whose provenance is a
+                # Spec 04 §5's `via_edge`: a result whose provenance is a
                 # derivation rather than a match, so it says so in words.
                 detail(f"   proposed by the graph: {fused.via_edge}")
+            if fused.via_symbol:
+                # The same courtesy for the other derived leg (roadmap 5.9): this
+                # passage was offered because it defines a name the query used,
+                # not because it matched the query's words.
+                detail(f"   proposed by the symbol table: {fused.via_symbol}")
         typer.echo(f"   {_snippet(str(result['text']))}")
 
 

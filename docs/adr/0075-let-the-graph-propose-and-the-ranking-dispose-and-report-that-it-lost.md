@@ -4,7 +4,7 @@
 - **Date:** 2026-09-10
 - **Deciders:** tech-lead (EADOS delivery agent), per RFC-0001 / spec 04 §5
 - **Related:** [ADR-0018](0018-build-the-graph-from-authored-links.md) (the graph this walks,
-  and the reason a chunk is not a node), [ADR-0074](0074-derive-four-more-edge-types-and-say-why-two-have-none.md)
+  and the reason a chunk is not a node), [ADR-0074](0074-give-every-edge-type-a-derivation-or-a-reason-it-has-none.md)
   (the six edge types, and its deferral of weights to *this* ablation),
   [ADR-0017](0017-adopt-the-local-embedder-and-hybrid-retrieval.md) (RRF, and the first gate
   that decided a default by measurement), [ADR-0068](0068-give-gate-g2-a-runner-by-dating-its-verdict.md)
