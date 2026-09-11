@@ -42,6 +42,8 @@ from mycelium.sdk.types import Anchor, Sha256Digest, Ulid
 __all__ = [
     "AnchorParts",
     "CITATION_SCHEME",
+    "DIGEST_LENGTH",
+    "MIN_DIGEST_LENGTH",
     "CitationUri",
     "EMPTY_SLUG",
     "IdentityError",
@@ -432,6 +434,31 @@ def parse_anchor(value: str) -> AnchorParts:
 CITATION_SCHEME: Final = "mycelium://"
 
 
+DIGEST_LENGTH: Final = 12
+"""Hex characters of `chunk_digest` a minted citation carries.
+
+Twelve, and the number is smaller than it looks because the comparison is
+**not** a birthday problem. The digest is never used to *find* a chunk — the
+anchor does that — only to ask whether the chunk the anchor resolved to is the
+one that was cited. So a miss needs one specific rewritten passage to share a
+prefix with one specific old one: about 1 in 2.8e14, against a corpus-wide
+collision bound that would demand far more. Git has run on seven for twenty
+years, for a harder job (roadmap 5.17).
+
+The rest of the digest is not lost: `chunk_digest` is in the store, in the
+export bundle and on every `Chunk`, so anything that needs the full value has
+it. What the URI carries is the part a comparison needs."""
+
+MIN_DIGEST_LENGTH: Final = 8
+"""The shortest `digest=` a parser will treat as evidence.
+
+The grammar accepts 8 to 64 hex characters and compares on the shorter of the
+two, so a URI written by hand from an exported `chunk_digest` — all 64 of it —
+works beside one this product minted. Eight is the floor because below it the
+check stops being one: a three-character prefix agrees with one passage in four
+thousand, which is a false sense of having verified something."""
+
+
 @dataclass(frozen=True, slots=True)
 class CitationUri:
     """The parsed components of a citation URI."""
@@ -440,10 +467,24 @@ class CitationUri:
     heading_slugs: tuple[str, ...]
     ordinal: int
     lines: tuple[int, int] | None = None
+    digest: str | None = None
+    """Hex prefix of the cited chunk's `chunk_digest`, without the algorithm tag.
+
+    The *content* half of a citation's identity (roadmap 5.17). ``lines`` says
+    where the passage sat and this says what it said, and the two answer
+    different questions: a passage can move without changing and change without
+    moving. ``None`` is a citation that carries no content evidence — every URI
+    minted before this existed, and every one typed by hand."""
 
     def to_uri(self) -> str:
         """Rebuild the citation URI these parts came from."""
-        return citation_uri(self.doc_id, self.heading_slugs, self.ordinal, lines=self.lines)
+        return citation_uri(
+            self.doc_id,
+            self.heading_slugs,
+            self.ordinal,
+            lines=self.lines,
+            digest=self.digest,
+        )
 
     @classmethod
     def from_anchor(cls, parts: AnchorParts, doc_id: str) -> Self:
@@ -470,6 +511,7 @@ def citation_uri(
     ordinal: int,
     *,
     lines: tuple[int, int] | None = None,
+    digest: str | None = None,
 ) -> str:
     """Build the public citation URI returned to agents (spec 03 §2).
 
@@ -477,46 +519,140 @@ def citation_uri(
     ``?lines=a-b`` suffix appended *after* the fragment exactly as the spec
     writes it — a deliberate departure from RFC 3986 component order, recorded
     in ADR-0005.
+
+    ``digest`` adds ``&digest=<hex>``, the content half of the citation's
+    identity (roadmap 5.17). It accepts the store's ``sha256:``-tagged form or
+    bare hex and writes :data:`DIGEST_LENGTH` characters of it: the tag is
+    dropped because spec 03 §1 fixes the algorithm for every digest in the
+    system, so spelling it in every citation would be seven characters saying
+    what the grammar already says.
+
+    The two queries are ordered ``lines`` then ``digest``, always, because a URI
+    is compared as a string by consumers this product will never see — a
+    citation that reordered its own query between builds would look like a
+    different citation.
     """
     _validate_ulid(doc_id, field="doc_id")
     slugs = _validate_slugs(heading_slugs)
     uri = f"{CITATION_SCHEME}{doc_id}#{'/'.join(slugs)}/{_validate_ordinal(ordinal)}"
-    if lines is None:
-        return uri
-    start, end = lines
-    if start < 0 or end < start:
-        msg = f"line range must be non-negative and ordered, got {lines!r}"
+    queries: list[str] = []
+    if lines is not None:
+        start, end = lines
+        if start < 0 or end < start:
+            msg = f"line range must be non-negative and ordered, got {lines!r}"
+            raise IdentityError(msg)
+        queries.append(f"lines={start}-{end}")
+    if digest is not None:
+        queries.append(f"digest={_validate_digest(digest)}")
+    return f"{uri}?{'&'.join(queries)}" if queries else uri
+
+
+def _validate_digest(value: str) -> str:
+    """Normalise a citation digest to its hex prefix, or refuse it.
+
+    Refusing here rather than at parse time is the asymmetry every forgiving
+    format needs: what *this* product writes is held to the grammar exactly,
+    and what it *reads* is given the benefit of the doubt (see
+    :func:`parse_citation_uri`). A minting bug must fail loudly; a URI from
+    somewhere else must not take the whole citation down with it.
+    """
+    hex_text = value.removeprefix("sha256:").lower()
+    if len(hex_text) < MIN_DIGEST_LENGTH or not all(
+        char in "0123456789abcdef" for char in hex_text
+    ):
+        msg = (
+            f"citation digest must be at least {MIN_DIGEST_LENGTH} hex characters, "
+            f"optionally 'sha256:'-tagged: {value!r}"
+        )
         raise IdentityError(msg)
-    return f"{uri}?lines={start}-{end}"
+    return hex_text[:DIGEST_LENGTH]
 
 
 def parse_citation_uri(value: str) -> CitationUri:
-    """Parse a citation URI, raising :class:`IdentityError` if it is malformed."""
+    """Parse a citation URI, raising :class:`IdentityError` if it is malformed.
+
+    **An unrecognised query key is ignored, and that is a decision** (roadmap
+    5.17). Until this item the parser refused anything but ``lines=``, which
+    made the grammar unextendable in the only direction it ever needed to grow:
+    adding ``digest=`` to a URI would have made every earlier client reject it
+    outright rather than resolve the anchor it can plainly see. A citation is an
+    identifier that travels between versions, in agents' transcripts, outside
+    anything this product can migrate — so the parser reads what it knows and
+    steps over what it does not.
+
+    That is the opposite of how `mycelium.toml` is read (ADR-0014), and the
+    difference is who wrote the text. An operator who mistypes a config key must
+    be told, because the file is theirs and the silence would be a lie about
+    their intent. A citation's author is usually another program, often a newer
+    one, and there is nobody at the terminal to tell.
+
+    The cost is real and is named: ``?line=1-9`` — a typo — is ignored rather
+    than refused, so the citation carries no evidence of what it pointed at. It
+    then degrades to exactly the hand-written case ADR-0078 already defined,
+    where absent evidence means silence rather than a guess. A citation that
+    checks nothing is a worse outcome than a refusal; a citation that cannot be
+    resolved at all by last year's client is worse than both.
+    """
     if not value.startswith(CITATION_SCHEME):
         msg = f"citation URI must start with {CITATION_SCHEME!r}: {value!r}"
         raise IdentityError(msg)
     body = value.removeprefix(CITATION_SCHEME)
     body, separator, query = body.partition("?")
     lines: tuple[int, int] | None = None
+    digest: str | None = None
     if separator:
-        if not query.startswith("lines="):
-            msg = f"the only supported citation query is 'lines=a-b': {value!r}"
-            raise IdentityError(msg)
-        start_text, dash, end_text = query.removeprefix("lines=").partition("-")
-        if not dash or not start_text.isdigit() or not end_text.isdigit():
-            msg = f"line range must be 'lines=<start>-<end>': {value!r}"
-            raise IdentityError(msg)
-        lines = (int(start_text), int(end_text))
-        if lines[1] < lines[0]:
-            msg = f"line range must be ordered, got {lines!r}"
-            raise IdentityError(msg)
+        for pair in query.split("&"):
+            key, _, raw = pair.partition("=")
+            if key == "lines":
+                lines = _parse_lines(raw, source=value)
+            elif key == "digest":
+                digest = _parse_digest(raw)
     doc_id, separator, fragment = body.partition("#")
     if not separator:
         msg = f"citation URI must carry a '#<heading-slug-path>/<ordinal>': {value!r}"
         raise IdentityError(msg)
     _validate_ulid(doc_id, field="doc_id")
     slugs, ordinal = _split_fragment(fragment, source=value)
-    return CitationUri(doc_id=doc_id, heading_slugs=slugs, ordinal=ordinal, lines=lines)
+    return CitationUri(
+        doc_id=doc_id, heading_slugs=slugs, ordinal=ordinal, lines=lines, digest=digest
+    )
+
+
+def _parse_lines(raw: str, *, source: str) -> tuple[int, int]:
+    """Read ``lines=a-b``, which stays strict because it always was.
+
+    A malformed *known* key is still an error: ``lines=`` is in the spec, so a
+    value that does not fit it is a client getting the grammar wrong rather than
+    a client from another version. Leniency is for keys this parser has never
+    heard of, not for the ones it defines.
+    """
+    start_text, dash, end_text = raw.partition("-")
+    if not dash or not start_text.isdigit() or not end_text.isdigit():
+        msg = f"line range must be 'lines=<start>-<end>': {source!r}"
+        raise IdentityError(msg)
+    lines = (int(start_text), int(end_text))
+    if lines[1] < lines[0]:
+        msg = f"line range must be ordered, got {lines!r}"
+        raise IdentityError(msg)
+    return lines
+
+
+def _parse_digest(raw: str) -> str | None:
+    """Read ``digest=<hex>``, or treat it as absent evidence.
+
+    Deliberately *not* an error, and the one place this file is lenient about a
+    key it knows. A digest is a check, and a check nobody can read is the same
+    thing as no check — whereas refusing would lose the anchor too, which is the
+    part of the citation that still works. A truncated, over-long or non-hex
+    value therefore leaves ``digest=None``: the citation resolves and the drift
+    report says only what the line range can support.
+    """
+    hex_text = raw.removeprefix("sha256:").lower()
+    if len(hex_text) < MIN_DIGEST_LENGTH or not all(
+        char in "0123456789abcdef" for char in hex_text
+    ):
+        return None
+    return hex_text
 
 
 def doc_ref(path: str) -> str:

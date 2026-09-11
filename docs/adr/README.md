@@ -104,3 +104,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0086](0086-declare-the-module-facing-surface-and-refuse-to-freeze-it-from-one-consumer.md) | Declare the module-facing surface — and refuse to freeze it from one consumer | Accepted |
 | [0087](0087-distil-a-conversation-at-authoring-time-and-cite-the-message.md) | Distil a conversation at authoring time, and make it cite the message | Accepted |
 | [0088](0088-let-a-model-propose-line-numbers-and-slice-the-paste-ourselves.md) | Let a model propose line numbers, and slice the paste ourselves | Accepted |
+| [0089](0089-put-content-identity-in-the-citation-and-make-the-grammar-extensible.md) | Put content identity in the citation, and make the grammar extensible first | Accepted |

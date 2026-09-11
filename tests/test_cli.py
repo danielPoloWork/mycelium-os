@@ -584,10 +584,16 @@ def test_show_says_so_when_the_cited_passage_has_moved(tmp_path: Path) -> None:
     assert stale is not None
     assert stale["cited_lines"] != stale["current_lines"]
     assert "re-read it before re-quoting it" in stale["reason"]
+    # The inserted line lands *inside* the cited chunk — `#/0` is the document's
+    # leading passage, so its words change as well as its position, and since
+    # roadmap 5.17 the block says which of the two happened rather than calling
+    # every drift a move.
+    assert stale["kind"] == "moved_and_rewritten"
+    assert stale["cited_digest"] != stale["current_digest"]
 
     # And the human surface says it too, not only the JSON one.
     assert (
-        "has moved since the citation was made"
+        "has moved and been rewritten since the citation was made"
         in invoke("show", uri, "--path", str(tmp_path)).stderr
     )
 
