@@ -18,6 +18,7 @@ exist.
 """
 
 import ast
+import importlib
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -25,6 +26,7 @@ import pytest
 
 from mycelium.build import build
 from mycelium.ingest import Custody
+from mycelium.modules import MODULE_SURFACE
 from mycelium.retrieval import search
 from mycelium.store import SearchFilters, SqliteStore
 from mycelium_chats.archive import find, import_text, list_archive, purge
@@ -432,31 +434,25 @@ def test_gate5_deletion_without_purge_keeps_the_evidence(
 
 MODULE_SOURCE = Path(__file__).resolve().parents[1] / "src" / "mycelium_chats"
 
-PUBLIC_SURFACE = frozenset(
-    {
-        # The plugin API proper (spec 05 §4.1).
-        "mycelium.sdk.types",
-        "mycelium.sdk.identity",
-        "mycelium.sdk.protocols",
-        # Components with a curated `__all__`, which a module needs and the 1.0
-        # freeze does not yet cover — the finding ADR-0077 records.
-        "mycelium.config",
-        "mycelium.modules",
-        "mycelium.ingest",
-        "mycelium.chunking",
-        "mycelium.cli.output",
-    }
-)
-"""Every core name this module is allowed to import.
+PUBLIC_SURFACE = frozenset(MODULE_SURFACE)
+"""Every core module this module is allowed to import — **the core's own list**.
 
 The mechanical form of doc 08 §10's sixth gate. "Zero core patches" is not
 checkable by reading a diff — the module could reach into an internal and the
 diff would look clean — so it is checked here: every `mycelium.*` import in the
-module's sources must name one of these, and none may name a private attribute.
+module's sources must name a module the core declares module-facing, and every
+name imported from one must be in that module's `__all__`.
 
-Adding a line to this set is the reviewable event the gate exists to force. It
-means a module needed something the published surface does not offer, which is
-either an API fix or a coupling to record before the freeze.
+**Read from `mycelium.modules.MODULE_SURFACE` rather than restated** (roadmap
+5.14). Restated, this was the module's claim about itself and a core author who
+moved one of those surfaces met a failing test in somebody else's distribution.
+Declared in the core, it is the core's claim about what it offers, and the
+difference is who the failure is addressed to (ADR-0086).
+
+Adding an entry is still the reviewable event the gate exists to force — it just
+happens in the core now. It means a module needed something the core did not
+offer as module-facing, which is either an API gap to fix or a coupling to record
+before the freeze.
 """
 
 
@@ -481,10 +477,11 @@ def test_gate6_the_module_imports_only_the_published_surface(path: Path) -> None
             if module not in PUBLIC_SURFACE:
                 offences.append(f"line {node.lineno}: from {module} import …")
                 continue
+            exported = set(getattr(importlib.import_module(module), "__all__", ()))
             offences.extend(
-                f"line {node.lineno}: {module}.{alias.name} is private"
+                f"line {node.lineno}: {module}.{alias.name} is not in its `__all__`"
                 for alias in node.names
-                if alias.name.startswith("_")
+                if alias.name not in exported
             )
         elif isinstance(node, ast.Import):
             offences.extend(
