@@ -12,6 +12,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **An ingested corpus is in the graph** (roadmap 5.7, [ADR-0079](docs/adr/0079-resolve-an-ingested-documents-links-through-its-source-tree-and-never-call-them-authored.md)). A link inside
+  an ingested document names the tree it was acquired from — `../../concepts/resolution.md`,
+  relative to wherever the source sat — while its projection landed in a flat
+  `knowledge/evidence/` tree under a slugified name, so it resolved against nothing. Each
+  projected document's source URI now rides in the graph state, and a link in one is
+  resolved through the source tree, extension-insensitively (a page rendered to HTML keeps
+  the `.md` hrefs it was written with). On the vendored ingested corpus: **29 → 54 edges**
+  and **30 → 12 unresolved-link warnings**, the remaining twelve being links to sources the
+  corpus never vendored, unresolved in the authored twin too. `mycelium_neighbors` answers
+  on an ingested document for the first time.
+
 - **Modules are real, and the first one archives your chatbot conversations** (roadmap 5.5,
   [ADR-0077](docs/adr/0077-give-a-module-an-entry-point-a-section-and-a-command-and-report-what-it-could-not-reach.md)).
   `[modules] enabled = ["chats"]` now resolves against the new `mycelium.modules` entry-point
@@ -117,6 +128,22 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 ### Removed
 
 ### Fixed
+
+- **Ingested content can no longer forge an authored assertion** (roadmap 5.7, [ADR-0079](docs/adr/0079-resolve-an-ingested-documents-links-through-its-source-tree-and-never-call-them-authored.md)).
+  The projector renders no reference nodes, which the threat model recorded as closing this
+  hole — and it does, for Markdown, whose parser recognises `[[api]]` and hands back a node
+  to drop. HTML, DOCX and PDF have no such syntax, so those characters are ordinary prose:
+  projected verbatim, re-parsed by the compiler, and compiled into an **authored** edge.
+  The same held for the entity stage, where an inline `#production` in a projected PDF
+  minted an authored entity. Both are fixed at the place the assertion is made rather than
+  by mangling the text: every edge and entity derived from a document whose origin is
+  `ingested` is now **`extracted`**, which is what spec 03 §6 asks for. An entity a human
+  also declared stays authored, with the ingested document contributing only a `doc_ref`.
+  The two threat-model rows are restated to describe the control that now exists.
+
+  Consumers should note that `status` on an edge or entity now genuinely varies: an agent
+  treating `extracted` as *the corpus claims this* is reading an acquired source's
+  assertion as a human's.
 
 - **A citation whose passage has moved now says so** (roadmap 5.6, [ADR-0078](docs/adr/0078-report-a-moved-citation-rather-than-serving-it-in-silence.md)).
   `mycelium_fetch` and `mycelium show` have always minted citation URIs carrying a

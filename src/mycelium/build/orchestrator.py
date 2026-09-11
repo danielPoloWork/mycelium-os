@@ -242,6 +242,10 @@ class _Entry:
     symbol_gaps: tuple[str, ...] = ()
     """Fence languages no installed grammar could read — the snapshot's `degraded` input."""
     origin: str = ProvenanceOrigin.AUTHORED.value
+    source: str = ""
+    """`provenance.source_uri`: what an ingested document's links resolve
+    against, because they name the source tree rather than the evidence one
+    (roadmap 5.7)."""
     """The document's `provenance.origin`; `derived_from` cannot be derived without it."""
 
 
@@ -601,6 +605,7 @@ def _state_of(entry: "_Entry", env_digest: str) -> DocState:
         symbol_uses=tuple(encode_symbols(entry.symbol_uses)),
         symbol_gaps=entry.symbol_gaps,
         origin=entry.origin,
+        source=entry.source,
     )
 
 
@@ -966,6 +971,7 @@ def _build_locked(
                 entry.symbol_uses = decode_symbols(prev.symbol_uses)
                 entry.symbol_gaps = prev.symbol_gaps
                 entry.origin = prev.origin
+                entry.source = prev.source
 
         # -- compile what is dirty, through the cache -------------------------
         parsed_count = parse_hits = chunked_count = chunk_hits = 0
@@ -1033,6 +1039,10 @@ def _build_locked(
             )
             entry.warnings = (*entry.warnings, *extraction.warnings)
             entry.origin = str(parsed.frontmatter.origin or ProvenanceOrigin.AUTHORED.value)
+            # Taken from the record rather than the frontmatter: `_provenance_of`
+            # is the one place that decides what a document's source is, and an
+            # ingested document's links resolve against it (roadmap 5.7).
+            entry.source = document.provenance.source_uri or ""
             entry.aliases = parsed.frontmatter.aliases
             entry.headings = tuple(
                 heading_slug(node.text)

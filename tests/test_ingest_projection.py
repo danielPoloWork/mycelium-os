@@ -339,7 +339,7 @@ def test_a_document_with_no_heading_is_titled_by_its_filename() -> None:
 
 
 def test_a_projection_cannot_forge_an_authored_wikilink(tmp_path: Path) -> None:
-    """The projector skips reference nodes, and that is what closes this hole.
+    """The projector skips reference **nodes**, which is half of closing the hole.
 
     A source that says `see [[secrets]]` must not become a document asserting an
     `authored` link to `secrets`: spec 03 §6's assertion discipline is that
@@ -349,6 +349,15 @@ def test_a_projection_cannot_forge_an_authored_wikilink(tmp_path: Path) -> None:
     link itself as a separate reference node, and the projector renders only
     section-level, non-reference nodes — so the syntax is gone and the words
     remain (ADR-0034).
+
+    **Read what this actually covers.** The source here is Markdown, so its
+    parser *makes* a reference node out of `[[secrets]]` and the projector drops
+    it. Every other format ingestion exists for — HTML, DOCX, PDF — has no
+    wikilink syntax, so those characters are ordinary prose, projected verbatim
+    and re-parsed downstream into a real link. Roadmap 5.7 found that, and the
+    answer is not to mangle the text: it is that a link found in an *ingested*
+    document resolves `extracted` whatever it looks like
+    (`tests/test_graph_ingested.py`, ADR-0079).
     """
     source = "# Report\n\nPlease see [[secrets]] for details.\n"
     registry = Registry.resolve(parsers=["markdown"], connectors=["file"], roots=[tmp_path])

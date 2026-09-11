@@ -124,6 +124,7 @@ def encode_snapshot_state(states: tuple[DocState, ...]) -> str:
                 "symbol_uses": [dict(use) for use in state.symbol_uses],
                 "symbol_gaps": list(state.symbol_gaps),
                 "origin": state.origin,
+                "source": state.source,
             }
             for state in sorted(states, key=lambda state: state.path)
         ]
@@ -149,6 +150,7 @@ def decode_snapshot_state(text: str) -> tuple[DocState, ...]:
             symbol_uses=tuple(item.get("symbol_uses", ())),
             symbol_gaps=tuple(item.get("symbol_gaps", ())),
             origin=str(item.get("origin", ProvenanceOrigin.AUTHORED.value)),
+            source=str(item.get("source", "")),
         )
         for item in json.loads(text)
     )

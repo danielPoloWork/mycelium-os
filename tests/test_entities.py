@@ -53,7 +53,7 @@ from mycelium.entities import (
 from mycelium.export import RECORDS_DIRNAME, export_bundle
 from mycelium.markdown import parse_markdown
 from mycelium.sdk.identity import derived_ulid, entity_ref
-from mycelium.sdk.types import EdgeStatus, EdgeType, Entity
+from mycelium.sdk.types import EdgeStatus, EdgeType, Entity, ProvenanceOrigin
 from mycelium.store import SqliteStore
 
 ENABLED = "[entities]\nenabled = true\n"
@@ -106,6 +106,9 @@ def mentions(root: Path) -> list[tuple[str, str]]:
 class _State:
     path: str
     entities: tuple[Mapping[str, str], ...] = field(default_factory=tuple)
+    origin: str = ProvenanceOrigin.AUTHORED.value
+    """Who declared these. An ingested document declares nothing a human meant,
+    so its entities resolve `extracted` (roadmap 5.7, ADR-0079)."""
 
 
 def _declared(*declarations: EntityDeclaration) -> tuple[Mapping[str, str], ...]:

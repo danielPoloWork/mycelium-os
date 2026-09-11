@@ -59,6 +59,7 @@ from mycelium.sdk.types import (
     Entity,
     KirDocument,
     NodeKind,
+    ProvenanceOrigin,
     Sha256Digest,
 )
 
@@ -186,6 +187,9 @@ class EntityState(Protocol):
 
     @property
     def entities(self) -> tuple[Mapping[str, str], ...]: ...
+
+    @property
+    def origin(self) -> str: ...
 
 
 # ---------------------------------------------------------------------------
@@ -325,15 +329,25 @@ def resolve_entities(
 
     ``kind`` is ``topic`` when any document declared the slug through its
     ``aliases`` — a document saying what a thing *is* outranks a label attached
-    to it — and ``tag`` otherwise. ``status`` is always ``authored``: a human
-    wrote every one of these declarations, and it is the mentions over them that
-    are ``extracted`` (spec 03 §6).
+    to it — and ``tag`` otherwise.
+
+    ``status`` follows **who declared it**. A human wrote the tags and aliases in
+    an authored document, so those entities are ``authored``. An *ingested*
+    document declared nothing: it was acquired, D-017 calls its content
+    untrusted, and a `#production` sitting in a PDF's prose is a string a scan
+    found — ``extracted``. An entity both kinds of document declare is
+    ``authored``, because a human really did declare it; the ingested document
+    only adds a `doc_ref`. That rule is spec 03 §6's, and roadmap 5.7 found it
+    was not being applied: every entity was ``authored`` whatever declared it
+    (ADR-0079).
     """
     names: dict[str, list[str]] = {}
     titles: dict[str, str] = {}
     kinds: dict[str, set[str]] = {}
     homes: dict[str, list[str]] = {}
+    declared_by_hand: set[str] = set()
     for state in sorted(states, key=lambda item: item.path):
+        authored = state.origin != ProvenanceOrigin.INGESTED.value
         for declaration in decode_declarations(state.entities):
             slug = declaration.slug
             surfaces = names.setdefault(slug, [])
@@ -342,6 +356,8 @@ def resolve_entities(
             if declaration.kind == TOPIC_KIND:
                 titles.setdefault(slug, declaration.name)
             kinds.setdefault(slug, set()).add(declaration.kind)
+            if authored:
+                declared_by_hand.add(slug)
             reference = doc_ref(state.path)
             if reference not in homes.setdefault(slug, []):
                 homes[slug].append(reference)
@@ -361,7 +377,7 @@ def resolve_entities(
                 name=display,
                 aliases=tuple(name for name in surfaces if name != display),
                 kind=TOPIC_KIND if TOPIC_KIND in kinds[slug] else TAG_KIND,
-                status=EdgeStatus.AUTHORED,
+                status=(EdgeStatus.AUTHORED if slug in declared_by_hand else EdgeStatus.EXTRACTED),
                 doc_refs=tuple(homes[slug]),
                 namespace=namespace,
             )
