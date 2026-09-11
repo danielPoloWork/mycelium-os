@@ -81,7 +81,7 @@ CHUNK_STAGE_VERSION: Final = 2
 ASSEMBLE_STAGE_VERSION: Final = 1
 """Bump when Document-record derivation (title, stats, trust, …) changes."""
 
-EXTRACT_STAGE_VERSION: Final = 3
+EXTRACT_STAGE_VERSION: Final = 4
 """Bump when link or symbol extraction changes output for unchanged input.
 
 v1 → v2: extraction also yields what a fence *uses*, and every definition
@@ -91,6 +91,13 @@ artifact than it did at roadmap 5.1 (5.2, ADR-0074).
 v2 to v3: it also yields the entity declarations a document makes, which the
 optional stage resolves and which are cached whether or not it is switched
 on (5.4, ADR-0076).
+
+v3 to v4: the per-document graph state carries the document's **source URI**,
+which is what an ingested document's links resolve against (5.7, ADR-0079).
+Without the bump a store built before it would keep resolving those links
+against nothing — the field would stay empty on every document the build had no
+other reason to touch, which is the silent staleness this discipline exists to
+prevent.
 
 The grammars are inputs of their own: their versions enter the environment
 through :attr:`BuildEnv.grammars`, so a grammar release invalidates without a

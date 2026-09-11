@@ -394,6 +394,26 @@ inside the citation, which is a change to a contract that freezes at 1.0, so it 
 roadmap item with the measurement attached rather than a quiet extension
 ([ADR-0078](docs/adr/0078-report-a-moved-citation-rather-than-serving-it-in-silence.md)).
 
+### An ingested document joins the graph, and is never mistaken for something someone wrote
+
+Compile a corpus of PDFs and HTML and the projections land in a flat
+`knowledge/evidence/` tree, while the links inside them still name the tree they were
+acquired from. Each projection records where it came from, so those links resolve through
+the source tree — and because a page rendered to HTML keeps the `.md` hrefs it was written
+with, the match is on the path without its extension. On the vendored ingested corpus that
+takes the graph from 29 edges to 54 and cuts unresolved links from 30 to 12, the remaining
+twelve pointing at sources the corpus never included.
+
+Every one of those edges is **`extracted`**, and that is the more important half. A link
+in a document a person wrote is `authored`; a link found in a document that was *acquired*
+is a finding, because its content is untrusted by default and nobody here wrote it. The
+distinction is not cosmetic: proving it out found that an acquired PDF containing the
+characters `[[api]]` was producing an **authored** edge into your knowledge graph, and an
+inline `#production` in one was declaring an authored entity. The projector strips link
+syntax it can recognise, but a PDF has no wikilinks to recognise — so the guarantee now
+lives where the assertion is made rather than where the text is written
+([ADR-0079](docs/adr/0079-resolve-an-ingested-documents-links-through-its-source-tree-and-never-call-them-authored.md)).
+
 ### Ingestion picks its parser, and you pick which one
 
 Non-Markdown sources are compiled by adapters over engines that already exist — Mycelium OS

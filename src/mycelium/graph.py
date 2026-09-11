@@ -33,11 +33,25 @@ which are kept in ``doc_state`` for precisely this reason (ADR-0018).
 Resolution follows spec 03 §3.1: *"basename if unique, else path, aliases
 honored"*, and an unresolvable wikilink is a **build warning listed in the
 manifest, not an error** — a vault mid-refactor still compiles.
+
+**An ingested document is a special case in both directions** (roadmap 5.7,
+ADR-0079). Its links name the *source* tree — `../../reference/settings.md`, a
+path that meant something where the file was acquired — while the projection of
+it landed in a flat `knowledge/evidence/` tree under a slugified name. So they
+are resolved through the source URI each projected document carries: join the
+link to the source's own directory, drop the extension, and look the result up
+among the sources the corpus was built from. And the edges that come out are
+**`extracted`, never `authored`**, because nobody wrote them here — a parser
+found them in content D-017 calls untrusted. That is spec 03 §6's assertion
+discipline doing the exact job it was written for, and it closes a hole the
+threat model claimed was already closed: reference syntax cannot survive as a
+*node* through projection, but `[[api]]` sitting in a PDF's prose survives as
+*text*, and the compiler re-parsed it into an authored edge.
 """
 
 from collections import deque
 from collections.abc import Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Final, Protocol, runtime_checkable
 
@@ -76,6 +90,7 @@ __all__ = [
     "resolve_edges",
     "resolve_graph",
     "section_ref",
+    "source_stem",
     "split_section_ref",
 ]
 
@@ -267,6 +282,13 @@ class CorpusIndex:
     by_basename: Mapping[str, tuple[str, ...]]
     by_alias: Mapping[str, tuple[str, ...]]
     headings: Mapping[str, frozenset[str]]
+    by_source: Mapping[str, str] = field(default_factory=dict)
+    """Source stem path -> the document projected from it (roadmap 5.7).
+
+    Keyed *without* a file extension, because the two ends rarely agree on one: a
+    page rendered to HTML keeps the `.md` hrefs it was written with, and the
+    source beside it is `.html`. The stem is the part that identifies the
+    document in both trees."""
 
     @classmethod
     def build(
@@ -275,6 +297,7 @@ class CorpusIndex:
         *,
         aliases: Mapping[str, Sequence[str]] | None = None,
         headings: Mapping[str, Iterable[str]] | None = None,
+        sources: Mapping[str, str] | None = None,
     ) -> "CorpusIndex":
         by_path: dict[str, str] = {}
         by_basename: dict[str, list[str]] = {}
@@ -287,11 +310,20 @@ class CorpusIndex:
             for name in names:
                 by_alias.setdefault(_normalise(name), []).append(path)
 
+        by_source: dict[str, str] = {}
+        for path, uri in sorted((sources or {}).items()):
+            stem = source_stem(uri)
+            # First writer wins, in path order, so a corpus that somehow projected
+            # one source twice still resolves deterministically.
+            if stem and stem not in by_source:
+                by_source[stem] = path
+
         return cls(
             by_path=by_path,
             by_basename={key: tuple(value) for key, value in by_basename.items()},
             by_alias={key: tuple(value) for key, value in by_alias.items()},
             headings={path: frozenset(slugs) for path, slugs in sorted((headings or {}).items())},
+            by_source=by_source,
         )
 
 
@@ -301,12 +333,69 @@ def _normalise(value: str) -> str:
     return text[:-3] if text.endswith(".md") else text
 
 
-def _resolve_target(index: CorpusIndex, source_path: str, link: LinkRef) -> tuple[str | None, str]:
+_LOCAL_SCHEME: Final = "file:"
+"""The only source URI shape a link can be resolved against.
+
+A source acquired over HTTP has a directory too, in principle, but resolving a
+relative link against it would produce a URL, and a URL is not a node in this
+graph (ADR-0018 refuses external targets for exactly that reason). So a remote
+source contributes no source-tree resolution and its links fall through to the
+ordinary rules."""
+
+
+def source_stem(uri: str) -> str:
+    """A local source URI as a normalised, extension-free path — or ``""``.
+
+    The comparison key for :attr:`CorpusIndex.by_source`. Empty for anything this
+    cannot place in a tree: a remote URI, or no URI at all.
+    """
+    if not uri:
+        return ""
+    path = uri.removeprefix(_LOCAL_SCHEME)
+    if ":" in path.split("/", 1)[0]:
+        return ""  # some other scheme; a relative Windows drive letter is not one
+    return _strip_suffix(_flatten(path))
+
+
+def _flatten(path: str) -> str:
+    """POSIX form with `.` and `..` segments applied, case-folded.
+
+    Resolved textually and never against the filesystem: the source tree may not
+    be present on the machine doing the build — an evidence document is compiled
+    from tier 2 alone — and a rebuild must reach the same answer either way.
+    """
+    parts: list[str] = []
+    for part in path.replace("\\", "/").casefold().split("/"):
+        if part == "..":
+            if parts:
+                parts.pop()
+        elif part not in ("", "."):
+            parts.append(part)
+    return "/".join(parts)
+
+
+def _strip_suffix(path: str) -> str:
+    """Drop a trailing file extension, leaving the identifying stem."""
+    head, separator, tail = path.rpartition(".")
+    return head if separator and "/" not in tail else path
+
+
+def _resolve_target(
+    index: CorpusIndex, source_path: str, link: LinkRef, source_uri: str = ""
+) -> tuple[str | None, str]:
     """Resolve one link's document. Returns ``(path, reason)``; `reason` explains a miss.
 
     The order is spec 03 §3.1's: an exact path wins, then a unique basename, then
     a unique alias. Ambiguity is a miss with its own message — silently picking
     one of two documents is how a knowledge graph starts lying.
+
+    `source_uri` inserts one step before the weaker heuristics, and only for a
+    document that has one. A link inside an ingested document was written in the
+    source tree's coordinates, so it is joined to the source's own directory and
+    looked up among the corpus's sources (roadmap 5.7). It sits above `basename`
+    because it is a *path* match — precise — and below the corpus's own paths
+    because a link that already names a document in this corpus means what it
+    says.
     """
     if not link.target:
         return source_path, ""  # a bare `#fragment` points inside this document
@@ -320,6 +409,13 @@ def _resolve_target(index: CorpusIndex, source_path: str, link: LinkRef) -> tupl
         relative = _normalise(str(PurePosixPath(source_path).parent / link.target))
         if relative in index.by_path:
             return index.by_path[relative], ""
+
+    stem = source_stem(source_uri)
+    if stem:
+        head, _, _ = stem.rpartition("/")
+        wanted_source = _strip_suffix(_flatten(f"{head}/{link.target}" if head else link.target))
+        if wanted_source in index.by_source:
+            return index.by_source[wanted_source], ""
 
     lookups = (
         (index.by_basename.get(wanted), "basename"),
@@ -403,6 +499,7 @@ def resolve_edges(
     namespace: str = "default",
     root: Path | None = None,
     origins: Mapping[str, str] | None = None,
+    sources: Mapping[str, str] | None = None,
 ) -> tuple[tuple[Edge, ...], tuple[str, ...]]:
     """Turn the corpus's link references into edges, plus warnings for the rest.
 
@@ -410,17 +507,24 @@ def resolve_edges(
     document order, and identical assertions collapse to one edge because the
     edge id is a digest of the assertion (spec 03 §6).
 
-    `origins` maps a document's path to its `provenance.origin`, and it is what
-    makes ``derived_from`` expressible — see :func:`_derived_from_edges`.
+    `origins` maps a document's path to its `provenance.origin`, and it does two
+    jobs: it makes ``derived_from`` expressible (see :func:`_derived_from_edges`),
+    and it decides an edge's **status**. A link found in an *ingested* document is
+    `extracted` — a parser found it in untrusted content — while a link in a
+    document a person wrote is `authored`. `sources` maps a document's path to
+    its source URI, which is what an ingested document's links resolve against
+    (roadmap 5.7, ADR-0079).
     """
     edges: dict[Sha256Digest, Edge] = {}
     warnings: list[str] = []
 
     for source_path in sorted(links_by_path):
+        source_uri = (sources or {}).get(source_path, "")
+        status = _status_of((origins or {}).get(source_path, ""))
         for link in links_by_path[source_path]:
             if _is_external(link.target):
                 continue
-            target_path, reason = _resolve_target(index, source_path, link)
+            target_path, reason = _resolve_target(index, source_path, link, source_uri)
             if target_path is None:
                 if links_to_a_non_document(root, source_path, link.target):
                     continue
@@ -448,7 +552,7 @@ def resolve_edges(
                     "from": doc_ref(source_path),
                     "to": reference,
                     "type": edge_type(source_path, target_path),
-                    "status": EdgeStatus.AUTHORED,
+                    "status": status,
                     "provenance": provenance,
                     "namespace": namespace,
                 }
@@ -465,6 +569,22 @@ def resolve_edges(
         edges.items(), key=lambda item: (item[1].from_, item[1].to, str(item[1].type), item[0])
     )
     return tuple(edge for _, edge in ordered), tuple(warnings)
+
+
+def _status_of(origin: str) -> EdgeStatus:
+    """Whether a document's links are assertions or findings (spec 03 §6).
+
+    A human wrote the links in an authored document, and the synthesis lane's
+    citations are written under a contract that refuses the document if they do
+    not resolve (D-020) — both are `authored`. An ingested document was *acquired*:
+    its text is untrusted by D-017, and any link syntax in it was put there by
+    whoever wrote the source, not by anyone here. That is `extracted`, and the
+    distinction is the one thing spec 03 §6 insists on — "extracted edges never
+    gain authored status silently" (roadmap 5.7, ADR-0079).
+    """
+    if origin == ProvenanceOrigin.INGESTED.value:
+        return EdgeStatus.EXTRACTED
+    return EdgeStatus.AUTHORED
 
 
 def _part_of_edges(edges: Iterable[Edge], namespace: str) -> tuple[Edge, ...]:
@@ -597,6 +717,9 @@ class GraphState(Protocol):
     @property
     def origin(self) -> str: ...
 
+    @property
+    def source(self) -> str: ...
+
 
 def resolve_graph(
     states: Sequence[GraphState], namespace: str = "default", root: Path | None = None
@@ -606,10 +729,12 @@ def resolve_graph(
     The one entry point a build and a rollback both use, so a restored snapshot
     reproduces the graph its manifest published rather than something similar.
     """
+    sources = {state.path: state.source for state in states if state.source}
     index = CorpusIndex.build(
         (state.path for state in states),
         aliases={state.path: state.aliases for state in states},
         headings={state.path: state.headings for state in states},
+        sources=sources,
     )
     return resolve_edges(
         {state.path: decode_links(state.links) for state in states},
@@ -617,6 +742,7 @@ def resolve_graph(
         namespace=namespace,
         root=root,
         origins={state.path: state.origin for state in states},
+        sources=sources,
     )
 
 

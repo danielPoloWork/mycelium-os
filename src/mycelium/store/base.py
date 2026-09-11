@@ -123,6 +123,14 @@ class DocState:
     entities: tuple[Mapping[str, str], ...] = ()
     """The named things this document declares — its tags and aliases (5.4)."""
     origin: str = ProvenanceOrigin.AUTHORED.value
+    source: str = ""
+    """`provenance.source_uri` — where an ingested document was acquired from.
+
+    Resolution needs it, and only for ingested documents: a link inside one
+    speaks the *source tree's* coordinates (`../../reference/settings.md`),
+    which name nothing in the flat `knowledge/evidence/` tree the projection
+    landed in. The source URI is what maps one onto the other (roadmap 5.7,
+    ADR-0079)."""
     """`authored`, `ingested`, or `synthesized` — absent frontmatter is authored."""
 
 
