@@ -296,6 +296,12 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
     # default that a change to extraction or to ranking could invalidate in
     # silence. `--check` fails on the flag disagreeing with the measurement.
     steps.append(("symbol ablation", [python, "tools/measure_symbol_leg.py", "--check"]))
+    # Spec 04 §2's routing, which decides *whether* a derived leg runs on a given
+    # query (roadmap 5.11, ADR-0083). It guards the same kind of thing the two
+    # ablations above guard and it guards it against the same drift: the routing
+    # rules are part of what a measured default was measured under, so a change
+    # to them without a re-measurement is the mistake `--check` exists to catch.
+    steps.append(("routing ablation", [python, "tools/measure_routing.py", "--check"]))
     steps.append(("agent tasks", [*MYCELIUM, "eval", ".", "--tasks"]))
     if mode == "retrieval":
         return steps

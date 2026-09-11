@@ -430,7 +430,7 @@ def test_the_leg_is_deterministic(store: SqliteStore, promoting: None) -> None:
 
 def test_the_two_derived_legs_compose(store: SqliteStore, promoting: None) -> None:
     """Both flags on is a supported configuration, and each label survives it."""
-    outcome = search(store, "RetryPolicy", limit=10, config=on(graph_expansion=True))
+    outcome = search(store, "RetryPolicy", limit=10, config=on(graph_expansion=True), related=True)
     assert outcome.hits
     for hit in outcome.hits:
         assert not (hit.via_edge and hit.via_symbol), "a passage is reached one way"

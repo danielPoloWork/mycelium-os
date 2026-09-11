@@ -422,10 +422,19 @@ class RetrievalConfig(_Section):
     −0.0 %. It rescues the case it was filed for — `r-0018` 0.0000 → 0.2275 —
     and loses six other relationship cases doing it.
 
+    Since roadmap 5.11 the leg is also **routed**: this flag permits it and spec
+    04 §2's relationship rule — or the caller's `--related` — decides whether a
+    given query gets it. That does not change the verdict and cannot (routing by
+    the judged slice itself reproduces the numbers above exactly), but it does
+    change the price: the overall cost of turning this on falls from the
+    0.0-4.1 % above to **0.0 %** on all six judged sets, because the leg stops
+    running on the cases it could only ever damage (ADR-0083).
+
     Turning it on is supported, explained and honest about the price:
     `mycelium search --explain` labels every passage the graph proposed with
-    the edge that reached it. The numbers, the discount curve, and why the
-    mechanism has no operating point under RRF are in ADR-0075."""
+    the edge that reached it, and prints the plan and the rule that chose it. The
+    numbers, the discount curve, and why the mechanism has no operating point
+    under RRF are in ADR-0075."""
 
     symbol_lookup: bool = False
     """Whether the symbol leg runs (spec 04 §3). Off by default, and off because
@@ -440,6 +449,11 @@ class RetrievalConfig(_Section):
     cases, in the `fact` and `relationship` slices — the definition site is a
     structural listing that names the thing, never the section that documents it,
     so promoting it costs those cases and gains nothing.
+
+    The leg is routed, and always was: it asks the store nothing unless the query
+    holds an identifier-like token. Since roadmap 5.11 that test lives in
+    `mycelium.planner`, where a plan can report it — identical behaviour,
+    measured identical on all six sets (ADR-0083).
 
     Turning it on is supported and explained: `mycelium search --explain` labels
     every passage the lookup offered with the symbol it defines. The numbers and

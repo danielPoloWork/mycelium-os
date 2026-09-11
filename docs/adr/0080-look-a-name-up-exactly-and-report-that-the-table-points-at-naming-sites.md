@@ -159,6 +159,14 @@ unlike gate G2 it can re-measure rather than merely re-date, because it needs no
 never ran* and a leg scoring +0.0 % *because it ran and changed nothing* are different
 findings with different follow-ups.
 
+> **Completed at roadmap 5.11 ([ADR-0083](0083-route-the-query-and-report-that-routing-cannot-save-a-lost-ablation.md)).**
+> This ADR deferred the routing half of *"symbol lookup first"* on the grounds that
+> answering it for one leg and not the other would leave the planner half-built. It is
+> answered for both: the leg's own identifier test *was* the routing, and it now lives in
+> `mycelium.planner` where a plan can report it. Behaviour is identical by construction and
+> measured identical — routed, oracle-routed and unrouted arms all score +0.0 % on all six
+> sets — so nothing in the table above moves.
+
 ## Alternatives Considered
 
 - **Ship it on, because spec 04 §3 prescribes it.** Rejected on the numbers. The spec

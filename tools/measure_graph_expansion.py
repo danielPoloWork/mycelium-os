@@ -8,6 +8,7 @@
     python tools/measure_graph_expansion.py <corpus-root>
     python tools/measure_graph_expansion.py --check      # the shipped default is the
                                                          # one this measurement supports
+    python tools/measure_graph_expansion.py --every-query # 5.3's arm: ignore the routing
 
 **The gate, verbatim from spec 04 §5:** graph expansion ships enabled-by-default
 only if the ablation shows **≥ +3 % nDCG@10 on the `relationship` slice with no
@@ -15,6 +16,14 @@ overall regression**; otherwise it stays an opt-in flag until it earns the
 default. Two arms, one difference: `mycelium` is the shipped lexical ranking and
 `graph` is that ranking with the expansion leg switched on. Nothing else differs
 between them, which is the only way the number means what it says.
+
+**Since roadmap 5.11 the leg is routed**, so the `graph` arm is the leg *as it
+ships when enabled*: spec 04 §2's relationship rule decides whether a given query
+gets it. `--every-query` restores 5.3's arm, which expanded on everything, and
+the two together are ADR-0083's table. Routing does not change this gate's
+verdict and cannot — the bar is on the `relationship` slice, and routing only
+withholds the leg from queries outside it — but it does change the overall cost,
+which is what an operator who turns the flag on actually pays.
 
 **Why this is a tool and not a `--gate` flag.** Gate G3 enforces "no slice
 regressed" against a *blessed baseline*; this asks a different question — the
@@ -167,6 +176,14 @@ def main() -> int:
         help="Fail when the shipped default disagrees with the measurement.",
     )
     parser.add_argument(
+        "--every-query",
+        action="store_true",
+        help=(
+            "Expand on every query, bypassing spec 04 section 2's routing - 5.3's "
+            "arm, reported beside the routed one in ADR-0083."
+        ),
+    )
+    parser.add_argument(
         "--discount",
         type=float,
         help=(
@@ -195,7 +212,9 @@ def main() -> int:
         retrieval.GRAPH_NODES = nodes  # type: ignore[misc]
     print(
         f"graph expansion ablation: seeds {GRAPH_SEEDS}, nodes {nodes}, "
-        f"discount {discount} (spec 04 §5; ADR-0075)\n"
+        f"discount {discount}, "
+        f"{'every query (5.3 arm)' if args.every_query else 'routed (spec 04 §2)'} "
+        f"(spec 04 §5; ADR-0075, ADR-0083)\n"
     )
 
     any_earns = False
@@ -208,7 +227,9 @@ def main() -> int:
         with SqliteStore.open(root, read_only=True) as store:
             resolvable = resolvable_anchors(store)
             base_retriever = build_retriever("mycelium", store)
-            expanded_retriever = build_retriever("graph", store)
+            expanded_retriever = build_retriever(
+                "graph-every-query" if args.every_query else "graph", store
+            )
             for set_name in SETS:
                 path = eval_dir / f"{set_name}.jsonl"
                 if not path.exists():

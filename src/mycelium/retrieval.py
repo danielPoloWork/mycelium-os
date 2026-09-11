@@ -37,11 +37,13 @@ documenting one (ADR-0080).
 and its rank in each, which is what makes `--explain` an audit rather than a
 story (spec 04 §2) and what let gate G2 be argued from data.
 
-The v1 planner is deliberately absent: spec 04 §2 routes identifier queries to
-"FTS exact/phrase + symbol lookup first" and relationship phrasing to graph
-expansion, and both legs here instead run on every query when enabled — the
-cheapest reading of the spec, and roadmap 5.11 is the item that asks whether the
-routing decision should be the query's own.
+**The plan decides whether a query needs a leg; the configuration decides
+whether it may have one.** :mod:`mycelium.planner` classifies the query against
+spec 04 §2's table and asks for generators; this module runs a derived leg only
+when the configuration enables it *and* the plan asks for it. The plan can only
+narrow — a regex must not be able to overturn a verdict three gates decided
+(ADR-0083). The graph and symbol legs are routed; the vector leg is not, because
+withholding it from identifier queries was measured and is worse.
 """
 
 import re
@@ -53,6 +55,7 @@ from typing import Final
 from mycelium.config import RetrievalConfig
 from mycelium.embedding import Embedder
 from mycelium.graph import nodes_of_anchor, split_section_ref
+from mycelium.planner import GRAPH, LEXICAL, RELATIONSHIP_PHRASES, SYMBOL, VECTOR, Plan, plan_query
 from mycelium.sdk.identity import digest_json
 from mycelium.sdk.types import Sha256Digest
 from mycelium.store import (
@@ -79,6 +82,7 @@ __all__ = [
     "SYMBOL_PROMOTE",
     "VECTOR_CANDIDATES",
     "FusedHit",
+    "Plan",
     "SearchOutcome",
     "query_terms",
     "reciprocal_rank_fusion",
@@ -158,10 +162,15 @@ promote, and the two readings needed measuring rather than arguing about: the
 runner flips this to score the other arm. Both readings lose, for different
 reasons, and ADR-0080 reports each."""
 
-_LEXICAL: Final = "lexical"
-_VECTOR: Final = "vector"
-_GRAPH: Final = "graph"
-_SYMBOL: Final = "symbol"
+_LEXICAL: Final = LEXICAL
+_VECTOR: Final = VECTOR
+_GRAPH: Final = GRAPH
+_SYMBOL: Final = SYMBOL
+"""The leg names, imported from the planner rather than restated.
+
+A plan asks for generators by name and this module runs them by name; two
+spellings of one vocabulary is how a router comes to route to a leg that does not
+exist (ADR-0083)."""
 
 _TERM: Final = re.compile(r"\w+", re.UNICODE)
 
@@ -262,7 +271,11 @@ def retrieval_identity() -> Sha256Digest:
     - the FTS schema version, because a change to the indexed columns is a change
       to what BM25 can see;
     - the graph leg's and the symbol leg's constants, which decide a ranking
-      whenever their flags are on.
+      whenever their flags are on;
+    - the planner's relationship phrasings, which decide *whether* the graph leg
+      runs on a given query and are therefore part of the ranking exactly as the
+      leg's own constants are (roadmap 5.11). The membership, again, rather than
+      the count.
 
     Each of the four changes above moves at least one of them, which is the check
     that this fingerprint is a fingerprint rather than a decoration. What it
@@ -293,6 +306,7 @@ def retrieval_identity() -> Sha256Digest:
                 "promote": SYMBOL_PROMOTE,
                 "languages": list(SYMBOL_LANGUAGES),
             },
+            "routing": {"relationship_phrases": sorted(RELATIONSHIP_PHRASES)},
             "stem_weight": STEM_WEIGHT,
             "stopwords": sorted(STOPWORDS),
         }
@@ -359,6 +373,12 @@ class SearchOutcome:
     hits: tuple[FusedHit, ...]
     legs: tuple[str, ...]
     """Generators that ran — a single-element tuple is a lexical-only search."""
+    plan: Plan = field(default_factory=lambda: plan_query(""))
+    """What spec 04 §2's rule set made of the query, and which rules matched.
+
+    Reported rather than inferred: `legs` says what ran, and the difference
+    between what the plan asked for and what ran is a configuration decision the
+    reader is entitled to see (ADR-0083)."""
     degraded: tuple[str, ...] = ()
     """Legs that were configured but could not run, with the reason attached."""
     notes: tuple[str, ...] = field(default=())
@@ -375,6 +395,7 @@ class SearchOutcome:
 
     def explain(self) -> dict[str, object]:
         return {
+            "plan": self.plan.as_dict(),
             "legs": list(self.legs),
             "degraded": list(self.degraded),
             "notes": list(self.notes),
@@ -721,6 +742,7 @@ def search(
     config: RetrievalConfig | None = None,
     embedder: Embedder | None = None,
     prefix: bool = False,
+    related: bool = False,
     explain: bool = False,
 ) -> SearchOutcome:
     """Run the configured candidate generators and fuse them.
@@ -740,16 +762,27 @@ def search(
     because fusion needs depth to work with: fusing two top-10 lists throws away
     precisely the agreement that makes RRF worth doing.
 
-    The graph leg joins when `config.graph_expansion` is on — off by default,
-    because the ablation spec 04 §5 gates it on did not clear the bar
-    (ADR-0075). It runs *after* the first fusion, because its seeds are fused
+    The two derived legs need *both* permissions: the configuration's, and the
+    plan's. The graph leg joins when `config.graph_expansion` is on — off by
+    default, because the ablation spec 04 §5 gates it on did not clear the bar
+    (ADR-0075) — **and** when the plan's relationship rule matched, which is
+    spec 04 §2's routing and roadmap 5.11's measurement: expansion pays its cost
+    on every query and offers its benefit on few, and routing recovers the
+    difference. It runs *after* the first fusion, because its seeds are fused
     candidates, and it never runs without them: a query the corpus cannot answer
     has no door to walk through.
 
     The symbol leg joins when `config.symbol_lookup` is on — also off by
-    default, and also because it was measured off (ADR-0080). It needs no seeds,
-    because a name is looked up rather than walked to, so it runs on the query
-    itself and only when the query holds an identifier-like token.
+    default, and also because it was measured off (ADR-0080) — and when the
+    plan's identifier rule matched. That rule is the test the leg used to apply
+    to itself, moved to where a plan can report it, so the behaviour is
+    unchanged.
+
+    `related` is the caller's own routing signal (spec 04 §2's `--related`). It
+    does not *enable* the graph leg: the plan narrows and never widens, so a
+    caller who wants the leg on for one query turns it on the way `--hybrid`
+    turns the vector leg on, and `--related` then says this query is the kind
+    that wants it.
 
     `explain=True` additionally counts what each query word reaches, which is the
     one question ranking cannot answer about itself (roadmap 4.21). It is off by
@@ -757,10 +790,16 @@ def search(
     measures p95 latency runs thousands of queries.
     """
     settings = config or RetrievalConfig()
+    plan = plan_query(query, related=related)
     filters, policy_note = _serve_only(filters, settings)
     if filters is None and policy_note is not None:
         return SearchOutcome(
-            hits=(), legs=(), degraded=(), notes=(policy_note,), timings_ms={"total": 0}
+            hits=(),
+            legs=(),
+            degraded=(),
+            notes=(policy_note,),
+            timings_ms={"total": 0},
+            plan=plan,
         )
 
     depth = max(limit, VECTOR_CANDIDATES)
@@ -830,7 +869,7 @@ def search(
 
     retrieved = {hit.chunk.anchor for _, results in lists for hit in results}
     via_symbol: dict[str, str] = {}
-    if settings.symbol_lookup:
+    if settings.symbol_lookup and plan.asks_for(_SYMBOL):
         started = time.perf_counter()
         proposed, via_symbol = _symbol_candidates(store, query, searched, filters, retrieved)
         timings[_SYMBOL] = _elapsed_ms(started)
@@ -855,9 +894,14 @@ def search(
                 "symbol leg: no identifier-like token in this query names a symbol this "
                 "snapshot defines, outside what the other legs already returned"
             )
+    elif settings.symbol_lookup:
+        notes.append(
+            "symbol leg not planned: no identifier-like token or quoted phrase in this "
+            "query (spec 04 §2)"
+        )
 
     via: dict[str, str] = {}
-    if settings.graph_expansion:
+    if settings.graph_expansion and plan.asks_for(_GRAPH):
         # Expansion runs on the *fused* candidates, not on the lexical list:
         # spec 04 §5 says "from top-k fused candidates", and a seed the vector
         # leg promoted is as good a door as one BM25 found.
@@ -887,6 +931,11 @@ def search(
             )
         else:
             notes.append("graph leg: one hop from the seeds proposed nothing this query matched")
+    elif settings.graph_expansion:
+        notes.append(
+            "graph leg not planned: no relationship phrasing in this query and --related "
+            "was not asked for (spec 04 §2); pass --related to expand anyway"
+        )
 
     if via or via_symbol:
         fused = tuple(
@@ -920,6 +969,7 @@ def search(
         notes=tuple(notes),
         timings_ms=timings,
         terms=terms,
+        plan=plan,
     )
 
 

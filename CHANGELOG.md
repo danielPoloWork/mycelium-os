@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The query path has a planner, and `explain` says which rule chose the plan** (roadmap 5.11,
+  [ADR-0083](docs/adr/0083-route-the-query-and-report-that-routing-cannot-save-a-lost-ablation.md)). Spec 04 §2 has asked since the specification was frozen for *a small,
+  deterministic, logged rule set* whose chosen plan and matched rule appear in every response that
+  explains itself; what the field called `plan` held was the name of the configured profile.
+  `mycelium.planner` classifies a query — identifier-like token or quoted phrase, relationship
+  phrasing, or a natural-language question — and the two derived legs now need both permissions:
+  the configuration's flag, and the plan's. **The plan narrows and never widens**, so a regex
+  cannot switch on a leg three measured gates decided to ship off. `mycelium search --related` and
+  `mycelium_search`'s `related: true` are spec 04 §2's caller signal: they enable graph expansion
+  for that one call, the way `--hybrid` enables the vector leg. Routing does **not** change either
+  ablation's verdict and cannot — routing by the judged slice itself reproduces the unrouted
+  `relationship` numbers exactly, on all six sets — but it cuts what an operator pays for turning
+  expansion on from 0.0–4.1 % overall to 0.0 %. The shipped ranking is unchanged: both legs are
+  still off by default, and no baseline moved.
+
 - **A document can declare what it replaces** (roadmap 5.10, [ADR-0082](docs/adr/0082-open-the-frontmatter-contract-by-one-key-and-make-the-drift-unlandable.md)).
   The frontmatter contract gains one human-owned key — `supersedes: [old-note.md]` —
   which compiles to the `supersedes` edge D-014's vocabulary promised and nothing could

@@ -45,6 +45,7 @@ mycelium build --watch     # ...and keep doing it as you edit (needs the `watch`
 mycelium ingest doc.pdf    # acquire, keep, compile, project into knowledge/evidence/
                            # ...and, with an LLM configured, write a cited candidate doc
 mycelium search "retry policy"          # add --hybrid for the vector leg, --explain for why
+                                        # ...and --related to expand over the graph (spec 04 s2)
 mycelium show "mycelium://<doc-id>#retries/0"
 mycelium neighbors doc.md  # what this links to, and what links to it
 mycelium snapshots         # what has been published, newest first
@@ -352,6 +353,40 @@ it, for −0.0 % to −4.1 % overall. Re-run it yourself with
 `python tools/measure_graph_expansion.py`; CI runs the same measurement and fails if the
 shipped default ever stops matching it
 ([ADR-0075](docs/adr/0075-let-the-graph-propose-and-the-ranking-dispose-and-report-that-it-lost.md)).
+
+Since roadmap 5.11 it is also *routed*, which costs nothing and is worth stating: the leg
+runs on the queries spec 04 §2 sends it — relationship phrasing, or your own `--related` —
+rather than on everything, so the overall price of turning it on falls from that −4.1 % to
+**0.0 %** on all six judged sets. It does not change the verdict, and the measurement says
+why it cannot: route by the judged `relationship` slice itself, which no rule can beat, and
+the slice's numbers come back identical. Six of the thirteen cases expansion loses *are*
+relationship cases.
+
+### Your query is planned, and the plan tells you which rule chose it
+
+Spec 04 §2 describes a planner as *a small, deterministic, logged rule set — not a model
+call*, and asks that every response explaining itself carry the plan and the rule behind it.
+`mycelium search --explain` now does:
+
+```console
+$ mycelium search "can an agent keep querying while a build is running" --related --explain
+plan: relationship -> lexical+graph
+   asked for with --related: one hop over the typed edges from the fused seeds
+   graph leg: 10 passage(s) proposed by one hop from 10 seed(s) and ranked against the query
+```
+
+A query naming an identifier (`SqliteStore`, `uv.lock`, a quoted phrase) asks for the symbol
+lookup; relationship phrasing or `--related` asks for graph expansion; anything else is a
+natural-language question. The rule that matters most is what the plan **cannot** do: it may
+withhold a leg your configuration enabled, and never enable one it disabled. Three of this
+project's defaults were set by measurement, and a phrase list is not allowed to overturn them
+([ADR-0083](docs/adr/0083-route-the-query-and-report-that-routing-cannot-save-a-lost-ablation.md)).
+
+The phrase list's own recall is in the ADR rather than hidden: against the judged
+`relationship` slice it fires on 3 of 22. The slice is judged by where an answer lives, not by
+how the question is worded, so `--related` is the signal that works — and the wider list that
+reaches 13 of 22 was written by reading the queries it had to catch, which is fitting the
+router to the benchmark.
 
 ### Entities are declared by your vault, not guessed from your prose
 
