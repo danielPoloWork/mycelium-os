@@ -3,7 +3,7 @@
 """The authored-Markdown frontmatter contract (spec 03 §3).
 
 Frontmatter is the *only* machine-read metadata in an authored document, and its
-field set is closed: twelve keys with named owners. Everything else a vault
+field set is closed: thirteen keys with named owners. Everything else a vault
 carries — Obsidian plugin properties, Dataview fields, personal conventions — is
 preserved as opaque `properties` and never machine-interpreted (D-022).
 
@@ -17,11 +17,16 @@ Owner                Fields
 ``mycelium ingest``  ``origin``, ``source``, ``source_digest``,
                      ``source_trust``, ``generated_by``
 ``mycelium verify``  ``verified_by``, ``verified_at``, ``grounding``
-human                ``title``, ``aliases``, ``tags``, ``collection``
+human                ``title``, ``aliases``, ``tags``, ``collection``,
+                     ``supersedes``
 ===================  ==========================================================
 
 There is deliberately **no** ``status:`` field: verification status is carried by
 the folder alone (D-021), so a file move can never disagree with a stale field.
+``supersedes`` is the one key added to the set since (roadmap 5.10, ADR-0082), and
+it is added for the reason that rule does *not* cover it: no folder and no link
+can say a document has been replaced — a location carries status, and a Markdown
+link carries no type.
 
 Parsing is deliberately lopsided about failure. A malformed ``mycelium_id``, or
 unreadable YAML in a block that *declares itself* frontmatter, raises — identity
@@ -86,6 +91,7 @@ FIELD_OWNERS: Final[dict[str, str]] = {
     "aliases": "human",
     "tags": "human",
     "collection": "human",
+    "supersedes": "human",
 }
 """Who is allowed to write each contract field (spec 03 §3, anti-drift rule).
 
@@ -116,6 +122,18 @@ class Frontmatter(BaseModel):
     aliases: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
     collection: str | None = None
+    supersedes: tuple[str, ...] = ()
+    """Documents this one replaces, as link targets (roadmap 5.10, ADR-0082).
+
+    Resolved exactly as a wikilink is — basename if unique, else path, aliases
+    honoured (spec 03 §3.1) — into `supersedes` edges. Human-owned and optional:
+    the only member of §6's vocabulary that neither a link nor a folder can
+    express, because a link carries no type and a location carries status.
+
+    A malformed value warns and is dropped like `tags`, never raises: a typo in a
+    human-owned key must not stop a build (this module's lopsided-failure rule).
+    """
+
     origin: ProvenanceOrigin | None = None
     source: str | None = None
     source_digest: Sha256Digest | None = None
@@ -405,6 +423,7 @@ def parse_frontmatter(text: str) -> FrontmatterResult:
         aliases=_as_string_tuple(fields.get("aliases"), "aliases", warnings),
         tags=_as_string_tuple(fields.get("tags"), "tags", warnings),
         collection=_as_string(fields.get("collection"), "collection", warnings),
+        supersedes=_as_string_tuple(fields.get("supersedes"), "supersedes", warnings),
         origin=_as_enum(fields.get("origin"), "origin", ProvenanceOrigin, warnings),
         source=_as_string(fields.get("source"), "source", warnings),
         source_digest=_as_digest(fields.get("source_digest"), warnings),

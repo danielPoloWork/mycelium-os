@@ -155,7 +155,7 @@ def test_the_corpus_still_covers_the_profile() -> None:
     documents = golden["documents"]
     anchors = [str(chunk["anchor"]) for chunk in chunks]
 
-    assert len(documents) == 7
+    assert len(documents) == 8
     # All three kinds, and since packing became the default (ADR-0047) `code` is
     # only reachable through a section whose *only* content is a block — the
     # constraint ADR-0007 argued and packing preserves. The corpus carries one on
@@ -180,6 +180,25 @@ def test_the_corpus_still_covers_the_profile() -> None:
     assert {str(symbol["kind"]) for symbol in symbols} == {"term", "class", "method", "function"}
     assert not any(str(symbol["symbol"]).endswith(":policy") for symbol in symbols)
     assert all(str(symbol["defined_in"]).split("#L")[1].isdigit() for symbol in symbols)
+
+    # Every type in D-014's controlled vocabulary (roadmap 5.10, ADR-0082). The
+    # last one to gain a derivation was `supersedes`, which needed a frontmatter
+    # key no closed contract had — so this assertion is what stops the gate
+    # quietly losing a type nobody is watching.
+    assert {str(edge["type"]) for edge in golden["edges"]} == {
+        "links_to",
+        "part_of",
+        "defines",
+        "references",
+        "cites",
+        "derived_from",
+        "mentions",
+        "supersedes",
+    }
+    replaced = [e for e in golden["edges"] if str(e["type"]) == "supersedes"]
+    assert len(replaced) == 1
+    assert str(replaced[0]["status"]) == "authored"
+    assert str(replaced[0]["provenance"]["kind"]) == "frontmatter"
 
     # Sibling headings that slug alike are numbered, not collided.
     assert any(anchor.endswith("#event-bus/0") for anchor in anchors)

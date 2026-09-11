@@ -26,11 +26,12 @@ weight spec 05 §3.3 promises.
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from typer.testing import CliRunner
 
-from mycelium.build import build
+from mycelium.build import build, rollback
 from mycelium.cli.app import app
 from mycelium.graph import (
     CorpusIndex,
@@ -38,6 +39,7 @@ from mycelium.graph import (
     merge_edges,
     neighbours,
     resolve_edges,
+    resolve_graph,
     section_ref,
     split_section_ref,
 )
@@ -449,9 +451,14 @@ def test_resolution_without_origins_emits_no_derived_from() -> None:
 
 
 def test_the_corpus_exercises_six_of_the_eight_types(tmp_path: Path, grammars: None) -> None:
-    """Two are deliberately unreachable, each for a stated reason: `mentions`
-    belongs to the entity extractor (roadmap 5.4) and `supersedes` needs a
-    frontmatter field the closed contract does not have (5.10, ADR-0074)."""
+    """Two are absent from *this* corpus, and for different reasons now.
+
+    `mentions` belongs to the entity extractor, which is off by default (roadmap
+    5.4). `supersedes` became derivable at 5.10, when the frontmatter contract
+    gained the key that declares it (ADR-0082) — this corpus simply declares
+    none. The determinism fixture declares one, so the gate covers all eight:
+    see `test_the_corpus_still_covers_the_profile`.
+    """
     root = built(tmp_path)
     emitted = types_of(root)
 
@@ -546,3 +553,193 @@ def test_a_rebuild_publishes_the_same_typed_graph(tmp_path: Path, grammars: None
 
     assert first == second
     assert build(root, clean=True).manifest.artifact_digests["edges"] == first_digest
+
+
+# ---------------------------------------------------------------------------
+# `supersedes` — the one type only frontmatter can declare (5.10, ADR-0082)
+# ---------------------------------------------------------------------------
+
+SUPERSEDED = {
+    "knowledge/old.md": "---\nmycelium_id: 01ARZ3NDEKTSV4RRFFQ69G5FD1\n---\n\n# Old\n\nx\n",
+    "knowledge/new.md": (
+        "---\nmycelium_id: 01ARZ3NDEKTSV4RRFFQ69G5FD2\nsupersedes: [old.md]\n---\n\n# New\n\ny\n"
+    ),
+}
+
+
+def _state(
+    path: str,
+    *,
+    supersedes: tuple[str, ...] = (),
+    origin: str = "authored",
+    aliases: tuple[str, ...] = (),
+) -> SimpleNamespace:
+    """A plain object satisfying `GraphState`, as the protocol intends."""
+    return SimpleNamespace(
+        path=path,
+        links=(),
+        aliases=aliases,
+        headings=(),
+        entities=(),
+        symbols=(),
+        symbol_uses=(),
+        symbol_gaps=(),
+        origin=origin,
+        source="",
+        supersedes=supersedes,
+    )
+
+
+def _replaced(edges: tuple[Edge, ...]) -> list[Edge]:
+    return [edge for edge in edges if edge.type is EdgeType.SUPERSEDES]
+
+
+def test_frontmatter_declares_a_supersedes_edge_no_link_could() -> None:
+    """The gap the key closes: a Markdown link carries no type, so two documents
+    can be *related* in the graph with nothing saying one replaced the other."""
+    found, warnings = resolve_graph(
+        [_state("knowledge/new.md", supersedes=("old.md",)), _state("knowledge/old.md")]
+    )
+
+    assert warnings == ()
+    (edge,) = _replaced(found)
+    assert edge.from_ == "doc:knowledge/new.md"
+    assert edge.to == "doc:knowledge/old.md"
+    assert edge.status is EdgeStatus.AUTHORED
+    assert edge.provenance.kind == "frontmatter"
+    assert edge.provenance.anchor is None, "the declaration is the document's, not a passage's"
+
+
+def test_the_declaration_resolves_by_the_same_rules_a_wikilink_does() -> None:
+    """Basename if unique, else path, aliases honoured (spec 03 §3.1) — one
+    resolution rule, or a corpus where `[[api]]` resolves and `supersedes: [api]`
+    does not."""
+    found, warnings = resolve_graph(
+        [
+            _state("knowledge/a.md", supersedes=("deep/old.md",)),
+            _state("knowledge/b.md", supersedes=("legacy",)),
+            _state("knowledge/deep/old.md"),
+            _state("knowledge/other.md", aliases=("legacy",)),
+        ]
+    )
+
+    assert warnings == ()
+    assert {edge.from_: edge.to for edge in _replaced(found)} == {
+        "doc:knowledge/a.md": "doc:knowledge/deep/old.md",
+        "doc:knowledge/b.md": "doc:knowledge/other.md",
+    }
+
+
+def test_an_unresolvable_declaration_warns_because_it_asserted_a_document_exists() -> None:
+    """Unlike an unresolvable symbol use, which asserts nothing (ADR-0074): this
+    key claims a document exists and was replaced — the claim a wikilink makes,
+    so it earns the warning ADR-0018 gave that claim."""
+    found, warnings = resolve_graph([_state("knowledge/a.md", supersedes=("nowhere.md",))])
+
+    assert _replaced(found) == []
+    assert len(warnings) == 1 and "unresolved supersedes 'nowhere.md'" in warnings[0]
+
+
+def test_an_ambiguous_declaration_names_its_candidates_rather_than_guessing() -> None:
+    found, warnings = resolve_graph(
+        [
+            _state("knowledge/a.md", supersedes=("old.md",)),
+            _state("knowledge/one/old.md"),
+            _state("knowledge/two/old.md"),
+        ]
+    )
+
+    assert _replaced(found) == []
+    assert len(warnings) == 1 and "one/old.md" in warnings[0] and "two/old.md" in warnings[0]
+
+
+def test_a_document_cannot_supersede_itself() -> None:
+    found, warnings = resolve_graph([_state("knowledge/a.md", supersedes=("a.md",))])
+
+    assert _replaced(found) == []
+    assert len(warnings) == 1 and "supersedes itself" in warnings[0]
+
+
+def test_an_external_target_is_refused_by_name() -> None:
+    """A neighbour nothing can fetch, which ADR-0018 refused for links too."""
+    found, warnings = resolve_graph(
+        [_state("knowledge/a.md", supersedes=("https://example.com/old",))]
+    )
+
+    assert _replaced(found) == []
+    assert len(warnings) == 1 and "external reference" in warnings[0]
+
+
+def test_an_ingested_documents_declaration_is_extracted_not_authored() -> None:
+    """An ingested document asserts nothing anybody here wrote: its frontmatter
+    came from the source (D-017, ADR-0079's rule), so the edge is `extracted`
+    and can never pass for a human's decision."""
+    found, _ = resolve_graph(
+        [
+            _state("knowledge/evidence/new.md", supersedes=("old.md",), origin="ingested"),
+            _state("knowledge/evidence/old.md"),
+        ]
+    )
+
+    (edge,) = _replaced(found)
+    assert edge.status is EdgeStatus.EXTRACTED
+
+
+def test_a_malformed_declaration_warns_and_does_not_stop_the_build(tmp_path: Path) -> None:
+    """The lopsided-failure rule: a human's typo in a human-owned key warns and
+    is dropped, exactly as it is for `tags`."""
+    root = repo(
+        tmp_path,
+        {
+            "knowledge/a.md": (
+                "---\nmycelium_id: 01ARZ3NDEKTSV4RRFFQ69G5FD3\n"
+                "supersedes: {not: a list}\n---\n\n# A\n\nx\n"
+            )
+        },
+    )
+    result = build(root)
+
+    assert result.manifest.counts.documents == 1
+    assert result.manifest.counts.quarantined == 0
+    assert any("supersedes" in warning for warning in result.manifest.warnings)
+
+
+def test_the_declaration_survives_a_build_and_a_rollback(tmp_path: Path) -> None:
+    """It lives in `doc_state`, so resolution re-runs over the whole corpus every
+    build and a restored snapshot reproduces the graph its manifest published."""
+    root = repo(tmp_path, SUPERSEDED)
+    first = build(root).manifest
+    with SqliteStore.open(root, read_only=True) as store:
+        before = _replaced(store.all_edges())
+    assert len(before) == 1
+
+    # The *superseded* document changes; the declaration lives on the other one,
+    # which this build does not recompile, and the edge still resolves.
+    (root / "knowledge" / "old.md").write_text(
+        "---\nmycelium_id: 01ARZ3NDEKTSV4RRFFQ69G5FD1\n---\n\n# Old\n\nchanged\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+    result = build(root)
+    assert result.stats.reused == 1
+    with SqliteStore.open(root, read_only=True) as store:
+        assert _replaced(store.all_edges()) == before
+
+    rollback(root, first.snapshot_id)
+    with SqliteStore.open(root, read_only=True) as store:
+        assert _replaced(store.all_edges()) == before
+
+
+def test_neighbours_answer_both_directions(tmp_path: Path) -> None:
+    """What makes the type worth having: an agent asks *what replaced this* of a
+    document it found, and *what did this replace* of the one it is reading."""
+    root = repo(tmp_path, SUPERSEDED)
+    build(root)
+
+    outward = mcp_tools.handle_neighbors(root, {"uri": "knowledge/new.md", "types": ["supersedes"]})
+    assert [item["ref"] for item in outward["neighbors"]] == ["doc:knowledge/old.md"]
+    assert outward["neighbors"][0]["direction"] == "out"
+
+    inward = mcp_tools.handle_neighbors(root, {"uri": "knowledge/old.md", "types": ["supersedes"]})
+    assert [item["ref"] for item in inward["neighbors"]] == ["doc:knowledge/new.md"]
+    assert inward["neighbors"][0]["direction"] == "in"

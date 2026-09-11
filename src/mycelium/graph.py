@@ -385,9 +385,11 @@ def _resolve_target(
 ) -> tuple[str | None, str]:
     """Resolve one link's document. Returns ``(path, reason)``; `reason` explains a miss.
 
-    The order is spec 03 §3.1's: an exact path wins, then a unique basename, then
-    a unique alias. Ambiguity is a miss with its own message — silently picking
-    one of two documents is how a knowledge graph starts lying.
+    The order is spec 03 §3.1's: an exact path wins, then — for a reference
+    written inside a document, a Markdown link or a `supersedes:` target — a path
+    relative to that document, then a unique basename, then a unique alias.
+    Ambiguity is a miss with its own message — silently picking one of two
+    documents is how a knowledge graph starts lying.
 
     `source_uri` inserts one step before the weaker heuristics, and only for a
     document that has one. A link inside an ingested document was written in the
@@ -404,8 +406,12 @@ def _resolve_target(
     if wanted in index.by_path:
         return index.by_path[wanted], ""
 
-    # A relative Markdown link resolves against its own document's directory.
-    if link.kind == "markdown_link":
+    # A relative path *written inside* a document resolves against that
+    # document's directory — true of a Markdown link, and equally true of a
+    # `supersedes:` target, which an author writes as the filename they would
+    # have linked (roadmap 5.10). Doing it here rather than in the caller keeps
+    # one resolution order for one syntax.
+    if link.kind in {"markdown_link", "frontmatter"}:
         relative = _normalise(str(PurePosixPath(source_path).parent / link.target))
         if relative in index.by_path:
             return index.by_path[relative], ""
@@ -492,6 +498,69 @@ def edge_type(source_path: str, target_path: str) -> EdgeType:
     return EdgeType.LINKS_TO
 
 
+def _supersedes_edges(
+    declared: Mapping[str, Sequence[str]],
+    index: CorpusIndex,
+    *,
+    namespace: str,
+    origins: Mapping[str, str],
+) -> tuple[tuple[Edge, ...], tuple[str, ...]]:
+    """The `supersedes` edges a corpus's frontmatter declares (roadmap 5.10).
+
+    Resolved exactly as a wikilink is, through the same :class:`CorpusIndex` and
+    the same rules (spec 03 §3.1): basename if unique, else path, aliases
+    honoured, and an ambiguous name naming its candidates rather than guessing
+    one of them. Reusing the index is the point — a corpus where `[[api]]`
+    resolves and `supersedes: [api]` does not would be a second resolution rule
+    for one syntax.
+
+    **Unresolvable is a warning**, unlike an unresolvable symbol use (ADR-0074).
+    The difference is what the author asserted: a call site asserts nothing about
+    the corpus, while `supersedes:` asserts that a particular document exists and
+    has been replaced — the same claim a wikilink makes, so it gets the same
+    warning ADR-0018 gave that claim.
+
+    **A self-reference is dropped with a warning.** A document cannot replace
+    itself, and the id would collapse onto a node pointing at its own origin,
+    which every traversal would then report as a neighbour of itself.
+
+    The status follows the document, not the key: an *ingested* document carrying
+    `supersedes:` in its projected frontmatter is asserting nothing anybody here
+    wrote, so its edge is `extracted` (:func:`_status_of`, ADR-0079's rule).
+    """
+    edges: dict[Sha256Digest, Edge] = {}
+    warnings: list[str] = []
+    for source_path in sorted(declared):
+        status = _status_of(origins.get(source_path, ""))
+        for target in declared[source_path]:
+            if _is_external(target):
+                warnings.append(
+                    f"{source_path}: supersedes '{target}' is an external reference; "
+                    "the relation is between documents in this corpus"
+                )
+                continue
+            link = LinkRef(kind="frontmatter", target=target, fragment="", anchor="")
+            target_path, reason = _resolve_target(index, source_path, link, "")
+            if target_path is None:
+                warnings.append(f"{source_path}: unresolved supersedes '{target}' - {reason}")
+                continue
+            if target_path == source_path:
+                warnings.append(f"{source_path}: supersedes itself; the declaration is dropped")
+                continue
+            edge = Edge.model_validate(
+                {
+                    "from": doc_ref(source_path),
+                    "to": doc_ref(target_path),
+                    "type": EdgeType.SUPERSEDES,
+                    "status": status,
+                    "provenance": EdgeProvenance(kind="frontmatter"),
+                    "namespace": namespace,
+                }
+            )
+            edges[edge_identity(edge)] = edge
+    return tuple(edges[key] for key in sorted(edges)), tuple(warnings)
+
+
 def resolve_edges(
     links_by_path: Mapping[str, Sequence[LinkRef]],
     index: CorpusIndex,
@@ -500,6 +569,7 @@ def resolve_edges(
     root: Path | None = None,
     origins: Mapping[str, str] | None = None,
     sources: Mapping[str, str] | None = None,
+    supersedes: Mapping[str, Sequence[str]] | None = None,
 ) -> tuple[tuple[Edge, ...], tuple[str, ...]]:
     """Turn the corpus's link references into edges, plus warnings for the rest.
 
@@ -558,6 +628,16 @@ def resolve_edges(
                 }
             )
             edges[edge_identity(edge)] = edge
+
+    # Frontmatter-declared supersession, resolved through the same index and the
+    # same rules as a wikilink (roadmap 5.10, ADR-0082). It runs before the
+    # derived types so `part_of` sees every node the corpus asserts.
+    declared, declared_warnings = _supersedes_edges(
+        supersedes or {}, index, namespace=namespace, origins=origins or {}
+    )
+    for edge in declared:
+        edges[edge_identity(edge)] = edge
+    warnings.extend(declared_warnings)
 
     for edge in (
         *_part_of_edges(edges.values(), namespace),
@@ -720,6 +800,9 @@ class GraphState(Protocol):
     @property
     def source(self) -> str: ...
 
+    @property
+    def supersedes(self) -> tuple[str, ...]: ...
+
 
 def resolve_graph(
     states: Sequence[GraphState], namespace: str = "default", root: Path | None = None
@@ -730,6 +813,9 @@ def resolve_graph(
     reproduces the graph its manifest published rather than something similar.
     """
     sources = {state.path: state.source for state in states if state.source}
+    supersedes = {
+        state.path: state.supersedes for state in states if getattr(state, "supersedes", ())
+    }
     index = CorpusIndex.build(
         (state.path for state in states),
         aliases={state.path: state.aliases for state in states},
@@ -743,6 +829,7 @@ def resolve_graph(
         root=root,
         origins={state.path: state.origin for state in states},
         sources=sources,
+        supersedes=supersedes,
     )
 
 

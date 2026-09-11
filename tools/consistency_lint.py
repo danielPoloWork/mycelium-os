@@ -510,6 +510,94 @@ def check_threat_boundaries() -> None:
                 fail(name, f"a STRIDE row cites {cited}, which no boundary declares")
 
 
+def check_supersedes() -> None:
+    """An ADR superseded in prose is superseded in the graph, and vice versa.
+
+    Roadmap 5.10 opened the frontmatter contract by one key so that `supersedes`
+    — the one edge type no link and no folder can express — has an authored
+    source. That creates exactly the drift the closed field set was guarding
+    against: a document can now say the relation twice, once in the prose a
+    reader trusts and once in the key a machine reads.
+
+    So the two are tied together here rather than by anyone's memory, which is
+    the same move roadmap 4.27 made for duplicate item numbers: a rule you
+    cannot break quietly beats one you have to remember.
+
+    Note the asymmetry the check has to bridge. The ADR template states the
+    relation from the **passive** side — the superseded record's own header says
+    *"Superseded by ADR-XXXX"* — while the vocabulary names it from the
+    **active** side, so the key lives on the *newer* document. This walks from
+    each superseded ADR to the one that replaced it and requires the declaration
+    there.
+    """
+    name = "supersedes"
+    adr_dir = os.path.join("docs", "adr")
+    if not exists(adr_dir):
+        return
+
+    files = sorted(f for f in os.listdir(adr_dir) if re.match(r"^\d{4}-.*\.md$", f))
+    by_number = {f[:4]: f for f in files}
+
+    declared: dict[str, set[str]] = {}
+    for filename in files:
+        text = read("docs", "adr", filename)
+        block = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
+        if block is None:
+            continue
+        listed = re.search(r"^supersedes:\s*\[([^\]]*)\]", block.group(1), re.MULTILINE)
+        if listed is None:
+            continue
+        targets = {item.strip() for item in listed.group(1).split(",") if item.strip()}
+        declared[filename] = targets
+        for target in targets:
+            if target not in by_number.values():
+                fail(
+                    name,
+                    f"{filename} declares `supersedes: [{target}]`, which is not an ADR "
+                    "file in docs/adr/ - the key is resolved like a wikilink, so it must "
+                    "name a document that exists",
+                )
+
+    for filename in files:
+        text = read("docs", "adr", filename)
+        status = re.search(r"^- \*\*Status:\*\*\s*(.+)$", text, re.MULTILINE)
+        if status is None:
+            continue
+        replaced_by = re.search(r"Superseded by \[?ADR-(\d{4})", status.group(1))
+        if replaced_by is None:
+            continue
+        successor = by_number.get(replaced_by.group(1))
+        if successor is None:
+            fail(
+                name,
+                f"{filename} says it is superseded by ADR-{replaced_by.group(1)}, "
+                "which has no file in docs/adr/",
+            )
+            continue
+        if filename not in declared.get(successor, set()):
+            fail(
+                name,
+                f"{filename}'s header says it is superseded by ADR-{replaced_by.group(1)}, "
+                f"but {successor} does not declare `supersedes: [{filename}]` in its "
+                "frontmatter - the prose and the graph disagree (roadmap 5.10, ADR-0082)",
+            )
+
+    superseded = {
+        filename
+        for filename in files
+        if (m := re.search(r"^- \*\*Status:\*\*\s*(.+)$", read("docs", "adr", filename), re.M))
+        and "Superseded by" in m.group(1)
+    }
+    for filename, targets in sorted(declared.items()):
+        for target in sorted(targets - superseded):
+            if target in by_number.values():
+                fail(
+                    name,
+                    f"{filename} declares `supersedes: [{target}]`, but {target}'s header "
+                    "does not say it is superseded - the graph and the prose disagree",
+                )
+
+
 def check_posture() -> None:
     name = "posture"
     agents = read("AGENTS.md") if exists("AGENTS.md") else ""
@@ -537,6 +625,7 @@ CHECKS: Final[tuple[Callable[[], None], ...]] = (
     check_milestones,
     check_roadmap_numbering,
     check_threat_boundaries,
+    check_supersedes,
     check_bugs,
     check_i18n_freshness,
     check_posture,
