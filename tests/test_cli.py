@@ -526,6 +526,45 @@ def test_show_survives_a_folder_move_because_uris_key_on_doc_id(tmp_path: Path) 
     assert json.loads(result.stdout)["path"] == "knowledge/verified/draft.md"
 
 
+def test_show_says_so_when_the_cited_passage_has_moved(tmp_path: Path) -> None:
+    """The CLI half of ADR-0078: `show` must not serve a moved passage silently.
+
+    The whole proof, across eleven refactorings, is `tests/test_stale_anchors.py`;
+    what is checked here is that the *operator* surface reports what the MCP one
+    reports, since a citation is minted by both and a consumer may hold either.
+    """
+    seeded(tmp_path)
+    run_build(tmp_path)
+    uri = first_hit_uri(tmp_path)
+    assert (
+        json.loads(invoke("show", uri, "--path", str(tmp_path), "--json").stdout)["stale"] is None
+    )
+
+    # Edit what the build wrote, so the pinned `mycelium_id` survives: overwriting
+    # the file would mint a new document and test NOT_FOUND by accident.
+    target = tmp_path / "knowledge" / "verified" / "retries.md"
+    target.write_text(
+        target.read_text(encoding="utf-8").replace(
+            "# Retry Policy\n", "# Retry Policy\n\nAn opening line, inserted above the citation.\n"
+        ),
+        encoding="utf-8",
+    )
+    run_build(tmp_path)
+
+    result = invoke("show", uri, "--path", str(tmp_path), "--json")
+    assert result.exit_code == ExitCode.OK
+    stale = json.loads(result.stdout)["stale"]
+    assert stale is not None
+    assert stale["cited_lines"] != stale["current_lines"]
+    assert "re-read it before re-quoting it" in stale["reason"]
+
+    # And the human surface says it too, not only the JSON one.
+    assert (
+        "has moved since the citation was made"
+        in invoke("show", uri, "--path", str(tmp_path)).stderr
+    )
+
+
 def test_show_rejects_nonsense_targets_as_usage_errors(tmp_path: Path) -> None:
     seeded(tmp_path)
     run_build(tmp_path)

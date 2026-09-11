@@ -118,6 +118,25 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **A citation whose passage has moved now says so** (roadmap 5.6, [ADR-0078](docs/adr/0078-report-a-moved-citation-rather-than-serving-it-in-silence.md)).
+  `mycelium_fetch` and `mycelium show` have always minted citation URIs carrying a
+  `?lines=a-b` range and have always ignored it on the way back in. They honour it now: when
+  the cited range is not where that anchor sits any more, the response carries a `stale`
+  block with what was cited, what is there now, the URI to cite instead, and a sentence
+  telling the reader to re-read before re-quoting. The content is still returned — the
+  anchor exists, and refusing to serve it would break every consumer holding a citation
+  into a document being edited.
+
+  This closes a hole found by proving the Milestone 5 exit gate. An anchor is
+  `(path, heading-slug-path, ordinal)` and the ordinal is a *position*, so deleting a
+  paragraph, inserting one, reordering two sections, or renaming the first of two headings
+  that slugify alike all left the anchor resolving — to a different passage, in silence.
+  Six citations across five refactorings, now all reported. `tests/test_stale_anchors.py`
+  is the permanent proof: eleven refactorings, every citation classified, the whole outcome
+  map pinned per case. A passage rewritten *in place* without changing length is still
+  invisible to a positional check; that limit is stated in the tool description and filed
+  as roadmap 5.17.
+
 - **The grammar binding is pinned below 0.26.0** ([BUG-0022](docs/bugs/2026/09/BUG-0022-tree-sitter-0-26-faults-on-a-projected-fence.md), roadmap 5.2).
   `tree-sitter==0.26.0` faults with an access violation while reading one 20 KB fence of the
   vendored ingested corpus and takes the whole build process with it — not an exception, so no
