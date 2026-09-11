@@ -135,6 +135,14 @@ class _Unit:
     text: str
     kind: ChunkKind
     lines: tuple[int, int] | None
+    group: str = ""
+    """The callout this unit belongs to, or `""` for content that belongs to none.
+
+    A callout is a *bounding* unit (spec 03 §3.1, roadmap 5.13): its blocks may
+    pack with each other and never with anything outside it, so two consecutive
+    callouts are two chunks and a callout never merges with the prose beside it.
+    The value is the callout node's id, which makes "same callout" an identity
+    test rather than a positional guess (ADR-0085)."""
 
 
 @dataclass
@@ -267,6 +275,9 @@ def _sections(kir: KirDocument) -> list[_Section]:
 
         if node.kind in _INLINE_KINDS:
             continue  # a reference directly under a heading; its text is the heading's
+        if node.kind is NodeKind.CALLOUT:
+            sections[-1].units.extend(_callout_units(node, children, by_id))
+            continue
         text, ids = _subtree_text(node, children)
         if not text.strip():
             continue
@@ -280,6 +291,65 @@ def _sections(kir: KirDocument) -> list[_Section]:
         )
 
     return [section for section in sections if section.heading is not None or section.units]
+
+
+def _callout_units(
+    node: KirNode, children: dict[str | None, list[KirNode]], by_id: dict[str, KirNode]
+) -> list[_Unit]:
+    """One callout, as the units it contributes (spec 03 §3.1, roadmap 5.13).
+
+    **One unit per block inside it, all in one group.** That is what makes a
+    callout behave the way spec 03 §3.1 asks and doc 08 §7 needs at once: the
+    group never packs with anything outside it, so a callout is its own chunk and
+    two consecutive ones are two chunks — and *within* the group the ordinary
+    target and ceiling apply, so an oversize callout splits at its own paragraph
+    boundaries instead of becoming one unsplittable block.
+
+    Spec 03 §3.1 said "atomic chunks like tables", and `atomic` for a table means
+    never split, because half a table is not a table. A callout is a *container*
+    of blocks and half of one is still readable prose — so the analogy was wrong
+    in the half that matters, and doc 08 §7 already asked for the other half
+    ("oversize messages split at paragraph boundaries per the standard chunker
+    rules"). The spec's cell is amended to say what is true (ADR-0085).
+
+    The callout's own id and its title ride with the first unit: the title is
+    document text that must survive, and an id in no chunk is an anchor that
+    cannot be cited or reached by symbol extraction.
+    """
+    blocks = [child for child in children.get(node.id, []) if child.kind not in _INLINE_KINDS]
+    inline_ids = [child.id for child in children.get(node.id, []) if child.kind in _INLINE_KINDS]
+    lead_ids = [node.id, *inline_ids]
+    lead_text = [part for part in (node.title, node.text) if part]
+
+    units: list[_Unit] = []
+    for block in blocks:
+        text, ids = _subtree_text(block, children)
+        if not text.strip():
+            continue
+        ids = [*lead_ids, *ids] if not units else ids
+        parts = [*lead_text, text] if not units else [text]
+        lead_ids, lead_text = [], []
+        units.append(
+            _Unit(
+                node_ids=tuple(ids),
+                text="\n".join(parts),
+                kind=_ATOMIC_KINDS.get(block.kind, ChunkKind.PROSE),
+                lines=_span(ids, by_id),
+                group=node.id,
+            )
+        )
+    if not units and (lead_text or lead_ids):
+        # A callout with a title and no body — `> [!note] Heads up` on its own.
+        units.append(
+            _Unit(
+                node_ids=tuple(lead_ids),
+                text="\n".join(lead_text),
+                kind=ChunkKind.PROSE,
+                lines=_span(lead_ids, by_id),
+                group=node.id,
+            )
+        )
+    return [unit for unit in units if unit.text.strip()]
 
 
 def _kind_of(units: Sequence[_Unit]) -> ChunkKind:
@@ -304,6 +374,12 @@ def _pack(section: _Section, policy: ChunkingPolicy) -> list[tuple[list[_Unit], 
     stays whole — the policy forbids mid-sentence splits, and a paragraph is the
     smallest boundary there is.
 
+    **A callout bounds a run on both sides** (roadmap 5.13): units carry the
+    callout they came from, a change of callout closes whatever has accumulated,
+    and the group's own blocks then pack among themselves under the same two
+    tests. So a callout is never merged with its neighbours and an oversize one
+    still splits where its author put a paragraph break (ADR-0085).
+
     Both tests read the run *already accumulated*, never the run it would become,
     so a chunk closes on a paragraph boundary and its size is a consequence of
     where the author put one. With `target_tokens == max_tokens` the first test
@@ -315,6 +391,12 @@ def _pack(section: _Section, policy: ChunkingPolicy) -> list[tuple[list[_Unit], 
     pending_tokens = 0
 
     for unit in section.units:
+        if pending and unit.group != pending[-1].group:
+            # Either a callout is opening or one has just closed. Independent of
+            # `pack_atomic`, which decides whether a *table* may share a chunk:
+            # a callout's boundary is a structural claim its author made.
+            packed.append((pending, _kind_of(pending)))
+            pending, pending_tokens = [], 0
         if unit.kind is not ChunkKind.PROSE and not policy.pack_atomic:
             if pending:
                 packed.append((pending, _kind_of(pending)))

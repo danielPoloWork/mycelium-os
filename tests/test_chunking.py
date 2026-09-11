@@ -454,3 +454,98 @@ def test_empty_document_yields_no_chunks() -> None:
 def test_namespace_is_carried_through() -> None:
     chunks = chunk("# T\n\ntext\n", namespace="team-a")
     assert all(c.namespace == "team-a" for c in chunks)
+
+
+# ---------------------------------------------------------------------------
+# Callouts bound a chunk (roadmap 5.13, spec 03 §3.1, ADR-0085)
+# ---------------------------------------------------------------------------
+
+CALLOUTS = """# Conversation
+
+## Turns
+
+> [!user] alice
+> A question, with several words in it.
+>
+> A second paragraph of the same turn.
+
+> [!assistant] gpt-5
+> The answer.
+
+Prose written after both callouts.
+"""
+
+
+def test_consecutive_callouts_are_separate_chunks() -> None:
+    """The defect this closes: `_ATOMIC_KINDS` covered tables and code blocks
+    only, so two turns packed into one chunk and doc 08 §7's chunking unit was
+    not the message."""
+    chunks = [c for c in chunk(CALLOUTS) if c.anchor.startswith(f"{DOC_PATH}#turns/")]
+    assert len(chunks) == 3
+    first, second, after = chunks
+    assert "alice" in first.text and "A question" in first.text
+    assert "second paragraph of the same turn" in first.text
+    assert "gpt-5" not in first.text
+    assert "gpt-5" in second.text and "The answer." in second.text
+    assert after.text == "Prose written after both callouts."
+
+
+def test_a_callout_never_merges_with_the_prose_around_it() -> None:
+    """Bounding on both sides, which is what "atomic chunks like tables" was
+    right about (spec 03 §3.1)."""
+    source = "# Doc\n\n## S\n\nBefore.\n\n> [!note] Title\n> Inside.\n\nAfter.\n"
+    texts = [c.text for c in chunk(source) if c.anchor.startswith(f"{DOC_PATH}#s/")]
+    assert texts == ["S\n\nBefore.", "Title\nInside.", "After."]
+
+
+def test_an_oversize_callout_splits_at_its_own_paragraph_boundaries() -> None:
+    """The half "atomic like tables" got wrong, and the half doc 08 §7 asks for:
+    a callout is a *container* of blocks, and half a callout is still readable
+    prose, so an oversize one splits rather than staying one block."""
+    body = "\n>\n".join(
+        f"> Paragraph {index} with a handful of words in it." for index in range(12)
+    )
+    source = f"# Doc\n\n## S\n\n> [!note] Long\n{body}\n"
+    inside = [
+        c
+        for c in chunk(source, policy=ChunkingPolicy(target_tokens=40, max_tokens=40))
+        if c.anchor.startswith(f"{DOC_PATH}#s/")
+    ]
+    assert len(inside) > 1, "an oversize callout must split"
+    assert all(c.tokens <= 40 for c in inside)
+    # Split at paragraph boundaries, never mid-sentence.
+    for piece in inside:
+        assert not piece.text.rstrip().endswith("with a handful of words in")
+
+
+def test_a_callout_keeps_its_title_and_its_node() -> None:
+    """The title is document text, and a KIR node in no chunk is an anchor
+    nothing can cite or extract a symbol from."""
+    source = "# Doc\n\n## S\n\n> [!tip] Just a title\n"
+    kir = parse_markdown(source).kir
+    chunks = chunk_document(kir, doc_path=DOC_PATH)
+    assert any("Just a title" in c.text for c in chunks)
+    referenced = {node_id for c in chunks for node_id in c.kir_nodes}
+    assert {node.id for node in kir.nodes} <= referenced
+
+
+def test_a_callout_bounds_whatever_pack_atomic_says() -> None:
+    """`pack_atomic` decides whether a *table* may share a chunk with prose. A
+    callout's boundary is a structural claim its author made, so it holds either
+    way (ADR-0085)."""
+    for pack in (True, False):
+        texts = [
+            c.text
+            for c in chunk(CALLOUTS, policy=ChunkingPolicy(pack_atomic=pack))
+            if c.anchor.startswith(f"{DOC_PATH}#turns/")
+        ]
+        assert len(texts) == 3, pack
+        assert "gpt-5" not in texts[0]
+
+
+def test_a_callout_holding_a_table_keeps_the_table_atomic() -> None:
+    """The two rules compose: the callout bounds, the table inside stays whole."""
+    source = "# Doc\n\n## S\n\n> [!note] With a table\n> | a | b |\n> |---|---|\n> | 1 | 2 |\n"
+    inside = [c for c in chunk(source) if c.anchor.startswith(f"{DOC_PATH}#s/")]
+    assert len(inside) == 1
+    assert "a | b" in inside[0].text and "1 | 2" in inside[0].text

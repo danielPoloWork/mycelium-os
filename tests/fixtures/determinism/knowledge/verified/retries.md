@@ -17,6 +17,12 @@ which the message is quarantined rather than dropped silently.
 > [!warning] Quarantine is not deletion
 > A quarantined message keeps its provenance and can be replayed once the cause is fixed.
 
+> [!note] Replay is manual
+> Nothing replays a quarantined message on its own; an operator decides when the cause
+> is fixed.
+>
+> The second paragraph exists so this callout has an internal boundary to split at.
+
 ## Schedule
 
 | Attempt | Delay | Cumulative |
