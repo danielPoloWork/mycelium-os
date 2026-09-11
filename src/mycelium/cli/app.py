@@ -8,6 +8,12 @@ compatibility liability and the skeleton stays deliberately small: ``init``,
 ``neighbors``, ``export``, ``doctor``, ``eval``, and ``serve``, joined at
 milestone 4 by ``ingest``, ``verify``, ``promote`` and ``demote``.
 
+An *installed module* adds one more group each, mounted by :func:`main` through
+:func:`mycelium.modules.mount` — D-023's third extension mechanism, and the one
+surface a module can grow without a core change (ADR-0077). The core's own list
+above stays closed: a module's commands live under its own id, so
+`mycelium chats import` can never be mistaken for a promise this file makes.
+
 The CLI is a shell, not a layer: it parses arguments, calls one function, and
 renders. Nothing here decides anything the library does not already decide.
 """
@@ -67,6 +73,7 @@ from mycelium.ingest import (
     write_projection,
 )
 from mycelium.mcp import serve_stdio
+from mycelium.modules import mount as mount_modules
 from mycelium.retrieval import SearchOutcome
 from mycelium.retrieval import search as run_search
 from mycelium.sdk.identity import (
@@ -1737,6 +1744,16 @@ def serve(
 
 
 def main() -> None:
-    """Console-script entry point."""
+    """Console-script entry point.
+
+    Installed modules are mounted here rather than at import (D-023 mechanism 3,
+    roadmap 5.5): a module's own CLI imports this package's output helpers, so
+    mounting during this file's import re-entered a half-imported module and lost
+    the command without a word. A module that cannot be loaded is named on stderr
+    and the rest of the CLI works — `mycelium doctor` reports it as a check.
+    """
     configure_streams()
+    _, problems = mount_modules(app)
+    for problem in problems:
+        warn(problem)
     app()

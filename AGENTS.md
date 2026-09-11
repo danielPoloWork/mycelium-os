@@ -84,6 +84,8 @@ tracked; every untracked directory is a cache or a copy that one command regener
 ├── mycelium.toml                   # this repo compiles its own docs; says which Markdown is knowledge
 ├── orchestrator/project.yaml       # the EADOS manifest (delivery_state)
 ├── src/mycelium/                   # production sources — flat src-layout, one directory per component (§5)
+├── contrib/chats/                  # the first *module* (D-025): a distribution of its own, in a uv
+│                                   #   workspace, held to the published plugin API (roadmap 5.5, ADR-0077)
 ├── tests/                          # test sources; tests/bench/ holds the pytest-benchmark suites
 ├── eval/                           # judged case sets, blessed baselines, the vendored second corpus and the
 │                                   #   G6 golden — tracked, so every gate runs from a clone (ADR-0013/0021/0027)
@@ -139,6 +141,16 @@ For this repository:
 Subdivision inside `mycelium/` is by **component**, not by file type. **This layout
 is normative.** Do not place code at the repository root or in any other shape without
 first superseding [ADR-0002](docs/adr/0002-adopt-cross-language-source-layout.md).
+
+**One exception, and it is a second distribution rather than a second shape.** A
+*module* (D-025) is its own package with its own `pyproject.toml`, living under
+`contrib/<id>/src/<package>/` and joined to this one by a uv workspace — the first is
+`contrib/chats/` (roadmap 5.5). The rule above still holds, because it governs the shape
+of *a* distribution and each of these is one: same src-layout, same component
+subdivision, one namespace per package. What the separation buys is the thing spec 05
+§4.3 keeps contrib in-repo for: a module held to the published plugin API cannot reach
+into the engine's internals, and a test enforces exactly that
+([ADR-0077](docs/adr/0077-give-a-module-an-entry-point-a-section-and-a-command-and-report-what-it-could-not-reach.md)).
 
 ## 6. Git Workflow
 

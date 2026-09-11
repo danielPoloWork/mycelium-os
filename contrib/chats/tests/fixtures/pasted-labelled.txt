@@ -1,0 +1,14 @@
+Shared conversation — exported by copying the page
+
+You said:
+Can an agent keep querying while a build is running?
+
+ChatGPT said:
+Yes. The build holds a writer lock and readers use WAL, so queries continue against the
+previously published snapshot.
+
+You said:
+What happens to the lock if the build crashes?
+
+ChatGPT said:
+It carries a heartbeat. A stale lock is taken over by the next build.

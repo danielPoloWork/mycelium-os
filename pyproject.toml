@@ -119,6 +119,10 @@ dev = [
     # is: CI type-checks and exercises the adapters on every platform. The pandoc
     # binary is installed by the workflow, and the tests that need it skip when it
     # is absent — a contributor without pandoc still runs everything else.
+    # The contrib module, so CI exercises the plugin API on every platform and
+    # `mypy --strict` reads it. A workspace member, so this is the working tree
+    # rather than a release (roadmap 5.5).
+    "mycelium-chats",
     "docling-slim[convert-core,format-docx,format-html,format-latex,format-pdf]>=2.124",
     "pypdfium2>=4.30",
     # The symbols extra is a dev dependency for the same reason again: CI exercises
@@ -137,15 +141,35 @@ dev = [
     "tree-sitter-typescript>=0.23",
 ]
 
+# The contrib module is a distribution of its own (roadmap 5.5, ADR-0077), built
+# and installed from the same working tree through a uv workspace. Two packages,
+# one repository: the module is held to the published plugin API exactly as a
+# third party would be, and is developed without a release cycle of its own.
+[tool.uv.workspace]
+members = ["contrib/*"]
+
+[tool.uv.sources]
+mycelium-chats = { workspace = true }
+# The module depends on the core, and inside the workspace that dependency is
+# this working tree rather than a release from the index — so a core change is
+# visible to the module without a publish, which is what makes the plugin-API
+# validation a live test rather than a version-lag one.
+mycelium-os = { workspace = true }
+
 [tool.hatch.version]
 path = "src/mycelium/__about__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mycelium"]
 
+[tool.hatch.build.targets.sdist]
+# `contrib/` holds a second distribution with its own pyproject; shipping its
+# sources inside this one's sdist would put two packages in one archive.
+exclude = ["contrib"]
+
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"
-testpaths = ["tests"]
+testpaths = ["tests", "contrib/chats/tests"]
 markers = [
     "determinism: gate G6 — byte-identical rebuild against the committed golden corpus",
     "embeddings: needs the local model files; skipped when they are not on this machine",
@@ -168,6 +192,12 @@ src = ["src", "tests"]
 # breaking a test by doing its job. The generator that writes them stays formatted.
 exclude = ["tests/fixtures/**/*.md"]
 
+[tool.ruff.lint.isort]
+# `mycelium_chats` is the contrib module (roadmap 5.5): a separate distribution
+# in this workspace, so ruff would otherwise sort it as a third party and put it
+# above `mycelium`. Naming both keeps one import order across the two trees.
+known-first-party = ["mycelium", "mycelium_chats"]
+
 [tool.ruff.lint]
 select = [
     "E",   # pycodestyle errors
@@ -182,7 +212,7 @@ select = [
 [tool.mypy]
 strict = true
 python_version = "3.12"
-files = ["src"]
+files = ["src", "contrib/chats/src"]
 
 # Optional dependencies loaded behind a runtime guard, none of which ship stubs. Their
 # surface is narrow and checked by tests instead.

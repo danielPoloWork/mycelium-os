@@ -1,0 +1,20 @@
+{
+  "threads": [
+    {
+      "subject": "Retention windows",
+      "history": [
+        {
+          "speaker": "me",
+          "body": "Does retention delete the archive?",
+          "at": 1785200000
+        },
+        {
+          "speaker": "bot",
+          "body": "No. It leaves the index; the record stays unless you --purge.",
+          "at": 1785200060
+        }
+      ],
+      "thread_id": "t-77"
+    }
+  ]
+}

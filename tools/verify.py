@@ -77,7 +77,21 @@ DOC_SUFFIXES = frozenset({".md", ".txt", ".png", ".svg", ".jpg"})
 named here widens the mode, so a new file type is over-verified rather than
 skipped — the safe direction for a list nobody remembers to update."""
 
-CODE_PREFIXES = ("src/", "tests/", "tools/", "pyproject.toml", "uv.lock")
+CODE_PREFIXES = (
+    "src/",
+    "tests/",
+    "tools/",
+    "contrib/",
+    "pyproject.toml",
+    "uv.lock",
+)
+"""Paths whose change is a code change.
+
+`contrib/` joined at roadmap 5.5 with the first module. It is a second
+distribution rather than part of `src/`, and it is held to the same gates for
+the reason spec 05 §4.3 keeps contrib in-repo before the freeze: a core change
+that breaks a module must fail the *core's* suite, or the plugin-API validation
+is a promise nobody checks."""
 
 EVAL_DATA_PREFIXES = ("eval/",)
 """The judged sets, the baselines and the corpora. A change here moves what the
@@ -100,7 +114,7 @@ been one implementation with two callers; the *plan* was two implementations
 with one name, which is how they came to disagree (roadmap 4.35, ADR-0059)."""
 
 
-CHECKED_PATHS: Final = ("src", "tests", "tools")
+CHECKED_PATHS: Final = ("src", "tests", "tools", "contrib")
 """What the formatter and the linter read.
 
 `tools/` joined at roadmap 4.43, and the reason it had not is that nobody priced
@@ -110,14 +124,20 @@ Measured before adding them — `ruff check` and `ruff format --check` are under
 second either way, and the difference between the two target lists is smaller than
 the run-to-run spread of either one."""
 
-TYPED_PATHS: Final = ("src", "tools")
+TYPED_PATHS: Final = ("src", "tools", "contrib/chats/src")
 """What `mypy --strict` reads. No `tests/`, and that is a separate question.
 
 `tools/` cost nothing measurable to add: three cold runs read 79.2 / 58.3 / 56.5 s
 for `src` against 60.0 / 58.3 / 57.4 s for `src tools`, because the time goes into
 the third-party graph — pydantic, numpy, typer — which `src` already imports and
 `tools/` reuses. Eighteen more files, 87 checked to 105, no measurable cost
-(roadmap 4.43)."""
+(roadmap 4.43).
+
+`contrib/chats/src` joined at roadmap 5.5, named as a path rather than as
+`contrib` because a distribution's *sources* are what `mypy --strict` reads and
+its tests are the separate question `tests/` still is. Same reasoning, same
+result: the third-party graph is already loaded, so 105 files checked becomes
+110."""
 
 MYCELIUM = [sys.executable, "-c", "from mycelium.cli import main; main()"]
 """How to invoke the CLI without depending on a console script being on PATH.
@@ -279,7 +299,23 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
     # tests on a loaded machine — which is the same numbers taken badly. A
     # performance claim needs a reproducible measurement (AGENTS.md §10), and
     # that means the benchmarks alone.
-    steps.append(("benchmarks", [python, "-m", "pytest", "tests/bench", "--benchmark-only", "-q"]))
+    steps.append(
+        (
+            "benchmarks",
+            [
+                python,
+                "-m",
+                "pytest",
+                "tests/bench",
+                # The module's own baselines travel with it (spec 05 §4.3), so
+                # they are named here rather than found by a glob: a promoted
+                # repository takes its benchmarks and this line goes with it.
+                "contrib/chats/tests/bench",
+                "--benchmark-only",
+                "-q",
+            ],
+        )
+    )
     return steps
 
 

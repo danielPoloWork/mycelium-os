@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Modules are real, and the first one archives your chatbot conversations** (roadmap 5.5,
+  [ADR-0077](docs/adr/0077-give-a-module-an-entry-point-a-section-and-a-command-and-report-what-it-could-not-reach.md)).
+  `[modules] enabled = ["chats"]` now resolves against the new `mycelium.modules` entry-point
+  group, and an installed module contributes a `mycelium <id> …` command group, owns the
+  `[<id>]` section of `mycelium.toml`, and is refused by name when nothing provides it.
+  **`mycelium-chats`** ships in `contrib/chats/` as a distribution of its own: it imports a
+  ChatGPT or Claude export, a Markdown transcript, a pasted conversation or any JSON through a
+  configured field mapping; keeps the original in tier-1 custody; writes a canonical
+  `*.chat.jsonl` record under `chats/`; and projects each conversation into
+  `knowledge/evidence/chats/` so `mycelium search` finds chat content with citations that
+  resolve to a conversation *and a message*. `mycelium chats import|list|show|export|resume|delete`,
+  four export formats, secret scanning, retention windows and a cascading delete. Content is
+  verbatim always; structure may be inferred and says so; an unlabelled paste gets no invented
+  speakers. `mycelium doctor` gains a `modules` check.
+
 - **The optional entity stage** (roadmap 5.4, [ADR-0076](docs/adr/0076-let-the-corpus-declare-its-entities-and-refuse-to-guess-the-rest.md)). The last stage spec 02
   §4.1 draws and the last of D-014's eight edge types now exist. An entity is a name the
   corpus **declares** — a frontmatter or inline `#tag`, or an `aliases` key naming the thing
@@ -73,6 +88,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   the table at query time yet — the retrieval leg is roadmap 5.9.
 
 ### Changed
+
+- **`mycelium.toml` accepts a section named after an installed module** (roadmap 5.5). The
+  loader is still strict — an unknown section is still refused with the list of known ones —
+  but a table whose name is an installed module id is carried through to that module, which
+  validates it with a schema of its own. Without this the first module could not have had a
+  setting at all. A module's table participates in the config digest, so `config_digest` moves
+  once for every repository and the next build recompiles through its caches.
+
+- **`mycelium.ingest` now exports `redact_text` and `Finding`**, which existed in its
+  `secrets` submodule and were not re-exported — so a module could not redact without
+  reaching into an internal.
 
 - **The determinism golden records every edge** (roadmap 5.2). It carried a count and a folded
   digest, so a change to the graph showed up as an unexplained digest move; the fixture's 18 edges

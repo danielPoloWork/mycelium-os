@@ -197,7 +197,10 @@ jobs:
       # the ingested corpus, carry the judgements, measure the ranking and decide gate
       # G2's currency were reviewed and checked by nothing. `tests/test_verify_ladder.py`
       # asserts this line and tools/verify.py's plan name the same paths.
-      - run: uv run ruff format --check src tests tools && uv run ruff check src tests tools && uv run mypy --strict src tools
+      # The path lists are `tools/verify.py`'s CHECKED_PATHS and TYPED_PATHS, and
+      # `tests/test_verify_ladder.py` fails when this line and that file disagree
+      # (ADR-0059). `contrib/` joined at roadmap 5.5 with the first module.
+      - run: uv run ruff format --check src tests tools contrib && uv run ruff check src tests tools contrib && uv run mypy --strict src tools contrib/chats/src
 
   # ---------------------------------------------------------------------------
   # Gate G6 — byte-identical rebuild (spec 04 §7, D-008). The determinism tests also
@@ -474,6 +477,6 @@ jobs:
         run: uv sync --all-extras --dev
       - name: Run the benchmark suite
         shell: bash
-        run: uv run pytest tests/bench --benchmark-only
+        run: uv run pytest tests/bench contrib/chats/tests/bench --benchmark-only
 
 
