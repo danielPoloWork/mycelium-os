@@ -430,7 +430,7 @@ per line, lossless, the shape every chatbot API consumes — and a Markdown proj
 result cites a **conversation and a message**, and `--collection chats/research` filters to
 one project. It reads ChatGPT and Claude exports, Markdown transcripts, pasted text, and any
 JSON through a configured field mapping; it keeps the original in custody, scans for secrets,
-and never touches the network.
+and touches no network unless you configure one of the two opt-in LLM lanes below.
 
 Four promises, each a named test: content is **verbatim** always; structure may be inferred
 and the record says so; unknown provider fields are **preserved**, not dropped; and an
@@ -447,6 +447,15 @@ sent back with the messages it could have cited instead
 ([ADR-0087](docs/adr/0087-distil-a-conversation-at-authoring-time-and-cite-the-message.md)).
 It never fires from `import`: a provider export is a year of conversations, and that many
 LLM calls is not a decision to make on somebody's behalf.
+
+The second opt-in lane is for the input the deterministic readers refuse to guess at. A paste
+with no `You said:` labels is kept as one fragment, because inventing a speaker is the one
+thing the format forbids — so it gets no message anchors at all. With `[chats] segmenter =
+"llm"` a model proposes turn *boundaries*: it returns line numbers and roles, never text, and
+the segments are sliced out of your own paste, so a model that invented a sentence has nowhere
+to put it. A proposal that does not partition the paste exactly is refused, and what leaves
+your machine is redacted first — a paste holding a private key is not sent at all
+([ADR-0088](docs/adr/0088-let-a-model-propose-line-numbers-and-slice-the-paste-ourselves.md)).
 
 The module is also the reason the plugin API is worth trusting. Doc 08 says it plainly: *if
 the extension points can't support this module cleanly, they get fixed before the 1.0

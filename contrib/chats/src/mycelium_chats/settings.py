@@ -17,7 +17,7 @@ setting is the failure mode ADR-0014 refuses.
 """
 
 from datetime import UTC, datetime, timedelta, timezone, tzinfo
-from typing import Final, Self
+from typing import Final, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -60,6 +60,18 @@ class ChatsSettings(BaseModel):
     """Doc 08 §8. Conversations older than the window are excluded from the
     projection and the index; the archive itself is kept unless `--purge`. `None`
     keeps everything, which is what an archive is for."""
+
+    segmenter: Literal["none", "llm"] = "none"
+    """Doc 08 §6's last row: *"Off by default; when enabled, it may propose
+    boundaries/roles only"*. `llm` lets an unlabelled paste — the one input the
+    deterministic readers keep whole rather than guess at — be segmented by the
+    model `[synthesis] provider` names.
+
+    Off by default for the reason every other lane here is: a fresh install makes
+    no network call (D-013), and naming a provider is the operator's consent
+    (D-017). With this set to `llm` and no provider configured, `import` says so
+    and archives the paste exactly as it does today — the floor is a correct
+    record, not a failure state (ADR-0088)."""
 
     mapping: dict[str, str] = Field(default_factory=dict)
     """Field mapping for the `generic` JSON reader (doc 08 §6) — the escape hatch

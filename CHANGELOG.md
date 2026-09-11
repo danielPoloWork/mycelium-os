@@ -12,6 +12,27 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **An unlabelled paste can be segmented by a model** (roadmap 5.16,
+  [ADR-0088](docs/adr/0088-let-a-model-propose-line-numbers-and-slice-the-paste-ourselves.md)).
+  `[chats] segmenter = "llm"` lets the provider named in `[synthesis]` propose turn
+  boundaries for the one input the deterministic readers keep whole: a paste with no
+  `You said:` labels, which until now became a single fragment with no message anchors
+  at all. Off by default; with no provider configured the paste is archived exactly as
+  before, and the import says so.
+
+  **The model returns line numbers, never content.** A proposal is a list of
+  `{line, role}` boundaries and the segments are sliced out of your own text, so
+  *content stays verbatim* is a property of the shape rather than a promise checked
+  afterwards — a model that invented a sentence has nowhere to put it. A proposal that
+  does not partition the paste exactly is quoted back once and then abandoned, leaving
+  the fragment. The record is labelled `segmenter: llm/<model>`, every message carries
+  `meta.segmenter`, and the fidelity report counts the turns as `inferred` — the
+  structure was read, not stated.
+
+  **What leaves the machine is redacted.** Secrets are replaced before the paste is
+  sent, and a paste holding a private-key block is not sent at all: that is the one
+  rule whose redaction spans lines, which would move every index the model returned.
+
 - **A conversation can be distilled into a cited candidate document** (roadmap 5.15,
   [ADR-0087](docs/adr/0087-distil-a-conversation-at-authoring-time-and-cite-the-message.md)).
   `mycelium chats distil <conv_id>` points the existing synthesis lane at an archived

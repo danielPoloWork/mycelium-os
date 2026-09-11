@@ -128,13 +128,17 @@ class PastedTextReader:
                         ),
                         structure_inferred=True,
                         recognised=0,
+                        # The reader gave up rather than guessed, which is the one
+                        # case doc 08 §6's optional segmenter exists for (5.16).
+                        unsegmented=True,
                     ),
                 ),
-                warnings=(
-                    "no turn labels found in the paste: it is archived as a single fragment "
-                    "with structure_inferred = true. Add `You said:` / `<Assistant> said:` "
-                    "labels, or import a provider export, to get message-level anchors.",
-                ),
+                # No warning here, and that is a fix rather than an omission
+                # (roadmap 5.16). This reader used to say "archived as a single
+                # fragment" — a true sentence when it was written and a false one
+                # the moment doc 08 §6's optional segmenter could turn the
+                # fragment into turns *after* the reader had spoken. The archive
+                # says it instead, once, knowing whether segmentation happened.
             )
 
         built: list[Message | Fragment] = []

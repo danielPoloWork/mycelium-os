@@ -31,6 +31,7 @@ default_project = "personal"   # so --project becomes optional
 timezone = "UTC"               # pin it, or archive paths follow the machine
 retention_months = 24          # older conversations stay archived, leave the index
 redact_in_record = false       # secrets are always redacted in the projection
+segmenter = "none"             # "llm" lets a model segment an unlabelled paste
 ```
 
 ## Use it
@@ -97,7 +98,9 @@ Four invariants, and the tests are named after them:
 1. **Content is verbatim.** No rewriting, no cleanup, no summarising — ever.
 2. **Structure may be inferred; content may not.** When boundaries are guessed the record
    says `structure_inferred`, every guessed message says `meta.inferred`, and the
-   projection says so in prose. An unlabelled paste gets **no** invented speakers.
+   projection says so in prose. An unlabelled paste gets **no** invented speakers — it is
+   kept whole, unless you enable `[chats] segmenter = "llm"`, which asks a model for turn
+   *boundaries* and still slices the content out of your own text.
 3. **Unknown provider fields are preserved**, not dropped: whatever the schema has no
    field for lands in `meta`, verbatim.
 4. **The original is kept** in tier-1 custody under its own digest, so the archive is
@@ -105,7 +108,10 @@ Four invariants, and the tests are named after them:
 
 And two consequences worth knowing. An import is **idempotent**: `conv_id` is derived from
 the original's content digest, so importing the same export twice produces the same files
-and no diff. And **nothing here touches the network**, ever.
+and no diff. And **nothing here touches the network unless you configure it to** — reading,
+projecting, indexing and searching your conversations are all local, and the only two things
+that call out are the opt-in lanes below: distillation, and LLM segmentation. Neither runs
+until `[synthesis]` names a provider, and they are switched on separately.
 
 ## Two files per conversation
 

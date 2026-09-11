@@ -36,10 +36,11 @@ non-KIR source, and :class:`ChatFidelity` is what that costs — noted for the 1
 freeze in ADR-0077 rather than worked around silently.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
-from typing import Final, Literal
+from typing import TYPE_CHECKING, Final, Literal
 
 from pydantic import NonNegativeInt
 
@@ -66,7 +67,11 @@ from mycelium_chats.record import (
     participants_of,
     renumber,
 )
+from mycelium_chats.segment import SEGMENTER_LLM
 from mycelium_chats.settings import ChatsSettings
+
+if TYPE_CHECKING:
+    from mycelium.synthesis import LlmProvider
 
 __all__ = [
     "CHATS_MEDIA_TYPE",
@@ -175,6 +180,7 @@ def import_text(
     settings: ChatsSettings | None = None,
     knowledge_dir: str = "knowledge",
     now: datetime | None = None,
+    segmenter: "LlmProvider | None" = None,
 ) -> tuple[tuple[ImportOutcome, ...], tuple[str, ...]]:
     """Read `text`, archive every conversation in it, and project each one.
 
@@ -182,6 +188,11 @@ def import_text(
     :class:`~mycelium_chats.readers.ReaderError` when no reader can read the
     input — a per-input failure the caller reports and carries on from, which is
     the quarantine-not-abort rule (spec 02 §5) applied to an authoring command.
+
+    `segmenter` is doc 08 §6's optional LLM, supplied by the caller because that
+    is who reads `[synthesis]`. It is consulted for exactly one thing — a paste
+    the reader kept whole because it found no turns — and never changes what a
+    reader read from structure the source stated (roadmap 5.16, ADR-0088).
     """
     options = settings or ChatsSettings()
     imported = now or datetime.now(tz=UTC)
@@ -216,9 +227,15 @@ def import_text(
     # run, for no change in the conversation.
     imported = held.first_seen
 
-    outcomes: list[ImportOutcome] = []
+    conversations = result.conversations
     warnings = list(result.warnings)
-    for index, found in enumerate(result.conversations):
+    if segmenter is not None and options.segmenter == SEGMENTER_LLM:
+        conversations, notes = _segment(conversations, text, segmenter)
+        warnings.extend(notes)
+    warnings.extend(_kept_whole(conversations))
+
+    outcomes: list[ImportOutcome] = []
+    for index, found in enumerate(conversations):
         outcome, notes = _archive_one(
             root,
             found,
@@ -234,6 +251,53 @@ def import_text(
         outcomes.append(outcome)
         warnings.extend(notes)
     return tuple(outcomes), tuple(warnings)
+
+
+def _kept_whole(conversations: Sequence[ReadConversation]) -> list[str]:
+    """Say that a paste is still one fragment, once, after segmentation had its turn.
+
+    The `pasted` reader used to say this itself, which was correct until doc 08
+    §6's segmenter could turn that fragment into turns *after* the reader had
+    spoken — leaving an import that had just produced five messages reporting
+    that it had produced one (roadmap 5.16). A reader cannot know; this can, so
+    the sentence lives here.
+    """
+    return [
+        "no turn labels found in the paste: it is archived as a single fragment with "
+        "structure_inferred = true. Add `You said:` / `<Assistant> said:` labels, import "
+        'a provider export, or enable [chats] segmenter = "llm" to get message-level anchors.'
+        for conversation in conversations
+        if conversation.unsegmented
+    ]
+
+
+def _segment(
+    conversations: Sequence[ReadConversation], text: str, provider: "LlmProvider"
+) -> tuple[tuple[ReadConversation, ...], list[str]]:
+    """Offer each unsegmented conversation to the model, keeping the rest as read.
+
+    An input holds one unsegmented conversation or none — only the `pasted`
+    reader ever gives up, and it gives up on the whole paste — but the loop is
+    written over the list anyway, because a reader that one day returns several
+    should not need this function to change.
+
+    The **whole input text** is what is segmented, not the fragment's content:
+    the fragment is `text.strip("\\n")`, and a line number the model returns must
+    index the same sequence this module slices. Passing the fragment would work
+    today and break the first time a reader trims differently.
+    """
+    from mycelium_chats.segment import segment_conversation
+
+    out: list[ReadConversation] = []
+    notes: list[str] = []
+    for conversation in conversations:
+        if not conversation.unsegmented:
+            out.append(conversation)
+            continue
+        segmented, warnings = segment_conversation(conversation, text, provider)
+        out.append(segmented)
+        notes.extend(warnings)
+    return tuple(out), notes
 
 
 def _archive_one(  # noqa: PLR0913 - every argument is a fact the caller already has
@@ -287,6 +351,9 @@ def _archive_one(  # noqa: PLR0913 - every argument is a fact the caller already
         participants=participants_of(lines),
         tags=found.tags,
         secrets=flags,
+        # Doc 08 §6's label, so a reader can tell inferred structure a model
+        # proposed from inferred structure a heuristic did (roadmap 5.16).
+        segmenter=found.segmenter,
     )
     transcript = Transcript(conversation=conversation, lines=lines)
 
