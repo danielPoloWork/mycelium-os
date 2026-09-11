@@ -202,10 +202,13 @@ TOOL_SCHEMAS: Final[list[dict[str, Any]]] = [
             "Fetch the verbatim content behind a mycelium:// URI, with its "
             "provenance. Use it to read more around a search result. If the anchor "
             "no longer exists, the nearest surviving ancestor is returned. If the "
-            "anchor still exists but its passage has moved since the citation was "
-            "made, the content comes back with a 'stale' block naming the URI to "
-            "cite instead - re-read it before re-quoting. A passage rewritten in "
-            "place, without moving, cannot be detected this way."
+            "anchor still exists but the passage is not what was cited, the content "
+            "comes back with a 'stale' block naming the URI to cite instead. Its "
+            "'kind' says which: 'moved' means the same words at a new position, so "
+            "update the URI; 'rewritten' means different words at the same position, "
+            "so re-read it before re-quoting; 'moved_and_rewritten' means both. A "
+            "URI minted before this product carried content digests can only report "
+            "'moved'."
         ),
         "inputSchema": {
             "type": "object",

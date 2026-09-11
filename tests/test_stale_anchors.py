@@ -174,10 +174,18 @@ Everything derived lives under the store.
 
 
 class Outcome(Enum):
-    """What became of one held citation after the corpus moved under it."""
+    """What became of one held citation after the corpus moved under it.
+
+    The three drift values are the `stale` block's own `kind` (roadmap 5.17).
+    Before the digest there was one — `MOVED` — and it had to cover a passage
+    that had genuinely only moved *and* one whose words had changed, which is
+    the distinction this table exists to make.
+    """
 
     SURVIVED = "survived"
     MOVED = "moved"
+    REWRITTEN = "rewritten"
+    MOVED_AND_REWRITTEN = "moved_and_rewritten"
     GONE = "gone"
     MISSING = "missing"
 
@@ -202,38 +210,44 @@ EXPECTED: Mapping[str, Mapping[str, Outcome]] = {
     "rename the file": {},
     "demote verified to candidate": {},
     # --- the ordinal is a position, so passages slide under their anchors ----
-    # `#event-bus/0` is the one whose *content* changes; the two below it merely
-    # shift down the file, which is still worth reporting because the line range
-    # in the consumer's URI is now wrong.
+    # Which signal fired is the column worth reading, and since roadmap 5.17 the
+    # table can state it. `#event-bus/0` is the citation whose *words* change, so
+    # both signals fire; the two below it shift down the file with their text
+    # intact, so only the line range does — still worth reporting, because the
+    # range in the consumer's URI is now wrong, and now distinguishable from a
+    # passage that was rewritten under them.
     "delete a paragraph mid-section": {
-        f"{ARCH}#event-bus/0": Outcome.MOVED,
+        f"{ARCH}#event-bus/0": Outcome.MOVED_AND_REWRITTEN,
         f"{ARCH}#retries/0": Outcome.MOVED,
         f"{ARCH}#storage/0": Outcome.MOVED,
     },
     "insert a paragraph mid-section": {
-        f"{ARCH}#event-bus/0": Outcome.MOVED,
+        f"{ARCH}#event-bus/0": Outcome.MOVED_AND_REWRITTEN,
         f"{ARCH}#retries/0": Outcome.MOVED,
         f"{ARCH}#storage/0": Outcome.MOVED,
     },
     "reorder two sections": {
-        f"{ARCH}#event-bus/0": Outcome.MOVED,
-        f"{ARCH}#retries/0": Outcome.MOVED,
+        f"{ARCH}#event-bus/0": Outcome.MOVED_AND_REWRITTEN,
+        f"{ARCH}#retries/0": Outcome.MOVED_AND_REWRITTEN,
     },
     # The nastiest row in the table: rename the *first* of two headings that
     # slugify alike and the second inherits the unsuffixed slug, so a citation
     # to the first silently resolved to the second until ADR-0078.
     "rename the first of two headings that slugify alike": {
-        f"{COLLIDE_PATH}#event-bus/0": Outcome.MOVED,
+        f"{COLLIDE_PATH}#event-bus/0": Outcome.MOVED_AND_REWRITTEN,
         f"{COLLIDE_PATH}#event-bus-2/0": Outcome.GONE,
     },
-    # The blind spot, as a row: same anchor, same line range, different words.
-    # `SURVIVED` is the wrong answer and it is the one a positional check gives
-    # (roadmap 5.17). `test_an_in_place_edit_is_the_blind_spot` is its receipt.
-    "edit prose in place, keeping every heading": {},
+    # What used to be the blind spot, and is now a row like any other: same
+    # anchor, same line range, different words. A positional check answered
+    # `SURVIVED`; the digest answers `REWRITTEN` (roadmap 5.17, ADR-0089).
+    "edit prose in place, keeping every heading": {f"{ARCH}#retries/0": Outcome.REWRITTEN},
 }
 
-BLIND_SPOT = "edit prose in place, keeping every heading"
-"""The single refactoring whose changed passage is *not* reported (roadmap 5.17)."""
+IN_PLACE = "edit prose in place, keeping every heading"
+"""The refactoring only a content check can see (roadmap 5.17)."""
+
+DRIFTED = frozenset({Outcome.MOVED, Outcome.REWRITTEN, Outcome.MOVED_AND_REWRITTEN})
+"""Every outcome that carries a `stale` block."""
 
 
 # ---------------------------------------------------------------------------
@@ -291,12 +305,25 @@ def classify(root: Path, held: Mapping[str, tuple[str, str]]) -> dict[str, tuple
             outcomes[held_anchor] = (Outcome.SURVIVED, changed)
             continue
 
-        assert stale["cited_lines"] == list(parse_citation_uri(uri).lines or ())
+        cited = parse_citation_uri(uri)
+        assert stale["cited_lines"] == list(cited.lines or ())
         assert stale["current_lines"] == payload["content"][0]["lines"]
-        assert stale["current_lines"] != stale["cited_lines"]
+        assert stale["cited_digest"] == cited.digest
+
+        # Each signal is asserted against what it claims, rather than both being
+        # assumed to have fired: a `stale` block that said `rewritten` while the
+        # lines had moved would be the kind of half-truth this table is for.
+        outcome = Outcome(stale["kind"])
+        moved = outcome in {Outcome.MOVED, Outcome.MOVED_AND_REWRITTEN}
+        rewritten = outcome in {Outcome.REWRITTEN, Outcome.MOVED_AND_REWRITTEN}
+        assert moved == (stale["current_lines"] != stale["cited_lines"])
+        assert rewritten == (stale["current_digest"] != stale["cited_digest"])
+        assert rewritten == changed, (
+            f"{held_anchor}: the digest and the text disagree about whether it changed"
+        )
         # The citation it offers instead is real, and fetching it is clean.
         assert handle_fetch(root, {"uri": stale["uri"]})["stale"] is None
-        outcomes[held_anchor] = (Outcome.MOVED, changed)
+        outcomes[held_anchor] = (outcome, changed)
     return outcomes
 
 
@@ -332,23 +359,25 @@ def test_a_changed_passage_is_never_served_in_silence(tmp_path: Path, name: str)
     `NOT_FOUND`, or with a `stale` block. `SURVIVED` plus changed content is
     silently wrong content, which is what the spec forbids and what roadmap 5.6
     found happening six times.
+
+    **This now holds with no exception**, which it did not at ADR-0078. The
+    positional check left one refactoring out — a passage rewritten without
+    moving — and this test carried the exception in a branch. Roadmap 5.17 put
+    content identity in the URI, so the branch is gone and the assertion is the
+    whole sentence for all eleven refactorings.
     """
     silent = [
         anchor
         for anchor, (outcome, changed) in refactor(tmp_path, name).items()
         if changed and outcome is Outcome.SURVIVED
     ]
-    if name == BLIND_SPOT:
-        # Stated, bounded, and filed — never discovered by a user.
-        assert silent == [f"{ARCH}#retries/0"], "the blind spot moved (roadmap 5.17)"
-        return
     assert silent == []
 
 
 def test_the_outcome_table_is_honest() -> None:
     """Every refactoring is in the table, and the table lists no `SURVIVED`."""
     assert set(EXPECTED) == set(REFACTORINGS)
-    assert BLIND_SPOT in REFACTORINGS
+    assert IN_PLACE in REFACTORINGS
     for name, case in EXPECTED.items():
         assert Outcome.SURVIVED not in case.values(), (
             f"{name}: SURVIVED is the default; listing it hides the rows that matter"
@@ -384,7 +413,8 @@ def test_a_moved_passage_is_never_served_in_silence(tmp_path: Path) -> None:
     assert "The second bus section." in payload["content"][0]["text"]
     stale = payload["stale"]
     assert stale is not None
-    assert "has moved since the citation was made" in stale["reason"]
+    assert stale["kind"] == Outcome.MOVED_AND_REWRITTEN.value
+    assert "has moved and been rewritten" in stale["reason"]
     assert "re-read it before re-quoting it" in stale["reason"]
 
 
@@ -405,27 +435,77 @@ def test_an_unmoved_citation_is_never_called_stale(tmp_path: Path) -> None:
     assert handle_fetch(root, {"uri": uri})["stale"] is None
 
 
-def test_an_in_place_edit_is_the_blind_spot(tmp_path: Path) -> None:
-    """The stated limit, pinned so it cannot be forgotten or silently closed.
+def test_an_in_place_edit_is_reported_by_its_content(tmp_path: Path) -> None:
+    """The receipt ADR-0078's blind spot left, now collected (roadmap 5.17).
 
-    A passage rewritten without changing its length keeps its line range, so a
-    positional check cannot see it. Closing this needs *content* identity in the
-    citation, which changes a contract that freezes at 1.0 (spec 02 §10) — filed
-    as roadmap 5.17. If this test starts failing, that item landed, and this is
-    the receipt it has to update.
+    A passage rewritten without changing its length keeps its anchor and keeps
+    its line range, so a positional check answered `SURVIVED` and the agent
+    re-quoted different words under the citation it was holding. The digest in
+    the URI is what sees it: same lines, different content, and the block says
+    `rewritten` rather than the `moved` a single signal had to call everything.
     """
     root = tmp_path / "repo"
     write(root, CORPUS)
     build(root)
     uri, before = mint(root)[f"{ARCH}#retries/0"]
-    write(root, REFACTORINGS[BLIND_SPOT])
+    write(root, REFACTORINGS[IN_PLACE])
     build(root)
 
     payload = handle_fetch(root, {"uri": uri})
+    stale = payload["stale"]
 
     assert payload["content"][0]["text"] != before, "the passage did change"
-    assert payload["content"][0]["lines"] == list(parse_citation_uri(uri).lines or ())
-    assert payload["stale"] is None, "and a line range cannot tell (roadmap 5.17)"
+    cited = parse_citation_uri(uri)
+    assert payload["content"][0]["lines"] == list(cited.lines or ()), "and did not move"
+    assert stale is not None, "and it is no longer silent (roadmap 5.17)"
+    assert stale["kind"] == Outcome.REWRITTEN.value
+    assert stale["cited_lines"] == stale["current_lines"]
+    assert stale["cited_digest"] == cited.digest
+    assert stale["current_digest"] != cited.digest
+    assert "same anchor, same lines, different words" in stale["reason"]
+
+
+def test_a_moved_passage_whose_words_are_intact_says_so(tmp_path: Path) -> None:
+    """The other half of what two signals buy, and the one that reads as a
+    *reassurance*: an edit above the cited section moves it without touching it,
+    so the remedy is the corrected URI rather than a re-read. ADR-0078 reported
+    this case as "has moved" and could not promise the text was the same."""
+    root = tmp_path / "repo"
+    write(root, CORPUS)
+    build(root)
+    uri, before = mint(root)[f"{ARCH}#storage/0"]
+    write(root, REFACTORINGS["insert a paragraph mid-section"])
+    build(root)
+
+    payload = handle_fetch(root, {"uri": uri})
+    stale = payload["stale"]
+
+    assert payload["content"][0]["text"] == before, "the words are untouched"
+    assert stale is not None
+    assert stale["kind"] == Outcome.MOVED.value
+    assert stale["cited_digest"] == stale["current_digest"]
+    assert "its text is unchanged" in stale["reason"]
+    assert "the one to cite from now on" in stale["reason"]
+
+
+def test_a_citation_minted_before_the_digest_existed_still_works(tmp_path: Path) -> None:
+    """The compatibility direction that matters most: every URI an agent is
+    already holding carries `?lines=` and no digest, and must keep behaving
+    exactly as ADR-0078 made it behave — reported when it moves, silent when the
+    words change under it. A new field cannot retroactively improve an old
+    citation, and it must not break one."""
+    root = tmp_path / "repo"
+    write(root, CORPUS)
+    build(root)
+    minted = mint(root)[f"{ARCH}#retries/0"][0]
+    old_style = minted.split("&digest=", 1)[0]
+    assert parse_citation_uri(old_style).digest is None
+
+    write(root, REFACTORINGS[IN_PLACE])
+    build(root)
+
+    assert handle_fetch(root, {"uri": old_style})["stale"] is None, "no content to check"
+    assert handle_fetch(root, {"uri": minted})["stale"] is not None
 
 
 def test_a_hand_written_citation_carries_nothing_to_check(tmp_path: Path) -> None:

@@ -13,6 +13,7 @@ from hypothesis import strategies as st
 from pydantic import TypeAdapter, ValidationError
 
 from mycelium.sdk.identity import (
+    DIGEST_LENGTH,
     EMPTY_SLUG,
     ULID_ALPHABET,
     AnchorParts,
@@ -399,25 +400,123 @@ def test_parse_anchor_rejects_malformed_input(value: str) -> None:
 DOC_ID = "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"
 
 
+DIGEST = "sha256:" + "ab12cd34ef56" + "0" * 52
+
+
 def test_citation_uri_matches_the_spec_form() -> None:
     assert citation_uri(DOC_ID, ["event-bus"], 2) == f"mycelium://{DOC_ID}#event-bus/2"
     assert (
         citation_uri(DOC_ID, ["event-bus"], 2, lines=(88, 141))
         == f"mycelium://{DOC_ID}#event-bus/2?lines=88-141"
     )
+    # Roadmap 5.17's addition, in the order the grammar fixes: a URI is compared
+    # as a string by consumers this product will never see, so the query order is
+    # part of the form rather than an implementation detail.
+    assert (
+        citation_uri(DOC_ID, ["event-bus"], 2, lines=(88, 141), digest=DIGEST)
+        == f"mycelium://{DOC_ID}#event-bus/2?lines=88-141&digest=ab12cd34ef56"
+    )
+    assert (
+        citation_uri(DOC_ID, ["event-bus"], 2, digest=DIGEST)
+        == f"mycelium://{DOC_ID}#event-bus/2?digest=ab12cd34ef56"
+    )
+
+
+def test_a_minted_digest_is_truncated_and_untagged() -> None:
+    """`sha256:` is dropped because spec 03 §1 fixes the algorithm for every
+    digest in the system, and twelve characters is what a *comparison* needs —
+    the digest never finds a chunk, it only says whether the one the anchor found
+    is the one that was cited."""
+    uri = citation_uri(DOC_ID, ["a"], 0, digest=DIGEST)
+
+    assert "sha256" not in uri
+    assert parse_citation_uri(uri).digest == "ab12cd34ef56"
+    assert len(parse_citation_uri(uri).digest or "") == DIGEST_LENGTH
+
+
+def test_minting_refuses_a_digest_it_cannot_write() -> None:
+    """Strict on the way out, forgiving on the way in: a minting bug must fail
+    loudly, and a URI from somewhere else must not take the citation down."""
+    for bad in ("", "sha256:", "nothex!!!!!!", "ab12"):
+        with pytest.raises(IdentityError, match="digest"):
+            citation_uri(DOC_ID, ["a"], 0, digest=bad)
+
+
+def test_a_full_digest_written_by_hand_is_accepted_and_compared_by_prefix() -> None:
+    """A URI assembled from an exported `chunk_digest` — all 64 characters — is
+    as valid as one this product minted, and the drift check compares on the
+    shorter of the two."""
+    full = DIGEST.removeprefix("sha256:")
+    parsed = parse_citation_uri(f"mycelium://{DOC_ID}#a/0?digest={full}")
+
+    assert parsed.digest == full
+    assert len(parsed.digest or "") == 64
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "pages=1-2",
+        "lines=88-141&pages=1-2",
+        "line=88-141",
+        "digest=ab12cd34ef56&highlight=3",
+        "future=whatever",
+    ],
+)
+def test_an_unknown_query_key_is_ignored_rather_than_refused(query: str) -> None:
+    """The compatibility decision roadmap 5.17 had to take before it could add a
+    key at all (ADR-0089).
+
+    The parser used to refuse anything but `lines=`, which made the grammar
+    unextendable in the only direction it needed to grow: a URI carrying
+    `digest=` would have been rejected outright by every earlier client rather
+    than resolved to the anchor it plainly names. A citation travels between
+    versions, in transcripts nothing here can migrate, so the parser reads what
+    it knows and steps over what it does not.
+
+    The cost is named rather than hidden: `line=` — a typo — is ignored, so the
+    citation carries no evidence and degrades to the hand-written case, where
+    absent evidence means silence rather than a guess.
+    """
+    parsed = parse_citation_uri(f"mycelium://{DOC_ID}#a/0?{query}")
+
+    assert parsed.doc_id == DOC_ID
+    assert parsed.heading_slugs == ("a",)
+    assert parsed.ordinal == 0
+
+
+def test_an_unreadable_digest_is_absent_evidence_not_an_error() -> None:
+    """A check nobody can read is the same thing as no check — and refusing
+    would lose the anchor too, which is the part that still works."""
+    for query in ("digest=", "digest=ab12", "digest=zzzzzzzzzzzz"):
+        assert parse_citation_uri(f"mycelium://{DOC_ID}#a/0?{query}").digest is None
+
+
+def test_a_malformed_known_key_is_still_an_error() -> None:
+    """Leniency is for keys this parser has never heard of. `lines=` is in the
+    spec, so a value that does not fit it is a client getting the grammar wrong
+    rather than a client from another version."""
+    for query in ("lines=5", "lines=9-4", "lines=a-b"):
+        with pytest.raises(IdentityError):
+            parse_citation_uri(f"mycelium://{DOC_ID}#a/0?{query}")
 
 
 @given(
     slugs=st.lists(slug_strategy, max_size=4),
     ordinal=ordinal_strategy,
     lines=st.none() | st.tuples(st.integers(0, 500), st.integers(0, 500)).map(sorted).map(tuple),
+    digest=st.none() | st.text(alphabet="0123456789abcdef", min_size=12, max_size=64),
 )
 def test_citation_uri_round_trips(
-    slugs: list[str], ordinal: int, lines: tuple[int, int] | None
+    slugs: list[str],
+    ordinal: int,
+    lines: tuple[int, int] | None,
+    digest: str | None,
 ) -> None:
-    uri = citation_uri(DOC_ID, slugs, ordinal, lines=lines)
+    uri = citation_uri(DOC_ID, slugs, ordinal, lines=lines, digest=digest)
     parsed = parse_citation_uri(uri)
-    assert parsed == CitationUri(DOC_ID, tuple(slugs), ordinal, lines)
+    expected = None if digest is None else digest[:DIGEST_LENGTH]
+    assert parsed == CitationUri(DOC_ID, tuple(slugs), ordinal, lines, expected)
     assert parsed.to_uri() == uri
 
 
@@ -434,7 +533,6 @@ def test_citation_survives_a_folder_move() -> None:
         f"https://{DOC_ID}#a/0",
         f"mycelium://{DOC_ID}",
         "mycelium://not-a-ulid#a/0",
-        f"mycelium://{DOC_ID}#a/0?pages=1-2",
         f"mycelium://{DOC_ID}#a/0?lines=5",
         f"mycelium://{DOC_ID}#a/0?lines=9-4",
     ],

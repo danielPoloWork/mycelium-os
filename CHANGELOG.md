@@ -10,7 +10,35 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **Citation URIs carry a second query key, and a pre-0.5 client will refuse one**
+  (roadmap 5.17, [ADR-0089](docs/adr/0089-put-content-identity-in-the-citation-and-make-the-grammar-extensible.md)). A parser built before this release accepted `?lines=`
+  and rejected everything else, so a URI minted now — `?lines=15-19&digest=c9c0aa14b08c` —
+  raises there rather than resolving. There is no way to avoid that for clients already
+  shipped, which is the argument for doing it *now*: the identity rules are one of the five
+  contracts that freeze at 1.0 (NFR-8), and this is the last window in which the citation
+  grammar can gain a field at all. Citations minted **before** this release keep working
+  unchanged, and are still reported when their passage moves.
+
 ### Added
+
+- **A citation says what it was minted against, not only where** (roadmap 5.17,
+  [ADR-0089](docs/adr/0089-put-content-identity-in-the-citation-and-make-the-grammar-extensible.md)).
+  Every `mycelium://` URI now carries `&digest=<hex>` beside `?lines=a-b` — twelve
+  characters of the cited passage's own content digest — and `mycelium_fetch` and
+  `mycelium show` check the two independently. The `stale` block gains a `kind`:
+  `moved` means the same words at a new position, so update the URI; `rewritten` means
+  different words at the same position, so re-read before re-quoting;
+  `moved_and_rewritten` means both. That closes the one drift a line range could not
+  see — a passage rewritten without changing length — and it also lets a harmless move
+  be reported as harmless, which position alone could never promise.
+
+  **An unrecognised query key in a citation URI is now ignored rather than refused.**
+  That is the change that made the rest possible: the parser accepted only `lines=`, so
+  the grammar could not grow without every earlier client rejecting the whole URI —
+  anchor and all. A malformed `lines=` is still an error, and an unreadable `digest=` is
+  treated as absent evidence rather than a failure.
 
 - **An unlabelled paste can be segmented by a model** (roadmap 5.16,
   [ADR-0088](docs/adr/0088-let-a-model-propose-line-numbers-and-slice-the-paste-ourselves.md)).

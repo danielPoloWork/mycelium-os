@@ -485,17 +485,30 @@ story on a corpus of eleven refactorings found six citations doing exactly that,
 silence — including the worst shape available, renaming the first of two headings that
 slugify alike, where a citation to the first section returns the second.
 
-Every URI this product hands out already carries the line range it was minted at, and now
-the read surfaces check it. A passage that has moved comes back with a `stale` block —
-what you cited, where it is now, the URI to cite instead, and the instruction to re-read
-before re-quoting. The content still comes back, because the anchor is fine and refusing
-to serve it would punish every consumer of a document under active editing.
+So every URI this product hands out carries two pieces of evidence about what it was
+minted against: the line range it sat at, and twelve characters of the passage's own
+content digest. The read surfaces check both, independently, and say which one differs:
 
-One case stays invisible and is written down rather than hidden: a passage rewritten in
-place, without changing length, keeps its line range. Catching that needs content identity
-inside the citation, which is a change to a contract that freezes at 1.0, so it is a
-roadmap item with the measurement attached rather than a quiet extension
-([ADR-0078](docs/adr/0078-report-a-moved-citation-rather-than-serving-it-in-silence.md)).
+```
+mycelium://01ARZ…#retries/0?lines=15-19&digest=c9c0aa14b08c
+```
+
+| `kind` | what happened | what to do |
+|---|---|---|
+| `moved` | same words, new position | cite the URI in the block from now on |
+| `rewritten` | same position, different words | re-read it before re-quoting |
+| `moved_and_rewritten` | both | re-read it |
+
+The content still comes back in every case, because the anchor is fine and refusing to
+serve it would punish every consumer of a document under active editing. What you get is
+the annotation: what you cited, what is there now, and the citation to use instead.
+
+The digest is what closes the one case a position cannot see — a passage rewritten without
+changing length — and it is also what lets a *pure* move be reported as harmless, which a
+line range alone could never promise. Adding it meant extending the citation grammar, which
+is part of a contract that freezes at 1.0, so it waited for an item of its own and an
+argument about what an older client does with a URI it has never seen the shape of
+([ADR-0089](docs/adr/0089-put-content-identity-in-the-citation-and-make-the-grammar-extensible.md)).
 
 ### An ingested document joins the graph, and is never mistaken for something someone wrote
 
