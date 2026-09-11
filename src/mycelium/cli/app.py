@@ -887,6 +887,16 @@ def search(
             help="Add the vector leg for this query (opt-in: it has not earned the default).",
         ),
     ] = False,
+    related: Annotated[
+        bool,
+        typer.Option(
+            "--related",
+            help=(
+                "Treat this as a relationship question: add the graph leg for this query "
+                "(spec 04 section 2; opt-in, it has not earned the default)."
+            ),
+        ),
+    ] = False,
     explain: Annotated[
         bool,
         typer.Option(
@@ -905,6 +915,13 @@ def search(
     retrieval = settings.retrieval
     if hybrid:
         retrieval = retrieval.model_copy(update={"profile": "hybrid"})
+    if related:
+        # `--related` is spec 04 section 2's caller signal, and it does two things
+        # because the planner may only do one: it *enables* the leg for this
+        # invocation, exactly as `--hybrid` enables the vector leg, and it then
+        # satisfies the routing rule so the plan asks for it. The planner itself
+        # never enables anything (ADR-0083).
+        retrieval = retrieval.model_copy(update={"graph_expansion": True})
 
     store = _open_store(path)
     try:
@@ -921,6 +938,7 @@ def search(
             ),
             config=retrieval,
             embedder=_query_embedder(settings, retrieval),
+            related=related,
             explain=explain or as_json,
         )
         results = [
@@ -954,6 +972,13 @@ def search(
     for note in outcome.degraded:
         warn(note)
     if explain:
+        # Spec 04 section 2 requires the chosen plan and the rule that chose it,
+        # on every response that explains itself. Printed before the terms,
+        # because it says what the query was taken to *be* (roadmap 5.11).
+        typer.echo(f"plan: {'+'.join(outcome.plan.rules)} -> {'+'.join(outcome.legs)}")
+        detail(f"   {outcome.plan.why}")
+        for note in outcome.notes:
+            detail(f"   {note}")
         _report_terms(outcome)
     if not results:
         typer.echo("No results.")
@@ -1570,7 +1595,11 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
         str,
         typer.Option(
             "--retriever",
-            help="mycelium | grep (the D-010 baseline) | graph (expansion on) | hybrid.",
+            help=(
+                "mycelium | grep (the D-010 baseline) | graph (expansion on, routed) | "
+                "graph-every-query (expansion on, routing bypassed - ADR-0075's arm) | "
+                "symbol | hybrid."
+            ),
         ),
     ] = "mycelium",
     against: Annotated[

@@ -415,6 +415,33 @@ def test_search_explain_reports_what_each_term_reached(tmp_path: Path) -> None:
     assert "exponential: 1 doc(s)" in result.stdout
 
 
+def test_search_explain_names_the_plan_and_the_rule_that_chose_it(tmp_path: Path) -> None:
+    """Spec 04 §2's own obligation, on the surface an operator uses (roadmap 5.11)."""
+    seeded(tmp_path)
+    run_build(tmp_path)
+    result = invoke("search", "SqliteStore", "--path", str(tmp_path), "--explain")
+    assert result.exit_code == ExitCode.OK
+    assert "plan: identifier -> lexical" in result.stdout
+    assert "identifier-like token (SqliteStore)" in result.stdout
+
+
+def test_search_related_asks_for_the_graph_leg_the_planner_would_withhold(
+    tmp_path: Path,
+) -> None:
+    """`--related` is a *configuration* signal, like `--hybrid`: it enables the
+    leg for one query and then satisfies the routing rule. Without it the leg is
+    off by default and the plan would not ask for it either (ADR-0083)."""
+    seeded(tmp_path)
+    run_build(tmp_path)
+    plain = invoke("search", "retry policy", "--path", str(tmp_path), "--explain")
+    assert "plan: natural-language -> lexical" in plain.stdout
+
+    related = invoke("search", "retry policy", "--path", str(tmp_path), "--related", "--explain")
+    assert related.exit_code == ExitCode.OK
+    assert "plan: relationship -> lexical" in related.stdout
+    assert "asked for with --related" in related.stdout
+
+
 def test_search_without_explain_says_nothing_about_terms(tmp_path: Path) -> None:
     seeded(tmp_path)
     run_build(tmp_path)

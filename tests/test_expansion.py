@@ -19,6 +19,13 @@ not fill it, because the seeds that reach an answer are often not the first one.
 **Every proposed passage earns its rank against the same BM25** as everything
 else, is labelled with the edge that reached it, and is refused by the serving
 policy exactly as a directly retrieved one would be.
+
+Since roadmap 5.11 the leg is *routed*: `[retrieval] graph_expansion` permits it
+and spec 04 §2's relationship rule decides whether a given query gets it. The
+query these tests use carries no relationship phrasing, so they ask for the leg
+the way a caller does — `related=True`, which is `mycelium search --related`.
+What is under test here is the mechanism; the routing is
+`tests/test_planner.py`.
 """
 
 from collections.abc import Mapping
@@ -178,7 +185,9 @@ def test_expansion_reaches_a_passage_the_ranking_buried(store: SqliteStore) -> N
     """The whole mechanism, on the shape it exists for: the answer is one link
     from a strong hit and too far down the ranking to be served."""
     plain = search(store, QUERY, limit=10, config=RetrievalConfig())
-    expanded = search(store, QUERY, limit=10, config=RetrievalConfig(graph_expansion=True))
+    expanded = search(
+        store, QUERY, limit=10, config=RetrievalConfig(graph_expansion=True), related=True
+    )
 
     reached = set(anchors(expanded)) - set(anchors(plain))
     assert reached, "expansion added nothing"
@@ -192,7 +201,9 @@ def test_every_expanded_passage_is_labelled_with_the_edge_that_reached_it(
     store: SqliteStore,
 ) -> None:
     """Spec 04 §5 requires the `via_edge` label, and `--explain` renders it."""
-    outcome = search(store, QUERY, limit=10, config=RetrievalConfig(graph_expansion=True))
+    outcome = search(
+        store, QUERY, limit=10, config=RetrievalConfig(graph_expansion=True), related=True
+    )
     labelled = [hit for hit in outcome.hits if hit.via_edge]
     assert labelled
     for hit in labelled:
@@ -208,7 +219,9 @@ def test_expansion_adds_and_never_promotes(store: SqliteStore) -> None:
     """The defect that cost up to 56 % overall: a passage the lexical leg
     already ranked must not also vote in the graph leg (ADR-0075)."""
     plain = search(store, QUERY, limit=50, config=RetrievalConfig())
-    expanded = search(store, QUERY, limit=50, config=RetrievalConfig(graph_expansion=True))
+    expanded = search(
+        store, QUERY, limit=50, config=RetrievalConfig(graph_expansion=True), related=True
+    )
 
     already = set(anchors(plain))
     for hit in expanded.hits:
@@ -252,7 +265,9 @@ def test_the_budget_is_spread_across_seeds_not_spent_on_the_first(tmp_path: Path
         "gerbil, a hamster and a vole are all eaten entire. One ferret eats them.\n"
     )
     with SqliteStore.open(repo(tmp_path, files), read_only=True) as store:
-        outcome = search(store, QUERY, limit=10, config=RetrievalConfig(graph_expansion=True))
+        outcome = search(
+            store, QUERY, limit=10, config=RetrievalConfig(graph_expansion=True), related=True
+        )
 
     # `answer.md` is reachable only from `second.md`, which is never the first
     # seed. Depth-first through the hub's twelve links would exhaust the budget
@@ -274,7 +289,9 @@ def test_a_proposed_passage_that_matches_nothing_is_dropped(tmp_path: Path) -> N
         "# Bridges\n\nSuspension spans and their cables.\n"
     )
     with SqliteStore.open(repo(tmp_path, files), read_only=True) as store:
-        outcome = search(store, QUERY, limit=10, config=RetrievalConfig(graph_expansion=True))
+        outcome = search(
+            store, QUERY, limit=10, config=RetrievalConfig(graph_expansion=True), related=True
+        )
     assert not any("silent.md" in anchor for anchor in anchors(outcome))
 
 
@@ -284,12 +301,15 @@ def test_expansion_respects_the_serving_policy(tmp_path: Path) -> None:
     files = corpus()
     files["knowledge/candidate/neighbour.md"] = files.pop("knowledge/neighbour.md")
     with SqliteStore.open(repo(tmp_path, files), read_only=True) as store:
-        served = search(store, QUERY, limit=10, config=RetrievalConfig(graph_expansion=True))
+        served = search(
+            store, QUERY, limit=10, config=RetrievalConfig(graph_expansion=True), related=True
+        )
         withheld = search(
             store,
             QUERY,
             limit=10,
             config=RetrievalConfig(graph_expansion=True, include_candidate=False),
+            related=True,
         )
     assert any("candidate/neighbour.md" in anchor for anchor in anchors(served))
     assert not any("candidate/neighbour.md" in anchor for anchor in anchors(withheld))
@@ -298,7 +318,9 @@ def test_expansion_respects_the_serving_policy(tmp_path: Path) -> None:
 def test_the_leg_is_reported_in_timings_and_notes(store: SqliteStore) -> None:
     """`mycelium_explain` promises per-stage timings (spec 05 §3.4), and the
     graph leg is budgeted at 30 ms by spec 04 §5 — so it has to be visible."""
-    outcome = search(store, QUERY, limit=10, config=RetrievalConfig(graph_expansion=True))
+    outcome = search(
+        store, QUERY, limit=10, config=RetrievalConfig(graph_expansion=True), related=True
+    )
     assert "graph" in outcome.timings_ms
     assert "graph" in outcome.legs
     assert any(note.startswith("graph leg:") for note in outcome.notes)
@@ -375,6 +397,7 @@ def test_a_filtered_search_still_expands(store: SqliteStore) -> None:
         QUERY,
         limit=10,
         config=RetrievalConfig(graph_expansion=True),
+        related=True,
         filters=SearchFilters(path_prefix="knowledge/"),
     )
     assert all(anchor.startswith("knowledge/") for anchor in anchors(outcome))

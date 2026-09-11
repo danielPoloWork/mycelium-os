@@ -6,8 +6,8 @@
 - **Related:** [ADR-0013](0013-adopt-the-evaluation-harness.md) (the harness and the grep
   incumbent this guards), [ADR-0072](0072-keep-our-own-restatements-out-of-our-own-benchmark.md)
   (the last time our own corpus moved this number, and the rule *not* to move the bar),
-  [ADR-0053](0053-report-on-the-set-we-author-and-enforce-on-the-ones-we-do-not.md) (a
-  self-hosting corpus is reported, not gated), [ADR-0044](0044-read-the-cases-before-believing-the-slice.md)
+  [ADR-0053](0053-report-on-the-corpus-we-author-and-gate-on-the-one-we-do-not.md) (a
+  self-hosting corpus is reported, not gated), [ADR-0044](0044-name-what-a-two-case-slice-can-and-cannot-say.md)
   (corpus growth moves a score with no retrieval change),
   [ADR-0031](0031-refuse-three-rerankings.md) (the refusals a fitted constant joins);
   spec 04 §7.2, §7.4; D-010; roadmap 5.10, 5.20

@@ -130,6 +130,18 @@ legitimate outcome that would otherwise turn CI red on every correct build (ADR-
 distinction). It runs from the `retrieval` rung in `tools/verify.py` and in CI, where —
 unlike G2 — it can re-measure rather than merely re-date, because it needs no model.
 
+> **Answered at roadmap 5.11 ([ADR-0083](0083-route-the-query-and-report-that-routing-cannot-save-a-lost-ablation.md)).**
+> The follow-up this ADR filed — should the seed set be the query's own routing decision
+> rather than every query's top ten — was measured, and routing does not change this
+> verdict. It cannot: route by the judged slice itself, which no rule set can beat, and the
+> `relationship` column above is reproduced **digit for digit on all six sets**, because the
+> bar is stated on that slice and routing only withholds the leg from queries outside it. Of
+> the thirteen cases expansion loses here, six are relationship cases — where a perfect
+> router sends it on purpose. What routing does change is the collateral damage: with the
+> shipped rules the overall cost falls from the 0.0–4.1 % below to **0.0 % on every set**.
+> The leg is routed from 5.11 onward, so `tools/measure_graph_expansion.py --every-query`
+> is what reproduces the table above.
+
 ## Alternatives Considered
 
 - **Ship it on anyway, because the graph is the product's story.** Rejected on the numbers,

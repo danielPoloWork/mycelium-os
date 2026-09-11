@@ -1,8 +1,8 @@
 {
   "corpora": {
     "ours": {
-      "chunks_digest": "sha256:002cc9ab77af74d18ecf64ea8d9e0f97a33920393ce25307a266c405ed86a7cc",
-      "content_digest": "sha256:ab30f8889b5ebf9ca473aa8a5c9973e06bf0e6e6d59b4e67ad480424efc21c43",
+      "chunks_digest": "sha256:a1bcd6fd6e98af493310a916e82a3a94925a0de85fc9568b82da15e54a5ad424",
+      "content_digest": "sha256:f3d9eb6f3f203f1686c1415e1356b44491bcdfa97c03706d6edc7f0cec4e0d86",
       "dated": false
     },
     "uv": {
@@ -23,15 +23,15 @@
   "decision": "lexical",
   "model_id": "bge-small-en-v1.5",
   "recorded_at": "2026-09-11",
-  "retrieval_identity": "sha256:458433e639cbbaa80e91b521c473898ebf97f52a7f24edbb119d87e799204b14",
+  "retrieval_identity": "sha256:0f5865d5b29f48252f9bb47b229ac7f72500173fb231a23d9577fc97e5f2f478",
   "schema_version": "mycelium/g2-verdict/v0",
   "sets": {
     "ours/dev": {
       "cases": 16,
       "cases_digest": "sha256:c39aa93ef694f6a9b63dfeb51deb7024993a6c38346808dfff6e1839077ddd64",
-      "detail": "+8.7% overall (needs +5%); regressions past -2%: fact -6.2% (q-0005 0.6309->0.5000, q-0008 0.0394->0.0000)",
-      "hybrid_ndcg_at_10": 0.591055,
-      "lexical_ndcg_at_10": 0.543615,
+      "detail": "+10.9% overall (needs +5%); regressions past -2%: fact -6.1% (q-0005 0.6309->0.5000, q-0008 0.0379->0.0000)",
+      "hybrid_ndcg_at_10": 0.593422,
+      "lexical_ndcg_at_10": 0.535334,
       "per_slice": {
         "conceptual": {
           "cases": 5,
@@ -40,13 +40,13 @@
         },
         "exact": {
           "cases": 2,
-          "hybrid": 0.761871,
+          "hybrid": 0.780811,
           "lexical": 0.73785
         },
         "fact": {
           "cases": 4,
           "hybrid": 0.456689,
-          "lexical": 0.48663
+          "lexical": 0.486238
         },
         "injection": {
           "cases": 1,
@@ -61,20 +61,20 @@
         "symbol": {
           "cases": 3,
           "hybrid": 0.813471,
-          "lexical": 0.657535
+          "lexical": 0.613892
         }
       },
       "regressions": [
-        "fact -6.2% (q-0005 0.6309->0.5000, q-0008 0.0394->0.0000)"
+        "fact -6.1% (q-0005 0.6309->0.5000, q-0008 0.0379->0.0000)"
       ],
       "verdict": "fail"
     },
     "ours/release": {
       "cases": 17,
       "cases_digest": "sha256:5d5cb038211bac12ea7f23ee90195442877f166bb6203db8cc5be44edef88d09",
-      "detail": "+20.5% overall (needs +5%)",
+      "detail": "+25.6% overall (needs +5%)",
       "hybrid_ndcg_at_10": 0.635813,
-      "lexical_ndcg_at_10": 0.527785,
+      "lexical_ndcg_at_10": 0.506075,
       "per_slice": {
         "conceptual": {
           "cases": 4,
@@ -89,7 +89,7 @@
         "fact": {
           "cases": 6,
           "hybrid": 0.594842,
-          "lexical": 0.520028
+          "lexical": 0.458516
         },
         "relationship": {
           "cases": 4,

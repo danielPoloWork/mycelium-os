@@ -155,11 +155,15 @@ def test_a_budget_too_small_for_one_result_is_a_typed_error(repo: Path) -> None:
 def test_explain_reports_the_plan_that_ran(repo: Path) -> None:
     assert "explain" not in search(repo)
     explained = search(repo, explain=True)["explain"]
-    # The configured profile and the legs that actually ran are reported
-    # separately, on purpose: "hybrid was asked for" and "hybrid happened" are
-    # different facts, and an agent auditing a result needs both. Here they
-    # agree, because the shipped default is lexical (ADR-0017).
-    assert explained["plan"] == "lexical"
+    # The plan, the configured profile and the legs that actually ran are three
+    # separate facts, and an agent auditing a result needs all of them: what the
+    # query was taken to be, what the configuration permits, and what happened.
+    # Since roadmap 5.11 `plan` is spec 04 §2's plan rather than the profile's
+    # name, which is what the specification asked for (ADR-0083).
+    assert explained["plan"]["rules"] == ["natural-language"]
+    assert explained["plan"]["generators"] == ["lexical", "vector"]
+    assert explained["plan"]["why"]
+    assert explained["profile"] == "lexical"
     assert explained["stages"] == ["lexical"]
     assert explained["degraded"] == []  # a deliberate choice is not a degradation
     assert explained["fusion"] == {"method": "rrf", "k": 60}
@@ -348,6 +352,12 @@ def test_explain_reports_the_plan_the_timings_and_the_config(repo: Path) -> None
     plan = payload["plan"]
     assert plan["profile"] == "lexical"  # the shipped default (ADR-0017)
     assert plan["stages"] == ["lexical"]
+    # Spec 04 §2: the chosen plan and the rule that chose it (roadmap 5.11). The
+    # vector leg is *requested* by the natural-language rule and withheld by the
+    # configuration, which is the difference `stages` alone cannot show.
+    assert plan["rules"] == ["natural-language"]
+    assert plan["requested"] == ["lexical", "vector"]
+    assert plan["why"]
     assert payload["fusion"] == {"method": "rrf", "k": 60, "vector_candidates": 50}
     assert "total" in payload["timings_ms"]
     assert payload["config"]["field_weights"] == {

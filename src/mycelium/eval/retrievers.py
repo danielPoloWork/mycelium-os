@@ -221,6 +221,12 @@ class HybridRetriever:
 class ExpandedRetriever:
     """The product with graph expansion on — the arm of 5.3's ablation.
 
+    Since roadmap 5.11 the leg is *routed*: the flag permits it and spec 04 §2's
+    relationship rule decides whether this query gets it. `every_query = True`
+    restores 5.3's arm by asking for the leg on every query, which is what
+    `--related` does for one query, and it is how ADR-0083 reports the routed and
+    unrouted arms side by side.
+
     Scored against :class:`MyceliumRetriever`, and for the same reason gate G2
     scores hybrid against lexical rather than against grep: spec 04 §5 asks
     whether *this* addition earns the default, which is a question about the
@@ -230,11 +236,16 @@ class ExpandedRetriever:
 
     store: SqliteStore
     name: str = "graph"
+    every_query: bool = False
 
     @property
     def config(self) -> dict[str, str | int | float | bool]:
         return {
             "engine": "fts5-bm25 + graph",
+            # Whether the routing rule was bypassed (roadmap 5.11): the two arms
+            # differ in nothing else, so a run manifest that did not record this
+            # would describe both.
+            "routed": not self.every_query,
             "weights": describe_field_weights(),
             "stem_weight": STEM_WEIGHT,
             "stopwords": len(STOPWORDS),
@@ -250,7 +261,11 @@ class ExpandedRetriever:
 
     def search(self, query: str, limit: int) -> list[str]:
         outcome = run_search(
-            self.store, query, limit=limit, config=RetrievalConfig(graph_expansion=True)
+            self.store,
+            query,
+            limit=limit,
+            config=RetrievalConfig(graph_expansion=True),
+            related=self.every_query,
         )
         return [fused.hit.chunk.anchor for fused in outcome.hits]
 
@@ -300,6 +315,8 @@ def build_retriever(name: str, store: SqliteStore, embedder: Embedder | None = N
         return GrepRetriever(store=store)
     if name == "graph":
         return ExpandedRetriever(store=store)
+    if name == "graph-every-query":
+        return ExpandedRetriever(store=store, every_query=True)
     if name == "symbol":
         return SymbolRetriever(store=store)
     if name == "hybrid":
@@ -311,7 +328,10 @@ def build_retriever(name: str, store: SqliteStore, embedder: Embedder | None = N
             )
             raise ValueError(msg)
         return HybridRetriever(store=store, embedder=embedder)
-    msg = f"unknown retriever {name!r}; expected 'mycelium', 'grep', 'graph', 'symbol' or 'hybrid'"
+    msg = (
+        f"unknown retriever {name!r}; expected 'mycelium', 'grep', 'graph', "
+        "'graph-every-query', 'symbol' or 'hybrid'"
+    )
     raise ValueError(msg)
 
 

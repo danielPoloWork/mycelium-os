@@ -98,3 +98,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0080](0080-look-a-name-up-exactly-and-report-that-the-table-points-at-naming-sites.md) | Look a name up exactly — and report that the table points at naming sites, not documenting ones | Accepted |
 | [0081](0081-check-the-incumbents-reach-not-its-ranking.md) | Check the incumbent's reach, not its ranking | Accepted |
 | [0082](0082-open-the-frontmatter-contract-by-one-key-and-make-the-drift-unlandable.md) | Open the frontmatter contract by one key, and make the drift unlandable | Accepted |
+| [0083](0083-route-the-query-and-report-that-routing-cannot-save-a-lost-ablation.md) | Route the query — and report that routing cannot save a lost ablation | Accepted |

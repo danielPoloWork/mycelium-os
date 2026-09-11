@@ -107,6 +107,15 @@ TOOL_SCHEMAS: Final[list[dict[str, Any]]] = [
                     },
                     "additionalProperties": False,
                 },
+                "related": {
+                    "type": "boolean",
+                    "default": False,
+                    "description": (
+                        "Treat this as a relationship question - what depends on this, "
+                        "what is related to it - and expand one hop over the typed edges. "
+                        "Opt-in: the expansion has not earned the default (spec 04 section 2)."
+                    ),
+                },
                 "explain": {
                     "type": "boolean",
                     "default": False,
@@ -355,17 +364,26 @@ def handle_search(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
         raise McpToolError(ErrorCode.INVALID_ARGUMENT, "'budget_tokens' must be a positive integer")
 
     filters = _filters(arguments.get("filters"))
+    related = bool(arguments.get("related", False))
     snapshot = _snapshot_id(root)
     settings = _config(root)
     store = _open_store(root)
+    retrieval = settings.retrieval
+    if related:
+        # The caller's own routing signal (spec 04 §2). It enables the leg for
+        # this call the way `--hybrid` enables the vector leg on the CLI, and
+        # then satisfies the routing rule; the planner never enables anything
+        # itself (ADR-0083).
+        retrieval = retrieval.model_copy(update={"graph_expansion": True})
     try:
         outcome = run_search(
             store,
             query,
             limit=limit,
             filters=filters,
-            config=settings.retrieval,
+            config=retrieval,
             embedder=_query_embedder(settings),
+            related=related,
         )
         fused = outcome.hits
     finally:
@@ -414,7 +432,11 @@ def handle_search(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
     }
     if arguments.get("explain"):
         payload["explain"] = {
-            "plan": settings.retrieval.profile,
+            # Spec 04 §2: "the chosen plan and why (matched rule)". Until
+            # roadmap 5.11 this field held the configured profile, which names
+            # no rule and explains no choice (ADR-0083).
+            "plan": outcome.plan.as_dict(),
+            "profile": settings.retrieval.profile,
             "rationale": (
                 "candidates are generated per leg and fused by Reciprocal Rank Fusion; "
                 "raw scores from different backends are never added (spec 04 §3)"
@@ -567,6 +589,12 @@ def handle_explain(root: Path, arguments: dict[str, Any]) -> dict[str, Any]:
         "snapshot_id": snapshot,
         "query": query,
         "plan": {
+            # What spec 04 §2's rule set made of this query, beside what the
+            # configuration then allowed: the difference between the two is a
+            # decision the reader is entitled to see (roadmap 5.11, ADR-0083).
+            "rules": list(outcome.plan.rules),
+            "requested": sorted(outcome.plan.generators),
+            "why": outcome.plan.why,
             "profile": settings.retrieval.profile,
             "stages": list(outcome.legs),
             "degraded": list(outcome.degraded),

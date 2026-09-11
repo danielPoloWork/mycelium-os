@@ -445,6 +445,13 @@ jobs:
       - name: The symbol leg ships the default its ablation supports
         shell: bash
         run: uv run python tools/measure_symbol_leg.py --check
+      # Spec 04 section 2's routing: the rules that decide whether a derived leg
+      # runs on a given query are part of what the two ablations above were
+      # measured under, so they are checked on the same terms (roadmap 5.11,
+      # ADR-0083). Deterministic, model-free, and losing is a recorded outcome.
+      - name: Routing ships the defaults its ablation supports
+        shell: bash
+        run: uv run python tools/measure_routing.py --check
       - name: What projection costs, for the record (roadmap 4.10)
         shell: bash
         # Reported, never gated: with two to five cases per format there is no
