@@ -564,9 +564,34 @@ def test_a_run_records_the_incumbent_s_own_case_results(
 
 
 def test_the_grep_baseline_is_fair(corpus: Path) -> None:
-    """A baseline built to lose proves nothing, so this one is checked for competence."""
+    """A baseline built to lose proves nothing, so this one is checked for competence.
+
+    **Competence is finding the answer, not ranking it first** — and on a corpus
+    that grows, those two come apart. Measured across five releases with the
+    judged set, the retriever and the scorer all held at today's, so that only
+    the documents vary (roadmap 5.20, ADR-0081):
+
+    | corpus | documents | grep nDCG@10 | grep recall@50 |
+    |---|---:|---:|---:|
+    | v0.2.0 | 54 | 0.5198 | 0.948 |
+    | v0.3.0 | 81 | 0.4854 | 0.948 |
+    | v0.4.0 | 128 | 0.3580 | 0.812 |
+    | v0.4.0+ | 138 | 0.3024 | 0.812 |
+
+    grep's **ranking** decays monotonically with corpus size — 42 % between
+    v0.2.0 and here — while its **reach** moves once and holds. Dilution is what
+    a term-counting incumbent loses to, and out-ranking it under dilution is
+    exactly this product's claim (ours is 0.632 → 0.544 over the same range, and
+    flat across the last two points). So an nDCG floor fails hardest precisely
+    when the claim is most validated: it was a time bomb, not a guard, and it
+    was within 0.0024 of going off.
+
+    Recall is the assertion the docstring always meant. It says the answer is in
+    the incumbent's reach, which is what makes the comparison fair; where it
+    lands after that is the thing under test and cannot also be the guard.
+    """
     grep = run_evaluation(corpus, load_cases(CASES), retriever_name="grep").overall
-    assert grep.ndcg_at_10 > 0.3  # it finds real answers
+    assert grep.recall_at_50 >= 0.75  # it finds real answers
     assert grep.citation_coverage == 1.0  # in the same anchor space
     assert grep.false_answer_rate == 0.0  # and abstains on the same cases
 
