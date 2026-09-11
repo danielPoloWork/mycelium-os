@@ -53,7 +53,7 @@ The rungs, and what each adds:
 |---|---|
 | `docs` | the congruence lint |
 | `code` | format, lint, types, the suite, the two ingestion reproductions |
-| `retrieval` | the frozen-set rule, the corpora built and gated, G2, the graph ablation |
+| `retrieval` | the frozen-set rule, the corpora built and gated, G2, the two ablations |
 | `full` | the benchmarks, alone rather than beside four hundred other tests |
 """
 
@@ -291,6 +291,11 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
     # `--check` fails on the flag disagreeing with the measurement, never on the
     # ablation being lost — losing it is the recorded outcome (ADR-0075).
     steps.append(("graph ablation", [python, "tools/measure_graph_expansion.py", "--check"]))
+    # Spec 04 §3's symbol leg, gated the same way and for the same reason
+    # (roadmap 5.9, ADR-0080): deterministic, model-free, and what it guards is a
+    # default that a change to extraction or to ranking could invalidate in
+    # silence. `--check` fails on the flag disagreeing with the measurement.
+    steps.append(("symbol ablation", [python, "tools/measure_symbol_leg.py", "--check"]))
     steps.append(("agent tasks", [*MYCELIUM, "eval", ".", "--tasks"]))
     if mode == "retrieval":
         return steps

@@ -64,6 +64,7 @@ TUNING_PATHS = (
     "src/mycelium/chunking.py",
     "src/mycelium/config.py",
     "src/mycelium/graph.py",
+    "src/mycelium/symbols/",
     "src/mycelium/store/",
     "src/mycelium/embedding/",
     "src/mycelium/eval/",
@@ -78,6 +79,11 @@ all. That is not hypothetical: PR #81 changed it and CI reported `eval / gates
 G1-G6` as *skipping* (roadmap 4.35, ADR-0059). A directory is the right unit here
 for the same reason `store/` and `embedding/` are: the question is not which file
 holds the ranking today.
+
+`symbols/` joined at roadmap 5.9 for exactly the reason `graph.py` did one item
+earlier: with `[retrieval] symbol_lookup` on, what the extractor decides a
+document defines is what a query can be answered with, so the package is a
+candidate generator and not only a compiler stage.
 
 `graph.py` joined at roadmap 5.3, when the edges it derives stopped being a
 read-only tool surface and became a candidate generator: with

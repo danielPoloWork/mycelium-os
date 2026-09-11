@@ -282,9 +282,40 @@ documentation defines **3** symbols (all headings — its four Python fences ass
 vendored uv documentation **14** (7 terms such as `uv.lock` and `.python-version`, 5 Python
 functions, a Rust module and its method). Documentation fences mostly *use* rather than *define*;
 the table earns its keep on a corpus that documents an API with definitions in fences, which is
-what the spec wrote it for. Nothing reads it at query time yet — the symbol leg in retrieval is
-roadmap 5.9, its own measured change
+what the spec wrote it for
 ([ADR-0073](docs/adr/0073-take-the-grammars-word-for-a-definition-and-the-headings-for-a-name.md)).
+
+### A name in your query can be looked up, and the table is pointing at the wrong place
+
+Spec 04 §3 lists a third candidate generator beside BM25 and vectors: an *exact lookup in the
+symbol table for identifier-like tokens*. Roadmap 5.9 built it. Ask for `RetryPolicy` or
+`uv.lock` and the passages that **define** the name join the ranking, labelled
+`defines sym:python:RetryPolicy` by `mycelium search --explain`, ranked by the same BM25 as
+everything else and discounted so a definition cannot outrank your best direct match.
+
+It ships **off**, and the reason is more interesting than the flag. Three measurements, any one
+of which would have been enough:
+
+- **It cannot reach the slice it exists for.** The nineteen judged `symbol` cases ask for
+  `SqliteStore`, `uvx`, `uv tool install` and eight more. Not one of them names a symbol either
+  corpus defines — our own documentation discusses classes in prose without fencing them, and
+  uv's documents commands, which are not symbols. Across six case sets the lookup fires on
+  **4 of 133** cases and **0 of 19** in the `symbol` slice.
+- **When it fires it has nothing to add.** A definition site is a passage containing the name
+  that makes it one, so BM25 already has it — at ranks 10, 11, 44 and 49 on the four firings,
+  all inside the fifty candidates the ranking already considers. Every case on every set comes
+  out byte-identical.
+- **And promoting it would be wrong, not merely risky.** On all four firings the definition site
+  is *not* the judged answer: `uv lock --check` finds `uv.lock`, defined by a line in a
+  project-layout listing, while the answer is the section on checking the lockfile. Scored
+  anyway, promotion costs 1.1 % on both release sets.
+
+So the table points at where a name is *spelled*, and a question about a name wants where it is
+*explained*. That gap is filed as roadmap 5.19, and it is worth more than a tuned constant:
+until it closes, no amount of ranking work makes this leg useful. Re-run any of it with
+`python tools/measure_symbol_leg.py`, add `--coverage` to see why the number is zero, and CI
+fails if the shipped default ever stops matching the measurement
+([ADR-0080](docs/adr/0080-look-a-name-up-exactly-and-report-that-the-table-points-at-naming-sites.md)).
 
 ### The graph can widen a search, and it did not earn the right to
 

@@ -13,8 +13,8 @@ between two units, and the exchange rate silently becomes a tuning parameter
 nobody measured. Reciprocal Rank Fusion (spec 04 §3, k=60) reads only *positions*:
 each list contributes ``1 / (k + rank)``, so a passage both legs rank highly wins,
 and a passage only one leg knows about still places. Nothing needs normalising,
-and the graph leg (roadmap 5.3) is one more rank list; the symbol leg (5.9) will
-be another.
+and the graph leg (roadmap 5.3) and the symbol leg (5.9) are each one more rank
+list.
 
 **The graph leg proposes documents; BM25 disposes of chunks.** Expansion walks
 one hop from the fused seeds over the typed edges and returns *nodes* — sections,
@@ -24,14 +24,24 @@ So the node set is resolved back to its chunks and those are ranked against the
 query by the same BM25 the lexical leg uses. A proposed node whose chunks contain
 none of the query's words contributes nothing (ADR-0075).
 
+**The symbol leg looks a name up and offers where it is defined.** Spec 04 §3
+asks for an *exact* lookup in the `symbols` table for the query's
+identifier-like tokens, and the chunks behind a symbol are its `doc_refs` — the
+places that define it (ADR-0073). Like the graph leg it may add and may not
+promote, and like the graph leg it is off by default, because its ablation lost
+too: on these three corpora it cannot fire on one judged `symbol` case, and
+where it does fire the definition site is a *naming* site rather than a
+documenting one (ADR-0080).
+
 **Every result says how it got there.** A hit carries the legs that produced it
 and its rank in each, which is what makes `--explain` an audit rather than a
 story (spec 04 §2) and what let gate G2 be argued from data.
 
-The v1 planner is deliberately absent: spec 04 §2's routing rules (identifier
-queries to lexical, questions to hybrid) arrive with the symbol leg they route
-to, at 3.4. Until then both legs run for every query, which is the honest
-behaviour to measure hybrid against.
+The v1 planner is deliberately absent: spec 04 §2 routes identifier queries to
+"FTS exact/phrase + symbol lookup first" and relationship phrasing to graph
+expansion, and both legs here instead run on every query when enabled — the
+cheapest reading of the spec, and roadmap 5.11 is the item that asks whether the
+routing decision should be the query's own.
 """
 
 import re
@@ -54,6 +64,7 @@ from mycelium.store import (
     TermHits,
     field_weights,
 )
+from mycelium.symbols import DOC_LANGUAGE, GRAMMARS, identifier_like
 
 __all__ = [
     "DEFAULT_LIMIT",
@@ -62,6 +73,10 @@ __all__ = [
     "GRAPH_SEEDS",
     "RRF_K",
     "STOPWORDS",
+    "SYMBOL_CANDIDATES",
+    "SYMBOL_DISCOUNT",
+    "SYMBOL_LANGUAGES",
+    "SYMBOL_PROMOTE",
     "VECTOR_CANDIDATES",
     "FusedHit",
     "SearchOutcome",
@@ -69,6 +84,7 @@ __all__ = [
     "reciprocal_rank_fusion",
     "retrieval_identity",
     "search",
+    "symbol_lookup_ids",
 ]
 
 DEFAULT_LIMIT: Final = 10
@@ -111,11 +127,58 @@ derived window; it lets the leg's first two or three proposals reach a ten-deep
 result and no more. It is not the product of a sweep, and ADR-0075 records the
 one ablation run at it rather than the best of several."""
 
+SYMBOL_CANDIDATES: Final = 10
+"""How many definition sites leave the symbol leg.
+
+The same budget the graph leg spends on nodes, for the same reason: a leg deeper
+than the served window can only rearrange the window's tail. In practice the
+lookup returns one or two chunks — a symbol's `doc_refs` holds the chunks that
+define it, and a name is normally defined once."""
+
+SYMBOL_DISCOUNT: Final = 0.9
+"""What a symbol-proposed candidate contributes, against 1.0 for a directly
+retrieved one.
+
+Not re-derived here: ADR-0075 worked out that RRF at k=60 leaves any added leg
+an operating window of roughly ``0.87 < d < 1`` for a served window of ten —
+below it the leg's best candidate cannot displace the window's weakest and
+results are byte-identical, at 1.0 it ties the lexical leg's own first choice.
+0.9 is the same round value inside that window the graph leg uses, and using a
+*different* number for this leg would be a second unmeasured constant with no
+argument behind it."""
+
+SYMBOL_PROMOTE: Final = False
+"""Whether the leg may re-rank a passage another leg already returned.
+
+``False`` is ADR-0075's load-bearing rule — *a leg adds; it never promotes* —
+and it is the rule that keeps RRF from paying a passage twice for one piece of
+evidence. It is a named constant rather than a hard-coded `if` because spec 04
+§2's own words are *"symbol lookup **first**"*, which reads as a licence to
+promote, and the two readings needed measuring rather than arguing about: the
+runner flips this to score the other arm. Both readings lose, for different
+reasons, and ADR-0080 reports each."""
+
 _LEXICAL: Final = "lexical"
 _VECTOR: Final = "vector"
 _GRAPH: Final = "graph"
+_SYMBOL: Final = "symbol"
 
 _TERM: Final = re.compile(r"\w+", re.UNICODE)
+
+_QUERY_TOKEN: Final = re.compile(r"[A-Za-z0-9_./:+-]+")
+"""How the symbol leg cuts a query into candidate names.
+
+Deliberately *not* :data:`_TERM`, which is the lexical leg's word boundary and
+splits `uv.lock` into `uv` and `lock` — the two halves of a name are not the
+name, and a leg asked for exact matches must see the token an author wrote."""
+
+SYMBOL_LANGUAGES: Final = tuple(sorted({grammar.language for grammar in GRAMMARS} | {DOC_LANGUAGE}))
+"""The `<language>` segments a bare query token might name (spec 03 §2).
+
+A query says `RetryPolicy`, not `sym:python:RetryPolicy`, so the lookup composes
+one candidate id per language and asks for all of them at once. Derived from the
+grammar registry rather than listed, so a grammar added to
+:mod:`mycelium.symbols.code` is searchable without a second edit here."""
 
 STOPWORDS: Final = frozenset(
     {
@@ -197,19 +260,22 @@ def retrieval_identity() -> Sha256Digest:
       changes what the lexical leg searches on and leaves a count identical;
     - the fusion constants, which decide what the vector leg contributes;
     - the FTS schema version, because a change to the indexed columns is a change
-      to what BM25 can see.
+      to what BM25 can see;
+    - the graph leg's and the symbol leg's constants, which decide a ranking
+      whenever their flags are on.
 
     Each of the four changes above moves at least one of them, which is the check
     that this fingerprint is a fingerprint rather than a decoration. What it
     cannot see is a knob nobody added here — no digest can — so a new ranking
     parameter belongs in this dict in the same commit that introduces it.
 
-    Deliberately *not* included: the shipped `[retrieval] profile` and
-    `[retrieval] graph_expansion`. A default flip and a stale measurement are
-    different mistakes with different remedies, so they are reported separately
-    rather than folded into one digest. The graph leg's *constants* are here,
-    because they decide a ranking whenever the flag is on and a verdict measured
-    under one set of them is not about another.
+    Deliberately *not* included: the shipped `[retrieval] profile`,
+    `[retrieval] graph_expansion` and `[retrieval] symbol_lookup`. A default flip
+    and a stale measurement are different mistakes with different remedies, so
+    they are reported separately rather than folded into one digest. The two
+    derived legs' *constants* are here, because they decide a ranking whenever
+    their flag is on and a verdict measured under one set of them is not about
+    another.
     """
     return digest_json(
         {
@@ -220,6 +286,12 @@ def retrieval_identity() -> Sha256Digest:
                 "seeds": GRAPH_SEEDS,
                 "nodes": GRAPH_NODES,
                 "discount": GRAPH_DISCOUNT,
+            },
+            "symbol": {
+                "candidates": SYMBOL_CANDIDATES,
+                "discount": SYMBOL_DISCOUNT,
+                "promote": SYMBOL_PROMOTE,
+                "languages": list(SYMBOL_LANGUAGES),
             },
             "stem_weight": STEM_WEIGHT,
             "stopwords": sorted(STOPWORDS),
@@ -258,6 +330,15 @@ class FusedHit:
     only part of a result whose provenance is a *derivation* rather than a match.
     Empty for everything the lexical or vector legs found directly."""
 
+    via_symbol: str = ""
+    """Which symbol's definition site this passage is, when the symbol leg
+    offered it (roadmap 5.9).
+
+    ``"defines <symbol id>"``. The counterpart of `via_edge` for the other
+    derived leg: a passage here was chosen because it *defines a name the query
+    used*, not because it matched the query's words, and a reader deciding
+    whether to trust a result should be able to see the difference."""
+
     def explain(self) -> dict[str, object]:
         detail: dict[str, object] = {
             "score": round(self.score, 6),
@@ -266,6 +347,8 @@ class FusedHit:
         }
         if self.via_edge:
             detail["via_edge"] = self.via_edge
+        if self.via_symbol:
+            detail["via_symbol"] = self.via_symbol
         return detail
 
 
@@ -510,6 +593,76 @@ def _expand(
     return tuple(chosen), {hit.chunk.anchor: via[hit.chunk.anchor] for hit in chosen}
 
 
+def symbol_lookup_ids(query: str) -> tuple[str, ...]:
+    """The symbol ids an *exact* lookup for `query` should ask the store about.
+
+    Spec 04 §3's condition — identifier-like tokens — applied to the query's own
+    tokens, then crossed with :data:`SYMBOL_LANGUAGES` to turn a bare name into
+    the ids spec 03 §2 keys the table on. A query with no identifier-like token
+    asks nothing, which is the common case and costs one regex.
+
+    **Exact, and only exact.** A tail match — letting `venv` find `.venv`, or
+    `lock` find `uv.lock` — was measured on both uv corpora and rejected: it is
+    what makes three of the four firings on those sets, and every one of them
+    matches a *different* thing from the one the query asked about (ADR-0080).
+    Resolving a use by its last segment is right for an edge, where ambiguity can
+    be refused and the claim is only "these two names are related" (ADR-0074),
+    and wrong for a ranking, where the claim is "read this passage".
+    """
+    names = [token for token in _QUERY_TOKEN.findall(query) if identifier_like(token)]
+    return tuple(
+        f"sym:{language}:{name}" for name in dict.fromkeys(names) for language in SYMBOL_LANGUAGES
+    )
+
+
+def _symbol_candidates(
+    store: SqliteStore,
+    query: str,
+    searched: str,
+    filters: SearchFilters | None,
+    retrieved: Set[str],
+) -> tuple[tuple[SearchHit, ...], dict[str, str]]:
+    """The symbol leg: where the query's names are defined, ranked by BM25.
+
+    The same two-step shape as the graph leg, and for the same reason: the table
+    answers *which passages define this name*, which is a membership question,
+    and the order within that set is a relevance question BM25 already answers
+    (`rank_anchors`). A symbol whose defining chunks hold none of the query's
+    words contributes nothing.
+
+    `SYMBOL_PROMOTE` decides whether a passage another leg already returned may
+    appear here as well. Off, this leg can only surface a definition site the
+    ranking placed beyond its fifty candidates — which on a corpus of a few
+    hundred chunks is almost never, and that near-emptiness *is* ADR-0080's
+    finding rather than a bug in this function.
+    """
+    ids = symbol_lookup_ids(query)
+    if not ids:
+        return (), {}
+    symbols = store.symbols_by_id(ids)
+    if not symbols:
+        return (), {}
+
+    # One chunk often defines the same name twice over — `## RetryPolicy` above
+    # the fence that declares `class RetryPolicy` is a `doc` term *and* a
+    # `python` class — so the label names every symbol that put the passage here
+    # rather than whichever sorted first, which would have been an arbitrary
+    # tie-break presented as a fact.
+    defines: dict[str, list[str]] = {}
+    for symbol in symbols:
+        for anchor in symbol.doc_refs:
+            defines.setdefault(anchor, []).append(symbol.symbol)
+    via = {anchor: "defines " + ", ".join(ids) for anchor, ids in defines.items()}
+    candidates = tuple(anchor for anchor in via if SYMBOL_PROMOTE or anchor not in retrieved)
+    if not candidates:
+        return (), {}
+
+    ranked = store.rank_anchors(searched, candidates, limit=len(candidates))
+    chosen = [hit for hit in ranked if filters is None or _admits(filters, hit)]
+    chosen = chosen[:SYMBOL_CANDIDATES]
+    return tuple(chosen), {hit.chunk.anchor: via[hit.chunk.anchor] for hit in chosen}
+
+
 def _admits(filters: SearchFilters, hit: SearchHit) -> bool:
     """Whether the serving policy admits an expanded hit (ADR-0024).
 
@@ -593,6 +746,11 @@ def search(
     candidates, and it never runs without them: a query the corpus cannot answer
     has no door to walk through.
 
+    The symbol leg joins when `config.symbol_lookup` is on — also off by
+    default, and also because it was measured off (ADR-0080). It needs no seeds,
+    because a name is looked up rather than walked to, so it runs on the query
+    itself and only when the query holds an identifier-like token.
+
     `explain=True` additionally counts what each query word reaches, which is the
     one question ranking cannot answer about itself (roadmap 4.21). It is off by
     default because it costs two index queries per term and the harness that
@@ -670,6 +828,34 @@ def search(
     fused = reciprocal_rank_fusion(lists, k=RRF_K, limit=limit)
     timings["fusion"] = _elapsed_ms(started)
 
+    retrieved = {hit.chunk.anchor for _, results in lists for hit in results}
+    via_symbol: dict[str, str] = {}
+    if settings.symbol_lookup:
+        started = time.perf_counter()
+        proposed, via_symbol = _symbol_candidates(store, query, searched, filters, retrieved)
+        timings[_SYMBOL] = _elapsed_ms(started)
+        if proposed:
+            lists.append((_SYMBOL, proposed))
+            started = time.perf_counter()
+            fused = reciprocal_rank_fusion(
+                lists, k=RRF_K, limit=limit, weights={_SYMBOL: SYMBOL_DISCOUNT}
+            )
+            timings["fusion"] += _elapsed_ms(started)
+            named = {
+                identity
+                for label in via_symbol.values()
+                for identity in label.removeprefix("defines ").split(", ")
+            }
+            notes.append(
+                f"symbol leg: {len(proposed)} definition site(s) for "
+                f"{len(named)} symbol(s) the query names"
+            )
+        else:
+            notes.append(
+                "symbol leg: no identifier-like token in this query names a symbol this "
+                "snapshot defines, outside what the other legs already returned"
+            )
+
     via: dict[str, str] = {}
     if settings.graph_expansion:
         # Expansion runs on the *fused* candidates, not on the lexical list:
@@ -677,14 +863,22 @@ def search(
         # leg promoted is as good a door as one BM25 found.
         started = time.perf_counter()
         seeds = reciprocal_rank_fusion(lists, k=RRF_K, limit=GRAPH_SEEDS)
-        retrieved = {hit.chunk.anchor for _, results in lists for hit in results}
-        expanded, via = _expand(store, seeds, searched, filters, retrieved)
+        expanded, via = _expand(
+            store,
+            seeds,
+            searched,
+            filters,
+            {hit.chunk.anchor for _, results in lists for hit in results},
+        )
         timings[_GRAPH] = _elapsed_ms(started)
         if expanded:
             lists.append((_GRAPH, expanded))
             started = time.perf_counter()
             fused = reciprocal_rank_fusion(
-                lists, k=RRF_K, limit=limit, weights={_GRAPH: GRAPH_DISCOUNT}
+                lists,
+                k=RRF_K,
+                limit=limit,
+                weights={_GRAPH: GRAPH_DISCOUNT, _SYMBOL: SYMBOL_DISCOUNT},
             )
             timings["fusion"] += _elapsed_ms(started)
             notes.append(
@@ -693,7 +887,16 @@ def search(
             )
         else:
             notes.append("graph leg: one hop from the seeds proposed nothing this query matched")
-        fused = tuple(replace(hit, via_edge=via.get(hit.hit.chunk.anchor, "")) for hit in fused)
+
+    if via or via_symbol:
+        fused = tuple(
+            replace(
+                hit,
+                via_edge=via.get(hit.hit.chunk.anchor, ""),
+                via_symbol=via_symbol.get(hit.hit.chunk.anchor, ""),
+            )
+            for hit in fused
+        )
 
     terms: tuple[TermHits, ...] = ()
     if explain:

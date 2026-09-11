@@ -95,3 +95,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0077](0077-give-a-module-an-entry-point-a-section-and-a-command-and-report-what-it-could-not-reach.md) | Give a module an entry point, a section and a command — and report what it could not reach | Accepted |
 | [0078](0078-report-a-moved-citation-rather-than-serving-it-in-silence.md) | Report a moved citation rather than serving it in silence | Accepted |
 | [0079](0079-resolve-an-ingested-documents-links-through-its-source-tree-and-never-call-them-authored.md) | Resolve an ingested document's links through its source tree, and never call them authored | Accepted |
+| [0080](0080-look-a-name-up-exactly-and-report-that-the-table-points-at-naming-sites.md) | Look a name up exactly — and report that the table points at naming sites, not documenting ones | Accepted |

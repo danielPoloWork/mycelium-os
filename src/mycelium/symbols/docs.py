@@ -43,6 +43,7 @@ __all__ = [
     "TERM_KIND",
     "definition_terms",
     "heading_term",
+    "identifier_like",
 ]
 
 DOC_LANGUAGE: Final = "doc"
@@ -68,30 +69,50 @@ _CAMEL: Final = re.compile(r"[a-z][A-Z]")
 _DEFINITION_LINE: Final = re.compile(r"^:\s")
 
 
+def identifier_like(token: str, *, callable_: bool = False) -> bool:
+    """Whether `token` is spec 04 §2's *identifier-like token*.
+
+    One token — no whitespace — made of the characters identifiers and paths are
+    made of, carrying at least one signal that it is a name rather than a word:
+    an underscore, a dot, a path separator, a ``::``, a camel-case hump, or (for
+    a caller that stripped them) a trailing ``()``. ``Retries`` is a word;
+    ``RetryPolicy``, ``uv.lock``, ``mycelium_neighbors`` and ``docs/adr`` are
+    names. A version string is neither: ``v0.4.0`` has dots and names nothing.
+
+    Spec 04 §2 states this test for the *planner* — the signal that routes a
+    query to exact lookup — and roadmap 5.1 needed the same test for *headings*,
+    to decide which of them define a term. They are one rule and this is the one
+    copy of it: a heading that defines a symbol and a query that can find one
+    have to agree about what a name looks like, and two regexes drifting apart
+    would make the leg miss exactly the symbols the extractor created
+    (ADR-0080).
+    """
+    if not token or not _TOKEN.match(token) or _VERSION.match(token):
+        return False
+    if not any(character.isalpha() for character in token):
+        return False
+    return (
+        callable_
+        or "_" in token
+        or "." in token
+        or "/" in token
+        or "::" in token
+        or _CAMEL.search(token) is not None
+    )
+
+
 def heading_term(text: str) -> str | None:
     """The identifier a heading defines, or ``None`` when the heading is a title.
 
     The heading's text, less a leading section number and a trailing colon, must
-    be a single token with at least one identifier signal. ``helper()`` keeps its
-    name and loses the parentheses — the parentheses were the signal.
+    be an :func:`identifier_like` token. ``helper()`` keeps its name and loses
+    the parentheses — the parentheses were the signal.
     """
     stripped = _NUMBERING.sub("", text.strip(), count=1).strip().rstrip(":.")
     callable_ = stripped.endswith("()")
     if callable_:
         stripped = stripped[:-2]
-    if not stripped or not _TOKEN.match(stripped) or _VERSION.match(stripped):
-        return None
-    if not any(character.isalpha() for character in stripped):
-        return None
-    signalled = (
-        callable_
-        or "_" in stripped
-        or "." in stripped
-        or "/" in stripped
-        or "::" in stripped
-        or _CAMEL.search(stripped) is not None
-    )
-    return stripped if signalled else None
+    return stripped if identifier_like(stripped, callable_=callable_) else None
 
 
 def definition_terms(text: str) -> tuple[tuple[int, str], ...]:

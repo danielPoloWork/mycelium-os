@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **A query's names can be looked up in the symbol table** (roadmap 5.9,
+  [ADR-0080](docs/adr/0080-look-a-name-up-exactly-and-report-that-the-table-points-at-naming-sites.md)). Spec 04 §3's third candidate generator exists: an
+  identifier-like token in a query (`RetryPolicy`, `uv.lock`, `mycelium_neighbors`) is
+  looked up **exactly** in the `symbols` table and the passages that define it join the
+  ranking, labelled `defines <symbol id>` by `mycelium search --explain`. It ships
+  **off** — `[retrieval] symbol_lookup = false` — because its ablation lost on all six
+  judged case sets, and the reason is worth more than the flag: the definition site of a
+  name is a chunk that *contains* that name, so the ranking already has it, and on every
+  case where the lookup fires the site is a structural listing rather than the section
+  that documents the thing. `tools/measure_symbol_leg.py` runs the ablation, `--coverage`
+  explains it, and CI checks the flag against it.
+
 - **An ingested corpus is in the graph** (roadmap 5.7, [ADR-0079](docs/adr/0079-resolve-an-ingested-documents-links-through-its-source-tree-and-never-call-them-authored.md)). A link inside
   an ingested document names the tree it was acquired from — `../../concepts/resolution.md`,
   relative to wherever the source sat — while its projection landed in a flat
