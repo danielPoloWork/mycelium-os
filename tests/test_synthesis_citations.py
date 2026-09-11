@@ -9,6 +9,7 @@ tested one at a time, against documents written by hand rather than by a model �
 nothing here needs a provider, and nothing here is allowed to be approximate.
 """
 
+from dataclasses import replace
 from pathlib import PurePosixPath
 
 import pytest
@@ -292,3 +293,133 @@ def test_a_document_with_no_claims_scores_one_but_still_needs_a_citation() -> No
     assert report.coverage == 1.0
     with pytest.raises(UngroundedError, match="cites nothing"):
         check("Short.\n", [evidence()], doc_id=DOC_ID)
+
+
+# ---------------------------------------------------------------------------
+# Rule 2 — no citation too coarse to check (roadmap 5.15)
+# ---------------------------------------------------------------------------
+
+LONG_TEXT = """\
+# Anchor stability
+
+## 1 - user
+
+Do citations survive a file being renamed?
+
+## 2 - assistant
+
+Yes. A citation keys on doc_id, not on the path.
+
+## 3 - user
+
+And if the heading is renamed?
+
+## 4 - assistant
+
+The anchor dies and the fetch returns ANCHOR_GONE with the nearest ancestor.
+"""
+
+
+def sectioned(name: str = "conversation") -> EvidenceDocument:
+    """Evidence that admits only section-level citations, minus its title heading."""
+    document = evidence(name=name, text=LONG_TEXT)
+    return replace(
+        document,
+        headings=tuple(item for item in document.headings if item != "Anchor stability"),
+        cite_sections_only=True,
+    )
+
+
+def test_a_whole_document_citation_into_such_evidence_is_refused() -> None:
+    document = sectioned()
+    markdown = "# Notes\n\nCitations survive a rename of the file [[conversation]].\n"
+    report = reviewed(markdown, document)
+
+    assert report.whole_document_citations == ("conversation",)
+    assert report.citations == ()
+    assert any("too long to check" in item for item in report.violations)
+    with pytest.raises(UngroundedError, match="whole document"):
+        check(markdown, [document], doc_id=DOC_ID)
+
+
+def test_the_refusal_names_the_sections_the_claim_could_have_cited() -> None:
+    """The violation is quoted back to the model, so it has to carry the repair."""
+    report = reviewed(
+        "# Notes\n\nCitations survive a rename of the file [[conversation]].\n", sectioned()
+    )
+
+    (violation,) = [item for item in report.violations if item.startswith("[[")]
+    assert "2 - assistant" in violation and "4 - assistant" in violation
+
+
+def test_a_section_citation_into_the_same_evidence_is_accepted() -> None:
+    document = sectioned()
+    markdown = (
+        "# Notes\n\nA citation keys on the document id, not the path "
+        "[[conversation#2 - assistant]].\n"
+    )
+    report, _ = check(markdown, [document], doc_id=DOC_ID)
+
+    assert report.whole_document_citations == ()
+    assert report.coverage == 1.0
+    assert report.citations == ("knowledge/evidence/conversation.md#2 - assistant",)
+
+
+def test_the_title_heading_is_no_longer_citable_once_the_evidence_drops_it() -> None:
+    """The second spelling of the same coarse citation: the title heading's own
+    section is the whole document, so narrowing `headings` has to close it."""
+    markdown = (
+        "# Notes\n\nCitations survive a rename of the file [[conversation#Anchor stability]].\n"
+    )
+    with pytest.raises(UngroundedError, match="do not exist"):
+        check(markdown, [sectioned()], doc_id=DOC_ID)
+
+
+def test_a_coarse_citation_is_not_reported_as_a_fabricated_one() -> None:
+    """Three failures, three sentences: the document exists, so `do not exist`
+    would send the reader — and the repair round-trip — after the wrong problem."""
+    markdown = "# Notes\n\nCitations survive a rename of the file [[conversation]].\n"
+    with pytest.raises(UngroundedError) as raised:
+        check(markdown, [sectioned()], doc_id=DOC_ID)
+
+    assert "do not exist" not in str(raised.value)
+    assert "cites nothing" not in str(raised.value)
+
+
+def test_a_document_that_only_cites_the_whole_conversation_is_not_called_empty() -> None:
+    markdown = "# Notes\n\nCitations survive a rename of the file [[conversation]].\n"
+    with pytest.raises(UngroundedError, match="section-level"):
+        check(markdown, [sectioned()], doc_id=DOC_ID)
+
+
+def test_the_coarse_form_is_not_offered_in_the_citable_vocabulary() -> None:
+    names = citable_names([sectioned()])
+
+    assert "[[conversation]]" not in names
+    assert "[[conversation#2 - assistant]]" in names
+    assert "[[conversation#Anchor stability]]" not in names
+
+
+def test_ordinary_evidence_is_unaffected_and_still_citable_whole() -> None:
+    """The flag is off by default, so every document the evidence lane projects
+    keeps the behaviour it had before this rule existed."""
+    document = evidence()
+    assert document.cite_sections_only is False
+    assert "[[retry-policy]]" in citable_names([document])
+
+    report, _ = check(
+        "# Notes\n\nWebhook deliveries are retried five times over [[retry-policy]].\n",
+        [document],
+        doc_id=DOC_ID,
+    )
+    assert report.whole_document_citations == ()
+    assert report.coverage == 1.0
+
+
+def test_every_citable_name_of_section_only_evidence_passes_the_contract() -> None:
+    """The pairing this rule rests on: what is offered is exactly what is accepted."""
+    document = sectioned()
+    for name in citable_names([document]):
+        markdown = f"# Notes\n\nA claim long enough to need a citation {name}.\n"
+        report, _ = check(markdown, [document], doc_id=DOC_ID)
+        assert report.violations == (), name

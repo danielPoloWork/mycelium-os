@@ -97,6 +97,7 @@ MODULE_SURFACE: Final[Mapping[str, str]] = {
     "mycelium.ingest": "custody, secret scanning, redaction — untrusted input has one doctrine",
     "mycelium.chunking": "the token estimate, so a budget means the same number everywhere",
     "mycelium.cli.output": "ADR-0010's exit codes, JSON rule and colour policy",
+    "mycelium.synthesis": "the LLM lane: one citation contract, one candidate folder, one receipt",
 }
 """The core a module distribution may import, and why each entry is there.
 

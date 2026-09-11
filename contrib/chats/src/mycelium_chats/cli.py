@@ -29,6 +29,7 @@ from pydantic import ValidationError
 from mycelium.cli.output import ExitCode, detail, emit_json, fail, success, warn
 from mycelium.config import ConfigError, MyceliumConfig, load_config
 from mycelium.modules import ModuleError, require_enabled
+from mycelium.synthesis import SynthesisError, build_synthesizer
 from mycelium_chats.archive import (
     ArchiveEntry,
     ImportOutcome,
@@ -38,6 +39,7 @@ from mycelium_chats.archive import (
     load_record,
     purge,
 )
+from mycelium_chats.distil import distil_conversation, message_citations, write_distillation
 from mycelium_chats.formats import FORMATS, render, tail
 from mycelium_chats.paths import projection_path
 from mycelium_chats.readers import READERS, ReaderError
@@ -456,6 +458,113 @@ def delete(
     if not purge_custody:
         detail("  kept     the original in tier-1 custody (--purge removes it)")
     typer.echo("Run `mycelium build` to drop it from the index.")
+
+
+@app.command()
+def distil(
+    conv_id: Annotated[str, typer.Argument(help="Conversation id, or a unique prefix of one.")],
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="Write no document; report what one would say.")
+    ] = False,
+    root: _ROOT = Path(),
+    as_json: _JSON = False,
+) -> None:
+    """Distil one conversation into a cited candidate document (doc 08 §7).
+
+    One conversation per invocation, and never as a side effect of `import`. The
+    contrast with `mycelium ingest` — which synthesizes every source it takes, by
+    default, when a provider is configured — is deliberate: an ingest is usually
+    one document a person chose, and a chat import is bulk by nature (a provider
+    export holds a year of conversations). A command that fired an LLM call per
+    conversation because somebody imported their archive would spend real money on
+    a decision they did not make.
+    """
+    config, _ = _settings(root)
+    if not config.synthesis.active:
+        raise fail(
+            "distillation needs the synthesis lane: name a provider in "
+            '[synthesis] (provider = "anthropic") in mycelium.toml. Nothing '
+            "else about this conversation changes - it is archived, projected "
+            "and searchable already (doc 08 §7).",
+            code=ExitCode.USAGE,
+        )
+
+    entry = _resolve(root, conv_id)
+    transcript = load_record(root / entry.record_path)
+    conversation = transcript.conversation
+    projection = projection_path(entry.record_path, knowledge_dir=config.project.knowledge_dir)
+    if not (root / projection).is_file():
+        raise fail(
+            f"{conversation.conv_id} has no projection at {projection}; a conversation "
+            "outside the retention window is archived but not projected, and a "
+            "distillation cites the projection ([chats] retention_months).",
+            code=ExitCode.FAILED,
+        )
+
+    try:
+        synthesizer = build_synthesizer(config.synthesis)
+        synthesized = distil_conversation(
+            root,
+            synthesizer,
+            transcript,
+            projection,
+            instructions=config.synthesis.instructions,
+            knowledge_dir=config.project.knowledge_dir,
+        )
+    except SynthesisError as error:
+        # A refusal is a *result*: the conversation keeps everything this module
+        # promised it before anybody asked for prose about it (doc 08 §7).
+        violations = tuple(getattr(error, "violations", ()))
+        if as_json:
+            emit_json(
+                {
+                    "conv_id": conversation.conv_id,
+                    "ok": False,
+                    "error": str(error),
+                    "violations": list(violations),
+                }
+            )
+        else:
+            warn(f"no document written: {error}")
+            for item in violations:
+                detail(f"  {item}")
+        raise typer.Exit(ExitCode.FAILED) from error
+
+    if not dry_run:
+        write_distillation(root, synthesized)
+    report = synthesized.report
+    messages = message_citations(report.citations)
+
+    if as_json:
+        emit_json(
+            {
+                "conv_id": conversation.conv_id,
+                "ok": True,
+                "document": str(synthesized.candidate.path),
+                "written": not dry_run,
+                "record": synthesized.record_digest,
+                "provider": synthesized.record.provider,
+                "model": synthesized.record.model,
+                "attempts": synthesized.record.attempts,
+                "claims": report.claims,
+                "cited_claims": report.cited_claims,
+                "coverage": round(report.coverage, 4),
+                "citations": list(report.citations),
+                "messages_cited": list(messages),
+            }
+        )
+        return
+
+    verb = "would write" if dry_run else "wrote"
+    success(f"{verb} {synthesized.candidate.path} ({synthesized.record.model})")
+    detail(
+        f"  cited {report.cited_claims}/{report.claims} claim(s) across "
+        f"{len(messages)} of {len(transcript.lines)} message(s), "
+        f"{synthesized.record.attempts} attempt(s)"
+    )
+    detail("  the document is a candidate: `mycelium verify` measures it, you promote it")
+    if not dry_run:
+        typer.echo("Run `mycelium build` to index it.")
 
 
 def _stamp(value: datetime | date | None) -> str | None:

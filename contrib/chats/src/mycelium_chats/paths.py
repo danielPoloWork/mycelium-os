@@ -18,12 +18,23 @@ from mycelium.sdk.identity import heading_slug
 
 __all__ = [
     "ARCHIVE_DIRNAME",
+    "MYCELIUM_DIRNAME",
     "PROJECTION_SUFFIX",
     "RECORD_SUFFIX",
     "archive_path",
     "projection_path",
     "slug",
 ]
+
+MYCELIUM_DIRNAME: Final = ".mycelium"
+"""The derived store, where tier-1 custody lives (architecture §3).
+
+Named here rather than spelled in each caller: the archive puts an imported
+original into custody and the distillation lane puts a synthesis record there,
+and two spellings of one directory is how a module ends up writing to two.
+The core keeps its own constant for its own use; this is the module's, because
+`mycelium.store` is not module-facing and reaching into it for a string would be
+a coupling the surface test exists to catch (ADR-0086)."""
 
 ARCHIVE_DIRNAME: Final = "chats"
 """Doc 08 §5's own directory, at the repository root beside `knowledge/`.

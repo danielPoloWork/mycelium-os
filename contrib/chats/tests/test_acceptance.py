@@ -540,4 +540,8 @@ def test_gate6_the_module_is_mounted_by_the_core_without_being_named() -> None:
         "export",
         "resume",
         "delete",
+        # Doc 08 §9's table has six rows; `distil` is §7's optional half, added at
+        # roadmap 5.15. Pinned here on purpose: a command is a public surface, so
+        # one appearing or vanishing should be a decision somebody made.
+        "distil",
     }

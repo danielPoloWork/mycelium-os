@@ -437,6 +437,17 @@ and the record says so; unknown provider fields are **preserved**, not dropped; 
 unlabelled paste gets **no invented speakers** — it is kept whole instead, because a
 fabricated attribution that reaches the index is a false statement about who said what.
 
+With an LLM configured, `mycelium chats distil <id>` writes one conversation's decisions and
+outcomes into `knowledge/candidate/` as an ordinary synthesized document, and **every claim
+cites the message it came from** — `[[conversation#12 · assistant]]`, never the conversation.
+That is the point rather than a detail: citing fifty turns means *somewhere in here*, which
+neither a reader nor the entailment judge behind `mycelium verify` can check, so the model's
+whole citable vocabulary is message anchors and a draft that cites the transcript whole is
+sent back with the messages it could have cited instead
+([ADR-0087](docs/adr/0087-distil-a-conversation-at-authoring-time-and-cite-the-message.md)).
+It never fires from `import`: a provider export is a year of conversations, and that many
+LLM calls is not a decision to make on somebody's behalf.
+
 The module is also the reason the plugin API is worth trusting. Doc 08 says it plainly: *if
 the extension points can't support this module cleanly, they get fixed before the 1.0
 freeze*. Building it found four things — modules could not be configured at all, mounting a

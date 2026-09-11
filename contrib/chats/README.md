@@ -44,12 +44,39 @@ mycelium chats show 7f3a2b                                    # a unique id pref
 mycelium chats export 7f3a2b --format openai                  # port it elsewhere
 mycelium chats resume 7f3a2b --budget-tokens 4000             # carry on in any chatbot
 mycelium chats delete 7f3a2b                                  # record, projection, index
+mycelium chats distil 7f3a2b                                  # needs an LLM; see below
 mycelium build                                                # index the projections
 ```
 
 Every read command takes `--json`, exits 0/1/2 (ok / failed / usage), and honours
 `NO_COLOR` — the core's conventions, because a module that printed its own way would make
 `mycelium` two CLIs wearing one name.
+
+## Distilling a conversation
+
+With an LLM provider configured in `[synthesis]`, `mycelium chats distil` writes the
+decisions and outcomes of one conversation into `knowledge/candidate/` as an ordinary
+synthesized document — the same folder, the same provenance, the same `mycelium verify` and
+`mycelium promote` as anything else an LLM writes here.
+
+**Every claim cites the message it came from**, never the conversation:
+
+```markdown
+A citation keys on the document id rather than the path, so a rename does not break it
+[[2026-07-31-anchor-stability-dqekr4#2 · assistant]].
+```
+
+That is the whole design decision. A conversation is long, and `[[conversation]]` means
+*somewhere in these fifty turns* — which is not something a reader, or the entailment judge
+behind `mycelium verify`, can check. So the model is handed message anchors as its complete
+citable vocabulary and the citation contract refuses anything coarser; a draft that cites
+the conversation whole is sent back with the messages it could have cited instead, and a
+second failure writes nothing at all.
+
+It runs on **one conversation at a time, and never automatically**. Importing an export
+file does not distil anything: a year of conversations is a lot of LLM calls to make on
+somebody's behalf. Without a provider configured the command says so and changes nothing —
+your conversations are archived, projected and searchable either way.
 
 ## What it reads
 

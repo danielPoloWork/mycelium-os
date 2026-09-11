@@ -240,6 +240,28 @@ class EvidenceDocument:
     source_uri: str
     source_trust: SourceTrust | None = None
 
+    cite_sections_only: bool = False
+    """Whether a citation into this document must name one of its `headings`.
+
+    Off by default, which is every document the evidence lane projects from a
+    file: a short projection can be cited whole, and "this claim comes from that
+    document" is a statement a reader can check by opening it.
+
+    It stops being checkable when the document is long. The whole-document form
+    hands gate G7's judge everything and asks whether one sentence is in there
+    somewhere — *"not the question G7 asks, and the question a model answers most
+    charitably"* (:func:`mycelium.verification.grounding.section_text`). A
+    transcript is the first evidence with that shape: fifty turns, each already
+    its own section with a stable anchor, so the precise citation exists and only
+    the vocabulary was letting the imprecise one through (roadmap 5.15).
+
+    Setting it changes two things together, which is the only way it works:
+    :func:`~mycelium.synthesis.citations.citable_names` stops *offering* the bare
+    `[[document]]` form, and :func:`~mycelium.synthesis.citations.review` stops
+    *accepting* it. Offering without enforcing would be a suggestion, and
+    enforcing without offering would be a trap — the same pairing rule 1 of the
+    citation contract already follows."""
+
 
 @dataclass(frozen=True, slots=True)
 class SynthesisContext:

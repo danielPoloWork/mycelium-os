@@ -12,6 +12,30 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **A conversation can be distilled into a cited candidate document** (roadmap 5.15,
+  [ADR-0087](docs/adr/0087-distil-a-conversation-at-authoring-time-and-cite-the-message.md)).
+  `mycelium chats distil <conv_id>` points the existing synthesis lane at an archived
+  conversation and writes doc 08 §7's summary — *decisions and outcomes* — to
+  `knowledge/candidate/`, where `mycelium verify` and `mycelium promote` treat it like
+  every other synthesized document. It runs on one conversation at a time and never as a
+  side effect of `import`: a provider export is a year of conversations, and `mycelium
+  ingest`'s automatic synthesis would spend real money on a decision nobody made. With no
+  `[synthesis] provider` configured it refuses and says so; the conversation stays
+  archived, projected and searchable either way.
+
+  **What it cites is the decision.** A claim cites the *message* it came from
+  (`[[conversation#12 · assistant]]`), never the conversation, because a whole-transcript
+  citation hands gate G7's judge fifty turns and asks whether one sentence is in there
+  somewhere. Evidence may now declare `cite_sections_only`, which stops the synthesizer's
+  closed vocabulary offering the whole-document form and stops the citation contract
+  accepting it — a general rule, off by default, so every document the evidence lane
+  projects keeps the behaviour it had.
+
+  D-023's **pipeline-stage** mechanism is *not* built, and the roadmap item expected it to
+  be. A distillation writes tier 2 and the build never does (spec 02 §2), so it is an
+  authoring-time act like every other command in the module — and the mechanism still has
+  no consumer. `mycelium.synthesis` joins the module-facing surface.
+
 - **The core declares which of it a module may import** (roadmap 5.14, [ADR-0086](docs/adr/0086-declare-the-module-facing-surface-and-refuse-to-freeze-it-from-one-consumer.md)).
   A module needs more than the plugin API: the first one reaches for configuration, module
   activation, ingestion's custody and secret doctrine, the token estimate, and the CLI's output
