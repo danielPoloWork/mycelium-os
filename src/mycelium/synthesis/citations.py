@@ -8,16 +8,25 @@ is something a machine can check rather than something a model asserts. This
 module is that check, and it is the reason the synthesis lane is allowed to exist
 at all.
 
-Three rules, in the order they matter:
+Four rules, in the order they matter:
 
 1. **No fabricated citation.** Every wikilink in the document resolves to a
    document in the evidence set, and — when it names a section — to a heading that
    document actually has. A model that invents a plausible citation has produced
    the single most dangerous artifact this project could ship: prose that *looks*
    grounded. This rule fails the document, always.
-2. **Something is cited.** A candidate document with no citation is prose with a
+2. **No citation too coarse to check.** An evidence document may declare that it
+   is citable by section only (`EvidenceDocument.cite_sections_only`), and a
+   whole-document citation into one is refused. It exists because a transcript
+   is evidence of a shape the lane had not met before — fifty turns, each already
+   a section with a stable anchor — where `[[conversation]]` means *somewhere in
+   this conversation* and hands gate G7's judge the whole of it (roadmap 5.15).
+   Its sibling is :func:`citable_names`, which stops offering the form this rule
+   refuses: a closed vocabulary is what makes rule 1 satisfiable, and the same
+   pairing is what makes this one satisfiable too.
+3. **Something is cited.** A candidate document with no citation is prose with a
    provenance stamp, which is worse than no document.
-3. **Claim-bearing blocks are covered.** Coverage is measured, compared against
+4. **Claim-bearing blocks are covered.** Coverage is measured, compared against
    `[synthesis] min_citation_coverage`, and recorded.
 
 **What a "claim-bearing statement" is here, exactly.** A KIR `paragraph` or
@@ -97,6 +106,17 @@ class CitationReport:
     violations: tuple[str, ...]
     """Human-readable, quotable back to the model: each names the offending link
     or block and what was wrong with it."""
+
+    whole_document_citations: tuple[str, ...] = ()
+    """Targets that named a document which admits only section-level citations.
+
+    Kept apart from the rest because the three failures lead to three different
+    sentences and a caller that could not tell them apart would send the model —
+    and the operator — after the wrong problem. A fabricated citation names
+    something that does not exist; this one names something real and too large to
+    check (`EvidenceDocument.cite_sections_only`, roadmap 5.15); a thin document
+    cites too few things. The string form is what the model reads, so the *kind*
+    has to travel beside the prose rather than inside it."""
 
     @property
     def coverage(self) -> float:
@@ -180,6 +200,7 @@ def review(kir: KirDocument, evidence: Sequence[EvidenceDocument]) -> CitationRe
     cited_claims: set[str] = set()
     per_claim: dict[str, list[str]] = {}
     violations: list[str] = []
+    whole_document: list[str] = []
 
     for node in kir.nodes:
         if node.kind is not NodeKind.WIKILINK:
@@ -201,6 +222,18 @@ def review(kir: KirDocument, evidence: Sequence[EvidenceDocument]) -> CitationRe
                     f"its headings are: {available}"
                 )
                 continue
+        elif document.cite_sections_only:
+            # The document said a citation must name one of its sections, and this
+            # one names the document. Kept out of `citations`, so it covers no
+            # claim: a citation nobody can check is not a citation.
+            available = ", ".join(document.headings) or "(no headings)"
+            whole_document.append(target)
+            violations.append(
+                f"[[{target}]] cites the whole of {document.path.name}, which is too "
+                "long to check; cite the section the claim came from, one of: "
+                f"{available}"
+            )
+            continue
         path = document.path.as_posix()
         citation = f"{path}#{fragment}" if fragment else path
         citations.append(citation)
@@ -222,6 +255,7 @@ def review(kir: KirDocument, evidence: Sequence[EvidenceDocument]) -> CitationRe
         cited_claims=len(cited_claims),
         claim_citations={key: tuple(value) for key, value in per_claim.items()},
         violations=tuple(violations),
+        whole_document_citations=tuple(whole_document),
     )
 
 
@@ -271,9 +305,26 @@ def check(
     # citation was invented satisfies neither, and "cites nothing" would be a true
     # sentence that sends the reader — and the repair round-trip — after the wrong
     # problem. The fabricated citation is the finding.
-    unresolved = tuple(item for item in report.violations if item.startswith("[["))
+    coarse = frozenset(f"[[{target}]]" for target in report.whole_document_citations)
+    unresolved = tuple(
+        item
+        for item in report.violations
+        if item.startswith("[[") and not any(item.startswith(link) for link in coarse)
+    )
     if unresolved:
         msg = f"the synthesized document cites {len(unresolved)} thing(s) that do not exist"
+        raise UngroundedError(msg, report.violations)
+
+    # Between rule 1 and rule 2, because a document whose only citations are
+    # whole-document ones would otherwise be reported as citing *nothing* — a
+    # true sentence about a false problem, which is the same trap the comment
+    # above avoids for the fabricated case.
+    if report.whole_document_citations:
+        count = len(report.whole_document_citations)
+        msg = (
+            f"the synthesized document cites {count} whole document(s) that admit only "
+            "section-level citations; a claim must point at the passage that supports it"
+        )
         raise UngroundedError(msg, report.violations)
 
     if not report.citations:
@@ -300,6 +351,7 @@ def citable_names(evidence: Sequence[EvidenceDocument]) -> tuple[str, ...]:
     names: list[str] = []
     for document in evidence:
         stem = PurePosixPath(document.path).stem
-        names.append(f"[[{stem}]]")
+        if not document.cite_sections_only:
+            names.append(f"[[{stem}]]")
         names.extend(f"[[{stem}#{heading}]]" for heading in document.headings)
     return tuple(names)

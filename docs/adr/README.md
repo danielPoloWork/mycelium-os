@@ -102,3 +102,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0084](0084-fingerprint-the-index-a-ranking-reads-not-the-store-it-lives-in.md) | Fingerprint the index a ranking reads, not the store it lives in | Accepted |
 | [0085](0085-let-a-callout-bound-a-chunk-rather-than-atomise-one.md) | Let a callout bound a chunk rather than atomise one | Accepted |
 | [0086](0086-declare-the-module-facing-surface-and-refuse-to-freeze-it-from-one-consumer.md) | Declare the module-facing surface — and refuse to freeze it from one consumer | Accepted |
+| [0087](0087-distil-a-conversation-at-authoring-time-and-cite-the-message.md) | Distil a conversation at authoring time, and make it cite the message | Accepted |

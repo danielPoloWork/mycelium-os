@@ -36,7 +36,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Final
 
-from mycelium.sdk.identity import digest_text, new_ulid
+from mycelium.sdk.identity import digest_text, heading_slug, new_ulid
 from mycelium.sdk.protocols import (
     EvidenceDocument,
     PluginMeta,
@@ -96,10 +96,23 @@ def build_prompt(context: SynthesisContext, violations: Sequence[str] = ()) -> s
         parts.append(f"# Style guidance\n\n{context.instructions.strip()}")
 
     citable = "\n".join(citable_names(context.evidence))
+    # The standing rules offer `[[document]]` as a citation form, and for evidence
+    # that admits only section-level citations it is not one. The correction goes
+    # here rather than in the system prompt, which is kept stable so a provider can
+    # cache the prefix — and here it is *specific*, naming the documents it applies
+    # to instead of teaching a rule that is false for the rest (roadmap 5.15).
+    sectioned = [item.path.stem for item in context.evidence if item.cite_sections_only]
+    note = (
+        "\n\nThese are long enough that citing the whole document says nothing a "
+        "reader can check, so they have no whole-document form and rule 2's "
+        f"`[[document]]` does not apply to them: {', '.join(sectioned)}."
+        if sectioned
+        else ""
+    )
     parts.append(
         "# CITABLE — the complete list of citations that exist\n\n"
         "Use these exactly as written. Nothing outside this list may appear as a "
-        f"wikilink.\n\n{citable}"
+        f"wikilink.{note}\n\n{citable}"
     )
     parts.append("# Evidence\n\n" + "\n\n".join(_render(item) for item in context.evidence))
     if violations:
@@ -118,14 +131,32 @@ def _render(evidence: EvidenceDocument) -> str:
     Rendered from the KIR rather than from the projected file, so the model reads
     what the compiler compiled — the same text, in the same order, with the same
     headings a citation resolves against.
+
+    **Every "cite as" here is a citation the contract will accept**, and until
+    roadmap 5.15 that held by coincidence rather than by construction: this
+    function read the citable set off the KIR while
+    :func:`~mycelium.synthesis.citations.review` read it off
+    ``evidence.headings``, and the two agreed only because `evidence_of` filled
+    the second from the first. An evidence document that narrows its headings, or
+    admits only section-level citations, makes them disagree — and a prompt whose
+    evidence block offers what its CITABLE block forbids pulls the model two ways
+    and blames it for the result. Both now read `evidence.headings`, the field
+    whose whole definition is *what a statement can cite*.
     """
-    lines = [f"## {evidence.title} — cite as [[{evidence.path.stem}]]"]
+    whole = "" if evidence.cite_sections_only else f" — cite as [[{evidence.path.stem}]]"
+    citable = {heading_slug(heading) for heading in evidence.headings}
+    lines = [f"## {evidence.title}{whole}"]
     for node in evidence.kir.nodes:
         text = (node.text or "").strip()
         if not text:
             continue
         if node.kind is NodeKind.HEADING:
-            lines.append(f"\n### {text}   (cite as [[{evidence.path.stem}#{text}]])")
+            cite = (
+                f"   (cite as [[{evidence.path.stem}#{text}]])"
+                if heading_slug(text) in citable
+                else ""
+            )
+            lines.append(f"\n### {text}{cite}")
         elif node.kind in {NodeKind.PARAGRAPH, NodeKind.LIST_ITEM, NodeKind.TABLE_CELL}:
             lines.append(text)
         elif node.kind is NodeKind.CODE_BLOCK:

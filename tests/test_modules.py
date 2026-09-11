@@ -347,10 +347,18 @@ def test_every_declared_surface_says_why_it_is_there() -> None:
 
 
 def test_the_declaration_is_not_a_freeze() -> None:
-    """Three of the eight are contracts spec 02 §10 freezes at 1.0; the other
-    five are public to modules and still free to move, which is the distinction
+    """Three of the nine are contracts spec 02 §10 freezes at 1.0; the other six
+    are public to modules and still free to move, which is the distinction
     ADR-0086 exists to keep visible. Pinned so that quietly promoting one — or
-    dropping one — is a decision somebody took rather than a diff nobody read."""
+    dropping one — is a decision somebody took rather than a diff nobody read.
+
+    `mycelium.synthesis` is the first entry this test actually caught: roadmap
+    5.15 pointed the LLM lane at a conversation, and a module that reimplemented
+    the citation contract, the candidate folder or the custody receipt would have
+    been wrong rather than merely different. It is on the unfrozen side, so the
+    module now depends on a component v1 may still move — which is the fact worth
+    seeing, and the reason the list is declared rather than inferred (ADR-0087).
+    """
     frozen = {name for name in MODULE_SURFACE if name.startswith("mycelium.sdk.")}
     unfrozen = set(MODULE_SURFACE) - frozen
     assert frozen == {
@@ -364,6 +372,7 @@ def test_the_declaration_is_not_a_freeze() -> None:
         "mycelium.ingest",
         "mycelium.chunking",
         "mycelium.cli.output",
+        "mycelium.synthesis",
     }
 
 

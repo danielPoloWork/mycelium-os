@@ -46,7 +46,13 @@ from pydantic import NonNegativeInt
 from mycelium.ingest import Custody, redact_text, scan_text
 from mycelium.sdk.identity import canonical_json, derived_ulid, digest_bytes
 from mycelium.sdk.types import CustodyKind, Record, Sha256Digest, Ulid
-from mycelium_chats.paths import ARCHIVE_DIRNAME, RECORD_SUFFIX, archive_path, projection_path
+from mycelium_chats.paths import (
+    ARCHIVE_DIRNAME,
+    MYCELIUM_DIRNAME,
+    RECORD_SUFFIX,
+    archive_path,
+    projection_path,
+)
 from mycelium_chats.projection import project_transcript
 from mycelium_chats.readers import ImportContext, ReadResult, reader_for
 from mycelium_chats.readers.base import ReadConversation
@@ -193,7 +199,7 @@ def import_text(
     # Custody before anything is written: the original is the evidence, and a
     # record whose original never landed would be a citation with nothing behind
     # it. Idempotent by digest, so a re-import stores nothing new.
-    custody = Custody(root / ".mycelium")
+    custody = Custody(root / MYCELIUM_DIRNAME)
     held = custody.put(
         data,
         kind=CustodyKind.ORIGINAL,
@@ -462,7 +468,7 @@ def purge(
             target.unlink()
             removed.append(relative)
     if purge_custody:
-        custody = Custody(root / ".mycelium")
+        custody = Custody(root / MYCELIUM_DIRNAME)
         blob = custody.blob_path(entry.conversation.source_digest)
         record = custody.record_path(entry.conversation.source_digest)
         for target in (blob, record):
