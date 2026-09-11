@@ -23,6 +23,7 @@ installed package change what a query returns.
 created a cycle and swallowed the evidence; both are now impossible.
 """
 
+import importlib
 from pathlib import Path
 
 import pytest
@@ -31,6 +32,7 @@ import typer
 from mycelium.config import ConfigError, MyceliumConfig, load_config
 from mycelium.modules import (
     MODULE_ENTRY_POINT_GROUP,
+    MODULE_SURFACE,
     ModuleError,
     installed_ids,
     load_module,
@@ -313,3 +315,62 @@ def test_a_broken_module_does_not_stop_the_rest_of_the_cli(
     assert mounted == () and problems
     assert [command.callback.__name__ for command in app.registered_commands] == ["core"]
     assert app.registered_groups == []
+
+
+# ---------------------------------------------------------------------------
+# What the core promises a module (roadmap 5.14, ADR-0086)
+# ---------------------------------------------------------------------------
+
+
+def test_every_declared_surface_imports_and_exports_a_curated_all() -> None:
+    """The declaration's own terms: a module-facing component is importable, and
+    the surface within it is its ``__all__``. A component without one would be
+    declaring its entire namespace public by accident."""
+    for name in MODULE_SURFACE:
+        component = importlib.import_module(name)
+        exported = getattr(component, "__all__", None)
+        assert exported, f"{name} is declared module-facing and exports no `__all__`"
+        # Not asserted: that `__all__` is sorted. `sdk.types` groups its exports
+        # by concept and that is a readability choice this guard has no business
+        # overruling — what matters is that every exported name resolves.
+        for symbol in exported:
+            assert hasattr(component, symbol), f"{name}.{symbol} is exported and absent"
+
+
+def test_every_declared_surface_says_why_it_is_there() -> None:
+    """The reason is the documented statement this item delivers: a bare list
+    would say a module may import these and not why any of them is unavoidable."""
+    assert MODULE_SURFACE
+    for name, reason in MODULE_SURFACE.items():
+        assert name.startswith("mycelium."), name
+        assert len(reason) > 20, f"{name} has no reason worth reading"
+
+
+def test_the_declaration_is_not_a_freeze() -> None:
+    """Three of the eight are contracts spec 02 §10 freezes at 1.0; the other
+    five are public to modules and still free to move, which is the distinction
+    ADR-0086 exists to keep visible. Pinned so that quietly promoting one — or
+    dropping one — is a decision somebody took rather than a diff nobody read."""
+    frozen = {name for name in MODULE_SURFACE if name.startswith("mycelium.sdk.")}
+    unfrozen = set(MODULE_SURFACE) - frozen
+    assert frozen == {
+        "mycelium.sdk.types",
+        "mycelium.sdk.identity",
+        "mycelium.sdk.protocols",
+    }
+    assert unfrozen == {
+        "mycelium.config",
+        "mycelium.modules",
+        "mycelium.ingest",
+        "mycelium.chunking",
+        "mycelium.cli.output",
+    }
+
+
+def test_nothing_else_in_the_core_is_module_facing() -> None:
+    """The closed half of the statement. A component a module happens to be able
+    to import is not thereby module-facing — the declaration is the list, and a
+    module's own gate reads *this* rather than restating it."""
+    assert "mycelium.retrieval" not in MODULE_SURFACE
+    assert "mycelium.store" not in MODULE_SURFACE
+    assert "mycelium.build" not in MODULE_SURFACE

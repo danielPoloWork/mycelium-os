@@ -50,6 +50,14 @@ rather than inside a build, so it has nothing for a stage or a hook to do.
 Building the other three now would freeze three contracts against no consumer,
 which is what the 1.0 freeze must not do; :class:`Module` is shaped so each
 arrives additively, as an optional method a later reader checks for.
+
+**What the core promises a module is declared here and not frozen**
+(:data:`MODULE_SURFACE`, roadmap 5.14). A module needs more than the plugin API:
+the first one reaches for configuration, module activation, ingestion's custody
+and secret doctrine, the token estimate, and the CLI's output conventions — five
+components spec 02 §10 does not cover. Naming them is the decision this file
+takes; choosing their eventual *shape* is the one it refuses, for the reason the
+paragraph above refuses three extension mechanisms (ADR-0086).
 """
 
 from collections.abc import Mapping, Sequence
@@ -64,6 +72,7 @@ if TYPE_CHECKING:
 
 __all__ = [
     "MODULE_ENTRY_POINT_GROUP",
+    "MODULE_SURFACE",
     "ModuleError",
     "ModuleStatus",
     "activated",
@@ -73,6 +82,51 @@ __all__ = [
     "require_enabled",
     "statuses",
 ]
+
+MODULE_SURFACE: Final[Mapping[str, str]] = {
+    # The plugin API proper — three of the five contracts spec 02 §10 freezes at
+    # 1.0, so a module built on these survives the platform phase by design.
+    "mycelium.sdk.types": "the record contracts, and the identity formats they are made of",
+    "mycelium.sdk.identity": "canonical hashing, ULIDs and anchor slugs — identity rule 1",
+    "mycelium.sdk.protocols": "the typed Protocols and the API generation a plugin declares",
+    # Components a module needs that spec 02 §10 does *not* freeze. Each one is
+    # here because a module that reimplemented it would be wrong rather than
+    # merely different — the reason is the entry's own text (ADR-0086).
+    "mycelium.config": "`mycelium.toml` is one file; a module reads its own section from it",
+    "mycelium.modules": "a module must refuse a repository that has not enabled it",
+    "mycelium.ingest": "custody, secret scanning, redaction — untrusted input has one doctrine",
+    "mycelium.chunking": "the token estimate, so a budget means the same number everywhere",
+    "mycelium.cli.output": "ADR-0010's exit codes, JSON rule and colour policy",
+}
+"""The core a module distribution may import, and why each entry is there.
+
+**What this declares.** These modules are module-facing: an installed module may
+import them, and the surface within each one is its ``__all__``. Nothing else in
+the core is available to a module, and a name a component does not export is
+private whatever its spelling.
+
+**What this does not declare, and the distinction is the whole point.** It is not
+a freeze. Spec 02 §10 fixes five contracts that v1 may not change casually, and
+three of them are the ``sdk`` entries above; the other five components are
+*public to modules and still free to move*. A change to one of them is a
+compatibility event for every module, which is exactly the fact this constant
+exists to put in front of whoever makes it — and the in-repo module's acceptance
+test turns that fact into a failing build rather than a note.
+
+**Why a `mycelium.sdk` façade re-exporting all of this is not built here.** It
+would freeze a module-facing API against a sample of one, which is the same
+refusal the `Module` protocol makes two paragraphs above for pipeline stages,
+lifecycle hooks and MCP tools: the first real second consumer is what tells you
+which half of a one-consumer API was accidental. The trigger is stated rather
+than implied — a second module, or the 1.0 freeze review (roadmap 6.1),
+whichever comes first (roadmap 5.14, ADR-0086).
+
+**Adding an entry is the reviewable event.** It means a module needed something
+the core did not offer as module-facing, which is either an API gap to fix or a
+coupling to record before the freeze. It is deliberately a small edit in a
+visible place rather than a process.
+"""
+
 
 MODULE_ENTRY_POINT_GROUP: Final = "mycelium.modules"
 """Where a distribution registers itself as an activatable module (D-025).

@@ -223,6 +223,21 @@ discussion's capability-negotiation bus, F-5).
 | contrib | in-repo `contrib/`, maintainer-reviewed | CI-covered; may lag one minor |
 | community | external packages | Entry-point API honored per compat policy below |
 
+**What the core promises a *module*** (roadmap 5.14, ADR-0086). The tiers above say where an
+extension lives and which SemVer covers it; they say nothing about which core it may import.
+A module needs more than the plugin API — the first one reaches for configuration, module
+activation, ingestion's custody and secret doctrine, the token estimate, and the CLI's output
+conventions — so `mycelium.modules.MODULE_SURFACE` declares the module-facing components and,
+for each, the reason a module that reimplemented it would be *wrong* rather than merely
+different. Within a declared component the surface is its `__all__`.
+
+That declaration is deliberately **not a freeze**: three of its eight entries are the `sdk`
+contracts document 02 §10 already fixes, and the other five are public to modules and still
+free to move. A change to one of them is a compatibility event for every module. Choosing the
+eventual shape — a `mycelium.sdk` façade, or a narrower contract that needs less — waits for a
+second module or the 1.0 freeze review, because an API designed from a sample of one is an API
+the first real second user contradicts (ADR-0086).
+
 ### 4.4 Plugin naming (D-026)
 
 Every plugin has exactly one identifier, used everywhere (entry point, config, manifest,

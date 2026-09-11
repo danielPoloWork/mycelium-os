@@ -10,6 +10,22 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Added
+
+- **The core declares which of it a module may import** (roadmap 5.14, [ADR-0086](docs/adr/0086-declare-the-module-facing-surface-and-refuse-to-freeze-it-from-one-consumer.md)).
+  A module needs more than the plugin API: the first one reaches for configuration, module
+  activation, ingestion's custody and secret doctrine, the token estimate, and the CLI's output
+  conventions — five components spec 02 §10's 1.0 freeze does not cover.
+  `mycelium.modules.MODULE_SURFACE` now names them with the reason each is unavoidable, and states
+  that the surface within a declared component is its `__all__`. It is a **declaration, not a
+  freeze**, and the distinction is the point: a change to one of the five is a compatibility event
+  for every module, which is the fact the constant puts in front of whoever makes it. The in-repo
+  module's acceptance gate now reads the core's list instead of restating its own, so the failure
+  is addressed to the core author who moved the surface. Choosing the eventual *shape* — a
+  `mycelium.sdk` façade, or a narrower contract — waits for a second module or the 1.0 freeze
+  review, because an API designed from a sample of one is one the first real second user
+  contradicts.
+
 ### Fixed
 
 - **A callout is its own chunk** (roadmap 5.13, [ADR-0085](docs/adr/0085-let-a-callout-bound-a-chunk-rather-than-atomise-one.md)). Spec 03 §3.1 promised that
