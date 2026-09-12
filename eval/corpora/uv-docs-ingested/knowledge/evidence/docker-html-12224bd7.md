@@ -129,7 +129,7 @@ dockerfile title="Dockerfile" FROM python:3.12-slim-trixie COPY --from=ghcr.io/a
 
 Or, with the installer:
 
-```dockerfile title="Dockerfile" FROM python:3.12-slim-trixie
+\```dockerfile title="Dockerfile" FROM python:3.12-slim-trixie
 
 # The installer requires curl (and certificates) to download the release archive
 
@@ -180,7 +180,7 @@ ADD https://astral.sh/uv/0.12.7/install.sh /uv-installer.sh
 
 If you're using uv to manage your project, you can copy it into the image and install it:
 
-```dockerfile title="Dockerfile" # Copy the project into the image COPY . /app
+\```dockerfile title="Dockerfile" # Copy the project into the image COPY . /app
 
 # Disable development dependencies
 
@@ -304,7 +304,7 @@ This feature requires Compose 2.22.0 which is bundled with Docker Desktop 4.24.
 
 Configure watch in your [Docker compose file](https://docs.docker.com/compose/compose-application-model/#the-compose-file) to mount the project directory without syncing the project virtual environment and to rebuild the image when the configuration changes:
 
-```yaml title="compose.yaml" services: example: build: .
+\```yaml title="compose.yaml" services: example: build: .
 
 ```
 # ...
@@ -365,7 +365,7 @@ have a compiled standard library.
 
 A [cache mount](https://docs.docker.com/build/guide/mounts/#add-a-cache-mount) can be used to improve performance across builds:
 
-```dockerfile title="Dockerfile" ENV UV_LINK_MODE=copy
+\```dockerfile title="Dockerfile" ENV UV_LINK_MODE=copy
 
 RUN -mount=type=cache,target=/root/.cache/uv
 uv sync
@@ -406,7 +406,7 @@ If you're using uv to manage your project, you can improve build times by moving
 
 uv sync --no-install-project will install the dependencies of the project but not the project itself. Since the project changes frequently, but its dependencies are generally static, this can be a big time saver.
 
-```dockerfile title="Dockerfile" # Install uv FROM python:3.12-slim COPY -from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+\```dockerfile title="Dockerfile" # Install uv FROM python:3.12-slim COPY -from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Change the working directory to the app directory
 
@@ -475,7 +475,7 @@ In the context of a multi-stage Docker image, --no-editable can be used to inclu
 
 For example:
 
-```dockerfile title="Dockerfile" # Install uv FROM python:3.12-slim AS builder COPY -from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+\```dockerfile title="Dockerfile" # Install uv FROM python:3.12-slim AS builder COPY -from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Use the system Python across both stages
 

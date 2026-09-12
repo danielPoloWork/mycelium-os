@@ -75,7 +75,7 @@ A complete listing would look like:
 
 The pyproject.toml contains metadata about your project:
 
-```toml title=“pyproject.toml” [project] name = “hello-world” version = “0.1.0” description = “Add your description here” readme = “README.md” authors = [ { name = “ferris”, email = “ferris@example.org” }] requires-python = “>=3.14” dependencies = []
+\```toml title=“pyproject.toml” [project] name = “hello-world” version = “0.1.0” description = “Add your description here” readme = “README.md” authors = [ { name = “ferris”, email = “ferris@example.org” }] requires-python = “>=3.14” dependencies = []
 
 [project.scripts] hello-world = “hello_world:main”
 
@@ -216,7 +216,7 @@ $ uv run -- flask run -p 3000
 
 Or, to run a script:
 
-```python title=“example.py” # Require a project dependency import flask
+\```python title=“example.py” # Require a project dependency import flask
 
 print(“hello world”)
 

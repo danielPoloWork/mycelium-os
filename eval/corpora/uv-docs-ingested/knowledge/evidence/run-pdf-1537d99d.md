@@ -31,14 +31,14 @@ Running scripts
 Scripts that declare inline metadata are automatically executed in environments isolated from the
 project. See the scripts guide for more details.
 For example, given a script:
-```python title=“example.py” # /// script # dependencies = [ # “httpx”, # ] # ///
+\```python title=“example.py” # /// script # dependencies = [ # “httpx”, # ] # ///
 import httpx
 resp = httpx.get(“https://peps.python.org/api/peps.json”) data = resp.json() print([(k, v[“title”]) for k,
 v in data.items()][:10])
 The invocation `uv run example.py` would run _isolated_ from the project with only
 the given
 dependencies listed.
-## Legacy scripts on Windows
+\## Legacy scripts on Windows
 Support is provided for
 [legacy setuptools scripts](https://packaging.python.org/en/latest/guides/
 distributing-packages-using-setuptools/#scripts).
@@ -48,7 +48,7 @@ Currently only legacy scripts with the `.ps1`, `.cmd`, and `.bat` extensions are
 
 supported.
 For example, below is an example running a Command Prompt script.
-```console
+\```console
 $ uv run --with nuitka==2.6.7 -- nuitka.cmd --version
 In addition, you don’t need to specify the extension. uv will automatically look for files ending
 in .ps1, .cmd, and .bat in that order of execution on your behalf.

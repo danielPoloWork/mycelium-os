@@ -13,7 +13,7 @@ Dependabot has announced support for uv, but there are some use cases that are n
 
 Dependabot supports updating uv.lock files. To enable it, add the uv package-ecosystem to your updates list in the dependabot.yml:
 
-```yaml title="dependabot.yml" version: 2
+\```yaml title="dependabot.yml" version: 2
 
 updates: - package-ecosystem: "uv" directory: "/" schedule: interval: "weekly"
 

@@ -14,9 +14,9 @@ Defining an index
 To include an additional index when resolving dependencies, add a [[tool.uv.index]] entry to
 your pyproject.toml:
 [[tool.uv.index]]
-# Optional name for the index.
+\# Optional name for the index.
 name = "pytorch"
-# Required URL for the index.
+\# Required URL for the index.
 url = "https://download.pytorch.org/whl/cpu"
 Indexes are prioritized in the order in which they’re defined, such that the first index listed in the
 configuration file is the first index consulted when resolving dependencies, with indexes provided
@@ -34,9 +34,9 @@ be valid ASCII.
 When providing an index on the command line (with --index or --default-index) or through an
 environment variable (UV_INDEX or UV_DEFAULT_INDEX), use its URL, a configured name, or the
 <name>=<url> syntax:
-# On the command line.
+\# On the command line.
 $ uv lock --index pytorch=https://download.pytorch.org/whl/cpu
-# Via an environment variable.
+\# Via an environment variable.
 $ UV_INDEX=pytorch=https://download.pytorch.org/whl/cpu uv lock
 With --preview-features index-by-name, configured index names take precedence over matching
 paths.
@@ -52,7 +52,7 @@ url = "https://download.pytorch.org/whl/cpu"
 
 Similarly, to pull from a different index based on the platform, you can provide a list of sources
 disambiguated by environment markers:
-```toml title=“pyproject.toml” [project] dependencies = [“torch”]
+\```toml title=“pyproject.toml” [project] dependencies = [“torch”]
 [tool.uv.sources] torch = [ { index = “pytorch-cpu”, marker = “sys_platform == ‘darwin’”}, { index =
 “pytorch-cu130”, marker = “sys_platform != ‘darwin’”},]
 [[tool.uv.index]] name = “pytorch-cpu” url = “https://download.pytorch.org/whl/cpu”
@@ -63,7 +63,7 @@ unless explicitly pinned to it. For example, to ensure that `torch` is installed
 the `pytorch`
 index, but all other packages are installed from PyPI, add the following to your
 `pyproject.toml`:
-```toml
+\```toml
 [tool.uv.sources]
 torch = { index = "pytorch" }
 [[tool.uv.index]]

@@ -27,7 +27,7 @@ By default, running `uv init` inside an existing package will add the newly crea
 
 In defining a workspace, you must specify the members (required) and exclude (optional) keys, which direct the workspace to include or exclude specific directories as members respectively, and accept lists of globs:
 
-```toml title="pyproject.toml" [project] name = "albatross" version = "0.1.0" requires-python = ">=3.12" dependencies = ["bird-feeder", "tqdm>=4,<5"]
+\```toml title="pyproject.toml" [project] name = "albatross" version = "0.1.0" requires-python = ">=3.12" dependencies = ["bird-feeder", "tqdm>=4,<5"]
 
 [tool.uv.sources] bird-feeder = { workspace = true }
 
@@ -80,7 +80,7 @@ Dependencies between workspace members are editable.
 
 Any tool.uv.sources definitions in the workspace root apply to all members, unless overridden in the tool.uv.sources of a specific member. For example, given the following pyproject.toml:
 
-```toml title="pyproject.toml" [project] name = "albatross" version = "0.1.0" requires-python = ">=3.12" dependencies = ["bird-feeder", "tqdm>=4,<5"]
+\```toml title="pyproject.toml" [project] name = "albatross" version = "0.1.0" requires-python = ">=3.12" dependencies = ["bird-feeder", "tqdm>=4,<5"]
 
 [tool.uv.sources] bird-feeder = { workspace = true } tqdm = { git = "https://github.com/tqdm/tqdm" }
 
@@ -145,7 +145,7 @@ Other common use cases for workspaces include:
 
 Workspaces are not suited for cases in which members have conflicting requirements, or desire a separate virtual environment for each member. In this case, path dependencies are often preferable. For example, rather than grouping albatross and its members in a workspace, you can always define each package as its own independent project, with inter-package dependencies defined as path dependencies in tool.uv.sources:
 
-```toml title="pyproject.toml" [project] name = "albatross" version = "0.1.0" requires-python = ">=3.12" dependencies = ["bird-feeder", "tqdm>=4,<5"]
+\```toml title="pyproject.toml" [project] name = "albatross" version = "0.1.0" requires-python = ">=3.12" dependencies = ["bird-feeder", "tqdm>=4,<5"]
 
 [tool.uv.sources] bird-feeder = { path = "packages/bird-feeder" }
 

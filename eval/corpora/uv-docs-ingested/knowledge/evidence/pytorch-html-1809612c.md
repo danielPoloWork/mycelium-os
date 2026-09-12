@@ -464,7 +464,7 @@ The command adds flash-attn to the project dependencies, configures the Astral G
 
 As with the PyTorch indexes, set explicit = true to restrict the Astral GPU index to packages that are explicitly pinned to it:
 
-```toml title="pyproject.toml" [tool.uv.sources] flash-attn = { index = "astral-cu128" }
+\```toml title="pyproject.toml" [tool.uv.sources] flash-attn = { index = "astral-cu128" }
 
 [[tool.uv.index]] name = "astral-cu128" url = "https://wheels.astral.sh/simple/cu128/" explicit = true
 

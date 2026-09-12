@@ -124,3 +124,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0090](0090-project-a-sources-links-as-links-now-that-the-compiler-knows-who-asserted-them.md) | Project a source's links as links, now that the compiler knows who asserted them | Accepted |
 | [0091](0091-widen-the-heading-rule-and-refuse-to-guess-which-section-documents-a-name.md) | Widen the heading rule, and refuse to guess which section documents a name | Accepted |
 | [0092](0092-leave-the-amendment-relation-in-prose-and-check-the-prose.md) | Leave the amendment relation in prose, and check the prose | Accepted |
+| [0093](0093-escape-the-prose-that-would-open-a-block-and-report-what-that-costs.md) | Escape the prose that would open a block, and report what that costs | Accepted |

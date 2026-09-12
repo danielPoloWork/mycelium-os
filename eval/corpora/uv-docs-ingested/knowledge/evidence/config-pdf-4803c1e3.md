@@ -49,7 +49,7 @@ For example, to register the example-plugin-a package as a plugin for example:
 toml title="pyproject.toml" [project.entry-points.'example.plugins'] a =
 "example_plugin_a"
 Then, in example, plugins would be loaded with:
-```python title=“example/init.py” from importlib.metadata import entry_points
+\```python title=“example/init.py” from importlib.metadata import entry_points
 for plugin in entry_points(group=“example.plugins”): plugin.load()
 !!! note
  The `group` key can be an arbitrary value, it does not need to include the
@@ -57,7 +57,7 @@ package name or
  "plugins". However, it is recommended to namespace the key by the package name to
 avoid
  collisions with other packages.
-## Build systems
+\## Build systems
 A build system determines how the project should be packaged and installed. Projects
 may declare and
 configure a build system in the `[build-system]` table of the `pyproject.toml`.
@@ -88,26 +88,26 @@ dependencies.md#path)
 of the presence
  of a `[build-system]` table.
 Build systems are used to power the following features:
-- Including or excluding files from distributions
-- Editable installation behavior
+\- Including or excluding files from distributions
+\- Editable installation behavior
 
-- Dynamic project metadata
-- Compilation of native code
-- Vendoring shared libraries
+\- Dynamic project metadata
+\- Compilation of native code
+\- Vendoring shared libraries
 To configure these features, refer to the documentation of your chosen build system.
-## Project packaging
+\## Project packaging
 As discussed in [build systems](#build-systems), a Python project must be built to be
 installed.
 This process is generally referred to as "packaging".
 You probably need a package if you want to:
-- Add commands to the project
-- Distribute the project to others
-- Use a `src` and `test` layout
-- Write a library
+\- Add commands to the project
+\- Distribute the project to others
+\- Use a `src` and `test` layout
+\- Write a library
 You probably _do not_ need a package if you are:
-- Writing scripts
-- Building a simple application
-- Using a flat layout
+\- Writing scripts
+\- Building a simple application
+\- Using a flat layout
 While uv usually uses the declaration of a [build system](#build-systems) to
 determine if a project
 should be packaged, uv also allows overriding this behavior with the
@@ -122,7 +122,7 @@ the project environment. uv will ignore a declared build system when interacting
 the project;
 however, uv will still respect explicit attempts to build the project such as
 invoking `uv build`.
-## Project environment path
+\## Project environment path
 The `UV_PROJECT_ENVIRONMENT` environment variable can be used to configure the
 project virtual
 environment path (`.venv` by default).
@@ -141,7 +141,7 @@ the system in a broken state.
 To target the system environment, set `UV_PROJECT_ENVIRONMENT` to the prefix of the
 Python
 installation. For example, on Debian-based systems, this is usually `/usr/local`:
-```console
+\```console
 $ python -c "import sysconfig; print(sysconfig.get_config_var('prefix'))"
 /usr/local
 To target this environment, you’d export UV_PROJECT_ENVIRONMENT=/usr/local.
@@ -171,12 +171,12 @@ dependency list. For example, cchardet requires cython to be installed in the pr
 prior to installing cchardet, but does not declare it as a build dependency.
 To address these issues, uv supports two separate approaches to modifying the build isolation
 behavior:
-1. Augmenting the list of build dependencies: This allows you to install a package in an isolated
+1\. Augmenting the list of build dependencies: This allows you to install a package in an isolated
 environment, but with additional build dependencies that are not declared by the package itself
 via the extra-build-dependencies setting. For packages like flash-attn, you can even enforce
 that those build dependencies (like torch) match the version of the package that is or will be
 installed in the project environment.
-2. Disabling build isolation for specific packages: This allows you to install a package without
+2\. Disabling build isolation for specific packages: This allows you to install a package without
 building it in an isolated environment.
 
 When possible, we recommend augmenting the build dependencies rather than disabling build
@@ -188,7 +188,7 @@ Augmenting build dependencies
 To augment the list of build dependencies for a specific package, add it to the extra-build￾dependencies list in your pyproject.toml.
 For example, to build cchardet with cython as an additional build dependency, include the
 following in your pyproject.toml:
-```toml title=“pyproject.toml” [project] name = “project” version = “0.1.0” description = “…” readme
+\```toml title=“pyproject.toml” [project] name = “project” version = “0.1.0” description = “…” readme
 = “README.md” requires-python = “>=3.12” dependencies = [“cchardet”]
 [tool.uv.extra-build-dependencies] cchardet = [“cython”]
 To ensure that a build dependency matches the version of the package that is or will
@@ -198,7 +198,7 @@ table. For
 example, to build `deepspeed` with `torch` as an additional build dependency, include
 the following
 in your `pyproject.toml`:
-```toml title="pyproject.toml"
+\```toml title="pyproject.toml"
 [project]
 name = "project"
 version = "0.1.0"
@@ -215,7 +215,7 @@ Pre-built `deepspeed` wheels are also available from the
 [Astral GPU indexes](../../guides/integration/pytorch.md#installing-gpu-enabled￾pytorch-extensions).
 Similarly, to build flash-attn with torch as an additional build dependency, include the following
 in your pyproject.toml:
-```toml title=“pyproject.toml” [project] name = “project” version = “0.1.0” description = “…” readme
+\```toml title=“pyproject.toml” [project] name = “project” version = “0.1.0” description = “…” readme
 = “README.md” requires-python = “>=3.12” dependencies = [“flash-attn”, “torch”]
 [tool.uv.extra-build-dependencies] flash-attn = [{ requirement = “torch”, match-runtime = true }]
 [tool.uv.extra-build-variables] flash-attn = { FLASH_ATTENTION_SKIP_CUDA_BUILD = “TRUE” }
@@ -237,7 +237,7 @@ available
  [Astral GPU indexes](../../guides/integration/pytorch.md#installing-gpu-enabled￾pytorch-extensions).
 Similarly, [`deep_gemm`](https://github.com/deepseek-ai/DeepGEMM) follows the same
 pattern:
-```toml title="pyproject.toml"
+\```toml title="pyproject.toml"
 [project]
 name = "project"
 version = "0.1.0"
@@ -271,7 +271,7 @@ torch that is installed in the project environment. In this case, users should i
 version of torch that they intend to use in their project, and then augment the build dependencies
 with that version.
 For example, to build axolotl against torch==2.6.0, include the following in your pyproject.toml:
-```toml title=“pyproject.toml” [project] name = “project” version = “0.1.0” description = “…” readme
+\```toml title=“pyproject.toml” [project] name = “project” version = “0.1.0” description = “…” readme
 = “README.md” requires-python = “>=3.12” dependencies = [“axolotl[deepspeed, flash-attn]”,
 “torch==2.6.0”]
 [tool.uv.extra-build-dependencies] axolotl = [“torch==2.6.0”] deepspeed = [“torch==2.6.0”] flash-attn
@@ -287,7 +287,7 @@ thereby forgoing
 the need to build the package during the dependency resolution phase. For example, to
 provide the
 `flash-attn` metadata upfront:
-```toml title="pyproject.toml"
+\```toml title="pyproject.toml"
 [[tool.uv.dependency-metadata]]
 name = "flash-attn"
 version = "2.6.3"
@@ -326,20 +326,20 @@ project dependencies, uv will automatically install them before installing the p
 build isolation to be disabled.
 For example, to install cchardet without build isolation, include the following in your
 pyproject.toml:
-```toml title=“pyproject.toml” [project] name = “project” version = “0.1.0” description = “…” readme
+\```toml title=“pyproject.toml” [project] name = “project” version = “0.1.0” description = “…” readme
 = “README.md” requires-python = “>=3.12” dependencies = [“cchardet”, “cython”, “setuptools”]
 [tool.uv] no-build-isolation-package = [“cchardet”]
 When running `uv sync`, uv will first install `cython` and `setuptools` in the
 project environment,
 followed by `cchardet` (without build isolation):
-```console
+\```console
 $ uv sync --extra build
  + cchardet==2.1.7
  + cython==3.1.3
  + setuptools==80.9.0
 Similarly, to install flash-attn without build isolation, include the following in your
 pyproject.toml:
-```toml title=“pyproject.toml” [project] name = “project” version = “0.1.0” description = “…” readme
+\```toml title=“pyproject.toml” [project] name = “project” version = “0.1.0” description = “…” readme
 = “README.md” requires-python = “>=3.12” dependencies = [“flash-attn”, “torch”]
 [tool.uv] no-build-isolation-package = [“flash-attn”]
 When running `uv sync`, uv will first install `torch` in the project environment,
@@ -363,7 +363,7 @@ require them.
 For example, the build dependencies for `cchardet` can be isolated to an optional
 `build` group, as
 in:
-```toml title="pyproject.toml"
+\```toml title="pyproject.toml"
 [project]
 name = "project"
 version = "0.1.0"
@@ -389,12 +389,12 @@ Others require their build dependencies to be present even just to resolve the p
 during the resolution phase.
 In such cases, the build dependencies can be installed prior to running any uv lock or uv sync
 commands, using the lower lower-level uv pip API. For example, given:
-```toml title=“pyproject.toml” [project] name = “project” version = “0.1.0” description = “…” readme
+\```toml title=“pyproject.toml” [project] name = “project” version = “0.1.0” description = “…” readme
 = “README.md” requires-python = “>=3.12” dependencies = [“flash-attn”]
 [tool.uv] no-build-isolation-package = [“flash-attn”]
 You could run the following sequence of commands to sync `flash-attn`:
 
-```console
+\```console
 $ uv venv
 $ uv pip install torch setuptools
 $ uv sync

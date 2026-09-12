@@ -48,7 +48,7 @@ example-app/
 
 A [build system](config.md#build-systems) is defined, so the project will be installed into the environment:
 
-```toml title=“pyproject.toml” hl_lines=“12-14” [project] name = “example-app” version = “0.1.0” description = “Add your description here” readme = “README.md” requires-python = “>=3.11” dependencies = []
+\```toml title=“pyproject.toml” hl_lines=“12-14” [project] name = “example-app” version = “0.1.0” description = “Add your description here” readme = “README.md” requires-python = “>=3.11” dependencies = []
 
 [project.scripts] example-app = “example_app:main”
 
@@ -127,7 +127,7 @@ is well separated from the rest of the project source.
 
 A [build system](config.md#build-systems) is defined, so the project will be installed into the environment:
 
-```toml title=“pyproject.toml” hl_lines=“12-14” [project] name = “example-lib” version = “0.1.0” description = “Add your description here” readme = “README.md” requires-python = “>=3.11” dependencies = []
+\```toml title=“pyproject.toml” hl_lines=“12-14” [project] name = “example-lib” version = “0.1.0” description = “Add your description here” readme = “README.md” requires-python = “>=3.11” dependencies = []
 
 [build-system] requires = [“uv_build>=0.12.7,<0.13”] build-backend = “uv_build”
 
@@ -203,7 +203,7 @@ If using `scikit-build-core`, you'll see CMake configuration and a `main.cpp` fi
 
 The Rust library defines a simple function:
 
-```rust title=“src/lib.rs” use pyo3::prelude::*;
+\```rust title=“src/lib.rs” use pyo3::prelude::*;
 
 #[pymodule] mod _core { use pyo3::prelude::*;
 
@@ -271,7 +271,7 @@ toml title="pyproject.toml" [project] name = "example-app" version = "0.1.0" des
 
 The sample file defines a main function with some standard boilerplate:
 
-```python title=“main.py” def main(): print(“Hello from example-app!”)
+\```python title=“main.py” def main(): print(“Hello from example-app!”)
 
 if name == “main”: main()
 

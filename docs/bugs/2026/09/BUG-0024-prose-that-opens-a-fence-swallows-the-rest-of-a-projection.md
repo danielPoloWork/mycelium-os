@@ -1,11 +1,12 @@
 ---
 id: BUG-0024
 title: a paragraph that begins with a fence marker opens a code block in the compiler and swallows the rest of the projected document
-status: confirmed
+status: fixed
 severity: medium
 reporter: internal
 discovered: 2026-09-12
 affected-versions: "0.4.0 (introduced by PR #53, roadmap 4.3)"
+fixed-in: "0.5.0"
 ---
 
 # BUG-0024: a paragraph that begins with a fence marker opens a code block in the compiler and swallows the rest of the projected document
@@ -77,17 +78,29 @@ the region is code to it.
 
 ## Fix
 
-Not fixed here. The repair is ADR-0077's rule applied to the evidence projector — escape the
-line shapes that open block structure at the start of a projected paragraph, so the characters
-survive as text and never as syntax — and it is its own change: it moves the chunk boundaries of
-the four documents above, so the ingested corpus's carried case set and G3 baseline move with
-it. Filed as roadmap 5.22.
+Fixed at roadmap 5.22 ([ADR-0093](../../../adr/0093-escape-the-prose-that-would-open-a-block-and-report-what-that-costs.md)),
+by ADR-0077's rule generalised: the projector escapes the line shapes that open block structure
+— a fence, an ATX heading, a bullet, an ordered marker, a quote marker, a thematic break or a
+setext underline — on **every** line of a projected paragraph, not only the first. The
+first-line rule this report proposed would have missed `dependencies-docx`, whose marker sits
+mid-paragraph.
+
+The escape is free: CommonMark reads `\##` as a literal `##`, and backslashes in node text
+across the corpus are 137 before and 137 after — none reached the index.
 
 ## Verification
 
-Pending the fix: the reproduction above must report no code block containing a heading in any
-of the 81 projections, and `tools/build_ingested_cases.py --check` must reproduce the carried
-set after the re-carry.
+- The reproduction above reports no swallowed heading in any of the four documents.
+- `tools/build_ingested_corpus.py --check` and `tools/build_ingested_cases.py --check` both
+  reproduce; the carry maps the same 62 anchors and drops the same 3.
+- Across the 81 projections, 34,461 characters come out of code blocks (−21 %); three judged
+  anchors move off fabricated headings and the ingested baseline is re-blessed on both arms.
+- Covered by `tests/test_ingest_projection.py`, including this defect as a test.
+
+**Found on the way, and filed rather than fixed:** the repair makes the projection faithful to
+KIR, which reveals that ten blocks across nine documents are code blocks *upstream* — docling
+reading an admonition and the headings after it as one block. An unescaped marker used to split
+them by accident. Roadmap 5.24.
 
 ## Lesson
 

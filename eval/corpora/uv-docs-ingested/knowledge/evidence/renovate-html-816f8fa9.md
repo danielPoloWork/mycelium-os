@@ -45,7 +45,7 @@ If you use [exclude-newer](../../reference/settings.md#exclude-newer) option, it
 
 For instance, if you've set exclude-newer to 1 week, you can set:
 
-```jsx title="renovate.json5" { $schema: "https://docs.renovatebot.com/renovate-schema.json",
+\```jsx title="renovate.json5" { $schema: "https://docs.renovatebot.com/renovate-schema.json",
 
 // Enable only for PyPI. packageRules: [ { matchDatasources: ["pypi"], minimumReleaseAge: "1 week", }, ],
 
