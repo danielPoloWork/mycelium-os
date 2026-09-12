@@ -11,10 +11,10 @@ uv is licensed under either of
 
 -
 
-  Apache License, Version 2.0 LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0
+  Apache License, Version 2.0 [LICENSE-APACHE](https://github.com/astral-sh/uv/blob/main/LICENSE-APACHE) or [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
 -
 
-  MIT License LICENSE-MIT or https://opensource.org/licenses/MIT
+  MIT License [LICENSE-MIT](https://github.com/astral-sh/uv/blob/main/LICENSE-MIT) or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)
 
 at your option.
 

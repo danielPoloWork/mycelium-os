@@ -13,7 +13,7 @@ Pass --sync to install the selected packages before collecting module ownership 
 
 The primary structure is the "resolution" field which contains the dependency graph with exact package versions that a uv.lock encodes.
 
-The edges of the graph are the dependencies every node defines. These are the things that must also be installed for it to be installed (and their dependencies recursively, keeping in mind that cycles are perfectly normal to encounter in this graph). Each dependency entry will include an id for the node it refers to, and an optional marker that specifies on what platforms the dependency is required (if there is no marker the dependency is always required).
+The edges of the graph are the dependencies every node defines. These are the things that must also be installed for it to be installed (and their dependencies recursively, keeping in mind that cycles are perfectly normal to encounter in this graph). Each dependency entry will include an id for the node it refers to, and an optional marker that [specifies on what platforms the dependency is required](https://packaging.python.org/en/latest/specifications/dependency-specifiers/#dependency-specifiers) (if there is no marker the dependency is always required).
 
 Package-derived nodes in the graph are uniquely identified by package name, version, source, and kind. Script and workspace nodes are identified by their path. Workspace-root dependency group nodes are identified by their group name and the workspace path. All node ids should be treated as opaque.
 
@@ -35,7 +35,7 @@ There are 5 kinds of node in the graph:
 
   { "group": "groupname" } - a dependency group a package or workspace root defines
 
-(In the future we will add "build" nodes for the dependencies of build environments.)
+(In the future we will add "build" nodes for the dependencies of [build environments](../../concepts/projects/config.md#build-isolation).)
 
 If you want to install mypackage, find its "kind": "package" node. This node will also include information on its sdist, its wheels, its extras (optional_dependencies), and dependency groups (dependency_groups).
 
@@ -49,11 +49,11 @@ If the workspace root defines dependency groups but is not itself a package, its
 
 Two versions of a package cannot be installed into a python environment, but the dependency graph may still include multiple versions of a package. This can happen for two different reasons.
 
-The first way is for different platforms to have conflicting requirements that force different versions of a package to be used.
+The first way is for [different platforms](https://packaging.python.org/en/latest/specifications/dependency-specifiers/#dependency-specifiers) to have conflicting requirements that force different versions of a package to be used.
 
-The second way is when a workspace has conflicts, implying some workspace members or their extras are mutually exclusive, and only one of them can be installed at a time. Information about conflicts can be found in the top-level conflicts field.
+The second way is when a workspace has [conflicts](../../concepts/resolution.md#conflicting-dependencies), implying some workspace members or their extras are mutually exclusive, and only one of them can be installed at a time. Information about conflicts can be found in the top-level conflicts field.
 
-The specific guarantee we provide is that for any concrete choice of markers, if you select a set of packages to install that has no conflicts, then the resulting set of packages to install will not have multiple versions of a package.
+The specific guarantee we provide is that for any concrete choice of [markers](https://packaging.python.org/en/latest/specifications/dependency-specifiers/#dependency-specifiers), if you select a set of packages to install that has no [conflicts](../../concepts/resolution.md#conflicting-dependencies), then the resulting set of packages to install will not have multiple versions of a package.
 
 If you just want to get "every version of pydantic this workspace uses" you're free to iterate through the list of nodes and collect up every instance. If however you want to specifically analyze the graph and get actual resolutions you will likely need to consult conflicts and need to understand how to resolve markers for a specific platform.
 

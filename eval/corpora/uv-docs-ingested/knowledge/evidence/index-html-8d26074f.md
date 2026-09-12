@@ -11,21 +11,21 @@ The reference section provides information about specific parts of uv:
 
 -
 
-  Commands: A reference for uv's command line interface.
+  [Commands](cli.md): A reference for uv's command line interface.
 -
 
-  Settings: A reference for uv's configuration schema.
+  [Settings](settings.md): A reference for uv's configuration schema.
 -
 
-  Resolver: Details about the internals of uv's resolver.
+  [Resolver](internals/resolver.md): Details about the internals of uv's resolver.
 -
 
-  Storage: Information about where uv stores data on your system.
+  [Storage](storage.md): Information about where uv stores data on your system.
 -
 
-  Policies: uv's versioning policy, platform support policy, and license.
+  [Policies](policies/index.md): uv's versioning policy, platform support policy, and license.
 -
 
-  Contributing: A guide for contributing to uv.
+  [Contributing](contributing.md): A guide for contributing to uv.
 
-Looking for a broader overview? Check out the concepts documentation.
+Looking for a broader overview? Check out the [concepts](../concepts/index.md) documentation.

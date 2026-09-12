@@ -24,9 +24,9 @@ When writing a reproducible example, the goal is to provide all the context nece
   The relevant files (the uv.lock, pyproject.toml, etc.)
 - The commands to run
 
-To ensure your reproduction is minimal, remove as many dependencies, settings, and files as possible. Be sure to test your reproduction before sharing it. We recommend including verbose logs from your reproduction; they may differ on your machine in a critical way. Using a Gist can be helpful for very long logs.
+To ensure your reproduction is minimal, remove as many dependencies, settings, and files as possible. Be sure to test your reproduction before sharing it. We recommend including verbose logs from your reproduction; they may differ on your machine in a critical way. Using a [Gist](https://gist.github.com/) can be helpful for very long logs.
 
-Below, we'll cover several specific strategies for creating and sharing reproducible examples.
+Below, we'll cover several specific [strategies](#strategies-for-reproducible-examples) for creating and sharing reproducible examples.
 
 !!! tip
 
@@ -50,7 +50,7 @@ to the operating system. While using Docker to run Windows containers is feasibl
 commonplace. These sorts of bugs are expected to be reported as a [script](#script) instead.
 ```
 
-When writing a Docker MRE with uv, it's best to start with one of uv's Docker images. When doing so, be sure to pin to a specific version of uv.
+When writing a Docker MRE with uv, it's best to start with one of [uv's Docker images](../../guides/integration/docker.md#available-images). When doing so, be sure to pin to a specific version of uv.
 
 ```Dockerfile
 FROM ghcr.io/astral-sh/uv:0.12.0-debian-slim
@@ -93,7 +93,7 @@ WORKDIR /mre
 RUN uv lock
 ```
 
-If you need to write many files, it's better to create and publish a Git repository. You can combine these approaches and include a Dockerfile in the repository.
+If you need to write many files, it's better to create and publish a [Git repository](#git-repository). You can combine these approaches and include a Dockerfile in the repository.
 
 When sharing a Docker reproduction, it's helpful to include the build logs. You can see more output from the build steps by disabling caching and the fancy output:
 
@@ -103,7 +103,7 @@ docker build . --progress plain --no-cache
 
 ### Script
 
-When reporting platform-specific bugs that cannot be reproduced in a container, it's best practice to include a script showing the commands that can be used to reproduce the bug, e.g.:
+When reporting platform-specific bugs that cannot be reproduced in a [container](#docker-image), it's best practice to include a script showing the commands that can be used to reproduce the bug, e.g.:
 
 ```Bash
 uv init
@@ -112,7 +112,7 @@ uv sync
 uv run -v python -c "import pydantic"
 ```
 
-If your reproduction requires many files, use a Git repository to share them.
+If your reproduction requires many files, use a [Git repository](#git-repository) to share them.
 
 In addition to the script, include verbose logs (i.e., with the -v flag) of the failure and the complete error message.
 
@@ -120,7 +120,7 @@ Whenever a script relies on external state, be sure to share that information. F
 
 ### Git repository
 
-When sharing a Git repository reproduction, include a script that reproduces the problem or, even better, a Dockerfile. The first step of the script should be to clone the repository and checkout a specific commit:
+When sharing a Git repository reproduction, include a [script](#script) that reproduces the problem or, even better, a [Dockerfile](#docker-image). The first step of the script should be to clone the repository and checkout a specific commit:
 
 ```
 $ git clone https://github.com/<user>/<project>.git
@@ -129,7 +129,7 @@ $ git checkout <commit>
 $ <commands to produce error>
 ```
 
-You can quickly create a new repository in the GitHub UI or with the gh CLI:
+You can quickly create a new repository in the [GitHub UI](https://github.com/new) or with the gh CLI:
 
 ```
 $ gh repo create uv-mre-1234 --clone

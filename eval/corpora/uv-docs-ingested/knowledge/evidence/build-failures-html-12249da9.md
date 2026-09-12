@@ -197,7 +197,7 @@ To resolve an error where `Python.h` is missing, install the [`python3-dev` pack
 
 ### Module is missing or cannot be imported
 
-If the build error mentions a failing import, consider disabling build isolation.
+If the build error mentions a failing import, consider [disabling build isolation](../../concepts/projects/config.md#build-isolation).
 
 For example, some packages assume that pip is available without declaring it as a build dependency:
 
@@ -239,7 +239,7 @@ Note you will need to install the missing package, e.g., pip, and all the other 
 
 ### Old version of the package is built
 
-If a package fails to build during resolution and the version that failed to build is older than the version you want to use, try adding a constraint with a lower bound (e.g., numpy>=1.17). Sometimes, due to algorithmic limitations, the uv resolver tries to find a fitting version using unreasonably old packages, which can be prevented by using lower bounds.
+If a package fails to build during resolution and the version that failed to build is older than the version you want to use, try adding a [constraint](../settings.md#constraint-dependencies) with a lower bound (e.g., numpy>=1.17). Sometimes, due to algorithmic limitations, the uv resolver tries to find a fitting version using unreasonably old packages, which can be prevented by using lower bounds.
 
 For example, when resolving the following dependencies on Python 3.10, uv attempts to build an old version of apache-beam.
 
@@ -259,13 +259,13 @@ apache-beam<=2.49.0
 
 Adding a lower bound constraint, e.g., apache-beam<=2.49.0,>2.30.0, resolves this build failure as uv will avoid using an old version of apache-beam.
 
-Constraints can also be defined for indirect dependencies using constraints.txt files or the constraint-dependencies setting.
+Constraints can also be defined for indirect dependencies using constraints.txt files or the [constraint-dependencies](../settings.md#constraint-dependencies) setting.
 
 ### Old Version of a build dependency is used
 
-If a package fails to build because uv selects an incompatible or outdated version of a build-time dependency, you can enforce constraints specifically for build dependencies. The build-constraint-dependencies setting (or an analogous build-constraints.txt file) can be used to ensure that uv selects an appropriate version of a given build requirements.
+If a package fails to build because uv selects an incompatible or outdated version of a build-time dependency, you can enforce constraints specifically for build dependencies. The [build-constraint-dependencies](../settings.md#build-constraint-dependencies) setting (or an analogous build-constraints.txt file) can be used to ensure that uv selects an appropriate version of a given build requirements.
 
-For example, the issue described in #5551 could be addressed by specifying a build constraint that excludes setuptools version 72.0.0:
+For example, the issue described in [#5551](https://github.com/astral-sh/uv/issues/5551#issuecomment-2256055975) could be addressed by specifying a build constraint that excludes setuptools version 72.0.0:
 
 ```
 toml title="pyproject.toml" [tool.uv] # Prevent setuptools version 72.0.0 from being used as a build dependency. build-constraint-dependencies = ["setuptools!=72.0.0"]
@@ -275,7 +275,7 @@ The build constraint will thus ensure that any package requiring setuptools duri
 
 ### Package is only needed for an unused platform
 
-If locking fails due to building a package from a platform you do not need to support, consider limiting resolution to your supported platforms.
+If locking fails due to building a package from a platform you do not need to support, consider [limiting resolution](../../concepts/projects/config.md#limited-resolution-environments) to your supported platforms.
 
 ### Package does not support all Python versions
 
@@ -288,4 +288,4 @@ numpy<1.23; python_version < "3.10"
 
 ### Package is only usable on a specific platform
 
-If locking fails due to building a package that is only usable on another platform, you can provide dependency metadata manually to skip the build. uv can not verify this information, so it is important to specify correct metadata when using this override.
+If locking fails due to building a package that is only usable on another platform, you can [provide dependency metadata manually](../settings.md#dependency-metadata) to skip the build. uv can not verify this information, so it is important to specify correct metadata when using this override.

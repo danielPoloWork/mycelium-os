@@ -193,6 +193,19 @@ def test_docling_reports_the_engine_version_not_ours() -> None:
     assert meta.version[0].isdigit()
 
 
+def test_docling_spells_a_relative_hyperlink_as_the_source_did() -> None:
+    """BUG-0023: docling hands a relative `href` back as a `Path`, and `str()` of
+    one on Windows is spelled with backslashes. Since roadmap 5.18 the target is
+    written into a committed projection, so the spelling has to be the source's
+    on every platform."""
+    from pathlib import PureWindowsPath
+
+    assert (
+        docling_parser._href(PureWindowsPath("..\\..\\guides\\bazel.md")) == "../../guides/bazel.md"
+    )
+    assert docling_parser._href("https://example.com/log") == "https://example.com/log"
+
+
 def test_docling_joins_formatting_runs_without_losing_the_spaces() -> None:
     # docling strips whitespace at a run boundary, so a sentence containing a link
     # arrives in three pieces. Concatenating them would corrupt every such sentence.

@@ -9,7 +9,7 @@ source_digest: "sha256:86d1e2d2cc9432350c513fb4a06ecaa91a6c5ed0ca919fde4dd28859c
 
 ## Using the uv image
 
-Astral provides Docker images with uv preinstalled. Select a variant that is suitable for your workflow.
+Astral provides [Docker images](docker.md#available-images) with uv preinstalled. Select a variant that is suitable for your workflow.
 
 ```yaml title=".gitlab-ci.yml" variables: UV_VERSION: "0.12.7" PYTHON_VERSION: "3.12" BASE_LAYER: trixie-slim # GitLab CI creates a separate mountpoint for the build directory, # so we need to copy instead of using hard links. UV_LINK_MODE: copy
 
@@ -47,15 +47,15 @@ uv-install:
     - uv cache prune --ci
 ````
 
-See the GitLab caching documentation for more details on configuring caching.
+See the [GitLab caching documentation](https://docs.gitlab.com/ee/ci/caching/) for more details on configuring caching.
 
-Using uv cache prune --ci at the end of the job is recommended to reduce cache size. See the uv cache documentation for more details.
+Using uv cache prune --ci at the end of the job is recommended to reduce cache size. See the [uv cache documentation](../../concepts/cache.md#caching-in-continuous-integration) for more details.
 
 ## Using uv pip
 
 If using the uv pip interface instead of the uv project interface, uv requires a virtual environment by default. To allow installing packages into the system environment, use the --system flag on all uv invocations or set the UV_SYSTEM_PYTHON variable.
 
-The UV_SYSTEM_PYTHON variable can be defined in at different scopes. You can read more about how variables and their precedence works in GitLab here
+The UV_SYSTEM_PYTHON variable can be defined in at different scopes. You can read more about how [variables and their precedence works in GitLab here](https://docs.gitlab.com/ee/ci/variables/)
 
 Opt-in for the entire workflow by defining it at the top level:
 

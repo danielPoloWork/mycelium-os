@@ -43,7 +43,7 @@ toml title="uv.toml" [[index]] url = "https://test.pypi.org/simple" default = tr
 `[tool.uv]` section in the accompanying `pyproject.toml` will be ignored.
 ```
 
-uv will also discover uv.toml configuration files in the user- and system-level configuration directories, e.g., user-level configuration in ~/.config/uv/uv.toml on macOS and Linux, or%APPDATA%\uv\uv.toml on Windows, and system-level configuration at /etc/uv/uv.toml on macOS and Linux, or%PROGRAMDATA%\uv\uv.toml on Windows.
+uv will also discover uv.toml configuration files in the user- and system-level [configuration directories](../reference/storage.md#configuration-directories), e.g., user-level configuration in ~/.config/uv/uv.toml on macOS and Linux, or%APPDATA%\uv\uv.toml on Windows, and system-level configuration at /etc/uv/uv.toml on macOS and Linux, or%PROGRAMDATA%\uv\uv.toml on Windows.
 
 !!! important
 
@@ -63,11 +63,11 @@ uv also accepts a --config-file command-line argument, which accepts a path to a
 
 ## Settings
 
-See the settings reference for an enumeration of the available settings.
+See the [settings reference](../reference/settings.md) for an enumeration of the available settings.
 
 ## Environment variable files
 
-uv run can load environment variables from dotenv files (e.g.,.env,.env.local,.env.development), powered by the dotenvy crate.
+uv run can load environment variables from dotenv files (e.g.,.env,.env.local,.env.development), powered by the [dotenvy](https://github.com/allan2/dotenvy) crate.
 
 To load a.env file from a dedicated location, set the UV_ENV_FILE environment variable, or pass the --env-file flag to uv run.
 
@@ -87,7 +87,7 @@ If the same variable is defined in the environment and in a.env file, the value 
 
 ## Configuring the pip interface
 
-A dedicated [tool.uv.pip] section is provided for configuring just the uv pip command line interface. Settings in this section will not apply to uv commands outside the uv pip namespace. However, many of the settings in this section have corollaries in the top-level namespace which do apply to the uv pip interface unless they are overridden by a value in the uv.pip section.
+A dedicated [\[tool.uv.pip\]](../reference/settings.md#pip) section is provided for configuring just the uv pip command line interface. Settings in this section will not apply to uv commands outside the uv pip namespace. However, many of the settings in this section have corollaries in the top-level namespace which do apply to the uv pip interface unless they are overridden by a value in the uv.pip section.
 
 The uv.pip settings are designed to adhere closely to pip's interface and are declared separately to retain compatibility while allowing the global settings to use alternate designs (e.g., --no-build).
 

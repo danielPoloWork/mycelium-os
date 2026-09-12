@@ -43,6 +43,13 @@ structures; rendering it back is regenerating syntax around text that must not c
 
 ## Decision
 
+> **Amended at roadmap 5.18 ([ADR-0090](0090-project-a-sources-links-as-links-now-that-the-compiler-knows-who-asserted-them.md)).** The projector's rule that reference
+> nodes are *rendered by nobody* is withdrawn. A link, wikilink or embed is rendered back
+> around the words it labelled, now that the compiler types every edge derived from an
+> ingested document `extracted` (ADR-0079) — the guarantee the rule stood in for. The
+> fidelity accounting below is unchanged: references are still not elements, and every
+> block's text is exactly what it was.
+
 **One frontmatter key carries the link; tier-1 custody carries the facts.**
 `source_digest` joins the four fields spec 03 §3 gives to `mycelium ingest`, making the
 contract twelve keys. From it the compiler finds the custody record, and from the record the

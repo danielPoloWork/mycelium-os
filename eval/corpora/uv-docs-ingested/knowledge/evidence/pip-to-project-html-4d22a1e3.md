@@ -52,7 +52,7 @@ $ source .venv/bin/activate
 $ pip ...
 ```
 
-We will revisit this topic in the project environments section below.
+We will revisit this topic in the [project environments section](#project-environments) below.
 
 ### Requirements files
 
@@ -334,7 +334,7 @@ $ uv add -r requirements.in -c requirements-win.txt -c requirements-linux.txt
 
 #### Importing development dependency files
 
-As discussed in the development dependencies section, it's common to have groups of dependencies for development purposes.
+As discussed in the [development dependencies](#development-dependencies) section, it's common to have groups of dependencies for development purposes.
 
 To import development dependencies, use the --dev flag during uv add:
 
@@ -362,7 +362,7 @@ When importing requirements on local paths or Git repositories, for example:
 requirements title="requirements.in" ./path-dep -e ./editable-path-dep git-dep @ git+https://github.com/astral-sh/git-dep
 ```
 
-uv will map them to dependency sources in the [tool.uv.sources] table of the pyproject.toml:
+uv will map them to [dependency sources](../../concepts/projects/dependencies.md#dependency-sources) in the [tool.uv.sources] table of the pyproject.toml:
 
 ```toml title="pyproject.toml" [project] dependencies = [ "path-dep", "editable-path-dep", "git-dep",]
 
@@ -394,8 +394,8 @@ environment as declared by the `VIRTUAL_ENV` variable by default. You can opt-in
 active environment with the `--active` flag.
 ```
 
-To learn more, see the project environment documentation.
+To learn more, see the [project environment](../../concepts/projects/layout.md#the-project-environment) documentation.
 
 ## Next steps
 
-Now that you've migrated to uv, take a look at the project concept page for more details about uv projects.
+Now that you've migrated to uv, take a look at the [project concept](../../concepts/projects/index.md) page for more details about uv projects.

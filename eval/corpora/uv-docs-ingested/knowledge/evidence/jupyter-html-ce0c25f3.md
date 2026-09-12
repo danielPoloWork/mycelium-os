@@ -7,17 +7,17 @@ source_digest: "sha256:ce0c25f34cf9c31aa0b0101d0de77470455b8d163000dc1211d900e20
 
 # Using uv with Jupyter
 
-The Jupyter notebook is a popular tool for interactive computing, data analysis, and visualization. You can use Jupyter with uv in a few different ways, either to interact with a project, or as a standalone tool.
+The [Jupyter](https://jupyter.org/) notebook is a popular tool for interactive computing, data analysis, and visualization. You can use Jupyter with uv in a few different ways, either to interact with a project, or as a standalone tool.
 
 ## Using Jupyter within a project
 
-If you're working within a project, you can start a Jupyter server with access to the project's virtual environment via the following:
+If you're working within a [project](../../concepts/projects/index.md), you can start a Jupyter server with access to the project's virtual environment via the following:
 
 ```
 $ uv run --with jupyter jupyter lab
 ```
 
-By default, jupyter lab will start the server at http://localhost:8888/lab.
+By default, jupyter lab will start the server at [http://localhost:8888/lab](http://localhost:8888/lab).
 
 Within a notebook, you can import your project's modules as you would in any other file in the project. For example, if your project depends on requests, import requests will import requests from the project's virtual environment.
 
@@ -74,7 +74,7 @@ If you ever need ad hoc access to a notebook (i.e., to run a Python snippet inte
 
 ## Using Jupyter with a non-project environment
 
-If you need to run Jupyter in a virtual environment that isn't associated with a project (e.g., has no pyproject.toml or uv.lock), you can do so by adding Jupyter to the environment directly. For example:
+If you need to run Jupyter in a virtual environment that isn't associated with a [project](../../concepts/projects/index.md) (e.g., has no pyproject.toml or uv.lock), you can do so by adding Jupyter to the environment directly. For example:
 
 === "macOS and Linux"
 

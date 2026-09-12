@@ -23,6 +23,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **An ingested document's links reach the graph** (roadmap 5.18, [ADR-0090](docs/adr/0090-project-a-sources-links-as-links-now-that-the-compiler-knows-who-asserted-them.md)). The
+  projector renders a link, wikilink or embed back into the block that carried it — `[label](target)`
+  around the very words the block already holds — so the compiler reads it, resolves it through
+  the source tree and types it `extracted`, with the chunk it sits in as its provenance. Until now
+  reference nodes were rendered by nobody (threat-model control B11), which roadmap 5.7 had already
+  shown covered nothing the compiler's own rule did not; the row is restated. The block's text does
+  not change, so no chunk, anchor, carried judgement or retrieval score moves. On the vendored
+  ingested corpus: links reaching the compiler 30 → 560, edges 54 → 366 (293 links, 305 extracted),
+  unresolved 12 → 42, all naming sources the corpus never vendored. `Projection` and the
+  `mycelium ingest` report carry `references` and `references_dropped`. 67 of the 81 vendored
+  projections change, the rest having no references to carry; the reproduction check and the
+  carried cases are unchanged, 584 of 585 chunks keep their text, and the one that does not sits
+  in a region a pre-existing defect makes code
+  ([BUG-0024](docs/bugs/2026/09/BUG-0024-prose-that-opens-a-fence-swallows-the-rest-of-a-projection.md),
+  roadmap 5.22) — so the ingested baseline is re-blessed for both retrievers and gate G2's
+  verdict re-recorded, with the per-case account in ADR-0090.
+
 - **A citation says what it was minted against, not only where** (roadmap 5.17,
   [ADR-0089](docs/adr/0089-put-content-identity-in-the-citation-and-make-the-grammar-extensible.md)).
   Every `mycelium://` URI now carries `&digest=<hex>` beside `?lines=a-b` — twelve
@@ -100,6 +117,11 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   contradicts.
 
 ### Fixed
+
+- **A relative hyperlink kept the ingesting machine's path separator** ([BUG-0023](docs/bugs/2026/09/BUG-0023-docling-hyperlinks-carry-the-ingesting-machines-separator.md),
+  roadmap 5.18). The docling adapter turned a `Path` hyperlink into a string with `str()`, which
+  on Windows spells `../x.md` as `..\x.md` — harmless while no target was written anywhere,
+  and a cross-platform reproduction failure the moment one was. `as_posix()` now.
 
 - **A callout is its own chunk** (roadmap 5.13, [ADR-0085](docs/adr/0085-let-a-callout-bound-a-chunk-rather-than-atomise-one.md)). Spec 03 §3.1 promised that
   callouts compile to *"atomic chunks like tables"* and the chunker implemented atomicity for

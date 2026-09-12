@@ -73,7 +73,7 @@ $ uv auth token --username foo example.com
 
 ## Using credentials with external tools
 
-uv auth helper allows tools that support credential helpers to request HTTP credentials from uv. At this time, uv supports the Bazel credential helper protocol.
+uv auth helper allows tools that support credential helpers to request HTTP credentials from uv. At this time, uv supports the [Bazel credential helper protocol](https://github.com/bazelbuild/proposals/blob/main/designs/2022-06-07-bazel-credential-helpers.md).
 
 The command is intended to be invoked by external tools. It reads a JSON request from stdin and writes a JSON response to stdout. When matching credentials are available, the response includes the Authorization header:
 
@@ -95,10 +95,10 @@ If no credentials are found, uv will return an empty set of headers:
 `UV_PREVIEW_FEATURES=auth-helper` to disable the warning.
 ```
 
-The Bazel integration guide explains how to use this command with Bazel.
+The [Bazel integration guide](../../guides/integration/bazel.md) explains how to use this command with Bazel.
 
 ## Configuring the storage backend
 
-Credentials are persisted to the uv credentials store.
+Credentials are persisted to the uv [credentials store](http.md#the-uv-credentials-store).
 
 By default, credentials are written to a plaintext file. An encrypted system-native storage backend can be enabled with UV_PREVIEW_FEATURES=native-auth.

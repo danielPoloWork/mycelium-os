@@ -7,7 +7,7 @@ source_digest: "sha256:099fb77622554b67e5532ac5e23f111d8b29d14bedad46fb67c8f518d
 
 # Declaring dependencies
 
-It is best practice to declare dependencies in a static file instead of modifying environments with ad-hoc installations. Once dependencies are defined, they can be locked to create a consistent, reproducible environment.
+It is best practice to declare dependencies in a static file instead of modifying environments with ad-hoc installations. Once dependencies are defined, they can be [locked](compile.md) to create a consistent, reproducible environment.
 
 ## Using pyproject.toml
 
@@ -25,13 +25,13 @@ To define optional dependencies in a pyproject.toml file:
 toml title="pyproject.toml" [project.optional-dependencies] cli = [ "rich", "click", ]
 ```
 
-Each of the keys defines an "extra", which can be installed using the --extra and --all-extras flags or package[<extra>] syntax. See the documentation on installing packages for more details.
+Each of the keys defines an "extra", which can be installed using the --extra and --all-extras flags or package[<extra>] syntax. See the documentation on [installing packages](packages.md#installing-packages-from-files) for more details.
 
-See the official pyproject.toml guide for more details on getting started with a pyproject.toml.
+See the official [pyproject.toml](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/) [guide](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/) for more details on getting started with a pyproject.toml.
 
 ## Using requirements.in
 
-It is also common to use a lightweight requirements file format to declare the dependencies for the project. Each requirement is defined on its own line. Commonly, this file is called requirements.in to distinguish it from requirements.txt which is used for the locked dependencies.
+It is also common to use a lightweight [requirements file format](https://pip.pypa.io/en/stable/reference/requirements-file-format/) to declare the dependencies for the project. Each requirement is defined on its own line. Commonly, this file is called requirements.in to distinguish it from requirements.txt which is used for the locked dependencies.
 
 To define dependencies in a requirements.in file:
 

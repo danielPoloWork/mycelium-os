@@ -30,6 +30,7 @@ import zipfile
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
 from io import BytesIO
+from pathlib import PurePath
 from typing import Any, Final
 
 from mycelium.ingest.errors import ParseError, PluginUnavailableError
@@ -343,6 +344,20 @@ def _children(
         _item(builder, ref.resolve(document), document, state, parent=parent)
 
 
+def _href(target: object) -> str:
+    """A hyperlink as the source wrote it: a URL as-is, a relative path in POSIX form.
+
+    docling types a relative `href` as a `Path`, and `str()` of a `Path` on
+    Windows is spelled with backslashes — the ingesting machine's separator, not
+    the source's. Since roadmap 5.18 the target is written into the projection,
+    and a projection that reads `..\\x.md` here and `../x.md` on Linux is a
+    corpus that cannot reproduce across the machines that check it (BUG-0023).
+    """
+    if isinstance(target, PurePath):
+        return target.as_posix()
+    return str(target)
+
+
 def _links(builder: KirBuilder, item: Any, document: Any, parent: str) -> None:
     """Emit a link node when the item carries a hyperlink — an edge source (spec 03 §6)."""
     target = getattr(item, "hyperlink", None)
@@ -351,7 +366,7 @@ def _links(builder: KirBuilder, item: Any, document: Any, parent: str) -> None:
             NodeKind.LINK,
             parent=parent,
             text=str(getattr(item, "text", "") or ""),
-            target=str(target),
+            target=_href(target),
         )
     for ref in getattr(item, "children", None) or ():
         child = ref.resolve(document)
@@ -360,7 +375,7 @@ def _links(builder: KirBuilder, item: Any, document: Any, parent: str) -> None:
                 NodeKind.LINK,
                 parent=parent,
                 text=str(getattr(child, "text", "") or ""),
-                target=str(child.hyperlink),
+                target=_href(child.hyperlink),
             )
 
 

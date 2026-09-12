@@ -75,11 +75,11 @@ The installation script may be inspected before use:
 Alternatively, the installer or binaries can be downloaded directly from [GitHub](#github-releases).
 ````
 
-See the reference documentation on the installer for details on customizing your uv installation.
+See the reference documentation on the [installer](../reference/installer.md) for details on customizing your uv installation.
 
 ### PyPI
 
-For convenience, uv is published to PyPI.
+For convenience, uv is published to [PyPI](https://pypi.org/project/uv/).
 
 If installing from PyPI, we recommend installing uv into an isolated environment, e.g., with pipx:
 
@@ -112,7 +112,7 @@ $ brew install uv
 
 ### MacPorts
 
-uv is available via MacPorts.
+uv is available via [MacPorts](https://ports.macports.org/port/uv/).
 
 ```
 $ sudo port install uv
@@ -120,7 +120,7 @@ $ sudo port install uv
 
 ### WinGet
 
-uv is available via WinGet.
+uv is available via [WinGet](https://winstall.app/apps/astral-sh.uv).
 
 ```
 $ winget install --id=astral-sh.uv  -e
@@ -128,7 +128,7 @@ $ winget install --id=astral-sh.uv  -e
 
 ### Scoop
 
-uv is available via Scoop.
+uv is available via [Scoop](https://scoop.sh/#/apps?q=uv).
 
 ```
 $ scoop install main/uv
@@ -136,19 +136,19 @@ $ scoop install main/uv
 
 ### Docker
 
-uv provides a Docker image at ghcr.io/astral-sh/uv.
+uv provides a Docker image at [ghcr.io/astral-sh/uv](https://github.com/astral-sh/uv/pkgs/container/uv).
 
-See our guide on using uv in Docker for more details.
+See our guide on [using uv in Docker](../guides/integration/docker.md) for more details.
 
 ### GitHub Releases
 
-uv release artifacts can be downloaded directly from GitHub Releases.
+uv release artifacts can be downloaded directly from [GitHub Releases](https://github.com/astral-sh/uv/releases).
 
 Each release page includes binaries for all supported platforms as well as instructions for using the standalone installer via github.com instead of astral.sh.
 
 ### Cargo
 
-uv is available via crates.io.
+uv is available via [crates.io](https://crates.io/).
 
 ```
 $ cargo install --locked uv
@@ -294,4 +294,4 @@ If you need to remove uv from your system, follow these steps:
 
 ## Next steps
 
-See the first steps or jump straight to the guides to start using uv.
+See the [first steps](first-steps.md) or jump straight to the [guides](../guides/index.md) to start using uv.

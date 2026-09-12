@@ -7,7 +7,7 @@ source_digest: "sha256:1809612cf294fbc966019687a227013bcde23e4536baf7f0bf63e9401
 
 # Using uv with PyTorch
 
-The PyTorch ecosystem is a popular choice for deep learning research and development. You can use uv to manage PyTorch projects and PyTorch dependencies across different Python versions and environments, even controlling for the choice of accelerator (e.g., CPU-only vs. CUDA).
+The [PyTorch](https://pytorch.org/) ecosystem is a popular choice for deep learning research and development. You can use uv to manage PyTorch projects and PyTorch dependencies across different Python versions and environments, even controlling for the choice of accelerator (e.g., CPU-only vs. CUDA).
 
 !!! note
 
@@ -452,7 +452,7 @@ on macOS when the `cu130` extra is enabled.
 
 Many packages in the PyTorch ecosystem include GPU-enabled extensions that are compiled for a specific combination of CUDA and PyTorch versions. Building these packages from source often requires access to the CUDA development toolkit and additional build configuration.
 
-The Astral GPU indexes provide pre-built wheels for packages like flash-attn, deepspeed, deep-gemm, torch-scatter, and vllm, across a range of Python, CUDA, and PyTorch versions.
+The [Astral GPU indexes](https://wheels.astral.sh/) provide pre-built wheels for packages like flash-attn, deepspeed, deep-gemm, torch-scatter, and vllm, across a range of Python, CUDA, and PyTorch versions.
 
 To install flash-attn from the index for CUDA 12.8, run:
 

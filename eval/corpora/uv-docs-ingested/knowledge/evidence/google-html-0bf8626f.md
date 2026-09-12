@@ -7,7 +7,7 @@ source_digest: "sha256:0bf8626f3fc0caf746e0a52bbf861adc161fe328126ee9ed205e89985
 
 # Google Artifact Registry
 
-uv can install packages from Google Artifact Registry, either by using an access token, or using the keyring package.
+uv can install packages from [Google Artifact Registry](https://cloud.google.com/artifact-registry/docs), either by using an access token, or using the [keyring](https://github.com/jaraco/keyring) package.
 
 !!! note
 
@@ -56,11 +56,11 @@ export UV_INDEX_PRIVATE_REGISTRY_PASSWORD = " $ARTIFACT_REGISTRY_TOKEN "
 
 ## Authenticate with keyring and keyrings.google-artifactregistry-auth
 
-You can also authenticate to Artifact Registry using keyring package with the keyrings.google-artifactregistry-auth plugin. Because these two packages are required to authenticate to Artifact Registry, they must be pre-installed from a source other than Artifact Registry.
+You can also authenticate to Artifact Registry using [keyring](https://github.com/jaraco/keyring) package with the [keyrings.google-artifactregistry-auth](https://github.com/GoogleCloudPlatform/artifact-registry-python-tools) [plugin](https://github.com/GoogleCloudPlatform/artifact-registry-python-tools). Because these two packages are required to authenticate to Artifact Registry, they must be pre-installed from a source other than Artifact Registry.
 
-The keyrings.google-artifactregistry-auth plugin wraps gcloud CLI to generate short-lived access tokens, securely store them in system keyring, and refresh them when they are expired.
+The keyrings.google-artifactregistry-auth plugin wraps [gcloud CLI](https://cloud.google.com/sdk/gcloud) to generate short-lived access tokens, securely store them in system keyring, and refresh them when they are expired.
 
-uv only supports using the keyring package in subprocess mode. The keyring executable must be in the PATH, i.e., installed globally or in the active environment. The keyring CLI requires a username in the URL and it must be oauth2accesstoken.
+uv only supports using the keyring package in [subprocess mode](../../reference/settings.md#keyring-provider). The keyring executable must be in the PATH, i.e., installed globally or in the active environment. The keyring CLI requires a username in the URL and it must be oauth2accesstoken.
 
 ```Bash
 # Pre-install keyring and Artifact Registry plugin from the public PyPI
@@ -84,7 +84,7 @@ Similarly, the username for the index can be added directly to the index URL.
 
 ## Publishing packages
 
-If you also want to publish your own packages to Google Artifact Registry, you can use uv publish as described in the Building and publishing guide.
+If you also want to publish your own packages to Google Artifact Registry, you can use uv publish as described in the [Building and publishing guide](../package.md).
 
 First, add a publish-url to the index you want to publish packages to. For example:
 

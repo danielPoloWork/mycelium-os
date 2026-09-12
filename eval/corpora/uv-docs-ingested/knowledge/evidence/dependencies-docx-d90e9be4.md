@@ -40,7 +40,7 @@ toml title="pyproject.toml" hl_lines="4" [project] name = "example" version = "0
 
 The --dev, --group, or --optional flags can be used to add dependencies to an alternative field.
 
-The dependency will include a constraint, e.g., >=0.27.2, for the most recent, compatible version of the package. The kind of bound can be adjusted with --bounds, or the constraint can be provided directly:
+The dependency will include a constraint, e.g., >=0.27.2, for the most recent, compatible version of the package. The kind of bound can be adjusted with [--bounds](../../reference/settings.md#add-bounds), or the constraint can be provided directly:
 
 ```
 $ uv add "httpx>=0.20"
@@ -77,7 +77,7 @@ Dependencies declared in a requirements.txt file can be added to the project wit
 uv add -r requirements.txt
 ```
 
-See the pip migration guide for more details.
+See the [pip migration guide](../../guides/migration/pip-to-project.md#importing-requirements-files) for more details.
 
 ## Removing dependencies
 
@@ -122,7 +122,7 @@ $ uv add "httpx @ ../httpx"
 
 ## Platform-specific dependencies
 
-To ensure that a dependency is only installed on a specific platform or on specific Python versions, use environment markers.
+To ensure that a dependency is only installed on a specific platform or on specific Python versions, use [environment markers](https://peps.python.org/pep-0508/#environment-markers).
 
 For example, to install jax on Linux, but not on Windows or macOS:
 
@@ -140,7 +140,7 @@ Similarly, to include numpy on Python 3.11 and later:
 $ uv add "numpy; python_version >= '3.11'"
 ```
 
-See Python’s environment marker documentation for a complete enumeration of the available markers and operators.
+See Python’s [environment marker](https://peps.python.org/pep-0508/#environment-markers) documentation for a complete enumeration of the available markers and operators.
 
 !!! tip
 
@@ -150,7 +150,7 @@ Dependency sources can also be [changed per-platform](#platform-specific-sources
 
 ## Project dependencies
 
-The project.dependencies table represents the dependencies that are used when uploading to PyPI or building a wheel. Individual dependencies are specified using dependency specifiers syntax, and the table follows the PEP 621 standard.
+The project.dependencies table represents the dependencies that are used when uploading to PyPI or building a wheel. Individual dependencies are specified using [dependency specifiers](https://packaging.python.org/en/latest/specifications/dependency-specifiers/) syntax, and the table follows the [PEP 621](https://packaging.python.org/en/latest/specifications/pyproject-toml/) standard.
 
 project.dependencies defines the list of packages that are required for the project, along with the version constraints that should be used when installing them. Each entry includes a dependency name and version. An entry may include extras or environment markers for platform-specific packages. For example:
 
@@ -437,7 +437,7 @@ By specifying the marker on the source, uv will still include httpx on all platf
 
 ### Multiple sources
 
-You can specify multiple sources for a single dependency by providing a list of sources, disambiguated by PEP 508 -compatible environment markers.
+You can specify multiple sources for a single dependency by providing a list of sources, disambiguated by [PEP 508](https://peps.python.org/pep-0508/#environment-markers) -compatible environment markers.
 
 For example, to pull in different httpx tags on macOS vs. Linux:
 
@@ -483,7 +483,7 @@ The use of --no-sources will also prevent uv from discovering any workspace memb
 
 ## Optional dependencies
 
-It is common for projects that are published as libraries to make some features optional to reduce the default dependency tree. For example, Pandas has an excel extra and a plot extra to avoid installation of Excel parsers and matplotlib unless someone explicitly requires them. Extras are requested with the package[<extra>] syntax, e.g., pandas[plot, excel].
+It is common for projects that are published as libraries to make some features optional to reduce the default dependency tree. For example, Pandas has an [excel extra](https://pandas.pydata.org/docs/getting_started/install.html#excel-files) and a [plot extra](https://pandas.pydata.org/docs/getting_started/install.html#visualization) to avoid installation of Excel parsers and matplotlib unless someone explicitly requires them. Extras are requested with the package[<extra>] syntax, e.g., pandas[plot, excel].
 
 Optional dependencies are specified in [project.optional-dependencies], a TOML table that maps from extra name to its dependencies, following dependency specifiers syntax.
 
@@ -536,7 +536,7 @@ To add a development dependency, use the `--dev` flag:
 $ uv add --dev pytest
 ````
 
-uv uses the [dependency-groups] table (as defined in PEP 735) for declaration of development dependencies. The above command will create a dev group:
+uv uses the [dependency-groups] table (as defined in [PEP 735](https://peps.python.org/pep-0735/)) for declaration of development dependencies. The above command will create a dev group:
 
 toml title="pyproject.toml" [dependency-groups] dev = [   "pytest >=8.1.1,<9" ]
 
@@ -638,7 +638,7 @@ instead of adding a new `dependency-groups.dev` section.
 
 ## Build dependencies
 
-If a project is structured as Python package, it may declare dependencies that are required to build the project, but not required to run it. These dependencies are specified in the [build-system] table under build-system.requires, following PEP 518.
+If a project is structured as [Python package](config.md#build-systems), it may declare dependencies that are required to build the project, but not required to run it. These dependencies are specified in the [build-system] table under build-system.requires, following [PEP 518](https://peps.python.org/pep-0518/).
 
 For example, if a project uses setuptools as its build backend, it should declare setuptools as a build dependency:
 
@@ -664,7 +664,7 @@ build-backend = "setuptools.build_meta"
 setuptools = { path = "./packages/setuptools" }
 ````
 
-When publishing a package, we recommend running uv build --no-sources to ensure that the package builds correctly when tool.uv.sources is disabled, as is the case when using other build tools, like pypa/build.
+When publishing a package, we recommend running uv build --no-sources to ensure that the package builds correctly when tool.uv.sources is disabled, as is the case when using other build tools, like [pypa/build](https://github.com/pypa/build).
 
 ## Editable dependencies
 
@@ -690,11 +690,11 @@ $ uv add --no-editable ./path/foo
 
 ## Virtual dependencies
 
-uv allows dependencies to be “virtual”, in which the dependency itself is not installed as a package, but its dependencies are.
+uv allows dependencies to be “virtual”, in which the dependency itself is not installed as a [package](config.md#project-packaging), but its dependencies are.
 
 By default, dependencies are never virtual.
 
-A dependency with a path source can be virtual if it explicitly sets tool.uv.package = false. Without this setting, uv treats the path dependency as a normal package and will attempt to build it, even if the project does not declare a build system.
+A dependency with a path source can be virtual if it explicitly sets [tool.uv.package = false](../../reference/settings.md#package). Without this setting, uv treats the path dependency as a normal package and will attempt to build it, even if the project does not declare a [build system](config.md#build-systems).
 
 To treat a dependency as virtual, set package = false on the source:
 
@@ -715,7 +715,7 @@ dependencies = ["bar"]
 bar = { path = "../projects/bar", package = true }
 ````
 
-Similarly, a dependency with a workspace source can be virtual if it explicitly sets tool.uv.package = false. Without this setting, the workspace member will be built even if a build system is not declared.
+Similarly, a dependency with a workspace source can be virtual if it explicitly sets [tool.uv.package = false](../../reference/settings.md#package). Without this setting, the workspace member will be built even if a [build system](config.md#build-systems) is not declared.
 
 Workspace members that are not dependencies can be virtual by default, e.g., if the parent pyproject.toml is:
 
@@ -748,7 +748,7 @@ Then child would be built and installed.
 
 ## Dependency specifiers
 
-uv uses standard dependency specifiers, originally defined in PEP 508. A dependency specifier is composed of, in order:
+uv uses standard [dependency specifiers](https://packaging.python.org/en/latest/specifications/dependency-specifiers/), originally defined in [PEP 508](https://peps.python.org/pep-0508/). A dependency specifier is composed of, in order:
 
 - The dependency name
 - The extras you want (optional)

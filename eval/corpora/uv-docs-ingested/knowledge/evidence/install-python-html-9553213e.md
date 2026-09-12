@@ -7,7 +7,7 @@ source_digest: "sha256:9553213e8b4778f83365a4a66bb8741ad56b3b11858e55417e140e836
 
 # Installing Python
 
-If Python is already installed on your system, uv will detect and use it without configuration. However, uv can also install and manage Python versions. uv automatically installs missing Python versions as needed - you don't need to install Python to get started.
+If Python is already installed on your system, uv will [detect and use](#using-existing-python-versions) it without configuration. However, uv can also install and manage Python versions. uv [automatically installs](#automatic-python-downloads) missing Python versions as needed - you don't need to install Python to get started.
 
 ## Getting started
 
@@ -62,7 +62,7 @@ To install an alternative Python implementation, e.g., PyPy:
 $ uv python install pypy@3.10
 ```
 
-See the python install documentation for more details.
+See the [python install](../concepts/python-versions.md#installing-a-python-version) documentation for more details.
 
 ## Reinstalling Python
 
@@ -82,7 +82,7 @@ To view available and installed Python versions:
 $ uv python list
 ```
 
-See the python list documentation for more details.
+See the [python list](../concepts/python-versions.md#viewing-available-python-versions) documentation for more details.
 
 ## Automatic Python downloads
 
@@ -106,9 +106,9 @@ Automatic Python downloads can be [easily disabled](../concepts/python-versions.
 
 ## Using existing Python versions
 
-uv will use existing Python installations if present on your system. There is no configuration necessary for this behavior: uv will use the system Python if it satisfies the requirements of the command invocation. See the Python discovery documentation for details.
+uv will use existing Python installations if present on your system. There is no configuration necessary for this behavior: uv will use the system Python if it satisfies the requirements of the command invocation. See the [Python discovery](../concepts/python-versions.md#discovery-of-python-versions) documentation for details.
 
-To force uv to use the system Python, provide the --no-managed-python flag. See the Python version preference documentation for more details.
+To force uv to use the system Python, provide the --no-managed-python flag. See the [Python version preference](../concepts/python-versions.md#requiring-or-disabling-managed-python-versions) documentation for more details.
 
 ## Upgrading Python versions
 
@@ -131,10 +131,10 @@ To upgrade all uv-managed Python versions:
 $ uv python upgrade
 ```
 
-See the python upgrade documentation for more details.
+See the [python upgrade](../concepts/python-versions.md#upgrading-python-versions) documentation for more details.
 
 ## Next steps
 
-To learn more about uv python, see the Python version concept page and the command reference.
+To learn more about uv python, see the [Python version concept](../concepts/python-versions.md) page and the [command reference](../reference/cli.md#uv-python).
 
-Or, read on to learn how to run scripts and invoke Python with uv.
+Or, read on to learn how to [run scripts](scripts.md) and invoke Python with uv.

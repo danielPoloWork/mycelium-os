@@ -7,7 +7,7 @@ source_digest: "sha256:73fef5ac310eeb53950ca81888e58ed7486f03a0234697172da319014
 
 # Using uv with Coiled
 
-Coiled is a serverless, UX-focused cloud computing platform that makes it easy to run code on cloud hardware (AWS, GCP, and Azure).
+[Coiled](https://coiled.io/?utm_source=uv-docs) is a serverless, UX-focused cloud computing platform that makes it easy to run code on cloud hardware (AWS, GCP, and Azure).
 
 This guide shows how to run Python scripts on the cloud using uv for dependency management and Coiled for cloud deployment.
 
@@ -41,7 +41,7 @@ $ uv run process.py
 
 uv will automatically create a virtual environment and installs its dependencies.
 
-To learn more about using inline script metadata with uv, see the script guide.
+To learn more about using inline script metadata with uv, see the [script guide](../scripts.md#declaring-script-dependencies).
 
 ## Running scripts on the cloud with Coiled
 
@@ -55,7 +55,7 @@ There are many use cases where resources beyond what's available on a local work
 
 Coiled makes it simple to run code on cloud hardware.
 
-First, authenticate with Coiled using coiled login:
+First, authenticate with Coiled using [coiled login](https://docs.coiled.io/user_guide/api.html?utm_source=uv-docs#coiled-login):
 
 ```Bash
 $ uvx coiled login
@@ -110,10 +110,10 @@ $ uvx coiled batch run \
 
 The same process that previously ran locally is now running on a remote cloud VM on AWS.
 
-You can monitor the progress of the batch job in the UI at cloud.coiled.io or from the terminal using the coiled batch status, coiled batch wait, and coiled batch logs commands.
+You can monitor the progress of the batch job in the UI at [cloud.coiled.io](https://cloud.coiled.io/) or from the terminal using the coiled batch status, coiled batch wait, and coiled batch logs commands.
 
 Coiled UI
 
-Note there's additional configuration we could have specified, e.g., the instance type (the default is a 4-core virtual machine with 16 GiB of memory), disk size, whether to use spot instance, and more. See the Coiled Batch documentation for more details.
+Note there's additional configuration we could have specified, e.g., the instance type (the default is a 4-core virtual machine with 16 GiB of memory), disk size, whether to use spot instance, and more. See the [Coiled Batch documentation](https://docs.coiled.io/user_guide/batch.html?utm_source=uv-docs) for more details.
 
-For more details on Coiled, and how it can help with other use cases, see the Coiled documentation.
+For more details on Coiled, and how it can help with other use cases, see the [Coiled documentation](https://docs.coiled.io/?utm_source=uv-docs).

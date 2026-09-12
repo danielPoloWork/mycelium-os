@@ -9,15 +9,15 @@ source_digest: "sha256:34aeee8f40de1f8f83565fd4b2bb6f15eb50392a7c9254a69446f2f44
 
 Read the concept documents to learn more about uv's features:
 
-- Projects
-- Tools
-- Python versions
-- Configuration files
-- Package indexes
-- Resolution
-- The uv build backend
-- Authentication
-- Caching
-- The pip interface
+- [Projects](projects/index.md)
+- [Tools](tools.md)
+- [Python versions](python-versions.md)
+- [Configuration files](configuration-files.md)
+- [Package indexes](indexes.md)
+- [Resolution](resolution.md)
+- [The uv build backend](build-backend.md)
+- [Authentication](authentication/index.md)
+- [Caching](cache.md)
+- [The pip interface](../pip/index.md)
 
-Looking for a quick introduction to features? See the guides instead.
+Looking for a quick introduction to features? See the [guides](../guides/index.md) instead.

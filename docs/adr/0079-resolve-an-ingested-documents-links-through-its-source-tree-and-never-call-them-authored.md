@@ -70,6 +70,11 @@ document has none of them"*.
 
 ## Decision
 
+> **Followed up at roadmap 5.18 ([ADR-0090](0090-project-a-sources-links-as-links-now-that-the-compiler-knows-who-asserted-them.md)).** The 309 links this ADR left in
+> tier 1 now arrive through tier 2: the projector renders each reference back into the
+> block that carried it, as the Markdown syntax it was, so the graph is folded from the
+> clone's own files and the rule below types every one of those edges `extracted`.
+
 **An ingested document's references become edges — and every one of them is `extracted`.**
 Two changes, one rule.
 

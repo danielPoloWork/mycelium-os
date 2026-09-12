@@ -9,7 +9,7 @@ source_digest: "sha256:8a9e60db8e0a0863ed03245b77e7bce696c94cf11d6eb73c9ac23666c
 
 Learn how to migrate from other tools to uv:
 
-- Migrate from pip to uv projects
+- [Migrate from pip to uv projects](pip-to-project.md)
 
 !!! note
 
@@ -19,4 +19,4 @@ are not yet available. See [#5200](https://github.com/astral-sh/uv/issues/5200) 
 progress.
 ```
 
-Or, explore the integration guides to learn how to use uv with other software.
+Or, explore the [integration guides](../integration/index.md) to learn how to use uv with other software.

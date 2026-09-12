@@ -7,7 +7,7 @@ source_digest: "sha256:45cf0a84c1b9b51ad9ee85521d5e0e9c2a1d154908fa6a95519b350ef
 
 # Using workspaces
 
-Inspired by the Cargo concept of the same name, a workspace is "a collection of one or more packages, called workspace members, that are managed together."
+Inspired by the [Cargo](https://doc.rust-lang.org/cargo/reference/workspaces.html) concept of the same name, a workspace is "a collection of one or more packages, called workspace members, that are managed together."
 
 Workspaces organize large codebases by splitting them into multiple packages with common dependencies. Think: a FastAPI-based web application, alongside a series of libraries that are versioned and maintained as separate Python packages, all in the same Git repository.
 

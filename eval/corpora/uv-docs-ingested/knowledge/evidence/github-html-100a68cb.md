@@ -9,7 +9,7 @@ source_digest: "sha256:100a68cbed8d48445e74d401bd726b34050e939b1cdddb3bf7187daf1
 
 ## Installation
 
-For use with GitHub Actions, we recommend the official astral-sh/setup-uv action, which installs uv, adds it to PATH, (optionally) persists the cache, and more, with support for all uv-supported platforms.
+For use with GitHub Actions, we recommend the official [astral-sh/setup-uv](https://github.com/astral-sh/setup-uv) action, which installs uv, adds it to PATH, (optionally) persists the cache, and more, with support for all uv-supported platforms.
 
 To install the latest version of uv:
 
@@ -280,11 +280,11 @@ To opt-out again, the --no-system flag can be used in any uv invocation.
 
 ## Private repos
 
-If your project has dependencies on private GitHub repositories, you will need to configure a personal access token (PAT) to allow uv to fetch them.
+If your project has [dependencies](../../concepts/projects/dependencies.md#git) on private GitHub repositories, you will need to configure a [personal access token (PAT)](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) to allow uv to fetch them.
 
-After creating a PAT that has read access to the private repositories, add it as a repository secret.
+After creating a PAT that has read access to the private repositories, add it as a [repository secret](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository).
 
-Then, you can use the gh CLI (which is installed in GitHub Actions runners by default) to configure a credential helper for Git to use the PAT for queries to repositories hosted on github.com.
+Then, you can use the [gh](https://cli.github.com/) CLI (which is installed in GitHub Actions runners by default) to configure a [credential helper for Git](../../concepts/authentication/git.md#git-credential-helpers) to use the PAT for queries to repositories hosted on github.com.
 
 For example, if you called your repository secret MY_PAT:
 
@@ -294,7 +294,7 @@ yaml title="example.yml" steps: - name: Register the personal access token run: 
 
 ## Publishing to PyPI
 
-uv can be used to build and publish your package to PyPI from GitHub Actions. We provide a standalone example alongside this guide in astral-sh/trusted-publishing-examples. The workflow uses Trusted Publishing, so no credentials need to be configured.
+uv can be used to build and publish your package to PyPI from GitHub Actions. We provide a standalone example alongside this guide in [astral-sh/trusted-publishing-examples](https://github.com/astral-sh/trusted-publishing-examples). The workflow uses [Trusted Publishing](https://docs.pypi.org/trusted-publishers/), so no credentials need to be configured.
 
 In the example workflow, we use a script to test that the source distribution and the wheel are both functional and we didn't miss any files. This step is recommended, but optional.
 
