@@ -614,6 +614,8 @@ def ingest(
             "represented": report.represented,
             "degraded": report.degraded,
             "lost": report.lost,
+            "references": ingested.projection.references,
+            "references_dropped": ingested.projection.references_dropped,
             "warnings": list(report.warnings),
             "secret_flags": list(ingested.secret_flags),
             "redacted": ingested.redacted,
@@ -635,7 +637,13 @@ def ingest(
             success(f"{source} -> {verb} {ingested.projection.path} ({ingested.parser_id})")
             detail(
                 f"  {report.represented} represented, {report.degraded} degraded, "
-                f"{report.lost} lost of {report.elements} elements"
+                f"{report.lost} lost of {report.elements} elements; "
+                f"{ingested.projection.references} reference(s) carried"
+                + (
+                    f", {ingested.projection.references_dropped} dropped"
+                    if ingested.projection.references_dropped
+                    else ""
+                )
             )
             for warning in report.warnings:
                 detail(f"  note: {warning}")

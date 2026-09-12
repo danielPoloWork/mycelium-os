@@ -9,7 +9,7 @@ source_digest: "sha256:31e2e1314f8c91010e3dd36e0798d6e246fc89fc00b545fdcf396c1c2
 
 An extremely fast Python package and project manager, written in Rust.
 
-Installing Trio 's dependencies with a warm cache.
+Installing [Trio](https://trio.readthedocs.io/) 's dependencies with a warm cache.
 
 ## Highlights
 
@@ -18,35 +18,35 @@ Installing Trio 's dependencies with a warm cache.
   A single tool to replace pip, pip-tools, pipx, poetry, pyenv, twine, virtualenv, and more.
 -
 
-  10-100x faster than pip.
+  [10-100x faster](https://github.com/astral-sh/uv/blob/main/BENCHMARKS.md) than pip.
 -
 
-  Provides comprehensive project management, with a universal lockfile.
+  Provides [comprehensive project management](#projects), with a [universal lockfile](concepts/projects/layout.md#the-lockfile).
 -
 
-  Runs scripts, with support for inline dependency metadata.
+  [Runs scripts](#scripts), with support for [inline dependency metadata](guides/scripts.md#declaring-script-dependencies).
 -
 
-  Installs and manages Python versions.
+  [Installs and manages](#python-versions) Python versions.
 -
 
-  Runs and installs tools published as Python packages.
+  [Runs and installs](#tools) tools published as Python packages.
 -
 
-  Includes a pip-compatible interface for a performance boost with a familiar
+  Includes a [pip-compatible interface](#the-pip-interface) for a performance boost with a familiar
 
 -
 
-  Supports Cargo-style workspaces for scalable projects.
+  Supports Cargo-style [workspaces](concepts/projects/workspaces.md) for scalable projects.
 -
 
-  Disk-space efficient, with a global cache for dependency deduplication.
+  Disk-space efficient, with a [global cache](concepts/cache.md) for dependency deduplication.
 -
 
   Installable without Rust or Python via curl or pip.
 - Supports macOS, Linux, and Windows.
 
-uv is backed by Astral, the creators of Ruff.
+uv is backed by [Astral](https://astral.sh/), the creators of [Ruff](https://github.com/astral-sh/ruff).
 
 ## Installation
 
@@ -68,7 +68,7 @@ PS> powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 
 ```
 ````
 
-Then, check out the first steps or read on for a brief overview.
+Then, check out the [first steps](getting-started/first-steps.md) or read on for a brief overview.
 
 !!! tip
 
@@ -107,9 +107,9 @@ Resolved 2 packages in 0.70ms
 Checked 1 package in 0.02ms
 ```
 
-See the project guide to get started.
+See the [project guide](guides/projects.md) to get started.
 
-uv also supports building and publishing projects, even if they're not managed with uv. See the packaging guide to learn more.
+uv also supports building and publishing projects, even if they're not managed with uv. See the [packaging guide](guides/package.md) to learn more.
 
 ## Scripts
 
@@ -133,7 +133,7 @@ Installed 5 packages in 12ms
 <Response [200]>
 ```
 
-See the scripts guide to get started.
+See the [scripts guide](guides/scripts.md) to get started.
 
 ## Tools
 
@@ -171,7 +171,7 @@ $ ruff --version
 ruff 0.5.4
 ```
 
-See the tools guide to get started.
+See the [tools guide](guides/tools.md) to get started.
 
 ## Python versions
 
@@ -212,7 +212,7 @@ $ uv python pin 3.11
 Pinned `.python-version` to `3.11`
 ```
 
-See the installing Python guide to get started.
+See the [installing Python guide](guides/install-python.md) to get started.
 
 ## The pip interface
 
@@ -252,11 +252,11 @@ Installed 43 packages in 208ms
  ...
 ```
 
-See the pip interface documentation to get started.
+See the [pip interface documentation](pip/index.md) to get started.
 
 ## Learn more
 
-See the first steps or jump straight to the guides to start using uv.
+See the [first steps](getting-started/first-steps.md) or jump straight to the [guides](guides/index.md) to start using uv.
 
 Shows a bar chart with benchmark results.
 

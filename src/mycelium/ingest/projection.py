@@ -18,6 +18,20 @@ document's *content*, in a form the compiler and a human can both read. The
 property tested for it is the one the chunker already lives by: every node's text
 survives into the projection.
 
+**A reference is syntax too, and it is regenerated where it stood** (roadmap 5.18,
+ADR-0090). A link, wikilink or embed the parser found is rendered back into the
+block that carries it — ``[label](target)`` around the very words the block's
+text already holds — so an ingested document's references reach the compiler and
+the graph. Until 5.18 the projector rendered reference nodes by nobody, and the
+threat model counted that as a control (B11) until roadmap 5.7 showed where the
+guarantee actually lives: every edge derived from an ingested document is
+``extracted`` whatever its syntax looked like (ADR-0079), so the projector may be
+faithful and the compiler stays the judge. The block's text does not move — the
+compiler flattens a label back to its words — which is what keeps every judged
+anchor and every retrieval score where it was. Images are not rendered (a
+picture's target is a parser-internal reference, and its alt text is already
+prose) and tags need nothing (their ``#`` is already in the text).
+
 **Frontmatter carries provenance and nothing else.** Four contract fields belong
 to `mycelium ingest` (spec 03 §3): `origin`, `source`, `source_trust`,
 `generated_by` — plus `source_digest`, added at 4.3 so a projected document can
@@ -69,6 +83,14 @@ class Projection:
 
     title: str
 
+    references: int = 0
+    """Links, wikilinks and embeds rendered back into the body (roadmap 5.18)."""
+
+    references_dropped: int = 0
+    """References that could not be placed: no label at all (an anchor around an
+    image), or a label the block's text does not contain. Dropped as the whole
+    class was before 5.18, and counted so the drop is visible rather than silent."""
+
 
 def evidence_path(
     source_uri: str, *, knowledge_dir: str = "knowledge", digest: Sha256Digest | None = None
@@ -117,12 +139,15 @@ def project(
             "generated_by": generated_by,
         }
     )
-    body = "\n\n".join(_blocks(kir))
+    tally = _Tally()
+    body = "\n\n".join(_blocks(kir, tally))
     text = f"{frontmatter}\n{body}\n" if body else frontmatter
     return Projection(
         path=evidence_path(source_uri, knowledge_dir=knowledge_dir, digest=source_digest),
         text=text,
         title=resolved,
+        references=tally.carried,
+        references_dropped=tally.dropped,
     )
 
 
@@ -173,7 +198,15 @@ def _title_of(nodes: Sequence[KirNode], source_uri: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _blocks(kir: KirDocument) -> Iterator[str]:
+@dataclass(slots=True)
+class _Tally:
+    """How many references the body carried, and how many it could not."""
+
+    carried: int = 0
+    dropped: int = 0
+
+
+def _blocks(kir: KirDocument, tally: "_Tally") -> Iterator[str]:
     """Render KIR as Markdown blocks, in document order.
 
     Only *section-level* nodes are rendered on their own — the ones whose parent
@@ -183,15 +216,16 @@ def _blocks(kir: KirDocument) -> Iterator[str]:
     blockquote's paragraph is emitted twice, once inside the quote and once as
     prose — which is what the first run of this projector did.
 
-    Reference nodes are skipped at any depth: their text is already inside the
-    block that contains them (ADR-0006).
+    Reference nodes are never blocks of their own: their text is already inside
+    the block that contains them (ADR-0006), and that block renders them back in
+    place through :func:`_with_references` (roadmap 5.18).
     """
     children = _children_of(kir.nodes)
     by_id = {node.id: node for node in kir.nodes}
     for node in kir.nodes:
         if node.kind in _REFERENCES or not _section_level(node, by_id):
             continue
-        rendered = _block(node, children, kir.nodes)
+        rendered = _block(node, children, tally)
         if rendered:
             yield rendered
 
@@ -215,6 +249,15 @@ _REFERENCES: Final = frozenset(
 )
 
 
+_CARRIED: Final = frozenset({NodeKind.LINK, NodeKind.WIKILINK, NodeKind.EMBED})
+"""The reference kinds rendered back into their block (roadmap 5.18) — the three
+that assert a link (spec 03 §6, `mycelium.graph._LINK_KINDS`). An image's target
+is a parser's own reference, not a document's; a tag's `#` is already text."""
+
+_LABEL_ESCAPES: Final = str.maketrans({"\\": "\\\\", "[": "\\[", "]": "\\]"})
+_ANGLE_DESTINATION: Final = frozenset(" \t\n()<>")
+
+
 def _children_of(nodes: Sequence[KirNode]) -> Mapping[str, list[KirNode]]:
     children: dict[str, list[KirNode]] = {}
     for node in nodes:
@@ -223,14 +266,90 @@ def _children_of(nodes: Sequence[KirNode]) -> Mapping[str, list[KirNode]]:
     return children
 
 
+def _with_references(
+    text: str,
+    node: KirNode,
+    children: Mapping[str, list[KirNode]],
+    tally: _Tally,
+    *,
+    in_cell: bool = False,
+) -> str:
+    """`text` with the node's own references rendered back where their labels sit.
+
+    A reference node carries its label and its target but no offset (KIR's
+    locator is line-grained, spec 03 §4), so the label is *found* in the block's
+    text — from a cursor that advances with each placement, because references
+    are emitted in document order and the same word may be linked twice. Measured
+    on the vendored ingested corpus before this was written: 507 of 509
+    references placed, the two exceptions being anchors around images with no
+    label at all. One that cannot be placed is dropped and counted, never
+    appended: appending would put the label into the block twice, and the chunk
+    text is the one thing this rendering must not move.
+
+    Inside a table cell a wikilink that needs a `|` for its label is not carried:
+    the pipe would have to be backslash-escaped, and whether a wikilink parser
+    reads an escaped pipe is not a bet this projector should place on someone
+    else's parser.
+    """
+    references = [
+        child for child in children.get(node.id, ()) if child.kind in _CARRIED and child.target
+    ]
+    if not references:
+        return text
+    out: list[str] = []
+    cursor = 0
+    for reference in references:
+        label = reference.text or ""
+        index = text.find(label, cursor) if label.strip() else -1
+        if index < 0:
+            tally.dropped += 1
+            continue
+        if in_cell and reference.kind is not NodeKind.LINK and label != reference.target:
+            tally.dropped += 1
+            continue
+        out.append(text[cursor:index])
+        out.append(_reference(reference, label))
+        cursor = index + len(label)
+        tally.carried += 1
+    out.append(text[cursor:])
+    return "".join(out)
+
+
+def _reference(node: KirNode, label: str) -> str:
+    """One reference as the Markdown syntax it was — the Profile's own (spec 03 §3.1)."""
+    target = node.target or ""
+    if node.kind is NodeKind.WIKILINK:
+        return f"[[{target}]]" if label == target else f"[[{target}|{label}]]"
+    if node.kind is NodeKind.EMBED:
+        return f"![[{target}]]" if label == target else f"![[{target}|{label}]]"
+    title = f' "{node.title.replace(chr(34), chr(92) + chr(34))}"' if node.title else ""
+    return f"[{label.translate(_LABEL_ESCAPES)}]({_destination(target)}{title})"
+
+
+def _destination(target: str) -> str:
+    """A link destination CommonMark reads back as the same string.
+
+    The bare form takes anything without whitespace, parentheses or angle
+    brackets; everything else goes in `<…>`, which cannot hold a newline. A
+    backslash is escaped in both, because a backslash before punctuation would
+    otherwise be read as an escape and change the target.
+    """
+    escaped = target.replace("\\", "\\\\")
+    if any(char in _ANGLE_DESTINATION for char in escaped):
+        inner = escaped.replace("<", "\\<").replace(">", "\\>").replace("\n", "%0A")
+        return f"<{inner}>"
+    return escaped
+
+
 def _block(  # noqa: C901 - one branch per node kind reads better than a dispatch table
-    node: KirNode, children: Mapping[str, list[KirNode]], nodes: Sequence[KirNode]
+    node: KirNode, children: Mapping[str, list[KirNode]], tally: _Tally
 ) -> str:
     text = (node.text or "").strip()
 
     if node.kind is NodeKind.HEADING:
         level = min(_MAX_HEADING, max(1, node.level or 1))
-        return f"{_HEADING_MARK * level} {text}" if text else ""
+        rendered = _with_references(text, node, children, tally)
+        return f"{_HEADING_MARK * level} {rendered}" if text else ""
 
     if node.kind is NodeKind.CODE_BLOCK:
         fence = _fence_for(node.text or "")
@@ -239,26 +358,26 @@ def _block(  # noqa: C901 - one branch per node kind reads better than a dispatc
         )
 
     if node.kind is NodeKind.TABLE:
-        return _table(node, children)
+        return _table(node, children, tally)
 
     if node.kind is NodeKind.LIST:
-        return _list(node, children)
+        return _list(node, children, tally)
 
     if node.kind is NodeKind.QUOTE:
-        return _quoted(_descendant_text(node, children), marker="> ")
+        return _quoted(_descendant_text(node, children, tally), marker="> ")
 
     if node.kind is NodeKind.CALLOUT:
         head = f"[!{node.variant or 'note'}]"
         if node.title:
             head = f"{head} {node.title}"
-        body = _descendant_text(node, children)
+        body = _descendant_text(node, children, tally)
         return _quoted(f"{head}\n{body}" if body else head, marker="> ")
 
     if node.kind is NodeKind.EQUATION:
         return f"$$\n{text}\n$$" if text else ""
 
     if node.kind is NodeKind.FOOTNOTE:
-        body = _descendant_text(node, children) or text
+        body = _descendant_text(node, children, tally) or text
         return _quoted(f"[!note] Footnote\n{body}", marker="> ") if body else ""
 
     if node.kind is NodeKind.OPAQUE:
@@ -267,8 +386,7 @@ def _block(  # noqa: C901 - one branch per node kind reads better than a dispatc
     if node.kind is NodeKind.SECTION:
         return ""  # a wrapper; its children are emitted in their own right
 
-    del nodes
-    return text
+    return _with_references(text, node, children, tally)
 
 
 def _opaque(node: KirNode) -> str:
@@ -287,14 +405,17 @@ def _opaque(node: KirNode) -> str:
     return _quoted(head, marker="> ")
 
 
-def _table(node: KirNode, children: Mapping[str, list[KirNode]]) -> str:
+def _table(node: KirNode, children: Mapping[str, list[KirNode]], tally: _Tally) -> str:
     rows = [child for child in children.get(node.id, ()) if child.kind is NodeKind.TABLE_ROW]
     if not rows:
         return ""
     rendered: list[str] = []
     for index, row in enumerate(rows):
         cells = [
-            (cell.text or "").replace("|", "\\|").replace("\n", " ").strip()
+            _with_references((cell.text or "").strip(), cell, children, tally, in_cell=True)
+            .replace("|", "\\|")
+            .replace("\n", " ")
+            .strip()
             for cell in children.get(row.id, ())
             if cell.kind is NodeKind.TABLE_CELL
         ]
@@ -304,7 +425,9 @@ def _table(node: KirNode, children: Mapping[str, list[KirNode]]) -> str:
     return "\n".join(rendered)
 
 
-def _list(node: KirNode, children: Mapping[str, list[KirNode]], depth: int = 0) -> str:
+def _list(
+    node: KirNode, children: Mapping[str, list[KirNode]], tally: _Tally, depth: int = 0
+) -> str:
     """Render a list, including whatever hangs off its items.
 
     An item's own text is its first line; anything else beneath it — a nested
@@ -320,21 +443,22 @@ def _list(node: KirNode, children: Mapping[str, list[KirNode]], depth: int = 0) 
     number = 0
     for child in children.get(node.id, ()):
         if child.kind is NodeKind.LIST:
-            lines.append(_list(child, children, depth + 1))
+            lines.append(_list(child, children, tally, depth + 1))
             continue
         if child.kind is not NodeKind.LIST_ITEM:
             continue
         number += 1
         marker = f"{number}." if ordered else "-"
-        text = (child.text or "").replace("\n", " ").strip()
+        text = _with_references((child.text or "").strip(), child, children, tally)
+        text = text.replace("\n", " ").strip()
         lines.append(f"{indent}{marker} {text}".rstrip())
         for grandchild in children.get(child.id, ()):
             if grandchild.kind in _REFERENCES:
                 continue
             if grandchild.kind is NodeKind.LIST:
-                lines.append(_list(grandchild, children, depth + 1))
+                lines.append(_list(grandchild, children, tally, depth + 1))
                 continue
-            rendered = _block(grandchild, children, ())
+            rendered = _block(grandchild, children, tally)
             if rendered:
                 lines.append("")
                 lines.append(_indented(rendered, indent + "  "))
@@ -345,15 +469,15 @@ def _indented(text: str, indent: str) -> str:
     return "\n".join(f"{indent}{line}".rstrip() for line in text.split("\n"))
 
 
-def _descendant_text(node: KirNode, children: Mapping[str, list[KirNode]]) -> str:
+def _descendant_text(node: KirNode, children: Mapping[str, list[KirNode]], tally: _Tally) -> str:
     """Every descendant block's text, in order, as plain paragraphs."""
     parts: list[str] = []
     for child in children.get(node.id, ()):
         if child.kind in _REFERENCES:
             continue
         if child.text:
-            parts.append(child.text.strip())
-        nested = _descendant_text(child, children)
+            parts.append(_with_references(child.text.strip(), child, children, tally))
+        nested = _descendant_text(child, children, tally)
         if nested:
             parts.append(nested)
     return "\n\n".join(part for part in parts if part)

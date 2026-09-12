@@ -16,7 +16,7 @@ Check out the [`uv-docker-example`](https://github.com/astral-sh/uv-docker-examp
 an example of best practices when using uv to build an application in Docker.
 ```
 
-uv provides both distroless Docker images, which are useful for copying uv binaries into your own image builds, and images derived from popular base images, which are useful for using uv in a container. The distroless images do not contain anything but the uv binaries. In contrast, the derived images include an operating system with uv pre-installed.
+uv provides both distroless Docker images, which are useful for [copying uv binaries](#installing-uv) into your own image builds, and images derived from popular base images, which are useful for using uv in a container. The distroless images do not contain anything but the uv binaries. In contrast, the derived images include an operating system with uv pre-installed.
 
 As an example, to run uv in a container using a Debian-based image:
 
@@ -117,7 +117,7 @@ As with the distroless image, each derived image is published with uv version ta
 
 In addition, starting with 0.8 each derived image also sets UV_TOOL_BIN_DIR to /usr/local/bin to allow uv tool install to work as expected with the default user.
 
-For more details, see the GitHub Container page.
+For more details, see the [GitHub Container](https://github.com/astral-sh/uv/pkgs/container/uv) page.
 
 ### Installing uv
 
@@ -211,7 +211,7 @@ It is best practice to use [intermediate layers](#intermediate-layers) separatin
 of dependencies and the project itself to improve Docker image build times.
 ```
 
-See a complete example in the uv-docker-example project.
+See a complete example in the [uv-docker-example](https://github.com/astral-sh/uv-docker-example/blob/main/Dockerfile) [project](https://github.com/astral-sh/uv-docker-example/blob/main/Dockerfile).
 
 ### Using the environment
 
@@ -238,7 +238,7 @@ entirely.
 
 ### Using installed tools
 
-To use installed tools, ensure the tool bin directory is on the path:
+To use installed tools, ensure the [tool bin directory](../../concepts/tools.md#tool-executables) is on the path:
 
 ```
 dockerfile title="Dockerfile" ENV PATH=/root/.local/bin:$PATH RUN uv tool install cowsay
@@ -277,7 +277,7 @@ When developing, it's useful to mount the project directory into a container. Wi
 
 ### Mounting the project with docker run
 
-Bind mount the project (in the working directory) to /app while retaining the.venv directory with an anonymous volume:
+Bind mount the project (in the working directory) to /app while retaining the.venv directory with an [anonymous volume](https://docs.docker.com/engine/storage/#volumes):
 
 ```
 $ docker run --rm --volume .:/app --volume /app/.venv [...]
@@ -290,11 +290,11 @@ The `--rm` flag is included to ensure the container and anonymous volume are cle
 container exits.
 ```
 
-See a complete example in the uv-docker-example project.
+See a complete example in the [uv-docker-example](https://github.com/astral-sh/uv-docker-example/blob/main/run.sh) [project](https://github.com/astral-sh/uv-docker-example/blob/main/run.sh).
 
 ### Configuring watch with docker compose
 
-When using Docker compose, more sophisticated tooling is available for container development. The watch option allows for greater granularity than is practical with a bind mount and supports triggering updates to the containerized service when files change.
+When using Docker compose, more sophisticated tooling is available for container development. The [watch](https://docs.docker.com/compose/file-watch/#compose-watch-versus-bind-mounts) option allows for greater granularity than is practical with a bind mount and supports triggering updates to the containerized service when files change.
 
 !!! note
 
@@ -302,7 +302,7 @@ When using Docker compose, more sophisticated tooling is available for container
 This feature requires Compose 2.22.0 which is bundled with Docker Desktop 4.24.
 ```
 
-Configure watch in your Docker compose file to mount the project directory without syncing the project virtual environment and to rebuild the image when the configuration changes:
+Configure watch in your [Docker compose file](https://docs.docker.com/compose/compose-application-model/#the-compose-file) to mount the project directory without syncing the project virtual environment and to rebuild the image when the configuration changes:
 
 ```yaml title="compose.yaml" services: example: build: .
 
@@ -363,7 +363,7 @@ have a compiled standard library.
 
 ### Caching
 
-A cache mount can be used to improve performance across builds:
+A [cache mount](https://docs.docker.com/build/guide/mounts/#add-a-cache-mount) can be used to improve performance across builds:
 
 ```dockerfile title="Dockerfile" ENV UV_LINK_MODE=copy
 
@@ -569,7 +569,7 @@ dockerfile title="Dockerfile" COPY pyproject.toml . RUN uv pip install -r pyproj
 
 The Docker images are signed during the build process to provide proof of their origin. These attestations can be used to verify that an image was produced from an official channel.
 
-For example, you can verify the attestations with the GitHub CLI tool gh:
+For example, you can verify the attestations with the [GitHub CLI tool](https://cli.github.com/) [gh](https://cli.github.com/):
 
 ```
 $ gh attestation verify --owner astral-sh oci://ghcr.io/astral-sh/uv:latest
@@ -591,7 +591,7 @@ astral-sh/uv  https://slsa.dev/provenance/v1  .github/workflows/build-docker.yml
 
 This tells you that the specific Docker image was built by the official uv GitHub release workflow and hasn't been tampered with since.
 
-GitHub attestations build on the sigstore.dev infrastructure. As such you can also use the cosign command to verify the attestation blob against the (multi-platform) manifest for uv:
+GitHub attestations build on the [sigstore.dev infrastructure](https://www.sigstore.dev/). As such you can also use the [cosign](https://github.com/sigstore/cosign) [command](https://github.com/sigstore/cosign) to verify the attestation blob against the (multi-platform) manifest for uv:
 
 ```
 $ REPO=astral-sh/uv

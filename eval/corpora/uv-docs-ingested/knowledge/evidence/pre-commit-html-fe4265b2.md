@@ -7,7 +7,7 @@ source_digest: "sha256:fe4265b224b98a072d1df04d195cc86fd8a33a1b098c900fff89d3f80
 
 # Using uv in pre-commit
 
-An official pre-commit hook is provided at astral-sh/uv-pre-commit.
+An official pre-commit hook is provided at [astral-sh/uv-pre-commit](https://github.com/astral-sh/uv-pre-commit).
 
 To use uv with pre-commit, add one of the following examples to the repos list in the.pre-commit-config.yaml.
 

@@ -7,7 +7,7 @@ source_digest: "sha256:001285def7c842d41465361802c19da63e89fccd07161901f37b6e7fe
 
 # Locking and syncing
 
-Locking is the process of resolving your project’s dependencies into a lockfile. Syncing is the process of installing a subset of packages from the lockfile into the project environment.
+Locking is the process of [resolving](../resolution.md) your project’s dependencies into a [lockfile](layout.md#the-lockfile). Syncing is the process of installing a subset of packages from the lockfile into the [project environment](layout.md#the-project-environment).
 
 ## Automatic lock and sync
 
@@ -112,13 +112,13 @@ $ uv sync --extra foo
 
 To quickly enable all extras, use the --all-extras option.
 
-See the optional dependencies documentation for details on how to manage optional dependencies.
+See the [optional dependencies](dependencies.md#optional-dependencies) documentation for details on how to manage optional dependencies.
 
 ### Syncing development dependencies
 
-uv reads development dependencies from the [dependency-groups] table (as defined in PEP 735).
+uv reads development dependencies from the [dependency-groups] table (as defined in [PEP 735](https://peps.python.org/pep-0735/)).
 
-The dev group is special-cased and synced by default. See the default groups documentation for details on changing the defaults.
+The dev group is special-cased and synced by default. See the [default groups](dependencies.md#default-groups) documentation for details on changing the defaults.
 
 The --no-dev flag can be used to exclude the dev group.
 
@@ -134,7 +134,7 @@ $ uv sync --no-group foo --group foo
 
 The foo group would not be installed.
 
-See the development dependencies documentation for details on how to manage development dependencies.
+See the [development dependencies](dependencies.md#development-dependencies) documentation for details on how to manage development dependencies.
 
 ## Upgrading locked package versions
 
@@ -181,7 +181,7 @@ $ uv export --format pylock.toml
 $ uv export --format cyclonedx1.5
 ```
 
-See the export guide for comprehensive documentation on all export formats and their use cases.
+See the [export guide](export.md) for comprehensive documentation on all export formats and their use cases.
 
 ## Partial installations
 
@@ -203,7 +203,7 @@ If used improperly, these flags can result in a broken environment since a packa
 On-sync malware checking is in [preview](../preview.md), and is subject to change until stabilized.
 ```
 
-While syncing, uv can perform a lightweight scan of your lockfile for known malware by checking it against OSV. OSV references MAL advisories from the OpenSSF’s malicious packages database.
+While syncing, uv can perform a lightweight scan of your lockfile for known malware by checking it against [OSV](https://osv.dev/). OSV references MAL advisories from the OpenSSF’s [malicious packages database](https://github.com/ossf/malicious-packages).
 
 If a locked dependency matches a malware advisory, the sync will be terminated.
 

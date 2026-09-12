@@ -7,7 +7,7 @@ source_digest: "sha256:c2257be8acd19395172e1255983075f744a6c257aaa916a1e5717bb95
 
 # Using uv with marimo
 
-marimo is an open-source Python notebook that blends interactive computing with the reproducibility and reusability of traditional software, letting you version with Git, run as scripts, and share as apps. Because marimo notebooks are stored as pure Python scripts, they are able to integrate tightly with uv.
+[marimo](https://github.com/marimo-team/marimo) is an open-source Python notebook that blends interactive computing with the reproducibility and reusability of traditional software, letting you version with Git, run as scripts, and share as apps. Because marimo notebooks are stored as pure Python scripts, they are able to integrate tightly with uv.
 
 You can readily use marimo as a standalone tool, as self-contained scripts, in projects, and in non-project environments.
 
@@ -27,7 +27,7 @@ $ uvx marimo edit my_notebook.py
 
 ## Using marimo with inline script metadata
 
-Because marimo notebooks are stored as Python scripts, they can encapsulate their own dependencies using inline script metadata, via uv's support for scripts. For example, to add numpy as a dependency to your notebook, use this command:
+Because marimo notebooks are stored as Python scripts, they can encapsulate their own dependencies using inline script metadata, via uv's [support for scripts](../../guides/scripts.md). For example, to add numpy as a dependency to your notebook, use this command:
 
 ```
 $ uv add --script my_notebook.py numpy
@@ -49,7 +49,7 @@ $ uv run my_notebook.py
 
 ## Using marimo within a project
 
-If you're working within a project, you can start a marimo notebook with access to the project's virtual environment via the following command (assuming marimo is a project dependency):
+If you're working within a [project](../../concepts/projects/index.md), you can start a marimo notebook with access to the project's virtual environment via the following command (assuming marimo is a project dependency):
 
 ```
 $ uv run marimo edit my_notebook.py
@@ -67,7 +67,7 @@ This will let you import your project's modules while editing your notebook. How
 
 ## Using marimo in a non-project environment
 
-To run marimo in a virtual environment that isn't associated with a project, add marimo to the environment directly:
+To run marimo in a virtual environment that isn't associated with a [project](../../concepts/projects/index.md), add marimo to the environment directly:
 
 ```
 $ uv venv

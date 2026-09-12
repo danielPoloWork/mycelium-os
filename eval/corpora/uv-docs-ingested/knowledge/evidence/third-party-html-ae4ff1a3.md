@@ -11,10 +11,10 @@ source_digest: "sha256:ae4ff1a344b6cef9892ccad43920a2cdcdfbe354fbec6de424470d777
 
 See the dedicated guides for authentication with popular alternative Python package indexes:
 
-- Azure Artifacts
-- Google Artifact Registry
-- AWS CodeArtifact
-- JFrog Artifactory
+- [Azure Artifacts](../../guides/integration/azure.md)
+- [Google Artifact Registry](../../guides/integration/google.md)
+- [AWS CodeArtifact](../../guides/integration/aws.md)
+- [JFrog Artifactory](../../guides/integration/jfrog.md)
 
 ## Hugging Face support
 

@@ -26,7 +26,8 @@ import pytest
 
 from mycelium.build import build, rollback
 from mycelium.graph import CorpusIndex, LinkRef, resolve_edges, source_stem
-from mycelium.sdk.identity import doc_ref
+from mycelium.ingest import Registry, ingest_source, write_projection
+from mycelium.sdk.identity import doc_ref, new_ulid
 from mycelium.sdk.types import EdgeStatus, EdgeType, ProvenanceOrigin
 from mycelium.store import SqliteStore
 
@@ -368,3 +369,52 @@ def test_an_ingested_documents_entities_are_extracted_too(tmp_path: Path) -> Non
     # document still contributes its `doc_ref`, which is what it really evidences.
     assert found["production"].status is EdgeStatus.AUTHORED
     assert len(found["production"].doc_refs) == 2
+
+
+# ---------------------------------------------------------------------------
+# The whole chain, from acquired HTML to a typed edge (roadmap 5.18)
+# ---------------------------------------------------------------------------
+
+
+def test_an_ingested_html_link_reaches_the_graph_with_its_anchor(tmp_path: Path) -> None:
+    """Roadmap 5.18 end to end: the projector renders the link back where it
+    stood (ADR-0090), the compiler resolves it through the source tree
+    (ADR-0079), and the edge is `extracted` with the chunk it sits in."""
+    root = tmp_path / "repo"
+    (root / "sources" / "guides").mkdir(parents=True)
+    (root / "sources" / "concepts").mkdir(parents=True)
+    (root / "sources" / "guides" / "install.html").write_text(
+        "<html><body><h1>Install</h1><p>Read the "
+        '<a href="../concepts/cache.md#versioning">cache page</a> first, then '
+        '<a href="https://example.com/more">the site</a>.</p></body></html>',
+        encoding="utf-8",
+    )
+    (root / "sources" / "concepts" / "cache.html").write_text(
+        "<html><body><h1>Cache</h1><h2>Versioning</h2><p>Explained here.</p></body></html>",
+        encoding="utf-8",
+    )
+    registry = Registry.resolve(parsers=["docling"], connectors=["file"], roots=[root])
+    projections = {}
+    for relative in ("sources/guides/install.html", "sources/concepts/cache.html"):
+        ingested = ingest_source(
+            root / ".mycelium", registry, str(root / relative), doc_id=new_ulid()
+        )
+        write_projection(root, ingested)
+        projections[relative] = ingested.projection
+    assert projections["sources/guides/install.html"].references == 2
+
+    manifest = build(root).manifest
+    with SqliteStore.open(root, read_only=True) as store:
+        links = [edge for edge in store.all_edges() if edge.type is EdgeType.LINKS_TO]
+
+    install = projections["sources/guides/install.html"].path.as_posix()
+    cache = projections["sources/concepts/cache.html"].path.as_posix()
+    # A heading link targets the section, not the document (ADR-0018); the H1
+    # is the document's title, so the paragraph under it chunks as `#/0`.
+    assert [(edge.from_, edge.to) for edge in links] == [
+        (doc_ref(install), f"{doc_ref(cache)}#versioning")
+    ]
+    assert links[0].status is EdgeStatus.EXTRACTED
+    assert links[0].provenance.anchor == f"{install}#/0"
+    # The external link is a reference to the world, not a warning (ADR-0018).
+    assert not [w for w in manifest.warnings if "unresolved" in w]

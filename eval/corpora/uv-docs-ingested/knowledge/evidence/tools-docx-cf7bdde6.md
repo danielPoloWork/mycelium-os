@@ -144,7 +144,7 @@ Or even a specific commit:
 $ uvx --from git+https://github.com/httpie/cli@2843b87 httpie
 ```
 
-Or with Git LFS support:
+Or with [Git LFS](https://git-lfs.com/) support:
 
 ```
 $ uvx --lfs --from git+https://github.com/astral-sh/lfs-cowsay lfs-cowsay
@@ -211,7 +211,7 @@ And, similarly, for package sources:
 $ uv tool install git+https://github.com/httpie/cli
 ```
 
-Or package sources with Git LFS:
+Or package sources with [Git LFS](https://git-lfs.com/):
 
 ```
 $ uv tool install --lfs git+https://github.com/astral-sh/lfs-cowsay
@@ -273,11 +273,11 @@ Or, when upgrading a tool:
 $ uv tool upgrade --python 3.10 ruff
 ```
 
-For more details on requesting Python versions, see the Python version concept page.
+For more details on requesting [Python version](../concepts/python-versions.md#requesting-a-version)s, see the Python version concept page.
 
 ### Legacy Windows Scripts
 
-Tools also support running legacy setuptools scripts. These scripts are available via $(uv tool dir)\<tool-name>\Scripts when installed.
+Tools also support running [legacy setuptools scripts](https://packaging.python.org/en/latest/guides/distributing-packages-using-setuptools/#scripts). These scripts are available via $(uv tool dir)\<tool-name>\Scripts when installed.
 
 Currently only legacy scripts with the .ps1, .cmd, and .bat extensions are supported.
 
@@ -295,6 +295,6 @@ $ uv tool run --from nuitka==2.6.7 nuitka --version
 
 ### Next steps
 
-To learn more about managing tools with uv, see the Tools concept page and the command reference.
+To learn more about managing tools with uv, see the [Tools concept](../concepts/tools.md) page and the [command reference](../reference/cli.md#uv-tool).
 
-Or, read on to learn how to work on projects.
+Or, read on to learn how to [work on projects](projects.md).

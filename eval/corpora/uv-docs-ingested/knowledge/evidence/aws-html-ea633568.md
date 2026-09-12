@@ -7,7 +7,7 @@ source_digest: "sha256:ea633568a3d9d51a2190b0c3935793eb4e31b38695064759bdd2b8202
 
 # AWS CodeArtifact
 
-uv can install packages from AWS CodeArtifact, either by using an access token, or using the keyring package.
+uv can install packages from [AWS CodeArtifact](https://docs.aws.amazon.com/codeartifact/latest/ug/using-python.html), either by using an access token, or using the [keyring](https://github.com/jaraco/keyring) package.
 
 !!! note
 
@@ -59,11 +59,11 @@ export UV_INDEX_PRIVATE_REGISTRY_PASSWORD = " $AWS_CODEARTIFACT_TOKEN "
 
 ## Authenticate with keyring and keyrings.codeartifact
 
-You can also authenticate to Artifact Registry using keyring package with the keyrings.codeartifact plugin. Because these two packages are required to authenticate to Artifact Registry, they must be pre-installed from a source other than Artifact Registry.
+You can also authenticate to Artifact Registry using [keyring](https://github.com/jaraco/keyring) package with the [keyrings.codeartifact](https://github.com/jmkeyes/keyrings.codeartifact) [plugin](https://github.com/jmkeyes/keyrings.codeartifact). Because these two packages are required to authenticate to Artifact Registry, they must be pre-installed from a source other than Artifact Registry.
 
-The keyrings.codeartifact plugin wraps boto3 to generate short-lived access tokens, securely store them in system keyring, and refresh them when they are expired.
+The keyrings.codeartifact plugin wraps [boto3](https://pypi.org/project/boto3/) to generate short-lived access tokens, securely store them in system keyring, and refresh them when they are expired.
 
-uv only supports using the keyring package in subprocess mode. The keyring executable must be in the PATH, i.e., installed globally or in the active environment. The keyring CLI requires a username in the URL and it must be aws.
+uv only supports using the keyring package in [subprocess mode](../../reference/settings.md#keyring-provider). The keyring executable must be in the PATH, i.e., installed globally or in the active environment. The keyring CLI requires a username in the URL and it must be aws.
 
 ```Bash
 # Pre-install keyring and AWS CodeArtifact plugin from the public PyPI
@@ -87,7 +87,7 @@ Similarly, the username for the index can be added directly to the index URL.
 
 ## Publishing packages
 
-If you also want to publish your own packages to AWS CodeArtifact, you can use uv publish as described in the Building and publishing guide.
+If you also want to publish your own packages to AWS CodeArtifact, you can use uv publish as described in the [Building and publishing guide](../package.md).
 
 First, add a publish-url to the index you want to publish packages to. For example:
 

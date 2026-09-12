@@ -7,9 +7,9 @@ source_digest: "sha256:8b25da2ace3661d39d0cd5a18607d5885430bd28c91bb7f799095cba8
 
 # Policies
 
-- Security
-- Versioning
-- Platform support
-- Python support
-- Rust support
-- License
+- [Security](https://github.com/astral-sh/uv/security/policy)
+- [Versioning](versioning.md)
+- [Platform support](platforms.md)
+- [Python support](python.md)
+- [Rust support](rust.md)
+- [License](license.md)

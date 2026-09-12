@@ -9,7 +9,7 @@ source_digest: "sha256:cc390a0e4451823c746972ca1ef17bca2bf4aa44cf790155a01aae8b4
 
 uv can export a lockfile to different formats for integration with other tools and workflows. The uv export command supports multiple output formats, each suited to different use cases.
 
-For more details on lockfiles and how they're created, see the project layout and locking and syncing documentation.
+For more details on lockfiles and how they're created, see the [project layout](layout.md) and [locking and syncing](sync.md) documentation.
 
 ## Overview of export formats
 
@@ -17,13 +17,13 @@ uv supports three export formats:
 
 -
 
-  requirements.txt: The traditional pip-compatible requirements file format.
+  requirements.txt: The traditional pip-compatible [requirements file format](https://pip.pypa.io/en/stable/reference/requirements-file-format/).
 -
 
-  pylock.toml: The standardized Python lockfile format defined in PEP 751.
+  pylock.toml: The standardized Python lockfile format defined in [PEP 751](https://peps.python.org/pep-0751/).
 -
 
-  CycloneDX: An industry-standard Software Bill of Materials (SBOM) format.
+  CycloneDX: An industry-standard [Software Bill of Materials (SBOM)](https://cyclonedx.org/) format.
 
 The format can be specified with the --format flag:
 
@@ -68,7 +68,7 @@ to discuss your use case.
 
 ## pylock.toml format
 
-PEP 751 defines a TOML-based lockfile format for Python dependencies. uv can export your project's dependency lockfile to this format.
+[PEP 751](https://peps.python.org/pep-0751/) defines a TOML-based lockfile format for Python dependencies. uv can export your project's dependency lockfile to this format.
 
 ### Basic usage
 
@@ -88,7 +88,7 @@ Support for exporting to CycloneDX is in [preview](../preview.md), and may chang
 
 ### What is CycloneDX?
 
-CycloneDX is an industry-standard format for creating Software Bill of Materials. CycloneDX is machine readable and widely supported by security scanning tools, vulnerability databases, and Software Composition Analysis (SCA) platforms.
+[CycloneDX](https://cyclonedx.org/) is an industry-standard format for creating Software Bill of Materials. CycloneDX is machine readable and widely supported by security scanning tools, vulnerability databases, and Software Composition Analysis (SCA) platforms.
 
 ### Basic usage
 
@@ -102,7 +102,7 @@ This will generate a JSON-encoded CycloneDX v1.5 document containing your projec
 
 ### SBOM Structure
 
-The generated SBOM follows the CycloneDX specification. uv also includes the following custom properties on components:
+The generated SBOM follows the [CycloneDX specification](https://cyclonedx.org/specification/overview/). uv also includes the following custom properties on components:
 
 -
 
@@ -113,6 +113,6 @@ The generated SBOM follows the CycloneDX specification. uv also includes the fol
 
 ## Next steps
 
-To learn more about lockfiles and exporting, see the locking and syncing documentation and the command reference.
+To learn more about lockfiles and exporting, see the [locking and syncing](sync.md) documentation and the [command reference](../../reference/cli.md#uv-export).
 
-Or, read on to learn how to build and publish your project to a package index.
+Or, read on to learn how to [build and publish your project to a package index](../../guides/package.md).

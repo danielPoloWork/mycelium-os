@@ -11,13 +11,13 @@ uv provides a drop-in replacement for common pip, pip-tools, and virtualenv comm
 
 The following sections discuss the basics of using uv pip:
 
-- Creating and using environments
-- Installing and managing packages
-- Inspecting environments and packages
-- Declaring package dependencies
-- Locking and syncing environments
+- [Creating and using environments](environments.md)
+- [Installing and managing packages](packages.md)
+- [Inspecting environments and packages](inspection.md)
+- [Declaring package dependencies](dependencies.md)
+- [Locking and syncing environments](compile.md)
 
-Please note these commands do not exactly implement the interfaces and behavior of the tools they are based on. The further you stray from common workflows, the more likely you are to encounter differences. Consult the pip-compatibility guide for details.
+Please note these commands do not exactly implement the interfaces and behavior of the tools they are based on. The further you stray from common workflows, the more likely you are to encounter differences. Consult the [pip-compatibility guide](compatibility.md) for details.
 
 !!! important
 

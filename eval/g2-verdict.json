@@ -1,8 +1,8 @@
 {
   "corpora": {
     "ours": {
-      "chunks_digest": "sha256:60eda897961b173c9843a6691280771e4f2c294487eda45936742fe9803b02c7",
-      "content_digest": "sha256:86c3c79d45700fd17054bb310d1c540087a449fab79b286fbda748877cd84401",
+      "chunks_digest": "sha256:f71d38492c3aca540354a20788f469870be9d271f8599840c405210db5fadf0d",
+      "content_digest": "sha256:2e0ea5caf65818be28d4121420a0b98593ed0f867526391d0c15b2a3572fa7bf",
       "dated": false
     },
     "uv": {
@@ -11,8 +11,8 @@
       "dated": true
     },
     "uv-ingested": {
-      "chunks_digest": "sha256:2eeeb3f412058084dadd981d1c6923aef38808520bade5b4f13830f2c18164ed",
-      "content_digest": "sha256:bcc5ac4fc23b281b80dde32d92e6c876670ea0dbbb5d4f9d48cccdc018303aee",
+      "chunks_digest": "sha256:2d8b622b744d364db065916e07b37d52308ffb67facee678bb9f6c00c5a3fe1e",
+      "content_digest": "sha256:6213656348abbce9ef0479468721547a6986f66745d6e46caec5470c5f619788",
       "dated": true
     }
   },
@@ -22,16 +22,16 @@
   ],
   "decision": "lexical",
   "model_id": "bge-small-en-v1.5",
-  "recorded_at": "2026-09-11",
+  "recorded_at": "2026-09-12",
   "retrieval_identity": "sha256:107e2baf3d205cefaf40ac6673fd90a4db1801005306dfc5ac6a232ebaef4072",
   "schema_version": "mycelium/g2-verdict/v0",
   "sets": {
     "ours/dev": {
       "cases": 16,
       "cases_digest": "sha256:c39aa93ef694f6a9b63dfeb51deb7024993a6c38346808dfff6e1839077ddd64",
-      "detail": "+10.9% overall (needs +5%); regressions past -2%: fact -6.1% (q-0005 0.6309->0.5000, q-0008 0.0379->0.0000)",
-      "hybrid_ndcg_at_10": 0.593422,
-      "lexical_ndcg_at_10": 0.535334,
+      "detail": "+11.4% overall (needs +5%); regressions past -2%: fact -3.7% (q-0005 0.6309->0.5000, q-0008 0.0394->0.0379)",
+      "hybrid_ndcg_at_10": 0.59579,
+      "lexical_ndcg_at_10": 0.534746,
       "per_slice": {
         "conceptual": {
           "cases": 5,
@@ -45,8 +45,8 @@
         },
         "fact": {
           "cases": 4,
-          "hybrid": 0.456689,
-          "lexical": 0.486238
+          "hybrid": 0.466159,
+          "lexical": 0.483886
         },
         "injection": {
           "cases": 1,
@@ -65,26 +65,26 @@
         }
       },
       "regressions": [
-        "fact -6.1% (q-0005 0.6309->0.5000, q-0008 0.0379->0.0000)"
+        "fact -3.7% (q-0005 0.6309->0.5000, q-0008 0.0394->0.0379)"
       ],
       "verdict": "fail"
     },
     "ours/release": {
       "cases": 17,
       "cases_digest": "sha256:5d5cb038211bac12ea7f23ee90195442877f166bb6203db8cc5be44edef88d09",
-      "detail": "+25.6% overall (needs +5%)",
-      "hybrid_ndcg_at_10": 0.635813,
-      "lexical_ndcg_at_10": 0.506075,
+      "detail": "+26.9% overall (needs +5%)",
+      "hybrid_ndcg_at_10": 0.633476,
+      "lexical_ndcg_at_10": 0.499112,
       "per_slice": {
         "conceptual": {
           "cases": 4,
-          "hybrid": 0.673536,
-          "lexical": 0.502256
+          "hybrid": 0.665874,
+          "lexical": 0.559141
         },
         "exact": {
           "cases": 4,
           "hybrid": 0.916644,
-          "lexical": 0.756417
+          "lexical": 0.690126
         },
         "fact": {
           "cases": 6,
@@ -93,8 +93,8 @@
         },
         "relationship": {
           "cases": 4,
-          "hybrid": 0.388853,
-          "lexical": 0.288708
+          "hybrid": 0.386582,
+          "lexical": 0.325406
         }
       },
       "regressions": [],
@@ -139,9 +139,9 @@
     "uv-ingested/release": {
       "cases": 23,
       "cases_digest": "sha256:5ef0fd53a16e8fec20e56a1454c5de06ed9f7d8c691790fa54647f9ee485adb3",
-      "detail": "-4.3% overall (needs +5%); regressions past -2%: conceptual -8.6% (u-1016 0.6352->0.4094), exact -7.3% (u-1021 0.3155->0.0000), relationship -11.8% (u-1022 0.8847->0.4109), symbol -7.6% (u-1019 0.3962->0.1310)",
+      "detail": "-4.4% overall (needs +5%); regressions past -2%: conceptual -8.6% (u-1016 0.6352->0.4094), exact -7.7% (u-1021 0.3333->0.0000), relationship -11.8% (u-1022 0.8847->0.4109), symbol -7.6% (u-1019 0.3962->0.1310)",
       "hybrid_ndcg_at_10": 0.609446,
-      "lexical_ndcg_at_10": 0.637011,
+      "lexical_ndcg_at_10": 0.637788,
       "per_slice": {
         "conceptual": {
           "cases": 4,
@@ -151,7 +151,7 @@
         "exact": {
           "cases": 5,
           "hybrid": 0.8,
-          "lexical": 0.863093
+          "lexical": 0.866667
         },
         "fact": {
           "cases": 7,
@@ -171,7 +171,7 @@
       },
       "regressions": [
         "conceptual -8.6% (u-1016 0.6352->0.4094)",
-        "exact -7.3% (u-1021 0.3155->0.0000)",
+        "exact -7.7% (u-1021 0.3333->0.0000)",
         "relationship -11.8% (u-1022 0.8847->0.4109)",
         "symbol -7.6% (u-1019 0.3962->0.1310)"
       ],

@@ -76,12 +76,12 @@ Before uv 0.7.0, `uv version` was used instead of `uv self version`.
 
 ## Troubleshooting issues
 
-The reference documentation contains a troubleshooting guide for common issues.
+The reference documentation contains a [troubleshooting guide](../reference/troubleshooting/index.md) for common issues.
 
 ## Open an issue on GitHub
 
-The issue tracker on GitHub is a good place to report bugs and request features. Make sure to search for similar issues first, as it is common for someone else to encounter the same problem.
+The [issue tracker](https://github.com/astral-sh/uv/issues) on GitHub is a good place to report bugs and request features. Make sure to search for similar issues first, as it is common for someone else to encounter the same problem.
 
 ## Chat on Discord
 
-Astral has a Discord server, which is a great place to ask questions, learn more about uv, and engage with other community members.
+Astral has a [Discord server](https://discord.com/invite/astral-sh), which is a great place to ask questions, learn more about uv, and engage with other community members.

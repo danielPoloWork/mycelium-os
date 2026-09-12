@@ -9,7 +9,7 @@ source_digest: "sha256:6fb301dc624b6ad9d9ec39b991a6114d5cf159ac40fa853318cfd0927
 
 It is considered best practice to regularly update dependencies, to avoid being exposed to vulnerabilities, limit incompatibilities between dependencies, and avoid complex upgrades when upgrading from a too old version.
 
-Dependabot has announced support for uv, but there are some use cases that are not yet working. See astral-sh/uv#2512 for updates.
+Dependabot has announced support for uv, but there are some use cases that are not yet working. See [astral-sh/uv#2512](https://github.com/astral-sh/uv/issues/2512) for updates.
 
 Dependabot supports updating uv.lock files. To enable it, add the uv package-ecosystem to your updates list in the dependabot.yml:
 

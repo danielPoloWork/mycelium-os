@@ -7,7 +7,7 @@ source_digest: "sha256:6ebd5cbaeb09ebd2f6d451e50a000a2947769a6cf440ca29fb4a70565
 
 # Using uv with FastAPI
 
-FastAPI is a modern, high-performance Python web framework. You can use uv to manage your FastAPI project, including installing dependencies, managing environments, running FastAPI applications, and more.
+[FastAPI](https://github.com/fastapi/fastapi) is a modern, high-performance Python web framework. You can use uv to manage your FastAPI project, including installing dependencies, managing environments, running FastAPI applications, and more.
 
 !!! note
 
@@ -17,7 +17,7 @@ You can view the source code for this guide in the [uv-fastapi-example](https://
 
 ## Migrating an existing FastAPI project
 
-As an example, consider the sample application defined in the FastAPI documentation, structured as follows:
+As an example, consider the sample application defined in the [FastAPI documentation](https://fastapi.tiangolo.com/tutorial/bigger-applications/), structured as follows:
 
 ```
 project
@@ -40,7 +40,7 @@ To use uv with this application, inside the project directory run:
 $ uv init --no-package
 ```
 
-This creates a pyproject.toml file for a flat, unpackaged project.
+This creates a pyproject.toml file for a [flat, unpackaged project](../../concepts/projects/init.md#unpackaged-applications).
 
 Then, add a dependency on FastAPI:
 

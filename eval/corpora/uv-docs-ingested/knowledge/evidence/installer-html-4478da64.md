@@ -9,7 +9,7 @@ source_digest: "sha256:4478da646f81136661c87a227cf34eae285724cd81266b22be55cd24b
 
 ## Changing the installation path
 
-By default, uv is installed in the user executable directory.
+By default, uv is installed in the user [executable directory](storage.md#executable-directory).
 
 To change the installation path, use UV_INSTALL_DIR:
 

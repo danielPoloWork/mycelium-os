@@ -22,7 +22,7 @@ uv includes a dedicated interface for interacting with tools. Tools can be invok
 
 Because it is very common to run tools without installing them, a uvx alias is provided for uv tool run - the two commands are exactly equivalent. For brevity, the documentation will mostly refer to uvx instead of uv tool run.
 
-Tools can also be installed with uv tool install, in which case their executables are available on the PATH - an isolated virtual environment is still used, but it is not removed when the command completes.
+Tools can also be installed with uv tool install, in which case their executables are [available on the](#tool-executables) [PATH](#tool-executables) - an isolated virtual environment is still used, but it is not removed when the command completes.
 
 ## Execution vs installation
 
@@ -32,7 +32,7 @@ In most cases, executing a tool with uvx is more appropriate than installing the
 
 When running a tool with uvx, a virtual environment is stored in the uv cache directory and is treated as disposable, i.e., if you run uv cache clean the environment will be deleted. The environment is only cached to reduce the overhead of repeated invocations. If the environment is removed, a new one will be created automatically.
 
-When installing a tool with uv tool install, a virtual environment is created in the uv tools directory. The environment will not be removed unless the tool is uninstalled. If the environment is manually deleted, the tool will fail to run.
+When installing a tool with uv tool install, a virtual environment is created in the [uv tools directory](../reference/storage.md#tools). The environment will not be removed unless the tool is uninstalled. If the environment is manually deleted, the tool will fail to run.
 
 !!! important
 
@@ -217,15 +217,15 @@ Note that --with-executables-from differs from --with in that:
 
 ## Python versions
 
-Each tool environment is linked to a specific Python version. This uses the same Python version discovery logic as other virtual environments created by uv, but will ignore non-global Python version requests like.python-version files and the requires-python value from a pyproject.toml.
+Each tool environment is linked to a specific Python version. This uses the same Python version [discovery logic](python-versions.md#discovery-of-python-versions) as other virtual environments created by uv, but will ignore non-global Python version requests like.python-version files and the requires-python value from a pyproject.toml.
 
-The --python option can be used to request a specific version. See the Python version documentation for more details.
+The --python option can be used to request a specific version. See the [Python version](python-versions.md) documentation for more details.
 
 If the Python version used by a tool is uninstalled, the tool environment will be broken and the tool may be unusable.
 
 ## Tool executables
 
-Tool executables include all console entry points, script entry points, and binary scripts provided by a Python package. Tool executables are symlinked into the executable directory on Unix and copied on Windows.
+Tool executables include all console entry points, script entry points, and binary scripts provided by a Python package. Tool executables are symlinked into the [executable directory](../reference/storage.md#tool-executables) on Unix and copied on Windows.
 
 !!! note
 
@@ -233,7 +233,7 @@ Tool executables include all console entry points, script entry points, and bina
 Executables provided by dependencies of tool packages are not installed.
 ```
 
-The executable directory must be in the PATH variable for tool executables to be available from the shell. If it is not in the PATH, a warning will be displayed. The uv tool update-shell command can be used to add the executable directory to the PATH in common shell configuration files.
+The [executable directory](../reference/storage.md#executable-directory) must be in the PATH variable for tool executables to be available from the shell. If it is not in the PATH, a warning will be displayed. The uv tool update-shell command can be used to add the executable directory to the PATH in common shell configuration files.
 
 ### Overwriting executables
 

@@ -7,7 +7,7 @@ source_digest: "sha256:8077758e2ad0b31663b4edd021eeb9db93a3fe88d5f01465c4c5b4595
 
 # First steps with uv
 
-After installing uv, you can check that uv is available by running the uv command:
+After [installing uv](installation.md), you can check that uv is available by running the uv command:
 
 ```
 $ uv
@@ -22,4 +22,4 @@ You should see a help menu listing the available commands.
 
 ## Next steps
 
-Now that you've confirmed uv is installed, check out an overview of features, learn how to get help if you run into any problems, or jump to the guides to start using uv.
+Now that you've confirmed uv is installed, check out an [overview of features](features.md), learn how to [get help](help.md) if you run into any problems, or jump to the [guides](../guides/index.md) to start using uv.

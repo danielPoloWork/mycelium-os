@@ -160,7 +160,7 @@ $ uv lock --upgrade-package requests
 
 The --upgrade-package flag will attempt to update the specified package to the latest compatible version, while keeping the rest of the lockfile intact.
 
-See the documentation on managing dependencies for more details.
+See the documentation on [managing dependencies](../concepts/projects/dependencies.md) for more details.
 
 ### Viewing your version
 
@@ -191,7 +191,7 @@ $ uv version --output-format json
 }
 ```
 
-See the publishing guide for details on updating your package version.
+See the [publishing guide](package.md#updating-your-version) for details on updating your package version.
 
 ### Running commands
 
@@ -256,7 +256,7 @@ PS> python example.py
 The virtual environment must be active to run scripts and commands in the project without `uv run`. Virtual environment activation differs per shell and platform.
 ```
 
-See the documentation on running commands and scripts in projects for more details.
+See the documentation on [running commands and scripts](../concepts/projects/run.md) in projects for more details.
 
 ### Building distributions
 
@@ -271,10 +271,10 @@ hello_world-0.1.0-py3-none-any.whl
 hello_world-0.1.0.tar.gz
 ```
 
-See the documentation on building projects for more details.
+See the documentation on [building projects](../concepts/projects/build.md) for more details.
 
 ### Next steps
 
-To learn more about working on projects with uv, see the projects concept page and the command reference.
+To learn more about working on projects with uv, see the [projects concept](../concepts/projects/index.md) page and the [command reference](../reference/cli.md#uv).
 
-Or, read on to learn how to export a uv lockfile to different formats.
+Or, read on to learn how to [export a uv lockfile to different formats](../concepts/projects/export.md).

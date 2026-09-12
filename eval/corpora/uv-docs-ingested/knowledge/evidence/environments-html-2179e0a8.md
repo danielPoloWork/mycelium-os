@@ -29,7 +29,7 @@ A Python version can be requested, e.g., to create a virtual environment with Py
 $ uv venv --python 3.11
 ```
 
-Note this requires the requested Python version to be available on the system. However, if unavailable, uv will download Python for you. See the Python version documentation for more details.
+Note this requires the requested [Python version](../concepts/python-versions.md) to be available on the system. However, if unavailable, uv will download Python for you. See the Python version documentation for more details.
 
 ## Using a virtual environment
 
@@ -96,7 +96,7 @@ $ deactivate
 
 ## Using arbitrary Python environments
 
-Since uv has no dependency on Python, it can install into virtual environments other than its own. For example, setting VIRTUAL_ENV=/path/to/venv will cause uv to install into /path/to/venv, regardless of where uv is installed. Note that if VIRTUAL_ENV is set to a directory that is not a PEP 405 compliant virtual environment, it will be ignored.
+Since uv has no dependency on Python, it can install into virtual environments other than its own. For example, setting VIRTUAL_ENV=/path/to/venv will cause uv to install into /path/to/venv, regardless of where uv is installed. Note that if VIRTUAL_ENV is set to a directory that is not a [PEP 405 compliant](https://peps.python.org/pep-0405/#specification) virtual environment, it will be ignored.
 
 uv can also install into arbitrary, even non-virtual environments, with the --python option. For example, uv pip install --python /path/to/python will install into the environment linked to the /path/to/python interpreter regardless of whether or not it is a virtual environment. The --python option also accepts a path to the root directory of a virtual environment.
 
@@ -104,7 +104,7 @@ For convenience, uv pip install --system will install into the system Python env
 
 The --system flag is also used to opt in to mutating system environments. For example, the --python argument can be used to request a Python version (e.g., --python 3.12), and uv will search for an interpreter that meets the request. If uv finds a system interpreter (e.g., /usr/lib/python3.12), then the --system flag is required to allow modification of this non-virtual Python environment. Without the --system flag, uv will ignore any interpreters that are not in virtual environments. Conversely, when the --system flag is provided, uv will ignore any interpreters that are in virtual environments.
 
-Installing into system Python across platforms and distributions is notoriously difficult. uv supports the common cases, but will not work in all cases. For example, installing into system Python on Debian prior to Python 3.10 is unsupported due to the distribution's patching of distutils (but not sysconfig). While we always recommend the use of virtual environments, uv considers them to be required in these non-standard environments.
+Installing into system Python across platforms and distributions is notoriously difficult. uv supports the common cases, but will not work in all cases. For example, installing into system Python on Debian prior to Python 3.10 is unsupported due to the [distribution's patching of](https://ffy00.github.io/blog/02-python-debian-and-the-install-locations/) [distutils](https://ffy00.github.io/blog/02-python-debian-and-the-install-locations/) [(but not](https://ffy00.github.io/blog/02-python-debian-and-the-install-locations/) [sysconfig](https://ffy00.github.io/blog/02-python-debian-and-the-install-locations/)[)](https://ffy00.github.io/blog/02-python-debian-and-the-install-locations/). While we always recommend the use of virtual environments, uv considers them to be required in these non-standard environments.
 
 If uv is installed in a Python environment, e.g., with pip, it can still be used to modify other environments. However, when invoked with python -m uv, uv will default to using the parent interpreter's environment. Invoking uv via Python adds startup overhead and is not recommended for general usage.
 
@@ -126,4 +126,4 @@ When running a command that mutates an environment such as uv pip sync or uv pip
 
 If no virtual environment is found, uv will prompt the user to create one in the current directory via uv venv.
 
-If the --system flag is included, uv will skip virtual environments search for an installed Python version. Similarly, when running a command that does not mutate the environment such as uv pip compile, uv does not require a virtual environment - however, a Python interpreter is still required. See the documentation on Python discovery for details on the discovery of installed Python versions.
+If the --system flag is included, uv will skip virtual environments search for an installed Python version. Similarly, when running a command that does not mutate the environment such as uv pip compile, uv does not require a virtual environment - however, a Python interpreter is still required. See the documentation on [Python discovery](../concepts/python-versions.md#discovery-of-python-versions) for details on the discovery of installed Python versions.

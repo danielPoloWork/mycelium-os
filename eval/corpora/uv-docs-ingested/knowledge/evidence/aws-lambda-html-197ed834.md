@@ -7,7 +7,7 @@ source_digest: "sha256:197ed834176274972ad95577ed11857863760f58b6646916839a63813
 
 # Using uv with AWS Lambda
 
-AWS Lambda is a serverless computing service that lets you run code without provisioning or managing servers.
+[AWS Lambda](https://aws.amazon.com/lambda/) is a serverless computing service that lets you run code without provisioning or managing servers.
 
 You can use uv with AWS Lambda to manage your Python dependencies, build your deployment package, and deploy your Lambda functions.
 
@@ -69,7 +69,7 @@ From there, opening http://127.0.0.1:8000/ in a web browser will display "Hello,
 
 To deploy to AWS Lambda, we need to build a container image that includes the application code and dependencies in a single output directory.
 
-We'll follow the principles outlined in the Docker guide (in particular, a multi-stage build) to ensure that the final image is as small and cache-friendly as possible.
+We'll follow the principles outlined in the [Docker guide](docker.md) (in particular, a multi-stage build) to ensure that the final image is as small and cache-friendly as possible.
 
 In the first stage, we'll populate a single directory with all application code and dependencies. In the second stage, we'll copy this directory over to the final image, omitting the build tools and other unnecessary files.
 
@@ -162,7 +162,7 @@ Concretely, rebuilding the image after modifying the application source code can
  => => writing image sha256:6f8f9ef715a7cda466b677a9df4046ebbb90c8e88595242ade3b4771f547652d                         0.0
 ```
 
-After building, we can push the image to Elastic Container Registry (ECR) with, e.g.:
+After building, we can push the image to [Elastic Container Registry (ECR)](https://aws.amazon.com/ecr/) with, e.g.:
 
 ```
 $ aws ecr get-login-password --region region | docker login --username AWS --password-stdin aws_account_id.dkr.ecr.region.amazonaws.com
@@ -180,7 +180,7 @@ $ aws lambda create-function \
    --role arn:aws:iam::111122223333:role/my-lambda-role
 ```
 
-Where the execution role is created via:
+Where the [execution role](https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html#permissions-executionrole-api) is created via:
 
 ```
 $ aws iam create-role \
@@ -223,11 +223,11 @@ And response.json contains the response from the Lambda function:
 json title="response.json" { "statusCode": 200, "headers": { "content-length": "14", "content-type": "application/json" }, "multiValueHeaders": {}, "body": "\"Hello, world!\"", "isBase64Encoded": false }
 ```
 
-For details, see the AWS Lambda documentation.
+For details, see the [AWS Lambda documentation](https://docs.aws.amazon.com/lambda/latest/dg/python-image.html).
 
 ### Workspace support
 
-If a project includes local dependencies (e.g., via Workspaces), those too must be included in the deployment package.
+If a project includes local dependencies (e.g., via [Workspaces](../../concepts/projects/workspaces.md)), those too must be included in the deployment package.
 
 We'll start by extending the above example to include a dependency on a locally-developed library named library.
 
@@ -380,7 +380,7 @@ $ uv pip install \
 To deploy to ARM-based AWS Lambda runtimes, replace `x86_64-manylinux2014` with `aarch64-manylinux2014`.
 ```
 
-Following the AWS Lambda documentation, we can then bundle these dependencies into a zip as follows:
+Following the [AWS Lambda documentation](https://docs.aws.amazon.com/lambda/latest/dg/python-package.html), we can then bundle these dependencies into a zip as follows:
 
 ```
 $ cd packages
@@ -405,7 +405,7 @@ $ aws lambda create-function \
    --role arn:aws:iam::111122223333:role/service-role/my-lambda-role
 ```
 
-Where the execution role is created via:
+Where the [execution role](https://docs.aws.amazon.com/lambda/latest/dg/lambda-intro-execution-role.html#permissions-executionrole-api) is created via:
 
 ```
 $ aws iam create-role \
@@ -457,7 +457,7 @@ json title="response.json" { "statusCode": 200, "headers": { "content-length": "
 
 ### Using a Lambda layer
 
-AWS Lambda also supports the deployment of multiple composed Lambda layers when working with zip archives. These layers are conceptually similar to layers in a Docker image, allowing you to separate application code from dependencies.
+AWS Lambda also supports the deployment of multiple composed [Lambda layers](https://docs.aws.amazon.com/lambda/latest/dg/python-layers.html) when working with zip archives. These layers are conceptually similar to layers in a Docker image, allowing you to separate application code from dependencies.
 
 In particular, we can create a lambda layer for application dependencies and attach it to the Lambda function, separate from the application code itself. This setup can improve cold-start performance for application updates, as the dependencies layer can be reused across deployments.
 

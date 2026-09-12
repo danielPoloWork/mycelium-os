@@ -11,7 +11,7 @@ Locking is to take a dependency, e.g., ruff, and write an exact version to use t
 
 ## Locking requirements
 
-uv allows dependencies to be locked in the requirements.txt format. It is recommended to use the standard pyproject.toml to define dependencies, but other dependency formats are supported as well. See the documentation on declaring dependencies for more details on how to define dependencies.
+uv allows dependencies to be locked in the requirements.txt format. It is recommended to use the standard pyproject.toml to define dependencies, but other dependency formats are supported as well. See the documentation on [declaring dependencies](dependencies.md) for more details on how to define dependencies.
 
 To lock dependencies declared in a pyproject.toml:
 
@@ -113,7 +113,7 @@ To upgrade all dependencies, there is an --upgrade flag.
 
 ## Syncing an environment
 
-Dependencies can be installed directly from their definition files or from compiled requirements.txt files with uv pip install. See the documentation on installing packages from files for more details.
+Dependencies can be installed directly from their definition files or from compiled requirements.txt files with uv pip install. See the documentation on [installing packages from files](packages.md#installing-packages-from-files) for more details.
 
 When installing with uv pip install, packages that are already installed will not be removed unless they conflict with the lockfile. This means that the environment can have dependencies that aren't declared in the lockfile, which isn't great for reproducibility. To ensure the environment exactly matches the lockfile, use uv pip sync instead.
 
@@ -123,7 +123,7 @@ To sync an environment with a requirements.txt file:
 $ uv pip sync requirements.txt
 ```
 
-To sync an environment with a PEP 751 pylock.toml file:
+To sync an environment with a [PEP 751](https://peps.python.org/pep-0751/) pylock.toml file:
 
 ```
 $ uv pip sync pylock.toml

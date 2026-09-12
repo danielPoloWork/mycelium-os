@@ -516,19 +516,24 @@ Compile a corpus of PDFs and HTML and the projections land in a flat
 `knowledge/evidence/` tree, while the links inside them still name the tree they were
 acquired from. Each projection records where it came from, so those links resolve through
 the source tree — and because a page rendered to HTML keeps the `.md` hrefs it was written
-with, the match is on the path without its extension. On the vendored ingested corpus that
-takes the graph from 29 edges to 54 and cuts unresolved links from 30 to 12, the remaining
-twelve pointing at sources the corpus never included.
+with, the match is on the path without its extension. And the links are *there* to resolve:
+a reference the parser found is rendered back into the projection around the very words it
+labelled, so the document reads as the source did and the compiler sees what the source
+referred to, in the chunk it referred from. On the vendored ingested corpus the graph goes
+from 54 edges to 366, 293 of them links; the 42 that stay unresolved all name pages the
+corpus never included, the same family as the authored twin's 54.
 
 Every one of those edges is **`extracted`**, and that is the more important half. A link
 in a document a person wrote is `authored`; a link found in a document that was *acquired*
 is a finding, because its content is untrusted by default and nobody here wrote it. The
 distinction is not cosmetic: proving it out found that an acquired PDF containing the
 characters `[[api]]` was producing an **authored** edge into your knowledge graph, and an
-inline `#production` in one was declaring an authored entity. The projector strips link
-syntax it can recognise, but a PDF has no wikilinks to recognise — so the guarantee now
-lives where the assertion is made rather than where the text is written
-([ADR-0079](docs/adr/0079-resolve-an-ingested-documents-links-through-its-source-tree-and-never-call-them-authored.md)).
+inline `#production` in one was declaring an authored entity. The projector used to strip
+the link syntax it could recognise, and a PDF has no wikilinks to recognise — so the
+guarantee lives where the assertion is made rather than where the text is written
+([ADR-0079](docs/adr/0079-resolve-an-ingested-documents-links-through-its-source-tree-and-never-call-them-authored.md)),
+which is also what lets the projector keep a source's links instead of throwing them away
+([ADR-0090](docs/adr/0090-project-a-sources-links-as-links-now-that-the-compiler-knows-who-asserted-them.md)).
 
 ### Ingestion picks its parser, and you pick which one
 
@@ -586,7 +591,8 @@ earlier reasoning is in [ADR-0032](docs/adr/0032-adapt-four-engines-and-pin-whic
 **evidence document** under `knowledge/evidence/` — Markdown, with provenance frontmatter,
 which `mycelium build` then compiles like anything else you wrote. Nothing but the compiler
 ever writes an index (D-020), so an ingested PDF gets chunks, citations and `ingested` trust
-by the same path an authored note does.
+by the same path an authored note does. Its links are links: a reference the parser found is
+rendered back around the words it labelled, and `mycelium ingest` says how many it carried.
 
 Every projection comes with a **fidelity report**: how many of the document's elements were
 represented, how many survived with their structure simplified, and how many did not survive

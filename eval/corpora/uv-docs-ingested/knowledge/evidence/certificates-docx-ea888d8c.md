@@ -11,7 +11,7 @@ uv uses TLS to securely communicate with package indexes and other HTTPS servers
 
 ## TLS backend
 
-uv uses rustls, a memory-safe TLS implementation written in Rust, with aws-lc-rs as the cryptography provider.
+uv uses [rustls](https://github.com/rustls/rustls), a memory-safe TLS implementation written in Rust, with [aws-lc-rs](https://github.com/aws/aws-lc-rs) as the cryptography provider.
 
 uv supports the following X.509 certificate signature algorithms:
 
@@ -24,13 +24,13 @@ uv supports the following X.509 certificate signature algorithms:
 
 By default, uv uses bundled Mozilla root certificates for TLS verification. In some cases, you may want to use the platform’s native certificate store instead — for example, if you’re relying on a corporate trust root (e.g., for a mandatory proxy) that’s included in your system’s certificate store.
 
-To use system certificates, pass the --system-certs flag, set the UV_SYSTEM_CERTS environment variable to true, or set system-certs = true in uv.toml.
+To use system certificates, pass the [--system-certs](../../reference/cli.md#uv) flag, set the [UV_SYSTEM_CERTS](../../reference/environment.md#uv_system_certs) environment variable to true, or set [system-certs = true](../../reference/settings.md#system-certs) in uv.toml.
 
-When using system certificates, certificate verification is performed by rustls-platform-verifier, which delegates to the operating system’s certificate verifier.
+When using system certificates, certificate verification is performed by [rustls-platform-verifier](https://github.com/rustls/rustls-platform-verifier), which delegates to the operating system’s certificate verifier.
 
 ## Custom certificates
 
-To use custom CA certificates, set the SSL_CERT_FILE environment variable to the path of a PEM-encoded certificate bundle (e.g., certs.pem, ca-bundle.crt), or set SSL_CERT_DIR to one or more directories containing PEM-encoded certificate files. Multiple entries are supported, separated using a platform-specific delimiter (: on Unix, ; on Windows).
+To use custom CA certificates, set the [SSL_CERT_FILE](../../reference/environment.md#ssl_cert_file) environment variable to the path of a PEM-encoded certificate bundle (e.g., certs.pem, ca-bundle.crt), or set [SSL_CERT_DIR](../../reference/environment.md#ssl_cert_dir) to one or more directories containing PEM-encoded certificate files. Multiple entries are supported, separated using a platform-specific delimiter (: on Unix, ; on Windows).
 
 !!! note
 
@@ -50,11 +50,11 @@ When set to non-empty values, these environment variables override the default c
 
 SSL_CERT_FILE can point to a single certificate or a bundle containing multiple certificates. SSL_CERT_DIR can include multiple directory entries; uv will load all valid certificates from each directory.
 
-If client certificate authentication (mTLS) is desired, set the SSL_CLIENT_CERT environment variable to the path of a PEM formatted file containing the certificate followed by the private key.
+If client certificate authentication (mTLS) is desired, set the [SSL_CLIENT_CERT](../../reference/environment.md#ssl_client_cert) environment variable to the path of a PEM formatted file containing the certificate followed by the private key.
 
 ## Insecure hosts
 
-If you’re using a setup in which you want to trust a self-signed certificate or otherwise disable certificate verification, you can instruct uv to allow insecure connections to dedicated hosts via the allow-insecure-host configuration option. For example, adding the following to pyproject.toml will allow insecure connections to example.com:
+If you’re using a setup in which you want to trust a self-signed certificate or otherwise disable certificate verification, you can instruct uv to allow insecure connections to dedicated hosts via the [allow-insecure-host](../../reference/settings.md#allow-insecure-host) configuration option. For example, adding the following to pyproject.toml will allow insecure connections to example.com:
 
 ```
 [tool.uv]

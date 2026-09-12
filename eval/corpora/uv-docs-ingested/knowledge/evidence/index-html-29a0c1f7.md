@@ -13,8 +13,8 @@ Learn more about authentication in uv:
 
 -
 
-  Using the uv auth CLI
-- HTTP authentication
-- Git authentication
-- TLS certificates
-- Third-party services
+  [Using the](cli.md) [uv auth](cli.md) [CLI](cli.md)
+- [HTTP authentication](http.md)
+- [Git authentication](git.md)
+- [TLS certificates](certificates.md)
+- [Third-party services](third-party.md)

@@ -11,7 +11,7 @@ uv supports creating a project with uv init.
 
 When creating projects, uv supports two basic templates: applications and libraries. By default, uv will create a project for an application. The --lib flag can be used to create a project for a library instead.
 
-In both cases, uv prefers to define a build system and place source files in a dedicated src/<project_name>/ directory. Defining a build system allows use of various Python packaging features, such as adding command-line entry points, and avoids common points of confusion with the Python import system. Use of a build system can be disabled by using the --no-package or --bare options.
+In both cases, uv prefers to define a [build system](config.md#build-systems) and place source files in a dedicated src/<project_name>/ directory. Defining a build system allows use of various Python packaging features, such as adding command-line entry points, and avoids common points of confusion with the Python import system. Use of a build system can be disabled by using the --no-package or --bare options.
 
 !!! note
 
@@ -46,7 +46,7 @@ example-app/
         └── __init__.py
 ```
 
-A build system is defined, so the project will be installed into the environment:
+A [build system](config.md#build-systems) is defined, so the project will be installed into the environment:
 
 ```toml title=“pyproject.toml” hl_lines=“12-14” [project] name = “example-app” version = “0.1.0” description = “Add your description here” readme = “README.md” requires-python = “>=3.11” dependencies = []
 
@@ -125,7 +125,7 @@ is isolated from any `python` invocations in the project root and that distribut
 is well separated from the rest of the project source.
 ```
 
-A build system is defined, so the project will be installed into the environment:
+A [build system](config.md#build-systems) is defined, so the project will be installed into the environment:
 
 ```toml title=“pyproject.toml” hl_lines=“12-14” [project] name = “example-lib” version = “0.1.0” description = “Add your description here” readme = “README.md” requires-python = “>=3.11” dependencies = []
 
@@ -162,10 +162,10 @@ Creating a project with an extension module requires choosing an alternative bui
 
 -
 
-  maturin for projects with Rust
+  [maturin](https://www.maturin.rs/) for projects with Rust
 -
 
-  scikit-build-core for projects with C, C++, FORTRAN, Cython
+  [scikit-build-core](https://github.com/scikit-build/scikit-build-core) for projects with C, C++, FORTRAN, Cython
 
 Specify the build system with the --build-backend flag:
 
@@ -265,7 +265,7 @@ example-app/
 └── pyproject.toml
 ```
 
-The pyproject.toml includes basic metadata. It does not include a build system, it is not a package, and will not be installed into the environment:
+The pyproject.toml includes basic metadata. It does not include a build system, it is not a [package](config.md#project-packaging), and will not be installed into the environment:
 
 toml title="pyproject.toml" [project] name = "example-app" version = "0.1.0" description = "Add your description here" readme = "README.md" requires-python = ">=3.11" dependencies = []
 

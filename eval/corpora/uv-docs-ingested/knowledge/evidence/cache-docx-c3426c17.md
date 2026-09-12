@@ -42,9 +42,9 @@ As a special case, uv will always rebuild and reinstall any local directory depe
 
 By default, uv will only rebuild and reinstall local directory dependencies (e.g., editables) if the pyproject.toml, setup.py, or setup.cfg file in the directory root has changed, or if a src directory is added or removed. This is a heuristic and, in some cases, may lead to fewer re-installs than desired.
 
-To incorporate additional information into the cache key for a given package, you can add cache key entries under tool.uv.cache-keys, which covers both file paths and Git commit hashes. Setting tool.uv.cache-keys will replace defaults, so any necessary files (like pyproject.toml) should still be included in the user-defined cache keys.
+To incorporate additional information into the cache key for a given package, you can add cache key entries under [tool.uv.cache-keys](../reference/settings.md#cache-keys), which covers both file paths and Git commit hashes. Setting [tool.uv.cache-keys](../reference/settings.md#cache-keys) will replace defaults, so any necessary files (like pyproject.toml) should still be included in the user-defined cache keys.
 
-For example, if a project specifies dependencies in pyproject.toml but uses setuptools-scm to manage its version, and should thus be rebuilt whenever the commit hash or dependencies change, you can add the following to the project’s pyproject.toml:
+For example, if a project specifies dependencies in pyproject.toml but uses [setuptools-scm](https://pypi.org/project/setuptools-scm/) to manage its version, and should thus be rebuilt whenever the commit hash or dependencies change, you can add the following to the project’s pyproject.toml:
 
 toml title="pyproject.toml" [tool.uv] cache-keys = [{ file = "pyproject.toml" }, { git = { commit = true } }]
 
@@ -56,7 +56,7 @@ Similarly, if a project reads from a requirements.txt to populate its dependenci
 
 toml title="pyproject.toml" [tool.uv] cache-keys = [{ file = "pyproject.toml" }, { file = "requirements.txt" }]
 
-Globs are supported for file keys, following the syntax of the glob crate. For example, to invalidate the cache whenever a .toml file in the project directory or any of its subdirectories is modified, use the following:
+Globs are supported for file keys, following the syntax of the [glob](https://docs.rs/glob/0.3.1/glob/struct.Pattern.html) crate. For example, to invalidate the cache whenever a .toml file in the project directory or any of its subdirectories is modified, use the following:
 
 toml title="pyproject.toml" [tool.uv] cache-keys = [{ file = "**/*.toml" }]
 
@@ -101,7 +101,7 @@ uv provides a few different mechanisms for removing entries from the cache:
 
   uv cache prune removes all unused cache entries and all centralized project environments. For example, the cache directory may contain entries created in previous uv versions that are no longer necessary and can be safely removed. Centralized project environments are recreated as needed. uv cache prune is safe to run periodically, to keep the cache directory clean.
 
-By default, cache cleanup estimates the disk space reclaimed. Enable the cache-physical-space preview feature for a more accurate estimate that accounts for hardlinks and copy-on-write clones:
+By default, cache cleanup estimates the disk space reclaimed. Enable the cache-physical-space [preview feature](preview.md) for a more accurate estimate that accounts for hardlinks and copy-on-write clones:
 
 ```
 $ uv cache clean --preview-features cache-physical-space
@@ -109,7 +109,7 @@ $ uv cache clean --preview-features cache-physical-space
 
 If an entry’s allocated size cannot be measured, such as a compressed extent on Btrfs, uv reports a lower bound for the space reclaimed from the remaining entries. The preview feature is currently supported on macOS and Linux; other platforms continue reporting a coarser estimate of the space reclaimed.
 
-uv blocks cache-modifying operations while other uv commands are running. By default, those uv cache commands have a 5 min timeout waiting for other uv processes to terminate to avoid deadlocks. This timeout can be changed with UV_LOCK_TIMEOUT. In cases where it is known that no other uv processes are reading or writing from the cache, --force can be used to ignore the lock.
+uv blocks cache-modifying operations while other uv commands are running. By default, those uv cache commands have a 5 min timeout waiting for other uv processes to terminate to avoid deadlocks. This timeout can be changed with [UV_LOCK_TIMEOUT](../reference/environment.md#uv_lock_timeout). In cases where it is known that no other uv processes are reading or writing from the cache, --force can be used to ignore the lock.
 
 ## Caching in continuous integration
 
@@ -119,7 +119,7 @@ By default, uv caches both the wheels that it builds from source and the pre-bui
 
 However, in continuous integration environments, persisting pre-built wheels may be undesirable. With uv, it turns out that it’s often faster to omit pre-built wheels from the cache (and instead re-download them from the registry on each run). On the other hand, caching wheels that are built from source tends to be worthwhile, since the wheel building process can be expensive, especially for extension modules.
 
-To support this caching strategy, uv provides a uv cache prune --ci command, which removes all pre-built wheels and unzipped source distributions from the cache, but retains any wheels that were built from source. We recommend running uv cache prune --ci at the end of your continuous integration job to ensure maximum cache efficiency. For an example, see the GitHub integration guide.
+To support this caching strategy, uv provides a uv cache prune --ci command, which removes all pre-built wheels and unzipped source distributions from the cache, but retains any wheels that were built from source. We recommend running uv cache prune --ci at the end of your continuous integration job to ensure maximum cache efficiency. For an example, see the [GitHub integration guide](../guides/integration/github.md#caching).
 
 ## Cache directory
 
@@ -128,7 +128,7 @@ uv determines the cache directory according to, in order:
 - A temporary cache directory, if --no-cache was requested.
 -
 
-  The specific cache directory specified via --cache-dir, UV_CACHE_DIR, or tool.uv.cache-dir.
+  The specific cache directory specified via --cache-dir, UV_CACHE_DIR, or [tool.uv.cache-dir](../reference/settings.md#cache-dir).
 - A system-appropriate cache directory, e.g., $XDG_CACHE_HOME/uv or $HOME/.cache/uv on Unix and %LOCALAPPDATA%\uv\cache on Windows
 
 !!! note
