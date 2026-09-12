@@ -572,7 +572,24 @@ class Chunk(Record):
 
 
 class Symbol(Record):
-    """Symbol record v0: a code/docs definition site and its documentation refs."""
+    """Symbol record v0: where a name is defined, and the chunks that define it.
+
+    ``defined_in`` is a **naming** fact, not an editorial one: the most *direct*
+    site at which the corpus defines this name — a fence definition, a
+    definition-list term, or a heading that *is* the name, before one that frames
+    it in a phrase, and path order between equals.
+
+    It is deliberately not "where the thing is best documented". Roadmap 5.19
+    measured the three signals that could have ordered the sites and they
+    disagree with each other and with the judgments: on uv's four sites for
+    ``pyproject.toml``, prose volume picks a guide's tour entry, mention count
+    picks a third section, and path order picks the one a judged case grades
+    relevant here while picking a Renovate integration guide for ``uv.lock``.
+    Which page of a corpus is its reference and which is its tour is an editorial
+    fact about the whole corpus; a stage that sees one document at a time cannot
+    read it, so no field here claims to. Every site is in ``doc_refs``
+    (ADR-0091).
+    """
 
     schema_version: Literal["mycelium/symbol/v0"] = "mycelium/symbol/v0"
     symbol: SymbolId

@@ -39,9 +39,10 @@ from mycelium.symbols.code import (
 )
 from mycelium.symbols.docs import (
     DOC_LANGUAGE,
+    MAX_HEADING_WORDS,
     TERM_KIND,
     definition_terms,
-    heading_term,
+    heading_subject,
     identifier_like,
 )
 from mycelium.symbols.extract import (
@@ -70,6 +71,7 @@ __all__ = [
     "GRAMMARS",
     "HEADING",
     "MAX_FENCE_BYTES",
+    "MAX_HEADING_WORDS",
     "TERM_KIND",
     "CodeReference",
     "Extraction",
@@ -89,7 +91,7 @@ __all__ = [
     "grammar_fingerprint",
     "grammar_for",
     "grammar_statuses",
-    "heading_term",
+    "heading_subject",
     "identifier_like",
     "load_grammar",
     "missing_grammars",

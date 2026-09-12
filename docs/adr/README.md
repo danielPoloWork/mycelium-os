@@ -106,3 +106,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0088](0088-let-a-model-propose-line-numbers-and-slice-the-paste-ourselves.md) | Let a model propose line numbers, and slice the paste ourselves | Accepted |
 | [0089](0089-put-content-identity-in-the-citation-and-make-the-grammar-extensible.md) | Put content identity in the citation, and make the grammar extensible first | Accepted |
 | [0090](0090-project-a-sources-links-as-links-now-that-the-compiler-knows-who-asserted-them.md) | Project a source's links as links, now that the compiler knows who asserted them | Accepted |
+| [0091](0091-widen-the-heading-rule-and-refuse-to-guess-which-section-documents-a-name.md) | Widen the heading rule, and refuse to guess which section documents a name | Accepted |

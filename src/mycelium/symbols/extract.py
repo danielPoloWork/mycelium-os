@@ -31,7 +31,7 @@ from typing import Final
 from mycelium.graph import anchor_of
 from mycelium.sdk.types import Chunk, KirDocument, NodeKind
 from mycelium.symbols.code import MAX_FENCE_BYTES, grammar_for, load_grammar, read_fence
-from mycelium.symbols.docs import DOC_LANGUAGE, TERM_KIND, definition_terms, heading_term
+from mycelium.symbols.docs import DOC_LANGUAGE, TERM_KIND, definition_terms, heading_subject
 
 __all__ = [
     "CODE_FENCE",
@@ -74,6 +74,14 @@ class SymbolRef:
     locator, in which case the chunk anchor stands in."""
     anchor: str
     """The chunk anchor holding it — where a reader would find it."""
+    direct: bool = True
+    """Whether the syntax names the symbol as its own subject.
+
+    True for a fence definition, a definition-list term, and a heading that *is*
+    the name; False for a heading that frames it in a phrase (``## The
+    pyproject.toml``). Resolution prefers a direct site for ``defined_in``, so
+    widening which headings are read cannot move what a record already named
+    (roadmap 5.19, ADR-0091)."""
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -83,6 +91,7 @@ class SymbolRef:
             "source": self.source,
             "line": self.line,
             "anchor": self.anchor,
+            "direct": self.direct,
         }
 
 
@@ -104,6 +113,9 @@ def decode_symbols(raw: Iterable[Mapping[str, object]]) -> tuple[SymbolRef, ...]
             source=str(item.get("source", CODE_FENCE)),
             line=int(str(item.get("line", 0))),
             anchor=str(item.get("anchor", "")),
+            # A row written before roadmap 5.19 holds only sites that named their
+            # symbol outright, because that was the only shape the rule read.
+            direct=bool(item.get("direct", True)),
         )
         for item in raw
     )
@@ -199,13 +211,20 @@ def extract_symbols(kir: KirDocument, chunks: Sequence[Chunk], *, doc_path: str)
                     grammar.language, use.name, use.kind, CODE_FENCE, line, anchor
                 )
         elif node.kind is NodeKind.HEADING and node.text:
-            term = heading_term(node.text)
-            if term is None:
+            subject = heading_subject(node.text)
+            if subject is None:
                 continue
+            term, direct = subject
             line = _source_line(node.src.lines if node.src else None)
             found.append(
                 SymbolRef(
-                    DOC_LANGUAGE, term, TERM_KIND, HEADING, line, anchor_of(node, by_id, anchors)
+                    DOC_LANGUAGE,
+                    term,
+                    TERM_KIND,
+                    HEADING,
+                    line,
+                    anchor_of(node, by_id, anchors),
+                    direct=direct,
                 )
             )
         elif node.kind is NodeKind.PARAGRAPH and node.text:

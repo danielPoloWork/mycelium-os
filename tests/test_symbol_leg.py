@@ -43,7 +43,7 @@ from mycelium.retrieval import (
     symbol_lookup_ids,
 )
 from mycelium.store import SearchFilters, SqliteStore
-from mycelium.symbols import heading_term, identifier_like
+from mycelium.symbols import heading_subject, identifier_like
 
 # One document that defines things, and one that talks about them. `RetryPolicy`
 # is defined in a fence; `bus.config` is defined by a heading; the guide mentions
@@ -258,12 +258,30 @@ def test_the_lookup_is_exact_and_never_matches_a_tail(store: SqliteStore) -> Non
     assert all(not hit.via_symbol for hit in outcome.hits)
 
 
-def test_one_rule_decides_what_a_name_looks_like() -> None:
-    """The heading rule that *creates* a symbol and the query rule that *finds*
-    one are the same function, so they cannot drift apart and leave the leg
-    unable to reach what the extractor wrote (ADR-0080)."""
+def test_every_name_a_heading_defines_is_a_name_a_query_can_find() -> None:
+    """The invariant ADR-0080 is actually about, stated so 5.19's widening
+    cannot break it: the extractor may read more *headings* than the planner
+    would route, but every *name* it writes is one `identifier_like` accepts —
+    so the leg can always reach what the extractor defined (ADR-0091).
+    """
+    headings = (
+        "RetryPolicy",
+        "uv.lock",
+        "mycelium_neighbors",
+        "The pyproject.toml",
+        "pylock.toml format",
+        "Using requirements.in",
+        "Retries",
+        "Event Bus",
+        "Learn more about uv.",
+    )
+    for text in headings:
+        subject = heading_subject(text)
+        assert subject is None or identifier_like(subject[0]), text
+    # And a one-word heading is still decided by that rule alone, which is the
+    # half of the old equivalence that the widening leaves untouched.
     for text in ("RetryPolicy", "uv.lock", "mycelium_neighbors", "Retries", "Event Bus"):
-        assert (heading_term(text) is not None) is identifier_like(text)
+        assert (heading_subject(text) is not None) is identifier_like(text)
 
 
 def test_a_name_nothing_defines_offers_nothing(store: SqliteStore) -> None:

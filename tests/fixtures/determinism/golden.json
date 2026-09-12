@@ -1,10 +1,10 @@
 {
   "artifact_digests": {
-    "chunks": "sha256:cda748b645148bbf6849535f5e220edbfa0ad5d28a42812e7874f5e2b1dc64d5",
-    "documents": "sha256:bf9bafaa3d57d34136e8f1581b8d69a32d5595d10577ed3317b75cdf192934e5",
-    "edges": "sha256:4e39e490b235d71b7cbf6ba39c5eac22c8e73da24df252703353c41bf57dc1b5",
+    "chunks": "sha256:1b9a1767d631f94117cad51ab7e38fb0a8cfbee482df35c9813f5b072f363928",
+    "documents": "sha256:19e74f8a7d4e7f4f13755440edc217986fa60a0b14b011cedd4f53d56b2b7c09",
+    "edges": "sha256:bc5a291e281c3acf0168128eaf565eb624c475c182b282f4793f291924641044",
     "entities": "sha256:8d775164de12dff80bd40111e148e81ea53f423d2d899fc724b0258aeff9f467",
-    "symbols": "sha256:2b8bed4e739e2408846a22fbf4c43b4bb6e2044890299952ce0011f06fae6033"
+    "symbols": "sha256:6190c141e5632035779a9709ec188f0ffe40f90d969454d1782071f68dd4974f"
   },
   "chunks": [
     {
@@ -391,6 +391,20 @@
       "tokens": 31
     },
     {
+      "anchor": "knowledge/verified/retries.md#the-retrypolicy/0",
+      "chunk_digest": "sha256:32e65b09eca57a59acd0d8cf858b2e71ff45485e8e6f1bb8f54188574d2394ee",
+      "heading_path": [
+        "Retry Policy",
+        "The RetryPolicy"
+      ],
+      "kind": "prose",
+      "lines": [
+        56,
+        62
+      ],
+      "tokens": 77
+    },
+    {
       "anchor": "knowledge/verified/retries.md#worked-example/0",
       "chunk_digest": "sha256:d41e08dde8da8ee8384105a7574c6af9b9196dbd6c877d1613eadc14ca00a8f4",
       "heading_path": [
@@ -407,9 +421,9 @@
   ],
   "config_digest": "sha256:26e3dc83dc90a6ed3196c3d859e09a3bc2601fe1c6009f64951e87f5fec561e4",
   "counts": {
-    "chunks": 29,
+    "chunks": 30,
     "documents": 8,
-    "edges": 24,
+    "edges": 25,
     "entities": 8,
     "quarantined": 0,
     "symbols": 8,
@@ -548,14 +562,14 @@
       "verification_status": "verified"
     },
     {
-      "content_digest": "sha256:20ae8dd605093ca1b5fb1dd40018b45c6d8201919dd4692371198828b4c4892e",
+      "content_digest": "sha256:49dc8b4b881fec0d508d64a46856ac0f8ad74a40a969be0d098572c30c6bf9c5",
       "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/verified/retries.md",
       "stats": {
-        "chunks": 6,
-        "headings": 4,
+        "chunks": 7,
+        "headings": 5,
         "links_out": 1,
-        "tokens": 189
+        "tokens": 266
       },
       "tags": [
         "delivery",
@@ -802,6 +816,17 @@
     {
       "from": "doc:knowledge/verified/retries.md",
       "provenance": {
+        "anchor": "knowledge/verified/retries.md#the-retrypolicy/0",
+        "kind": "heading"
+      },
+      "status": "extracted",
+      "to": "sym:doc:RetryPolicy",
+      "type": "defines",
+      "weight": 1.0
+    },
+    {
+      "from": "doc:knowledge/verified/retries.md",
+      "provenance": {
         "anchor": "knowledge/verified/retries.md#configuration/0",
         "kind": "code_fence"
       },
@@ -943,7 +968,8 @@
     {
       "defined_in": "knowledge/verified/api.md#L14",
       "doc_refs": [
-        "knowledge/verified/api.md#retrypolicy/0"
+        "knowledge/verified/api.md#retrypolicy/0",
+        "knowledge/verified/retries.md#the-retrypolicy/0"
       ],
       "kind": "term",
       "symbol": "sym:doc:RetryPolicy"

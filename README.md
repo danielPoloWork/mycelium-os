@@ -281,19 +281,25 @@ fills the `symbols` table from both. A code fence is read by its grammar's **own
 the one GitHub's code navigation runs, shipped inside each tree-sitter wheel — for nine languages
 (Python, JavaScript, TypeScript and TSX, Rust, Go, Java, C, C++, Ruby), and every definition is
 qualified by its nesting, so `def delay` inside `class RetryPolicy` is the same symbol whether the
-fence is Python, Rust or Java. A heading whose text *is* an identifier (`## uv.lock`,
-`### mycelium_neighbors`) defines a documentation term, and so does a definition list — the
-Markdown construct that carries the name, measured at zero occurrences across the three evaluation
-corpora and supported anyway, because it is the syntax.
+fence is Python, Rust or Java. A heading defines the documentation term it is *about* — the name
+itself (`## uv.lock`), or the name and one framing word (`## The pyproject.toml`,
+`## pylock.toml format`) — and so does a definition list, the Markdown construct that carries the
+name, measured at zero occurrences across the three evaluation corpora and supported anyway,
+because it is the syntax.
 
 Each record says where the thing is defined — the Markdown line, `docs/api.md#L20` — and which
 chunks define it; it is in the export bundle's `symbols.jsonl` and in the manifest's counts and
-digests. The grammars are an optional install (`pip install mycelium-os[symbols]`); without them a
+digests. `defined_in` is deliberately a *naming* fact and not an editorial one: it is the most
+direct site at which the corpus defines the name, never a guess at which section documents it
+best. Roadmap 5.19 tried to make it that guess and could not — on the four sections uv has for
+`pyproject.toml`, prose volume, mention count and path order each pick a different one, and the
+section a judge grades relevant is the shortest and mentions the name least. Every site is in
+`doc_refs` instead, where a reader can weigh them. The grammars are an optional install (`pip install mycelium-os[symbols]`); without them a
 build still compiles, and its snapshot says `degraded: symbols` and names the extra.
 
 The yields are stated rather than implied, because they are modest: this repository's own
 documentation defines **3** symbols (all headings — its four Python fences assign and call), the
-vendored uv documentation **14** (7 terms such as `uv.lock` and `.python-version`, 5 Python
+vendored uv documentation **23** (16 terms such as `uv.lock` and `pyproject.toml`, 5 Python
 functions, a Rust module and its method). Documentation fences mostly *use* rather than *define*;
 the table earns its keep on a corpus that documents an API with definitions in fences, which is
 what the spec wrote it for
