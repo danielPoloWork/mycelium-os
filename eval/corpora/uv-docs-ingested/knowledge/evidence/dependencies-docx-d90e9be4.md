@@ -54,7 +54,7 @@ $ uv add "httpx @ git+https://github.com/encode/httpx"
 
 The pyproject.toml will include a Git source entry:
 
-```toml title=“pyproject.toml” hl_lines=“8-9” [project] name = “example” version = “0.1.0” dependencies = [ “httpx”,]
+\```toml title=“pyproject.toml” hl_lines=“8-9” [project] name = “example” version = “0.1.0” dependencies = [ “httpx”,]
 
 [tool.uv.sources] httpx = { git = “https://github.com/encode/httpx” }
 
@@ -162,7 +162,7 @@ The tool.uv.sources table extends the standard dependency tables with alternativ
 
 Dependency sources add support for common patterns that are not supported by the project.dependencies standard, like editable installations and relative paths. For example, to install foo from a directory relative to the project root:
 
-```toml title=“pyproject.toml” hl_lines=“7” [project] name = “example” version = “0.1.0” dependencies = [“foo”]
+\```toml title=“pyproject.toml” hl_lines=“7” [project] name = “example” version = “0.1.0” dependencies = [“foo”]
 
 [tool.uv.sources] foo = { path = “./packages/foo” }
 
@@ -192,7 +192,7 @@ $ uv add torch --index pytorch=https://download.pytorch.org/whl/cpu
 
 uv will store the index in [[tool.uv.index]] and add a [tool.uv.sources] entry:
 
-```toml title=“pyproject.toml” [project] dependencies = [“torch”]
+\```toml title=“pyproject.toml” [project] dependencies = [“torch”]
 
 [tool.uv.sources] torch = { index = “pytorch” }
 
@@ -234,7 +234,7 @@ $ # Install over SSH.
 $ uv add git+ssh://git@github.com/encode/httpx
 ```
 
-```toml title=“pyproject.toml” hl_lines=“5” [project] dependencies = [“httpx”]
+\```toml title=“pyproject.toml” hl_lines=“5” [project] dependencies = [“httpx”]
 
 [tool.uv.sources] httpx = { git = “https://github.com/encode/httpx” }
 
@@ -246,7 +246,7 @@ Specific Git references can be requested, e.g., a tag:
 $ uv add git+https://github.com/encode/httpx --tag 0.27.0
 ````
 
-```toml title=“pyproject.toml” hl_lines=“7” [project] dependencies = [“httpx”]
+\```toml title=“pyproject.toml” hl_lines=“7” [project] dependencies = [“httpx”]
 
 [tool.uv.sources] httpx = { git = “https://github.com/encode/httpx”, tag = “0.27.0” }
 
@@ -258,7 +258,7 @@ Or, a branch:
 $ uv add git+https://github.com/encode/httpx --branch main
 ````
 
-```toml title=“pyproject.toml” hl_lines=“7” [project] dependencies = [“httpx”]
+\```toml title=“pyproject.toml” hl_lines=“7” [project] dependencies = [“httpx”]
 
 [tool.uv.sources] httpx = { git = “https://github.com/encode/httpx”, branch = “main” }
 
@@ -270,7 +270,7 @@ Or, a revision (commit):
 $ uv add git+https://github.com/encode/httpx --rev 326b9431c761e1ef1e00b9f760d1f654c8db48c6
 ````
 
-```toml title=“pyproject.toml” hl_lines=“7” [project] dependencies = [“httpx”]
+\```toml title=“pyproject.toml” hl_lines=“7” [project] dependencies = [“httpx”]
 
 [tool.uv.sources] httpx = { git = “https://github.com/encode/httpx”, rev = “326b9431c761e1ef1e00b9f760d1f654c8db48c6” }
 
@@ -282,7 +282,7 @@ A `subdirectory` may be specified if the package isn't in the repository root:
 $ uv add git+https://github.com/langchain-ai/langchain#subdirectory=libs/langchain
 ````
 
-```toml title=“pyproject.toml” [project] dependencies = [“langchain”]
+\```toml title=“pyproject.toml” [project] dependencies = [“langchain”]
 
 [tool.uv.sources] langchain = { git = “https://github.com/langchain-ai/langchain”, subdirectory = “libs/langchain” }
 
@@ -295,7 +295,7 @@ objects will not be fetched.
 $ uv add --lfs git+https://github.com/astral-sh/lfs-cowsay
 ````
 
-```toml title=“pyproject.toml” [project] dependencies = [“lfs-cowsay”]
+\```toml title=“pyproject.toml” [project] dependencies = [“lfs-cowsay”]
 
 [tool.uv.sources] lfs-cowsay = { git = “https://github.com/astral-sh/lfs-cowsay”, lfs = true }
 
@@ -325,7 +325,7 @@ $ uv add "https://files.pythonhosted.org/packages/5c/2d/3da5bdf4408b8b2800061c33
 
 Will result in a pyproject.toml with:
 
-```toml title=“pyproject.toml” hl_lines=“5” [project] dependencies = [“httpx”]
+\```toml title=“pyproject.toml” hl_lines=“5” [project] dependencies = [“httpx”]
 
 [tool.uv.sources] httpx = { url = “https://files.pythonhosted.org/packages/5c/2d/3da5bdf4408b8b2800061c339f240c1802f2e82d55e50bd39c5a881f47f0/httpx-0.27.0.tar.gz” }
 
@@ -350,7 +350,7 @@ $ uv add /example/foo-0.1.0-py3-none-any.whl
 
 Will result in a pyproject.toml with:
 
-```toml title=“pyproject.toml” [project] dependencies = [“foo”]
+\```toml title=“pyproject.toml” [project] dependencies = [“foo”]
 
 [tool.uv.sources] foo = { path = “/example/foo-0.1.0-py3-none-any.whl” }
 
@@ -384,7 +384,7 @@ $ uv add --editable ../projects/bar/
 
 Which will result in a pyproject.toml with:
 
-```toml title=“pyproject.toml” [project] dependencies = [“bar”]
+\```toml title=“pyproject.toml” [project] dependencies = [“bar”]
 
 [tool.uv.sources] bar = { path = “../projects/bar”, editable = true }
 
@@ -409,7 +409,7 @@ To source a dependency from a different workspace, `workspace` can also be a pat
 foo = { workspace = "../other-workspace" }
 ````
 
-```toml title=“pyproject.toml” [project] dependencies = [“foo==0.1.0”]
+\```toml title=“pyproject.toml” [project] dependencies = [“foo==0.1.0”]
 
 [tool.uv.sources] foo = { workspace = true }
 
@@ -441,7 +441,7 @@ You can specify multiple sources for a single dependency by providing a list of 
 
 For example, to pull in different httpx tags on macOS vs. Linux:
 
-```toml title=“pyproject.toml” hl_lines=“6-7” [project] dependencies = [“httpx”]
+\```toml title=“pyproject.toml” hl_lines=“6-7” [project] dependencies = [“httpx”]
 
 [tool.uv.sources] httpx = [ { git = “https://github.com/encode/httpx”, tag = “0.27.2”, marker = “sys_platform == ‘darwin’” }, { git = “https://github.com/encode/httpx”, tag = “0.24.1”, marker = “sys_platform == ‘linux’” },]
 
@@ -489,7 +489,7 @@ Optional dependencies are specified in [project.optional-dependencies], a TOML t
 
 Optional dependencies can have entries in tool.uv.sources the same as normal dependencies.
 
-```toml title=“pyproject.toml” [project] name = “pandas” version = “1.0.0”
+\```toml title=“pyproject.toml” [project] name = “pandas” version = “1.0.0”
 
 [project.optional-dependencies] plot = [ “matplotlib>=3.6.3”] excel = [ “odfpy>=1.4.1”, “openpyxl>=3.1.0”, “python-calamine>=0.1.7”, “pyxlsb>=1.0.10”, “xlrd>=2.0.1”, “xlsxwriter>=3.0.5”]
 
@@ -510,7 +510,7 @@ unless you explicitly [declare them as conflicting](./config.md#conflicting-depe
 
 Sources can also be declared as applying only to a specific optional dependency. For example, to pull torch from different PyTorch indexes based on an optional cpu or gpu extra:
 
-```toml title=“pyproject.toml” [project] dependencies = []
+\```toml title=“pyproject.toml” [project] dependencies = []
 
 [project.optional-dependencies] cpu = [ “torch”,] gpu = [ “torch”,]
 
@@ -607,7 +607,7 @@ By default, dependency groups must be compatible with your project’s requires-
 
 If a dependency group requires a different range of Python versions than your project, you can specify a requires-python for the group in [tool.uv.dependency-groups], e.g.:
 
-```toml title=“pyproject.toml” hl_lines=“9-10” [project] name = “example” version = “0.0.0” requires-python = “>=3.10”
+\```toml title=“pyproject.toml” hl_lines=“9-10” [project] name = “example” version = “0.0.0” requires-python = “>=3.10”
 
 [dependency-groups] dev = [“pytest”]
 
@@ -642,7 +642,7 @@ If a project is structured as [Python package](config.md#build-systems), it may 
 
 For example, if a project uses setuptools as its build backend, it should declare setuptools as a build dependency:
 
-```toml title=“pyproject.toml” [project] name = “pandas” version = “0.1.0”
+\```toml title=“pyproject.toml” [project] name = “pandas” version = “0.1.0”
 
 [build-system] requires = [“setuptools>=42”] build-backend = “setuptools.build_meta”
 
@@ -698,7 +698,7 @@ A dependency with a path source can be virtual if it explicitly sets [tool.uv.pa
 
 To treat a dependency as virtual, set package = false on the source:
 
-```toml title=“pyproject.toml” [project] dependencies = [“bar”]
+\```toml title=“pyproject.toml” [project] dependencies = [“bar”]
 
 [tool.uv.sources] bar = { path = “../projects/bar”, package = false }
 
@@ -719,7 +719,7 @@ Similarly, a dependency with a workspace source can be virtual if it explicitly 
 
 Workspace members that are not dependencies can be virtual by default, e.g., if the parent pyproject.toml is:
 
-```toml title=“pyproject.toml” [project] name = “parent” version = “1.0.0” dependencies = []
+\```toml title=“pyproject.toml” [project] name = “parent” version = “1.0.0” dependencies = []
 
 [tool.uv.workspace] members = [“child”]
 
@@ -738,7 +738,7 @@ Then the child workspace member would not be installed, but the transitive depen
 
 In contrast, if the parent declared a dependency on child:
 
-```toml title=“pyproject.toml” [project] name = “parent” version = “1.0.0” dependencies = [“child”]
+\```toml title=“pyproject.toml” [project] name = “parent” version = “1.0.0” dependencies = [“child”]
 
 [tool.uv.sources] child = { workspace = true }
 

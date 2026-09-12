@@ -32,7 +32,7 @@ project
 
 Where the pyproject.toml contains:
 
-```toml title="pyproject.toml" [project] name = "uv-aws-lambda-example" version = "0.1.0" requires-python = ">=3.13" dependencies = [ # FastAPI is a modern web framework for building APIs with Python. "fastapi", # Mangum is a library that adapts ASGI applications to AWS Lambda and API Gateway. "mangum",]
+\```toml title="pyproject.toml" [project] name = "uv-aws-lambda-example" version = "0.1.0" requires-python = ">=3.13" dependencies = [ # FastAPI is a modern web framework for building APIs with Python. "fastapi", # Mangum is a library that adapts ASGI applications to AWS Lambda and API Gateway. "mangum",]
 
 [dependency-groups] dev = [ # In development mode, include the FastAPI development server. "fastapi[standard]>=0.115",]
 
@@ -73,7 +73,7 @@ We'll follow the principles outlined in the [Docker guide](docker.md) (in partic
 
 In the first stage, we'll populate a single directory with all application code and dependencies. In the second stage, we'll copy this directory over to the final image, omitting the build tools and other unnecessary files.
 
-```dockerfile title="Dockerfile" FROM ghcr.io/astral-sh/uv:0.12.7 AS uv
+\```dockerfile title="Dockerfile" FROM ghcr.io/astral-sh/uv:0.12.7 AS uv
 
 # First, bundle the dependencies into the task root.
 
@@ -240,7 +240,7 @@ $ uv add ./library
 
 Running uv init within the project directory will automatically convert project to a workspace and add library as a workspace member:
 
-```toml title="pyproject.toml" [project] name = "uv-aws-lambda-example" version = "0.1.0" requires-python = ">=3.13" dependencies = [ # FastAPI is a modern web framework for building APIs with Python. "fastapi", # A local library. "library", # Mangum is a library that adapts ASGI applications to AWS Lambda and API Gateway. "mangum",]
+\```toml title="pyproject.toml" [project] name = "uv-aws-lambda-example" version = "0.1.0" requires-python = ">=3.13" dependencies = [ # FastAPI is a modern web framework for building APIs with Python. "fastapi", # A local library. "library", # Mangum is a library that adapts ASGI applications to AWS Lambda and API Gateway. "mangum",]
 
 [dependency-groups] dev = [ # In development mode, include the FastAPI development server. "fastapi[standard]",]
 
@@ -282,7 +282,7 @@ And confirm that opening http://127.0.0.1:8000/ in a web browser displays, "Hell
 
 Finally, we'll update the Dockerfile to include the local library in the deployment package:
 
-```dockerfile title="Dockerfile" FROM ghcr.io/astral-sh/uv:0.12.7 AS uv
+\```dockerfile title="Dockerfile" FROM ghcr.io/astral-sh/uv:0.12.7 AS uv
 
 # First, bundle the dependencies into the task root.
 

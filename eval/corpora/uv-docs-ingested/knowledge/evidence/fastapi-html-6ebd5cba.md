@@ -86,7 +86,7 @@ Test the app by opening http://127.0.0.1:8000/?token=jessica in a web browser.
 
 To deploy the FastAPI application with Docker, you can use the following Dockerfile:
 
-```dockerfile title="Dockerfile" FROM python:3.12-slim
+\```dockerfile title="Dockerfile" FROM python:3.12-slim
 
 # Install uv.
 

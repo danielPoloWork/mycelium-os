@@ -13,7 +13,7 @@ For use with GitHub Actions, we recommend the official [astral-sh/setup-uv](http
 
 To install the latest version of uv:
 
-```yaml title="example.yml" hl_lines="11 12" name: Example
+\```yaml title="example.yml" hl_lines="11 12" name: Example
 
 jobs: uv-example: name: python runs-on: ubuntu-latest
 
@@ -50,7 +50,7 @@ jobs:
 
 Python can be installed with the python install command:
 
-```yaml title="example.yml" hl_lines="14 15" name: Example
+\```yaml title="example.yml" hl_lines="14 15" name: Example
 
 jobs: uv-example: name: python runs-on: ubuntu-latest
 
@@ -97,7 +97,7 @@ jobs:
 
 Or, specify the pyproject.toml file to ignore the pin and use the latest version compatible with the project's requires-python constraint:
 
-```yaml title="example.yml" hl_lines="14" name: Example
+\```yaml title="example.yml" hl_lines="14" name: Example
 
 jobs: uv-example: name: python runs-on: ubuntu-latest
 
@@ -152,7 +152,7 @@ yaml title="example.yml" hl_lines="12" jobs: build: name: continuous-integration
 
 Once uv and Python are installed, the project can be installed with uv sync and commands can be run in the environment with uv run:
 
-```yaml title="example.yml" hl_lines="15 17-22" name: Example
+\```yaml title="example.yml" hl_lines="15 17-22" name: Example
 
 jobs: uv-example: name: python runs-on: ubuntu-latest
 
@@ -194,7 +194,7 @@ persisting the cache:
 
 Alternatively, you can manage the cache manually with the actions/cache action:
 
-```yaml title="example.yml" jobs: install_job: env: # Configure a constant location for the uv cache UV_CACHE_DIR: /tmp/.uv-cache
+\```yaml title="example.yml" jobs: install_job: env: # Configure a constant location for the uv cache UV_CACHE_DIR: /tmp/.uv-cache
 
 ```
 steps:
@@ -308,7 +308,7 @@ permissions with the building step. This reduces the surface for supply chain at
 
 First, add a release workflow to your project:
 
-```yaml title=".github/workflows/release.yml" name: "Publish release to PyPI"
+\```yaml title=".github/workflows/release.yml" name: "Publish release to PyPI"
 
 on: push: tags: # Publish on version tags, e.g. v0.1.0 - "v[0-9]+.[0-9]+.[0-9]+" - "v[0-9]+.[0-9]+.[0-9]+rc[0-9]+" - "v[0-9]+.[0-9]+.[0-9]+[ab][0-9]+"
 

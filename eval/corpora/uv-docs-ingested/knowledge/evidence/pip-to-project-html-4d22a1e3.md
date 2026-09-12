@@ -111,7 +111,7 @@ $ pip install -r requirements.txt
 
 The requirements file format can only describe a single set of dependencies at once. This means if you have additional groups of dependencies, such as development dependencies, they need separate files. For example, we'll create a -dev dependency file:
 
-```requirements title="requirements-dev.in" -r requirements.in -c requirements.txt
+\```requirements title="requirements-dev.in" -r requirements.in -c requirements.txt
 
 pytest
 
@@ -241,7 +241,7 @@ The pyproject.toml is a standardized file for Python project metadata. It replac
 
 For example, the requirements.in and requirements-dev.in files above can be translated to a pyproject.toml as follows:
 
-```toml title="pyproject.toml" [project] name = "example" version = "0.0.1" dependencies = [ "fastapi", "pydantic>2"]
+\```toml title="pyproject.toml" [project] name = "example" version = "0.0.1" dependencies = [ "fastapi", "pydantic>2"]
 
 [dependency-groups] dev = ["pytest"]
 
@@ -364,7 +364,7 @@ requirements title="requirements.in" ./path-dep -e ./editable-path-dep git-dep @
 
 uv will map them to [dependency sources](../../concepts/projects/dependencies.md#dependency-sources) in the [tool.uv.sources] table of the pyproject.toml:
 
-```toml title="pyproject.toml" [project] dependencies = [ "path-dep", "editable-path-dep", "git-dep",]
+\```toml title="pyproject.toml" [project] dependencies = [ "path-dep", "editable-path-dep", "git-dep",]
 
 [tool.uv.sources] path-dep = { path = "./path-dep" } editable-path-dep = { path = "./editable-path-dep", editable = true } git-dep = { git = "https://github.com/astral-sh/git-dep" }
 

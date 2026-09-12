@@ -22,7 +22,7 @@ uv and Coiled.
 
 We'll use the following script as an example:
 
-```python title="process.py" hl_lines="1-8" # /// script # requires-python = ">=3.12" # dependencies = [ # "pandas", # "pyarrow", # "s3fs", # ] # ///
+\```python title="process.py" hl_lines="1-8" # /// script # requires-python = ">=3.12" # dependencies = [ # "pandas", # "pyarrow", # "s3fs", # ] # ///
 
 import pandas as pd
 
@@ -65,7 +65,7 @@ You'll be prompted to create a Coiled account if you don't already have one - it
 
 To instruct Coiled to run the script on a virtual machine on AWS, add two comments to the top:
 
-```python title="process.py" hl_lines="1-2" # COILED container ghcr.io/astral-sh/uv:debian-slim # COILED region us-east-2
+\```python title="process.py" hl_lines="1-2" # COILED container ghcr.io/astral-sh/uv:debian-slim # COILED region us-east-2
 
 # /// script
 

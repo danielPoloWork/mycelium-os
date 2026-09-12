@@ -32,6 +32,25 @@ anchor and every retrieval score where it was. Images are not rendered (a
 picture's target is a parser-internal reference, and its alt text is already
 prose) and tags need nothing (their ``#`` is already in the text).
 
+**A line that would open block structure is escaped, and only that**
+(roadmap 5.22, ADR-0093). KIR's text is verbatim, and a source whose upstream
+rendering flattened a code block into prose hands this module a paragraph whose
+first line is ```` ```toml ````. Written out as it stands, the compiler reads a
+fence opener with no closing partner and everything to the end of the document
+becomes one code block — headings, prose and links, all of it
+([BUG-0024](../../../docs/bugs/2026/09/BUG-0024-prose-that-opens-a-fence-swallows-the-rest-of-a-projection.md)).
+So :func:`neutralise` puts a backslash in front of the shapes that open a block,
+on every line of a projected paragraph. That is the chats projector's rule
+(ADR-0077) applied where it is four items older and was never asked for: a
+source's prose does not get to assert the document's structure, any more than it
+gets to assert a link (threat model B11).
+
+The escape is free, and that was measured rather than assumed: CommonMark reads
+``\\##`` as a literal ``##``, so the *indexed text* carries the original
+characters and only the block-level meaning is gone. Every shape below
+round-trips to the byte, which is what lets this land without moving a single
+judged anchor outside the four documents it repairs.
+
 **Frontmatter carries provenance and nothing else.** Four contract fields belong
 to `mycelium ingest` (spec 03 §3): `origin`, `source`, `source_trust`,
 `generated_by` — plus `source_digest`, added at 4.3 so a projected document can
@@ -61,13 +80,36 @@ from mycelium.sdk.types import (
     SourceTrust,
 )
 
-__all__ = ["EVIDENCE_DIRNAME", "Projection", "evidence_path", "project"]
+__all__ = ["EVIDENCE_DIRNAME", "Projection", "evidence_path", "neutralise", "project"]
 
 EVIDENCE_DIRNAME: Final = "evidence"
 """Under `knowledge/`: the folder that *is* the verification status (D-021)."""
 
 _HEADING_MARK: Final = "#"
 _MAX_HEADING = 6
+
+_FENCE: Final = re.compile(r"^(?:`{3,}|~{3,})")
+"""An unmatched fence opener runs to the end of the document, which is the shape
+BUG-0024 was reported for and the only one that can swallow a whole projection."""
+
+_ATX: Final = re.compile(r"^#{1,6}(?:\s|$)")
+"""``## X`` — a heading the source's prose did not author. The space is required,
+so ``#tag`` is left alone: it is an inline tag whose ``#`` is already in the text,
+and the projector has always let those through."""
+
+_BULLET: Final = re.compile(r"^[-*+](?:\s|$)")
+
+_ORDERED: Final = re.compile(r"^(\d{1,9})([.)])(?=\s|$)")
+r"""Escaped on its *punctuation* — ``1\. `` — because a backslash is only an escape
+before ASCII punctuation, so ``\1.`` would leave a literal backslash in the text."""
+
+_QUOTE_MARK: Final = re.compile(r"^>")
+
+_RULE: Final = re.compile(r"^(?:-+|=+|_{3,}|\*{3,})\s*$")
+"""A thematic break, or a setext underline — which is worse than it looks: it makes
+a *heading* out of the lines above it, so a line of dashes in projected prose can
+promote the paragraph before it. Any run of ``-`` or ``=`` underlines; a break
+needs three."""
 _SLUG_STRIP: Final = re.compile(r"[^a-z0-9]+")
 
 
@@ -341,6 +383,39 @@ def _destination(target: str) -> str:
     return escaped
 
 
+def neutralise(text: str) -> str:
+    """Escape the lines of `text` that would open block structure (roadmap 5.22).
+
+    Applied to a projected paragraph — every line of it, not only the first.
+    Measured on the three corpora: each of these shapes interrupts a paragraph
+    mid-block as readily as it opens one, so a rule for the first line alone
+    would have left `dependencies-docx` exactly as broken as it was.
+
+    What is deliberately *not* escaped: an inline tag (``#tag``, no space — its
+    ``#`` is already in the text and the projector has always carried it), raw
+    HTML (the Profile disables it, so ``<div>`` is already prose), and an indented
+    line, which no backslash can neutralise — four leading spaces are a code block
+    whatever precedes them. The last one is a gap rather than a decision, and it
+    is empty on all three corpora: ADR-0093 records the measurement.
+    """
+    return "\n".join(_neutralise_line(line) for line in text.split("\n"))
+
+
+def _neutralise_line(line: str) -> str:
+    ordered = _ORDERED.match(line)
+    if ordered is not None:
+        return f"{ordered.group(1)}\\{ordered.group(2)}{line[ordered.end() :]}"
+    if (
+        _FENCE.match(line)
+        or _ATX.match(line)
+        or _BULLET.match(line)
+        or _QUOTE_MARK.match(line)
+        or _RULE.match(line)
+    ):
+        return "\\" + line
+    return line
+
+
 def _block(  # noqa: C901 - one branch per node kind reads better than a dispatch table
     node: KirNode, children: Mapping[str, list[KirNode]], tally: _Tally
 ) -> str:
@@ -386,7 +461,10 @@ def _block(  # noqa: C901 - one branch per node kind reads better than a dispatc
     if node.kind is NodeKind.SECTION:
         return ""  # a wrapper; its children are emitted in their own right
 
-    return _with_references(text, node, children, tally)
+    # The paragraph path, and every kind KIR models as prose. References are
+    # rendered first and the escape runs over the result, so a label that begins
+    # a line is already wrapped in `[` by the time the shapes are tested.
+    return neutralise(_with_references(text, node, children, tally))
 
 
 def _opaque(node: KirNode) -> str:

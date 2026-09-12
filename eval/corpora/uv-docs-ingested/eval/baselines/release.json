@@ -1,45 +1,45 @@
 {
   "grep": {
-    "blessed_from_snapshot": "01M29G19JZMY8MP7CCRV6GDZ41",
+    "blessed_from_snapshot": "01M2AM3SN94PAEK4NATX3N8132",
     "cases": 25,
-    "cases_digest": "sha256:aeaaa6451029f59e66b11ef5fa60a2868146732fa2a22317e12210a08c1c3395",
-    "content_digest": "sha256:6213656348abbce9ef0479468721547a6986f66745d6e46caec5470c5f619788",
-    "corpus_digest": "sha256:2d8b622b744d364db065916e07b37d52308ffb67facee678bb9f6c00c5a3fe1e",
-    "overall_ndcg_at_10": 0.486525,
+    "cases_digest": "sha256:09829a987b44b83c6ec2ca3fbf2b87333c9e88cb74448b55f65622808918f83d",
+    "content_digest": "sha256:353dd2783776a517d03ce3a310e3bc5d0c6bd02db7a3927fbd69ee72075702ab",
+    "corpus_digest": "sha256:985d587b81619badac38cca25f9ef014547573419bdce2ca5c9637d32c47fb9d",
+    "overall_ndcg_at_10": 0.556448,
     "per_case": {
       "conceptual": {
         "u-1002": 0.63093,
         "u-1005": 1.0,
-        "u-1016": 0.622446,
+        "u-1016": 0.968015,
         "u-1023": 0.0
       },
       "exact": {
-        "u-1003": 0.0,
+        "u-1003": 1.0,
         "u-1015": 1.0,
         "u-1018": 0.30103,
         "u-1020": 1.0,
-        "u-1021": 0.63093
+        "u-1021": 0.430677
       },
       "fact": {
-        "u-1001": 0.106423,
-        "u-1004": 1.0,
+        "u-1001": 0.386853,
+        "u-1004": 0.289065,
         "u-1006": 1.0,
         "u-1008": 0.30103,
         "u-1010": 0.787155,
         "u-1013": 0.0,
-        "u-1014": 0.289065
+        "u-1014": 0.30103
       },
       "relationship": {
-        "u-1009": 0.578764,
+        "u-1009": 0.917319,
         "u-1010": 0.787155,
-        "u-1022": 0.393609,
+        "u-1022": 0.493236,
         "u-1024": 0.0
       },
       "symbol": {
-        "u-1007": 0.339009,
-        "u-1017": 0.63093,
-        "u-1019": 0.578764,
-        "u-1025": 0.0
+        "u-1007": 0.787155,
+        "u-1017": 0.430677,
+        "u-1019": 0.45866,
+        "u-1025": 0.315465
       },
       "unanswerable": {
         "u-1011": 0.0,
@@ -47,11 +47,11 @@
       }
     },
     "per_slice": {
-      "conceptual": 0.563344,
-      "exact": 0.586392,
-      "fact": 0.497667,
-      "relationship": 0.439882,
-      "symbol": 0.387176,
+      "conceptual": 0.649736,
+      "exact": 0.746341,
+      "fact": 0.437876,
+      "relationship": 0.549427,
+      "symbol": 0.497989,
       "unanswerable": 0.0
     },
     "toolchain": {
@@ -60,31 +60,31 @@
     }
   },
   "mycelium": {
-    "blessed_from_snapshot": "01M29G19JZMY8MP7CCRV6GDZ41",
+    "blessed_from_snapshot": "01M2AM3SN94PAEK4NATX3N8132",
     "cases": 25,
-    "cases_digest": "sha256:aeaaa6451029f59e66b11ef5fa60a2868146732fa2a22317e12210a08c1c3395",
-    "content_digest": "sha256:6213656348abbce9ef0479468721547a6986f66745d6e46caec5470c5f619788",
-    "corpus_digest": "sha256:2d8b622b744d364db065916e07b37d52308ffb67facee678bb9f6c00c5a3fe1e",
-    "overall_ndcg_at_10": 0.637788,
+    "cases_digest": "sha256:09829a987b44b83c6ec2ca3fbf2b87333c9e88cb74448b55f65622808918f83d",
+    "content_digest": "sha256:353dd2783776a517d03ce3a310e3bc5d0c6bd02db7a3927fbd69ee72075702ab",
+    "corpus_digest": "sha256:985d587b81619badac38cca25f9ef014547573419bdce2ca5c9637d32c47fb9d",
+    "overall_ndcg_at_10": 0.6018,
     "per_case": {
       "conceptual": {
         "u-1002": 1.0,
         "u-1005": 1.0,
-        "u-1016": 0.635202,
+        "u-1016": 0.629459,
         "u-1023": 0.0
       },
       "exact": {
-        "u-1003": 1.0,
+        "u-1003": 0.63093,
         "u-1015": 1.0,
         "u-1018": 1.0,
         "u-1020": 1.0,
-        "u-1021": 0.333333
+        "u-1021": 0.315465
       },
       "fact": {
-        "u-1001": 0.676361,
-        "u-1004": 0.356207,
+        "u-1001": 1.0,
+        "u-1004": 0.0,
         "u-1006": 1.0,
-        "u-1008": 0.315465,
+        "u-1008": 0.30103,
         "u-1010": 0.787155,
         "u-1013": 0.0,
         "u-1014": 0.430677
@@ -92,7 +92,7 @@
       "relationship": {
         "u-1009": 0.917319,
         "u-1010": 0.787155,
-        "u-1022": 0.884671,
+        "u-1022": 0.496639,
         "u-1024": 0.0
       },
       "symbol": {
@@ -107,10 +107,10 @@
       }
     },
     "per_slice": {
-      "conceptual": 0.658801,
-      "exact": 0.866667,
-      "fact": 0.509409,
-      "relationship": 0.647286,
+      "conceptual": 0.657365,
+      "exact": 0.789279,
+      "fact": 0.502694,
+      "relationship": 0.550278,
       "symbol": 0.583184,
       "unanswerable": 0.0
     },

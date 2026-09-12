@@ -22,7 +22,7 @@ import pytest
 from mycelium.build import build
 from mycelium.ingest import Registry, ingest_source, write_projection
 from mycelium.ingest.parsers import pandoc as pandoc_parser
-from mycelium.ingest.projection import evidence_path, project
+from mycelium.ingest.projection import evidence_path, neutralise, project
 from mycelium.markdown.adapter import parse_markdown
 from mycelium.markdown.frontmatter import FIELD_OWNERS, parse_frontmatter
 from mycelium.sdk.identity import digest_bytes, doc_ref
@@ -579,3 +579,120 @@ def test_no_reference_target_is_lost_in_the_projection(name: str, registry: Regi
             if item.kind is NodeKind.LINK and item.target and (item.text or "").strip()
         ]
     )
+
+
+# ---------------------------------------------------------------------------
+# A source's prose does not get to assert the document's structure (5.22)
+# ---------------------------------------------------------------------------
+
+OPENERS = [
+    ("fence", '```toml title="pyproject.toml"', '\\```toml title="pyproject.toml"'),
+    ("tilde fence", "~~~python", "\\~~~python"),
+    ("atx heading", "## Configuration", "\\## Configuration"),
+    ("bullet", "- an item", "\\- an item"),
+    ("star bullet", "* an item", "\\* an item"),
+    ("plus bullet", "+ an item", "\\+ an item"),
+    ("ordered", "1. an item", "1\\. an item"),
+    ("ordered paren", "1) an item", "1\\) an item"),
+    ("quote", "> quoted", "\\> quoted"),
+    ("thematic break", "---", "\\---"),
+    ("setext underline", "===", "\\==="),
+    ("underscore rule", "___", "\\___"),
+]
+
+
+@pytest.mark.parametrize(("name", "raw", "escaped"), OPENERS, ids=[o[0] for o in OPENERS])
+def test_a_line_that_would_open_a_block_is_escaped(name: str, raw: str, escaped: str) -> None:
+    assert neutralise(raw) == escaped
+
+
+@pytest.mark.parametrize(("name", "raw", "escaped"), OPENERS, ids=[o[0] for o in OPENERS])
+def test_the_escape_costs_the_text_nothing(name: str, raw: str, escaped: str) -> None:
+    """The claim the fix rests on: `\\##` indexes as `##`.
+
+    If a backslash survived into a node's text, every escaped line would change
+    what BM25 sees and the repair would cost more than the defect (ADR-0093).
+    """
+    reparsed = parse_markdown(f"lead\n\n{escaped}\ntail\n", doc_id=DOC_ID).kir
+    body = "\n".join(item.text or "" for item in reparsed.nodes)
+    assert f"{raw}\ntail" in body
+    assert "\\" not in body
+
+
+@pytest.mark.parametrize(("name", "raw", "escaped"), OPENERS, ids=[o[0] for o in OPENERS])
+def test_every_shape_would_have_opened_a_block_unescaped(name: str, raw: str, escaped: str) -> None:
+    """The other half: each shape is here because it *does* damage, not by list.
+
+    Unescaped, every one of them either interrupts the paragraph it sits in or
+    changes what the lines around it mean.
+    """
+    kinds = [
+        item.kind
+        for item in parse_markdown(f"lead\n{raw}\ntail\n", doc_id=DOC_ID).kir.nodes
+        if item.kind is not NodeKind.TAG_REF
+    ]
+    assert kinds != [NodeKind.PARAGRAPH], f"{name} is in the list but opens nothing"
+
+
+@pytest.mark.parametrize("line", ["#tag", "ordinary prose", "    indented", "<div>", "a - b"])
+def test_what_is_deliberately_left_alone(line: str) -> None:
+    """An inline tag keeps its `#` (the projector has always carried those), raw
+    HTML is already prose under the Profile, and an indented line is a gap no
+    backslash can close — recorded in ADR-0093 rather than papered over."""
+    assert neutralise(line) == line
+
+
+def test_a_flattened_fence_no_longer_swallows_the_document() -> None:
+    """BUG-0024, as a test: a paragraph beginning with a fence marker used to open
+    a code block with no closing partner, and everything after it — headings,
+    prose, links — became code."""
+    document = kir(
+        node(0, NodeKind.HEADING, level=1, text="Configuration"),
+        node(1, NodeKind.PARAGRAPH, text='```toml title="pyproject.toml"\n[tool.uv]\nx = 1'),
+        node(2, NodeKind.HEADING, level=2, text="Environments"),
+        node(3, NodeKind.PARAGRAPH, text="Prose that must not be code."),
+    )
+    reparsed = parse_markdown(rendered(document), doc_id=DOC_ID).kir
+    headings = [item.text for item in reparsed.nodes if item.kind is NodeKind.HEADING]
+    assert headings == ["Configuration", "Environments"]
+    assert not [item for item in reparsed.nodes if item.kind is NodeKind.CODE_BLOCK]
+
+
+def test_a_real_code_block_is_still_a_code_block() -> None:
+    """The escape is for *prose* that looks like syntax. A KIR code block is
+    rendered as a fence exactly as before — otherwise the repair would trade one
+    kind of structural loss for another."""
+    document = kir(
+        node(0, NodeKind.CODE_BLOCK, lang="toml", text='[tool.uv]\nindex = "x"'),
+        node(1, NodeKind.HEADING, level=2, text="After"),
+    )
+    reparsed = parse_markdown(rendered(document), doc_id=DOC_ID).kir
+    blocks = [item for item in reparsed.nodes if item.kind is NodeKind.CODE_BLOCK]
+    assert len(blocks) == 1
+    assert blocks[0].lang == "toml"
+    assert blocks[0].text == '[tool.uv]\nindex = "x"'
+    assert [item.text for item in reparsed.nodes if item.kind is NodeKind.HEADING] == ["After"]
+
+
+def test_every_line_of_a_paragraph_is_escaped_not_only_the_first() -> None:
+    """`dependencies-docx` is the case: the shape sat mid-paragraph, and a rule
+    for the first line alone would have left it exactly as broken (ADR-0093)."""
+    document = kir(
+        node(0, NodeKind.PARAGRAPH, text="Lead sentence.\n## Not a heading\n- not an item"),
+        node(1, NodeKind.HEADING, level=2, text="Real"),
+    )
+    reparsed = parse_markdown(rendered(document), doc_id=DOC_ID).kir
+    assert [item.text for item in reparsed.nodes if item.kind is NodeKind.HEADING] == ["Real"]
+    assert not [item for item in reparsed.nodes if item.kind is NodeKind.LIST]
+
+
+def test_a_reference_that_begins_a_line_is_not_mistaken_for_a_marker() -> None:
+    """References are rendered first and the escape runs over the result, so a
+    label starting with `-` arrives wrapped in `[` and is left alone."""
+    document = kir(
+        node(0, NodeKind.PARAGRAPH, text="- dash label follows"),
+        node(1, NodeKind.LINK, parent="n1", text="- dash label", target="x.md"),
+    )
+    text = rendered(document)
+    assert "[- dash label](x.md)" in text
+    assert "\\[" not in text

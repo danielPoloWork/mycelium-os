@@ -10,6 +10,22 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Fixed
+
+- **A projected paragraph that begins with a fence marker no longer turns the rest of the
+  document into code** (roadmap 5.22, [ADR-0093](docs/adr/0093-escape-the-prose-that-would-open-a-block-and-report-what-that-costs.md),
+  [BUG-0024](docs/bugs/2026/09/BUG-0024-prose-that-opens-a-fence-swallows-the-rest-of-a-projection.md)).
+  When an upstream renderer flattens a fenced code block into prose — a DOCX whose smart
+  quotes broke the fence, a PDF text layer that kept the backticks — the evidence projector
+  wrote that prose verbatim and the compiler read a fence opener with no closing partner, so
+  headings, prose and links to the end of the document became one code block. The projector
+  now escapes the shapes that open block structure — a fence, an ATX heading, a bullet, an
+  ordered marker, a quote marker, a thematic break, a setext underline — on every line of a
+  projected paragraph. The escape is invisible to the index: CommonMark reads `\##` as a
+  literal `##`, and the corpus carries exactly as many backslashes in its indexed text as
+  before. On the vendored ingested corpus 34,461 characters come out of code blocks (−21 %)
+  and the four affected projections recover their sections.
+
 ### Added
 
 - **The congruence lint checks the amendment relation between ADRs** (roadmap 5.21,

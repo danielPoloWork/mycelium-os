@@ -11,7 +11,7 @@ source_digest: "sha256:86d1e2d2cc9432350c513fb4a06ecaa91a6c5ed0ca919fde4dd28859c
 
 Astral provides [Docker images](docker.md#available-images) with uv preinstalled. Select a variant that is suitable for your workflow.
 
-```yaml title=".gitlab-ci.yml" variables: UV_VERSION: "0.12.7" PYTHON_VERSION: "3.12" BASE_LAYER: trixie-slim # GitLab CI creates a separate mountpoint for the build directory, # so we need to copy instead of using hard links. UV_LINK_MODE: copy
+\```yaml title=".gitlab-ci.yml" variables: UV_VERSION: "0.12.7" PYTHON_VERSION: "3.12" BASE_LAYER: trixie-slim # GitLab CI creates a separate mountpoint for the build directory, # so we need to copy instead of using hard links. UV_LINK_MODE: copy
 
 uv: image: ghcr.io/astral-sh/uv: U V V E R S I O N − p y t h o n PYTHON_VERSION-$BASE_LAYER script: # your uv commands
 
@@ -59,11 +59,11 @@ The UV_SYSTEM_PYTHON variable can be defined in at different scopes. You can rea
 
 Opt-in for the entire workflow by defining it at the top level:
 
-```yaml title=".gitlab-ci.yml" variables: UV_SYSTEM_PYTHON: 1
+\```yaml title=".gitlab-ci.yml" variables: UV_SYSTEM_PYTHON: 1
 
 # [...]
 
-```
+\```
 
 To opt-out again, the --no-system flag can be used in any uv invocation.
 

@@ -821,8 +821,17 @@ on the release sets — the ones nobody develops against — the product now lea
 | release set | Mycelium OS | the `grep` loop |
 |---|---:|---:|
 | `uv`'s documentation (the corpus this was filed about) | **0.611** | 0.517 |
-| the same documents, ingested from DOCX/HTML/PDF | **0.637** | 0.478 |
+| the same documents, ingested from DOCX/HTML/PDF | **0.602** | 0.556 |
 | this repository | **0.532** | 0.346 |
+
+The second row narrowed sharply at roadmap 5.22, from +0.151 to +0.045, and the reason is
+worth more than the number. A projector defect was flattening whole sections of the ingested
+documents into code blocks, and the unmatched markers that did it were *also* splitting real
+code blocks — so parts of those documents re-parsed as headings that the sources never had.
+Our field-weighted retrieval was leaning on them and the incumbent was not. Fixing the defect
+removed 28 fabricated headings, freed 21 % of the corpus's text from code blocks, and cost us
+two thirds of the lead we had been reporting
+([ADR-0093](docs/adr/0093-escape-the-prose-that-would-open-a-block-and-report-what-that-costs.md)).
 
 The third row moved *down* on both sides when this repository's own changelog and release
 notes left the corpus (roadmap 4.44). They restate what the ADRs already say, and a

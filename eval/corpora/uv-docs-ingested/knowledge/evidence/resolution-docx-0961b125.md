@@ -377,7 +377,7 @@ This error occurs because installing both extra1 and extra2 would result in inst
 
 The above strategy for dealing with conflicting optional dependencies also works with dependency groups:
 
-```toml title=“pyproject.toml” [dependency-groups] group1 = [“numpy==2.1.2”] group2 = [“numpy==2.0.0”]
+\```toml title=“pyproject.toml” [dependency-groups] group1 = [“numpy==2.1.2”] group2 = [“numpy==2.0.0”]
 
 [tool.uv] conflicts = [ [ { group = “group1” }, { group = “group2” }, ],]
 
@@ -400,7 +400,7 @@ name = "member1"
 extra1 = ["numpy==2.1.2"]
 ````
 
-```toml title=“member2/pyproject.toml” [project] name = “member2”
+\```toml title=“member2/pyproject.toml” [project] name = “member2”
 
 [project.optional-dependencies] extra2 = [“numpy==2.0.0”]
 
@@ -422,7 +422,7 @@ It’s also possible for the project dependencies (i.e., project.dependencies) o
 
 toml title="member1/pyproject.toml" [project] name = "member1" dependencies = ["numpy==2.1.2"]
 
-```toml title=“member2/pyproject.toml” [project] name = “member2”
+\```toml title=“member2/pyproject.toml” [project] name = “member2”
 
 [project.optional-dependencies] extra2 = [“numpy==2.0.0”]
 

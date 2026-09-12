@@ -45,12 +45,12 @@
       "twin": "knowledge/evidence/indexes-pdf-9f8d98fc.md#/0"
     },
     "docs/concepts/indexes.md#defining-an-index/": {
-      "coverage": 0.8783,
-      "twin": "knowledge/evidence/indexes-pdf-9f8d98fc.md#required-url-for-the-index/0"
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/indexes-pdf-9f8d98fc.md#/0"
     },
     "docs/concepts/indexes.md#pinning-a-package-to-an-index/": {
-      "coverage": 0.8972,
-      "twin": "knowledge/evidence/indexes-pdf-9f8d98fc.md#via-an-environment-variable/1"
+      "coverage": 0.9533,
+      "twin": "knowledge/evidence/indexes-pdf-9f8d98fc.md#/1"
     },
     "docs/concepts/preview.md#enabling-preview-features/0": {
       "coverage": 1.0,
@@ -65,8 +65,8 @@
       "twin": "knowledge/evidence/build-html-a52e977c.md#using-uv-build/0"
     },
     "docs/concepts/projects/config.md#project-environment-path/": {
-      "coverage": 1.0,
-      "twin": "knowledge/evidence/config-pdf-4803c1e3.md#/1"
+      "coverage": 0.8468,
+      "twin": "knowledge/evidence/config-pdf-4803c1e3.md#/2"
     },
     "docs/concepts/projects/dependencies.md#adding-dependencies/": {
       "coverage": 0.8738,
@@ -78,7 +78,7 @@
     },
     "docs/concepts/projects/dependencies.md#dependency-specifiers/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/dependencies-docx-d90e9be4.md#virtual-dependencies/1"
+      "twin": "knowledge/evidence/dependencies-docx-d90e9be4.md#dependency-specifiers/0"
     },
     "docs/concepts/projects/init.md#/0": {
       "coverage": 1.0,
@@ -93,7 +93,7 @@
       "twin": "knowledge/evidence/init-docx-8925fabb.md#creating-a-minimal-project/0"
     },
     "docs/concepts/projects/init.md#libraries/": {
-      "coverage": 0.9343,
+      "coverage": 1.0,
       "twin": "knowledge/evidence/init-docx-8925fabb.md#libraries/0"
     },
     "docs/concepts/projects/layout.md#the-lockfile/0": {
