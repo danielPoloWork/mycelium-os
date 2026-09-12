@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-12 — the renderer the PDFs already named (roadmap 5.27)](2026/09/2026-09-12-the-renderer-the-pdfs-already-named.md)
 - [2026-09-12 — the twin was easier than its source (roadmap 5.26)](2026/09/2026-09-12-the-twin-was-easier-than-its-source.md)
 - [2026-09-10 — the merge that was refused one directory too deep (roadmap 5.8)](2026/09/2026-09-10-say-what-the-repo-tracks.md)
 - [2026-09-09 — the directory that decides which gates run (roadmap 4.43)](2026/09/2026-09-09-type-check-the-tools.md)

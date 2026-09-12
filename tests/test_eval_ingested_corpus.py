@@ -13,15 +13,26 @@ That matters because the corpus is *derived*. Its evidence documents are named a
 digest of the source they came from, so a re-render moves every filename, and a set of
 judgements that quietly stopped pointing anywhere would score zero without anything saying
 why (ADR-0039).
+
+The last check here is about the *renderer* rather than the corpus: the PDFs say which typst
+made them, `pyproject.toml` says which one is installed to remake them, and the two have to
+agree or the pin is describing a rendering nobody has (roadmap 5.27, ADR-0098).
 """
 
 import json
+import re
+import sys
+import tomllib
 from collections import Counter
 from pathlib import Path
 
 import pytest
 
 from mycelium.eval.cases import load_cases
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
+
+from build_ingested_corpus import require_typst  # noqa: E402
 
 CORPUS = Path(__file__).parent.parent / "eval" / "corpora" / "uv-docs-ingested"
 TWIN = Path(__file__).parent.parent / "eval" / "corpora" / "uv-docs"
@@ -182,3 +193,76 @@ def test_every_evidence_document_names_its_source_relatively() -> None:
     for path in (CORPUS / "knowledge" / "evidence").glob("*.md"):
         head = path.read_text(encoding="utf-8").split("---", 2)[1]
         assert 'source: "file:sources/' in head, f"{path.name} carries a non-portable source"
+
+
+# ---------------------------------------------------------------------------
+# The renderer the PDFs name, and the one the repository declares (roadmap 5.27)
+# ---------------------------------------------------------------------------
+
+PYPROJECT = Path(__file__).parent.parent / "pyproject.toml"
+_PIN = re.compile(r"^typst==(?P<version>[0-9][0-9A-Za-z.\-]*)$")
+
+
+def pinned_typst() -> str:
+    """The exact version `[dependency-groups] render` declares."""
+    groups = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["dependency-groups"]
+    render = groups["render"]
+    assert len(render) == 1, "the render group is the PDF renderer and nothing else"
+    match = _PIN.match(render[0])
+    assert match is not None, f"the renderer must be pinned exactly, not {render[0]!r}"
+    return match.group("version")
+
+
+def test_the_declared_renderer_is_the_one_that_made_every_committed_pdf() -> None:
+    """The pin is read out of the corpus, not chosen (ADR-0098).
+
+    typst writes `Creator: Typst <version>` into each PDF it compiles, so the
+    provenance of these renderings lives in the artifacts themselves — a better
+    record than a manifest field, because nothing can restamp it without
+    recompiling. The pin exists to say which typesetter a *re-render* would use,
+    and it is only meaningful while it names the one already on disk. Bumping it
+    without re-rendering, or re-rendering without bumping it, fails here.
+
+    The bytes are still not reproducible — typst stamps a creation timestamp, and
+    ADR-0039 measured that `SOURCE_DATE_EPOCH` does not fix it. This pins the
+    typesetter, which is what governs layout and the text layer a parser reads
+    back, not the bytes.
+    """
+    pdfium = pytest.importorskip("pypdfium2", reason="the `ingest` extra is not installed")
+    expected = f"Typst {pinned_typst()}"
+    pdfs = sorted((CORPUS / "sources").rglob("*.pdf"))
+    assert pdfs, "the ingested corpus should hold rendered PDFs"
+    creators = {path.name: pdfium.PdfDocument(path).get_metadata_value("Creator") for path in pdfs}
+    disagree = {name: value for name, value in creators.items() if value != expected}
+    assert not disagree, (
+        f"pyproject pins {expected!r}; these PDFs were made by something else: {disagree}. "
+        "Re-render with `uv sync --group render && python tools/build_ingested_corpus.py "
+        "--render`, or correct the pin to what the artifacts say"
+    )
+
+
+def test_a_pending_pdf_without_the_renderer_names_the_command_that_installs_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """It refuses *before* writing, and the message is a command (roadmap 5.27).
+
+    The import used to fail at the first PDF — after pandoc had already written
+    several DOCX and HTML files — so a maintainer met it with a half-rendered
+    provenance act on disk and `pip install typst` as the only guidance. Neither
+    half was right: the group is not on PyPI's side of the problem, and the
+    default sync deliberately removes it again.
+    """
+    import build_ingested_corpus
+
+    monkeypatch.setattr(build_ingested_corpus.importlib.util, "find_spec", lambda name: None)
+    with pytest.raises(SystemExit) as caught:
+        require_typst(9)
+    message = str(caught.value)
+    assert "uv sync --group render" in message
+    assert "9 PDF(s)" in message
+    assert "pip install" not in message
+
+
+def test_nothing_is_required_when_no_pdf_is_pending() -> None:
+    """A render that has only DOCX and HTML to write needs no typesetter."""
+    assert require_typst(0) == ""
