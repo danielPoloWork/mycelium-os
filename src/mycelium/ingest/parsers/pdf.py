@@ -47,6 +47,20 @@ _STRUCTURE_NOTICE: Final = (
     "(ADR-0032, and ADR-0040 for what the alternative was measured to cost)"
 )
 
+_NO_INLINE_NOTICE: Final = (
+    "PDF inline code is not carried: a text layer is glyphs and positions, so a "
+    "code naming was never in the source this reader is given (roadmap 5.29, "
+    "ADR-0100)"
+)
+"""The other half of what this lane cannot carry, declared for the same reason.
+
+The structure notice above is about *blocks*; this one is about the naming inside
+them, and the two are worth separating because their causes differ. A PDF has no
+headings because the format records none; it has no inline code because a text
+layer is not a document — the fact never existed to be lost, where the DOCX lane
+loses one the container is still holding (`docling.py`). Both lanes are silent
+about it without this, and the silence is what roadmap 5.29 was filed for."""
+
 
 class PdfParser:
     """Adapts PDFium's per-page text layer into KIR."""
@@ -65,6 +79,7 @@ class PdfParser:
 
         builder = KirBuilder()
         builder.warn(_STRUCTURE_NOTICE)
+        builder.warn(_NO_INLINE_NOTICE)
         document: Any = None
         try:
             document = pypdfium2.PdfDocument(blob.data)

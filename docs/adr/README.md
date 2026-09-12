@@ -131,3 +131,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0097](0097-a-twin-case-that-outscores-its-source-is-the-defect-not-the-fall.md) | A twin case that outscores its source is the defect, not the fall that corrects it | Accepted |
 | [0098](0098-declare-the-renderer-pin-it-to-what-the-artifacts-say.md) | Declare the renderer, pin it to what the artifacts already say, and keep it out of the default sync | Accepted |
 | [0099](0099-ask-the-compiler-whether-the-prose-survived.md) | Ask the compiler whether the prose survived, and escape only where it did not | Accepted |
+| [0100](0100-declare-what-a-lane-cannot-carry.md) | Declare what a lane cannot carry, per document, and report the split it creates | Accepted |

@@ -83,6 +83,32 @@ _SKIPPED_LABELS: Final = frozenset({"page_header", "page_footer"})
 policy — which the M4 exit gate counts as *represented*, because the choice is
 declared here rather than made by accident."""
 
+_NO_MONOSPACE: Final = (
+    "DOCX inline code is not carried: docling's backend reports a run as bold, "
+    "italic, underline, strikethrough or script, with no monospace among them, so "
+    "a code naming is gone before this adapter sees it (roadmap 5.29, ADR-0100)"
+)
+"""What the DOCX lane cannot carry, declared once per document it reads.
+
+A *declared policy*, not a loss: no content disappears. `__token__` arrives with
+its characters intact and only the fact that the source called it code is gone —
+so this is a property of the parser recorded in the KIR warnings, which is
+exactly where the fidelity report's doctrine puts one, and **not** an opaque node
+per lost span. Emitting nodes would put noise in the projection to satisfy a
+counter, and would charge the loss budget for content that is present.
+
+Measured before it was written (roadmap 5.29): pandoc writes inline code into a
+DOCX as a `VerbatimChar` character run — 224 of them in `dependencies.docx`
+alone, 31 in `certificates.docx`, 74 in `cache.docx` — and
+`docling_core.types.doc.document.Formatting` carries exactly five fields:
+`bold`, `italic`, `script`, `strikethrough`, `underline`. The naming is in the
+container and cannot come out. Patching docling is out of scope (D-007); saying
+so is not.
+
+The HTML lane carries these namings and therefore declares nothing: docling
+surfaces an HTML `<code>` as a `code`-labelled run of an inline group, which the
+adapter keeps (roadmap 5.25, ADR-0096)."""
+
 
 class DoclingParser:
     """Adapts docling's declarative backends into KIR."""
@@ -128,6 +154,7 @@ class DoclingParser:
         for ref in document.body.children or ():
             _item(builder, ref.resolve(document), document, state, parent=None)
         if blob.media_type == DOCX:
+            builder.warn(_NO_MONOSPACE)
             _account_for_notes(builder, blob.data)
         return KirDocument(
             doc_id=doc_id,

@@ -115,7 +115,9 @@
           "table_row": 3
         },
         "opaque": [],
-        "policies": []
+        "policies": [
+          "DOCX inline code is not carried: docling's backend reports a run as bold, italic, underline, strikethrough or script, with no monospace among them, so a code naming is gone before this adapter sees it (roadmap 5.29, ADR-0100)"
+        ]
       },
       "parser": "docling",
       "path": "source.docx"
@@ -194,7 +196,8 @@
         },
         "opaque": [],
         "policies": [
-          "PDF text layer only: no headings, tables or reading-order analysis (ADR-0032, and ADR-0040 for what the alternative was measured to cost)"
+          "PDF text layer only: no headings, tables or reading-order analysis (ADR-0032, and ADR-0040 for what the alternative was measured to cost)",
+          "PDF inline code is not carried: a text layer is glyphs and positions, so a code naming was never in the source this reader is given (roadmap 5.29, ADR-0100)"
         ]
       },
       "parser": "pdf",
@@ -253,6 +256,7 @@
           "a DOCX note whose body docling's backend does not surface (lost)"
         ],
         "policies": [
+          "DOCX inline code is not carried: docling's backend reports a run as bold, italic, underline, strikethrough or script, with no monospace among them, so a code naming is gone before this adapter sees it (roadmap 5.29, ADR-0100)",
           "a DOCX note whose body docling's backend does not surface kept as an opaque node (lost)"
         ]
       },
@@ -356,6 +360,7 @@
         ],
         "policies": [
           "PDF text layer only: no headings, tables or reading-order analysis (ADR-0032, and ADR-0040 for what the alternative was measured to cost)",
+          "PDF inline code is not carried: a text layer is glyphs and positions, so a code naming was never in the source this reader is given (roadmap 5.29, ADR-0100)",
           "page 2 has no text layer kept as an opaque node (lost)"
         ]
       },
