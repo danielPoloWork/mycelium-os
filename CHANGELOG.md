@@ -10,7 +10,43 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **The symbol leg is on by default** (roadmap 5.25, [ADR-0096](docs/adr/0096-write-the-span-back-and-pin-the-arm-that-judges-it.md), amending
+  [ADR-0080](docs/adr/0080-look-a-name-up-exactly-and-report-that-the-table-points-at-naming-sites.md)). Spec 04 §3's exact
+  lookup in the `symbols` table has been built and switched off since roadmap 5.9, because its
+  own ablation refused it three times. With the ingested corpus's command namings restored
+  (below) it fires on all four of that corpus's judged `symbol` cases where it could fire on
+  none, and clears the bar on a **held-out** set — `uv-ingested/release`, +5.6 % on the slice
+  and +0.9 % overall, no set regressing. The flag follows the measurement, which is the rule
+  `tools/measure_symbol_leg.py --check` enforces in both directions. The gain is narrow and
+  stated as such: `ours/*` and `uv/release` are byte-identical with the leg on, so what it
+  demonstrably does is compensate for what ingestion costs. Turn it off with
+  `[retrieval] symbol_lookup = false`.
+
 ### Fixed
+
+- **An ingested document now keeps the code spans that name a command** (roadmap 5.25,
+  [ADR-0096](docs/adr/0096-write-the-span-back-and-pin-the-arm-that-judges-it.md)). The evidence projector wrote a paragraph's text flattened, so the
+  backticks an HTML source puts around `uv cache prune --ci` never reached
+  `knowledge/evidence/` — and a command is minted only where the corpus *names* it as code,
+  so the ingested twin held **11** commands against its Markdown original's 69. The docling
+  adapter now records an inline group's code runs as `KirNode.spans` and the projector writes
+  them back the way it writes a link back, admitting only the spans the compiler reads back
+  as exactly the words the block already held: **1 217 of 1 289**, with 66 refused for sitting
+  inside a link label and 6 because they would have moved the text. Commands minted:
+  **11 → 59**. No chunk changed its text, no anchor moved, and no judged case was re-carried
+  differently. HTML only: docling's DOCX backend reports a run's formatting without a
+  monospace flag and a PDF text layer never had one, so those two lanes are reported rather
+  than guessed at.
+
+- **An ablation's control arm no longer inherits the shipped defaults** (roadmap 5.25,
+  [ADR-0096](docs/adr/0096-write-the-span-back-and-pin-the-arm-that-judges-it.md)). Both the symbol and graph ablations scored their control with
+  `RetrievalConfig()` — the shipped product — so the moment a leg earned its default the
+  control acquired the leg under test and the measurement went to zero. The guard could
+  accept only one of the two answers it exists to choose between. A `lexical` retriever pins
+  every optional leg off and is the control for both; byte-identical while a leg ships off,
+  which is why no historical ablation number moves.
 
 - **The third judged corpus was rendered by a Markdown dialect it is not written in** (roadmap 5.24,
   [ADR-0095](docs/adr/0095-read-the-corpus-in-the-dialect-it-is-written-in.md), [BUG-0025](docs/bugs/2026/09/BUG-0025-the-corpus-renderer-reads-a-dialect-the-corpus-is-not-written-in.md)). `tools/build_ingested_corpus.py` rendered the

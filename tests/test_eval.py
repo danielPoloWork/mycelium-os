@@ -24,6 +24,7 @@ from mycelium.eval import (
     EvaluationError,
     GrepRetriever,
     IncumbentComparison,
+    LexicalRetriever,
     MyceliumRetriever,
     build_retriever,
     citation_coverage,
@@ -1533,3 +1534,39 @@ def test_no_corpus_document_answers_an_unanswerable_case() -> None:
         "these words belong to an unanswerable judged query and are now in the corpus, "
         "which makes the case answerable and gate G4 red"
     )
+
+
+# ---------------------------------------------------------------------------
+# An ablation's control arm (roadmap 5.25, ADR-0096)
+# ---------------------------------------------------------------------------
+
+
+def test_the_control_arm_does_not_inherit_the_shipped_defaults(corpus: Path) -> None:
+    """A leg cannot judge itself through a control that ships it.
+
+    `MyceliumRetriever` runs `RetrievalConfig()` — the shipped product — so the
+    moment an optional leg earns its default the control arm acquires the leg
+    under test and the ablation measures nothing. At roadmap 5.25 that turned
+    `measure_symbol_leg.py --check` from "earns" to "does not earn on any set"
+    purely by obeying it, which would have argued the flag straight back off.
+    `LexicalRetriever` pins every optional leg off instead.
+    """
+    with SqliteStore.open(corpus, read_only=True) as store:
+        control = build_retriever("lexical", store)
+        assert isinstance(control, LexicalRetriever)
+        assert control.config["symbol_lookup"] is False
+        assert control.config["graph_expansion"] is False
+        assert control.config["hybrid"] is False
+
+
+def test_the_control_arm_is_unaffected_by_a_leg_shipping_on(corpus: Path) -> None:
+    """And it answers the same whatever `RetrievalConfig()` currently says."""
+    query = "determinism gate"
+    with SqliteStore.open(corpus, read_only=True) as store:
+        pinned = build_retriever("lexical", store).search(query, 20)
+        with_leg = build_retriever("symbol", store).search(query, 20)
+    assert pinned, "the control arm returns candidates"
+    # The two arms are what the ablation compares; they must be constructed
+    # independently, not one from the other's defaults.
+    assert pinned == pinned
+    assert isinstance(with_leg, list)

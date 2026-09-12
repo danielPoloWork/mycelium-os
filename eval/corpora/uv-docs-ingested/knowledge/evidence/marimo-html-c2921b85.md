@@ -27,7 +27,7 @@ $ uvx marimo edit my_notebook.py
 
 ## Using marimo with inline script metadata
 
-Because marimo notebooks are stored as Python scripts, they can encapsulate their own dependencies using inline script metadata, via uv's [support for scripts](../../guides/scripts.md). For example, to add numpy as a dependency to your notebook, use this command:
+Because marimo notebooks are stored as Python scripts, they can encapsulate their own dependencies using inline script metadata, via uv's [support for scripts](../../guides/scripts.md). For example, to add `numpy` as a dependency to your notebook, use this command:
 
 ```
 $ uv add --script my_notebook.py numpy
@@ -55,7 +55,7 @@ If you're working within a [project](../../concepts/projects/index.md), you can 
 $ uv run marimo edit my_notebook.py
 ```
 
-To make additional packages available to your notebook, either add them to your project with uv add, or use marimo's built-in package installation UI, which will invoke uv add on your behalf.
+To make additional packages available to your notebook, either add them to your project with `uv add`, or use marimo's built-in package installation UI, which will invoke `uv add` on your behalf.
 
 If marimo is not a project dependency, you can still run a notebook with the following command:
 
@@ -76,7 +76,7 @@ $ uv pip install marimo
 $ uv run marimo edit
 ```
 
-From here, import numpy will work within the notebook, and marimo's UI installer will add packages to the environment with uv pip install on your behalf.
+From here, `import numpy` will work within the notebook, and marimo's UI installer will add packages to the environment with `uv pip install` on your behalf.
 
 ## Running marimo notebooks as scripts
 

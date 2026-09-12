@@ -21,7 +21,7 @@ url = "https://pkgs.dev.azure.com/<ORGANIZATION>/<PROJECT>/_packaging/<FEED>/pyp
 
 If there is a personal access token (PAT) available (e.g., [$(System.AccessToken)](https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#systemaccesstoken) [in an Azure pipeline](https://learn.microsoft.com/en-us/azure/devops/pipelines/build/variables?view=azure-devops&tabs=yaml#systemaccesstoken)), credentials can be provided via "Basic" HTTP authentication scheme. Include the PAT in the password field of the URL. A username must be included as well, but can be any string.
 
-For example, with the token stored in the $AZURE_ARTIFACTS_TOKEN environment variable, set credentials for the index with:
+For example, with the token stored in the `$AZURE_ARTIFACTS_TOKEN` environment variable, set credentials for the index with:
 
 ```Bash
 export UV_INDEX_PRIVATE_REGISTRY_USERNAME = dummy
@@ -38,9 +38,9 @@ export UV_INDEX_PRIVATE_REGISTRY_PASSWORD = " $AZURE_ARTIFACTS_TOKEN "
 
 You can also authenticate to Artifacts using [keyring](https://github.com/jaraco/keyring) package with the [artifacts-keyring](https://github.com/Microsoft/artifacts-keyring) [plugin](https://github.com/Microsoft/artifacts-keyring). Because these two packages are required to authenticate to Azure Artifacts, they must be pre-installed from a source other than Artifacts.
 
-The artifacts-keyring plugin wraps the [Azure Artifacts Credential Provider tool](https://github.com/microsoft/artifacts-credprovider). The credential provider supports a few different authentication modes including interactive login - see the [tool's documentation](https://github.com/microsoft/artifacts-credprovider) for information on configuration.
+The `artifacts-keyring` plugin wraps the [Azure Artifacts Credential Provider tool](https://github.com/microsoft/artifacts-credprovider). The credential provider supports a few different authentication modes including interactive login - see the [tool's documentation](https://github.com/microsoft/artifacts-credprovider) for information on configuration.
 
-uv only supports using the keyring package in [subprocess mode](../../reference/settings.md#keyring-provider). The keyring executable must be in the PATH, i.e., installed globally or in the active environment. The keyring CLI requires a username in the URL, and it must be VssSessionToken.
+uv only supports using the `keyring` package in [subprocess mode](../../reference/settings.md#keyring-provider). The `keyring` executable must be in the `PATH`, i.e., installed globally or in the active environment. The `keyring` CLI requires a username in the URL, and it must be `VssSessionToken`.
 
 ```Bash
 # Pre-install keyring and the Artifacts plugin from the public PyPI
@@ -64,9 +64,9 @@ Similarly, the username for the index can be added directly to the index URL.
 
 ## Publishing packages
 
-If you also want to publish your own packages to Azure Artifacts, you can use uv publish as described in the [Building and publishing guide](../package.md).
+If you also want to publish your own packages to Azure Artifacts, you can use `uv publish` as described in the [Building and publishing guide](../package.md).
 
-First, add a publish-url to the index you want to publish packages to. For example:
+First, add a `publish-url` to the index you want to publish packages to. For example:
 
 ```
 [[tool.uv.index]]
@@ -88,7 +88,7 @@ And publish the package:
 $ uv publish --index private-registry
 ```
 
-To use uv publish without adding the publish-url to the project, you can set UV_PUBLISH_URL:
+To use `uv publish` without adding the `publish-url` to the project, you can set `UV_PUBLISH_URL`:
 
 ```
 $ export UV_PUBLISH_URL=https://pkgs.dev.azure.com/<ORGANIZATION>/<PROJECT>/_packaging/<FEED>/pypi/upload/

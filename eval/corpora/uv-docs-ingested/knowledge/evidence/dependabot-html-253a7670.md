@@ -11,7 +11,7 @@ It is considered best practice to regularly update dependencies, to avoid being 
 
 Dependabot has announced support for uv, but there are some use cases that are not yet working. See [astral-sh/uv#2512](https://github.com/astral-sh/uv/issues/2512) for updates.
 
-Dependabot supports updating uv.lock files. To enable it, add the uv package-ecosystem to your updates list in the dependabot.yml:
+Dependabot supports updating `uv.lock` files. To enable it, add the uv `package-ecosystem` to your `updates` list in the `dependabot.yml`:
 
 ```YAML
 version : 2
@@ -27,7 +27,7 @@ interval : "weekly"
 
 If you use [exclude-newer](../../reference/settings.md#exclude-newer) option, it is recommended to also set the equivalent [cooldown](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#cooldown-) option in Dependabot, to avoid ending up with pull requests where uv would not be able to lock the dependencies.
 
-For instance, if you've set exclude-newer to 1 week, you can set:
+For instance, if you've set `exclude-newer` to `1 week`, you can set:
 
 ```YAML
 version : 2

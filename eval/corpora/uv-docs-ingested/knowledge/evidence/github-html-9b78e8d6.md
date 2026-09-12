@@ -50,7 +50,7 @@ version : "0.12.7"
 
 ## Setting up Python
 
-Python can be installed with the python install command:
+Python can be installed with the `python install` command:
 
 ```YAML
 name : Example
@@ -72,7 +72,7 @@ run : uv python install
 
 This will respect the Python version pinned in the project.
 
-Alternatively, the official GitHub setup-python action can be used. This can be faster, because GitHub caches the Python versions alongside the runner.
+Alternatively, the official GitHub `setup-python` action can be used. This can be faster, because GitHub caches the Python versions alongside the runner.
 
 Set the [python-version-file](https://github.com/actions/setup-python/blob/main/docs/advanced-usage.md#using-the-python-version-file-input) option to use the pinned version for the project:
 
@@ -96,7 +96,7 @@ python-version-file : ".python-version"
 uses : astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
 ```
 
-Or, specify the pyproject.toml file to ignore the pin and use the latest version compatible with the project's requires-python constraint:
+Or, specify the `pyproject.toml` file to ignore the pin and use the latest version compatible with the project's `requires-python` constraint:
 
 ```YAML
 name : Example
@@ -120,7 +120,7 @@ uses : astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
 
 ## Multiple Python versions
 
-When using a matrix to test multiple Python versions, set the Python version using astral-sh/setup-uv, which will override the Python version specification in the pyproject.toml or.python-version files:
+When using a matrix to test multiple Python versions, set the Python version using `astral-sh/setup-uv`, which will override the Python version specification in the `pyproject.toml` or`.python-version` files:
 
 ```YAML
 jobs :
@@ -143,7 +143,7 @@ with :
 python-version : ${{ matrix.python-version }}
 ```
 
-If not using the setup-uv action, you can set the UV_PYTHON environment variable:
+If not using the `setup-uv` action, you can set the `UV_PYTHON` environment variable:
 
 ```YAML
 jobs :
@@ -164,7 +164,7 @@ steps :
 
 ## Syncing and running
 
-Once uv and Python are installed, the project can be installed with uv sync and commands can be run in the environment with uv run:
+Once uv and Python are installed, the project can be installed with `uv sync` and commands can be run in the environment with `uv run`:
 
 ```YAML
 name : Example
@@ -209,7 +209,7 @@ with :
 enable-cache : true
 ```
 
-Alternatively, you can manage the cache manually with the actions/cache action:
+Alternatively, you can manage the cache manually with the `actions/cache` action:
 
 ```YAML
 jobs :
@@ -236,7 +236,7 @@ uv-${{ runner.os }}
 run : uv cache prune --ci
 ```
 
-The uv cache prune --ci command is used to reduce the size of the cache and is optimized for CI. Its effect on performance is dependent on the packages being installed.
+The `uv cache prune --ci` command is used to reduce the size of the cache and is optimized for CI. Its effect on performance is dependent on the packages being installed.
 
 !!! tip
 
@@ -272,9 +272,9 @@ uv cache clean
 
 ## Using uv pip
 
-If using the uv pip interface instead of the uv project interface, uv requires a virtual environment by default. To allow installing packages into the system environment, use the --system flag on all uv invocations or set the UV_SYSTEM_PYTHON variable.
+If using the `uv pip` interface instead of the uv project interface, uv requires a virtual environment by default. To allow installing packages into the system environment, use the `--system` flag on all `uv` invocations or set the `UV_SYSTEM_PYTHON` variable.
 
-The UV_SYSTEM_PYTHON variable can be defined in at different scopes.
+The `UV_SYSTEM_PYTHON` variable can be defined in at different scopes.
 
 Opt-in for the entire workflow by defining it at the top level:
 
@@ -305,7 +305,7 @@ env :
 UV_SYSTEM_PYTHON : 1
 ```
 
-To opt-out again, the --no-system flag can be used in any uv invocation.
+To opt-out again, the `--no-system` flag can be used in any uv invocation.
 
 ## Private repos
 
@@ -313,9 +313,9 @@ If your project has [dependencies](../../concepts/projects/dependencies.md#git) 
 
 After creating a PAT that has read access to the private repositories, add it as a [repository secret](https://docs.github.com/en/actions/security-for-github-actions/security-guides/using-secrets-in-github-actions#creating-secrets-for-a-repository).
 
-Then, you can use the [gh](https://cli.github.com/) CLI (which is installed in GitHub Actions runners by default) to configure a [credential helper for Git](../../concepts/authentication/git.md#git-credential-helpers) to use the PAT for queries to repositories hosted on github.com.
+Then, you can use the [gh](https://cli.github.com/) CLI (which is installed in GitHub Actions runners by default) to configure a [credential helper for Git](../../concepts/authentication/git.md#git-credential-helpers) to use the PAT for queries to repositories hosted on `github.com`.
 
-For example, if you called your repository secret MY_PAT:
+For example, if you called your repository secret `MY_PAT`:
 
 ```YAML
 steps :
@@ -422,7 +422,7 @@ After saving:
 
 PyPI project publishing settings dialog showing the configured trusted publishing settings
 
-Finally, tag a release and push it. Make sure it starts with v to match the pattern in the workflow.
+Finally, tag a release and push it. Make sure it starts with `v` to match the pattern in the workflow.
 
 ```
 $ git tag -a v0.1.0 -m v0.1.0

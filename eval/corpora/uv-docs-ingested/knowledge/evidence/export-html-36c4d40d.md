@@ -7,7 +7,7 @@ source_digest: "sha256:36c4d40dca793a5107a32437d13319610d51e1f266fe079b9f1092f6a
 
 # Exporting a lockfile
 
-uv can export a lockfile to different formats for integration with other tools and workflows. The uv export command supports multiple output formats, each suited to different use cases.
+uv can export a lockfile to different formats for integration with other tools and workflows. The `uv export` command supports multiple output formats, each suited to different use cases.
 
 For more details on lockfiles and how they're created, see the [project layout](layout.md) and [locking and syncing](sync.md) documentation.
 
@@ -17,15 +17,15 @@ uv supports three export formats:
 
 -
 
-  requirements.txt: The traditional pip-compatible [requirements file format](https://pip.pypa.io/en/stable/reference/requirements-file-format/).
+  `requirements.txt`: The traditional pip-compatible [requirements file format](https://pip.pypa.io/en/stable/reference/requirements-file-format/).
 -
 
-  pylock.toml: The standardized Python lockfile format defined in [PEP 751](https://peps.python.org/pep-0751/).
+  `pylock.toml`: The standardized Python lockfile format defined in [PEP 751](https://peps.python.org/pep-0751/).
 -
 
-  CycloneDX: An industry-standard [Software Bill of Materials (SBOM)](https://cyclonedx.org/) format.
+  `CycloneDX`: An industry-standard [Software Bill of Materials (SBOM)](https://cyclonedx.org/) format.
 
-The format can be specified with the --format flag:
+The format can be specified with the `--format` flag:
 
 ```
 $ uv export --format requirements.txt
@@ -47,7 +47,7 @@ $ uv export --format cyclonedx1.5 --output-file sbom.json
 
 ## requirements.txt format
 
-The requirements.txt format is the most widely supported format for Python dependencies. It can be used with pip and other Python package managers.
+The `requirements.txt` format is the most widely supported format for Python dependencies. It can be used with `pip` and other Python package managers.
 
 ### Basic usage
 
@@ -55,7 +55,7 @@ The requirements.txt format is the most widely supported format for Python depen
 $ uv export --format requirements.txt
 ```
 
-The generated requirements.txt file can then be installed via uv pip install, or with other tools like pip.
+The generated `requirements.txt` file can then be installed via `uv pip install`, or with other tools like `pip`.
 
 !!! note
 
@@ -106,10 +106,10 @@ The generated SBOM follows the [CycloneDX specification](https://cyclonedx.org/s
 
 -
 
-  uv:package:marker: Environment markers (e.g., python_version >= "3.8")
+  `uv:package:marker`: Environment markers (e.g., `python_version >= "3.8"`)
 -
 
-  uv:workspace:path: Relative path for workspace members
+  `uv:workspace:path`: Relative path for workspace members
 
 ## Next steps
 

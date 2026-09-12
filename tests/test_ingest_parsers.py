@@ -28,6 +28,7 @@ from mycelium.ingest.parsers import markdown as markdown_parser
 from mycelium.ingest.parsers import pandoc as pandoc_parser
 from mycelium.ingest.parsers import pdf as pdf_parser
 from mycelium.ingest.parsers.builder import KirBuilder
+from mycelium.ingest.registry import BUILTIN_PARSERS
 from mycelium.sdk.identity import digest_text
 from mycelium.sdk.protocols import Blob, Parser
 from mycelium.sdk.types import KirDocument, NodeKind
@@ -462,3 +463,50 @@ def test_the_pinned_order_decides_which_engine_reads_a_docx() -> None:
     assert pandoc_first.parser_for(DOCX).meta.id == "pandoc"
     # reStructuredText only pandoc reads, so the order cannot change that one.
     assert docling_first.parser_for(RST).meta.id == "pandoc"
+
+
+# ---------------------------------------------------------------------------
+# Inline code spans out of docling (roadmap 5.25, ADR-0096)
+# ---------------------------------------------------------------------------
+
+_INLINE_CODE_HTML = b"""<h1>Caching</h1>
+<p>Using <code>uv cache prune --ci</code> at the end of the job is recommended.</p>
+<p>Set <code>UV_SYSTEM_PYTHON</code> and pass <code>--system</code>.</p>
+<pre><code>uv-install:
+  script:
+    - uv cache prune --ci</code></pre>
+"""
+
+
+def _docling_kir(data: bytes) -> KirDocument:
+    parser = BUILTIN_PARSERS["docling"]()
+    blob = Blob.of(data, media_type="text/html", source_uri="file:inline.html")
+    return parser.parse(blob, doc_id=DOC_ID)
+
+
+def test_an_inline_code_run_becomes_a_span_and_a_fenced_block_does_not() -> None:
+    """The discriminator is position, because docling offers nothing else.
+
+    An inline `<code>` arrives as a `code` run of an *inline group*; a
+    `<pre><code>` arrives as a block whose parent is the section. Same label,
+    same `code_language`, same `content_layer` — measured (ADR-0096).
+    """
+    kir = _docling_kir(_INLINE_CODE_HTML)
+    spans = [span for node in kir.nodes for span in node.spans]
+    assert "uv cache prune --ci" in spans
+    assert {"UV_SYSTEM_PYTHON", "--system"} <= set(spans)
+
+    blocks = [node for node in kir.nodes if node.kind is NodeKind.CODE_BLOCK]
+    assert blocks, "the fenced block is still a code block"
+    assert not blocks[0].spans, "a block is not its own inline span"
+
+
+def test_a_span_leaves_the_paragraph_text_exactly_as_it_was() -> None:
+    """`spans` is additional evidence, never a rewrite of `text` (spec 03 §4)."""
+    kir = _docling_kir(_INLINE_CODE_HTML)
+    paragraph = next(
+        node
+        for node in kir.nodes
+        if node.kind is NodeKind.PARAGRAPH and "uv cache prune" in (node.text or "")
+    )
+    assert paragraph.text == "Using uv cache prune --ci at the end of the job is recommended."

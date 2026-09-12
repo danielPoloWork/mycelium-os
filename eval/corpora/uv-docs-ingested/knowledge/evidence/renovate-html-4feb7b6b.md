@@ -13,7 +13,7 @@ uv is supported by [Renovate](https://github.com/renovatebot/renovate).
 
 ## uv.lock output
 
-Renovate uses the presence of a uv.lock file to determine that uv is used for managing dependencies, and will suggest upgrades to [project dependencies](../../concepts/projects/dependencies.md#project-dependencies), [optional dependencies](../../concepts/projects/dependencies.md#optional-dependencies) and [development dependencies](../../concepts/projects/dependencies.md#development-dependencies). Renovate will update both the pyproject.toml and uv.lock files.
+Renovate uses the presence of a `uv.lock` file to determine that uv is used for managing dependencies, and will suggest upgrades to [project dependencies](../../concepts/projects/dependencies.md#project-dependencies), [optional dependencies](../../concepts/projects/dependencies.md#optional-dependencies) and [development dependencies](../../concepts/projects/dependencies.md#development-dependencies). Renovate will update both the `pyproject.toml` and `uv.lock` files.
 
 The lockfile can also be refreshed on a regular basis (for instance to update transitive dependencies) by enabling the [lockFileMaintenance](https://docs.renovatebot.com/configuration-options/#lockfilemaintenance) option:
 
@@ -56,7 +56,7 @@ for a script, the lock file will need to be manually updated.
 
 If you use [exclude-newer](../../reference/settings.md#exclude-newer) option, it is recommended to also set the equivalent [minimumReleaseAge](https://docs.renovatebot.com/configuration-options/#minimumreleaseage) option in Renovate, to avoid ending up with pull requests where uv would not be able to lock the dependencies.
 
-For instance, if you've set exclude-newer to 1 week, you can set:
+For instance, if you've set `exclude-newer` to `1 week`, you can set:
 
 ```JavaScript
 {

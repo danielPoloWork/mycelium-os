@@ -31,45 +31,45 @@ The following distroless images are available:
 - ghcr.io/astral-sh/uv:latest
 -
 
-  ghcr.io/astral-sh/uv:{major}.{minor}.{patch}, e.g., ghcr.io/astral-sh/uv:0.12.7
+  `ghcr.io/astral-sh/uv:{major}.{minor}.{patch}`, e.g., `ghcr.io/astral-sh/uv:0.12.7`
 -
 
-  ghcr.io/astral-sh/uv:{major}.{minor}, e.g., ghcr.io/astral-sh/uv:0.12 (the latest patch version)
+  `ghcr.io/astral-sh/uv:{major}.{minor}`, e.g., `ghcr.io/astral-sh/uv:0.12` (the latest patch version)
 
 And the following derived images are available:
 
 -
 
-  Based on alpine:3.23:
+  Based on `alpine:3.23`:
     - ghcr.io/astral-sh/uv:alpine
     - ghcr.io/astral-sh/uv:alpine3.23
 -
 
-  Based on alpine:3.22:
+  Based on `alpine:3.22`:
     - ghcr.io/astral-sh/uv:alpine3.22
 -
 
-  Based on debian:trixie-slim:
+  Based on `debian:trixie-slim`:
     - ghcr.io/astral-sh/uv:debian-slim
     - ghcr.io/astral-sh/uv:trixie-slim
 -
 
-  Based on buildpack-deps:trixie:
+  Based on `buildpack-deps:trixie`:
     - ghcr.io/astral-sh/uv:debian
     - ghcr.io/astral-sh/uv:trixie
 -
 
-  Based on dhi.io/alpine-base:3.23:
+  Based on `dhi.io/alpine-base:3.23`:
     - ghcr.io/astral-sh/uv:alpine-dhi
     - ghcr.io/astral-sh/uv:alpine3.23-dhi
 -
 
-  Based on dhi.io/debian-base:trixie-debian13:
+  Based on `dhi.io/debian-base:trixie-debian13`:
     - ghcr.io/astral-sh/uv:debian-dhi
     - ghcr.io/astral-sh/uv:trixie-dhi
 -
 
-  Based on dhi/python:3.x:
+  Based on `dhi/python:3.x`:
     - ghcr.io/astral-sh/uv:python3.14-dhi
     - ghcr.io/astral-sh/uv:python3.13-dhi
     - ghcr.io/astral-sh/uv:python3.12-dhi
@@ -77,7 +77,7 @@ And the following derived images are available:
     - ghcr.io/astral-sh/uv:python3.10-dhi
 -
 
-  Based on python3.x-alpine:
+  Based on `python3.x-alpine`:
     - ghcr.io/astral-sh/uv:python3.15-rc-alpine
     - ghcr.io/astral-sh/uv:python3.15-rc-alpine3.23
     - ghcr.io/astral-sh/uv:python3.14-alpine
@@ -94,7 +94,7 @@ And the following derived images are available:
     - ghcr.io/astral-sh/uv:python3.9-alpine3.22
 -
 
-  Based on python3.x-trixie:
+  Based on `python3.x-trixie`:
     - ghcr.io/astral-sh/uv:python3.15-rc-trixie
     - ghcr.io/astral-sh/uv:python3.14-trixie
     - ghcr.io/astral-sh/uv:python3.13-trixie
@@ -104,7 +104,7 @@ And the following derived images are available:
     - ghcr.io/astral-sh/uv:python3.9-trixie
 -
 
-  Based on python3.x-slim-trixie:
+  Based on `python3.x-slim-trixie`:
     - ghcr.io/astral-sh/uv:python3.15-rc-trixie-slim
     - ghcr.io/astral-sh/uv:python3.14-trixie-slim
     - ghcr.io/astral-sh/uv:python3.13-trixie-slim
@@ -113,9 +113,9 @@ And the following derived images are available:
     - ghcr.io/astral-sh/uv:python3.10-trixie-slim
     - ghcr.io/astral-sh/uv:python3.9-trixie-slim
 
-As with the distroless image, each derived image is published with uv version tags as ghcr.io/astral-sh/uv:{major}.{minor}.{patch}-{base} and ghcr.io/astral-sh/uv:{major}.{minor}-{base}, e.g., ghcr.io/astral-sh/uv:0.12.7-alpine.
+As with the distroless image, each derived image is published with uv version tags as `ghcr.io/astral-sh/uv:{major}.{minor}.{patch}-{base}` and `ghcr.io/astral-sh/uv:{major}.{minor}-{base}`, e.g., `ghcr.io/astral-sh/uv:0.12.7-alpine`.
 
-In addition, starting with 0.8 each derived image also sets UV_TOOL_BIN_DIR to /usr/local/bin to allow uv tool install to work as expected with the default user.
+In addition, starting with `0.8` each derived image also sets `UV_TOOL_BIN_DIR` to `/usr/local/bin` to allow `uv tool install` to work as expected with the default user.
 
 For more details, see the [GitHub Container](https://github.com/astral-sh/uv/pkgs/container/uv) page.
 
@@ -146,7 +146,7 @@ RUN sh /uv-installer.sh && rm /uv-installer.sh
 ENV PATH= "/root/.local/bin/:$PATH"
 ```
 
-Note this requires curl to be available.
+Note this requires `curl` to be available.
 
 In either case, it is best practice to pin to a specific uv version, e.g., with:
 
@@ -222,7 +222,7 @@ Once the project is installed, you can either activate the project virtual envir
 ENV PATH= "/app/.venv/bin:$PATH"
 ```
 
-Or, you can use uv run for any commands that require the environment:
+Or, you can use `uv run` for any commands that require the environment:
 
 ```Dockerfile
 RUN uv run some_script.py
@@ -275,11 +275,11 @@ ENV UV_TOOL_BIN_DIR=/opt/uv-bin/
 
 ## Developing in a container
 
-When developing, it's useful to mount the project directory into a container. With this setup, changes to the project can be immediately reflected in a containerized service without rebuilding the image. However, it is important not to include the project virtual environment (.venv) in the mount, because the virtual environment is platform specific and the one built for the image should be kept.
+When developing, it's useful to mount the project directory into a container. With this setup, changes to the project can be immediately reflected in a containerized service without rebuilding the image. However, it is important not to include the project virtual environment (`.venv`) in the mount, because the virtual environment is platform specific and the one built for the image should be kept.
 
 ### Mounting the project with docker run
 
-Bind mount the project (in the working directory) to /app while retaining the.venv directory with an [anonymous volume](https://docs.docker.com/engine/storage/#volumes):
+Bind mount the project (in the working directory) to `/app` while retaining the`.venv` directory with an [anonymous volume](https://docs.docker.com/engine/storage/#volumes):
 
 ```
 $ docker run --rm --volume .:/app --volume /app/.venv [...]
@@ -304,7 +304,7 @@ When using Docker compose, more sophisticated tooling is available for container
 This feature requires Compose 2.22.0 which is bundled with Docker Desktop 4.24.
 ```
 
-Configure watch in your [Docker compose file](https://docs.docker.com/compose/compose-application-model/#the-compose-file) to mount the project directory without syncing the project virtual environment and to rebuild the image when the configuration changes:
+Configure `watch` in your [Docker compose file](https://docs.docker.com/compose/compose-application-model/#the-compose-file) to mount the project directory without syncing the project virtual environment and to rebuild the image when the configuration changes:
 
 ```YAML
 services :
@@ -330,7 +330,7 @@ ignore :
 path : ./pyproject.toml
 ```
 
-Then, run docker compose watch to run the container with the development setup.
+Then, run `docker compose watch` to run the container with the development setup.
 
 See a complete example in the [uv-docker-example](https://github.com/astral-sh/uv-docker-example/blob/main/compose.yml) [project](https://github.com/astral-sh/uv-docker-example/blob/main/compose.yml).
 
@@ -340,14 +340,14 @@ See a complete example in the [uv-docker-example](https://github.com/astral-sh/u
 
 Compiling Python source files to bytecode is typically desirable for production images as it tends to improve startup time (at the cost of increased installation time and image size).
 
-To enable bytecode compilation, use the --compile-bytecode flag:
+To enable bytecode compilation, use the `--compile-bytecode` flag:
 
 ```Dockerfile
 RUN uv python install --compile-bytecode
 RUN uv sync --compile-bytecode
 ```
 
-Alternatively, you can set the UV_COMPILE_BYTECODE environment variable to ensure that all commands within the Dockerfile compile bytecode:
+Alternatively, you can set the `UV_COMPILE_BYTECODE` environment variable to ensure that all commands within the Dockerfile compile bytecode:
 
 ```Dockerfile
 ENV UV_COMPILE_BYTECODE=1
@@ -375,9 +375,9 @@ uv sync
 
 Changing the [UV_LINK_MODE](../../reference/settings.md#link-mode) silences warnings about not being able to link files since the cache and sync target are on separate file systems.
 
-If you're not mounting the cache, image size can be reduced by using the --no-cache flag or setting UV_NO_CACHE.
+If you're not mounting the cache, image size can be reduced by using the `--no-cache` flag or setting `UV_NO_CACHE`.
 
-By default, managed Python installations are not cached before being installed. Setting UV_PYTHON_CACHE_DIR can be used in combination with a cache mount:
+By default, managed Python installations are not cached before being installed. Setting `UV_PYTHON_CACHE_DIR` can be used in combination with a cache mount:
 
 ```Dockerfile
 ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
@@ -401,9 +401,9 @@ ENV UV_CACHE_DIR=/opt/uv-cache/
 
 ### Intermediate layers
 
-If you're using uv to manage your project, you can improve build times by moving your transitive dependency installation into its own layer via the --no-install options.
+If you're using uv to manage your project, you can improve build times by moving your transitive dependency installation into its own layer via the `--no-install` options.
 
-uv sync --no-install-project will install the dependencies of the project but not the project itself. Since the project changes frequently, but its dependencies are generally static, this can be a big time saver.
+`uv sync --no-install-project` will install the dependencies of the project but not the project itself. Since the project changes frequently, but its dependencies are generally static, this can be a big time saver.
 
 ```Dockerfile
 # Install uv
@@ -427,7 +427,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 uv sync --locked
 ```
 
-Note that the pyproject.toml is required to identify the project root and name, but the project contents are not copied into the image until the final uv sync command.
+Note that the `pyproject.toml` is required to identify the project root and name, but the project contents are not copied into the image until the final `uv sync` command.
 
 !!! tip
 
@@ -442,10 +442,10 @@ If you're using a [workspace](../../concepts/projects/workspaces.md), then a cou
 
 -
 
-  Use --frozen instead of --locked during the initial sync.
+  Use `--frozen` instead of `--locked` during the initial sync.
 -
 
-  Use the --no-install-workspace flag which excludes the project and any workspace members.
+  Use the `--no-install-workspace` flag which excludes the project and any workspace members.
 
 ```Dockerfile
 # Install uv
@@ -465,15 +465,15 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 uv sync --locked
 ```
 
-uv cannot assert that the uv.lock file is up-to-date without each of the workspace member pyproject.toml files, so we use --frozen instead of --locked to skip the check during the initial sync. The next sync, after all the workspace members have been copied, can still use --locked and will validate that the lockfile is correct for all workspace members.
+uv cannot assert that the `uv.lock` file is up-to-date without each of the workspace member `pyproject.toml` files, so we use `--frozen` instead of `--locked` to skip the check during the initial sync. The next sync, after all the workspace members have been copied, can still use `--locked` and will validate that the lockfile is correct for all workspace members.
 
 ### Non-editable installs
 
 By default, uv installs projects and workspace members in editable mode, such that changes to the source code are immediately reflected in the environment.
 
-uv sync and uv run both accept a --no-editable flag, which instructs uv to install the project in non-editable mode, removing any dependency on the source code.
+`uv sync` and `uv run` both accept a `--no-editable` flag, which instructs uv to install the project in non-editable mode, removing any dependency on the source code.
 
-In the context of a multi-stage Docker image, --no-editable can be used to include the project in the synced virtual environment from one stage, then copy the virtual environment alone (and not the source code) into the final image.
+In the context of a multi-stage Docker image, `--no-editable` can be used to include the project in the synced virtual environment from one stage, then copy the virtual environment alone (and not the source code) into the final image.
 
 For example:
 
@@ -523,13 +523,13 @@ uv sync
 
 ### Installing a package
 
-The system Python environment is safe to use in this context, since a container is already isolated. The --system flag can be used to install in the system environment:
+The system Python environment is safe to use in this context, since a container is already isolated. The `--system` flag can be used to install in the system environment:
 
 ```Dockerfile
 RUN uv pip install --system ruff
 ```
 
-To use the system Python environment by default, set the UV_SYSTEM_PYTHON variable:
+To use the system Python environment by default, set the `UV_SYSTEM_PYTHON` variable:
 
 ```Dockerfile
 ENV UV_SYSTEM_PYTHON=1
@@ -545,7 +545,7 @@ ENV VIRTUAL_ENV=/opt/venv
 ENV PATH= "/opt/venv/bin:$PATH"
 ```
 
-When using a virtual environment, the --system flag should be omitted from uv invocations:
+When using a virtual environment, the `--system` flag should be omitted from uv invocations:
 
 ```Dockerfile
 RUN uv pip install ruff
@@ -597,7 +597,7 @@ astral-sh/uv  https://slsa.dev/provenance/v1  .github/workflows/build-docker.yml
 
 This tells you that the specific Docker image was built by the official uv GitHub release workflow and hasn't been tampered with since.
 
-GitHub attestations build on the [sigstore.dev infrastructure](https://www.sigstore.dev/). As such you can also use the [cosign](https://github.com/sigstore/cosign) [command](https://github.com/sigstore/cosign) to verify the attestation blob against the (multi-platform) manifest for uv:
+GitHub attestations build on the [sigstore.dev infrastructure](https://www.sigstore.dev/). As such you can also use the [cosign](https://github.com/sigstore/cosign) [command](https://github.com/sigstore/cosign) to verify the attestation blob against the (multi-platform) manifest for `uv`:
 
 ```
 $ REPO=astral-sh/uv

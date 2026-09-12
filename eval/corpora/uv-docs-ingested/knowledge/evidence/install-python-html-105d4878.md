@@ -23,13 +23,13 @@ $ uv python install
 Python does not publish official distributable binaries. As such, uv uses distributions from the Astral [`python-build-standalone`](https://github.com/astral-sh/python-build-standalone) project. See the [Python distributions](../concepts/python-versions.md#managed-python-distributions) documentation for more details.
 ```
 
-Once Python is installed, it will be used by uv commands automatically. uv also adds the installed version to your PATH:
+Once Python is installed, it will be used by `uv` commands automatically. uv also adds the installed version to your `PATH`:
 
 ```
 $ python3.13
 ```
 
-uv only installs a versioned executable by default. To install python and python3 executables, include the experimental --default option:
+uv only installs a versioned executable by default. To install `python` and `python3` executables, include the experimental `--default` option:
 
 ```
 $ uv python install --default
@@ -66,7 +66,7 @@ See the [python install](../concepts/python-versions.md#installing-a-python-vers
 
 ## Reinstalling Python
 
-To reinstall uv-managed Python versions, use --reinstall, e.g.:
+To reinstall uv-managed Python versions, use `--reinstall`, e.g.:
 
 ```
 $ uv python install --reinstall
@@ -108,7 +108,7 @@ Automatic Python downloads can be [easily disabled](../concepts/python-versions.
 
 uv will use existing Python installations if present on your system. There is no configuration necessary for this behavior: uv will use the system Python if it satisfies the requirements of the command invocation. See the [Python discovery](../concepts/python-versions.md#discovery-of-python-versions) documentation for details.
 
-To force uv to use the system Python, provide the --no-managed-python flag. See the [Python version preference](../concepts/python-versions.md#requiring-or-disabling-managed-python-versions) documentation for more details.
+To force uv to use the system Python, provide the `--no-managed-python` flag. See the [Python version preference](../concepts/python-versions.md#requiring-or-disabling-managed-python-versions) documentation for more details.
 
 ## Upgrading Python versions
 
@@ -135,6 +135,6 @@ See the [python upgrade](../concepts/python-versions.md#upgrading-python-version
 
 ## Next steps
 
-To learn more about uv python, see the [Python version concept](../concepts/python-versions.md) page and the [command reference](../reference/cli.md#uv-python).
+To learn more about `uv python`, see the [Python version concept](../concepts/python-versions.md) page and the [command reference](../reference/cli.md#uv-python).
 
 Or, read on to learn how to [run scripts](scripts.md) and invoke Python with uv.

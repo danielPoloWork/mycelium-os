@@ -1,37 +1,37 @@
 {
   "grep": {
-    "blessed_from_snapshot": "01M1NV7C1XQ7GRVYAHEWM9X33H",
+    "blessed_from_snapshot": "01M2B76TV8Q70RGC2N4P3742EN",
     "cases": 19,
     "cases_digest": "sha256:ff37c047a54df80f2a022bcee0f3cc20ee29d4167a81fd8fe3acd82ad65cf2f9",
-    "content_digest": "sha256:d460945dbd3a9f1f8a7be0ed1ea1179916cb006e7ef7bcab563d6cf25e88edbe",
-    "corpus_digest": "sha256:d1519930c8fce8e35afdaa1b844a8fe49545dc235df6002bb99988cb34eaf69f",
-    "overall_ndcg_at_10": 0.330602,
+    "content_digest": "sha256:2ad9cd38b8d2ab1d30893aa52111c1324c1d7911550926dd5433a3e1faed8d9b",
+    "corpus_digest": "sha256:005cb2d8bf68e63b112e3d0126df6ca8fe3271a1015f02ac7f8872723b9fe8a9",
+    "overall_ndcg_at_10": 0.284211,
     "per_case": {
       "conceptual": {
         "r-0004": 0.0,
         "r-0005": 0.0,
-        "r-0006": 0.168676,
+        "r-0006": 0.14529,
         "r-0009": 0.0
       },
       "exact": {
-        "r-0003": 0.405375,
+        "r-0003": 0.406379,
         "r-0015": 1.0,
         "r-0016": 1.0,
-        "r-0017": 0.358821
+        "r-0017": 0.065523
       },
       "fact": {
         "r-0001": 0.63093,
-        "r-0002": 1.0,
-        "r-0007": 1.0,
+        "r-0002": 0.63093,
+        "r-0007": 0.63093,
         "r-0008": 0.0,
         "r-0010": 0.0,
         "r-0012": 0.0
       },
       "relationship": {
-        "r-0006": 0.168676,
+        "r-0006": 0.14529,
         "r-0011": 0.0,
         "r-0018": 0.0,
-        "r-0019": 0.056438
+        "r-0019": 0.321603
       },
       "unanswerable": {
         "r-0013": 0.0,
@@ -39,50 +39,50 @@
       }
     },
     "per_slice": {
-      "conceptual": 0.042169,
-      "exact": 0.691049,
-      "fact": 0.438488,
-      "relationship": 0.056279,
+      "conceptual": 0.036322,
+      "exact": 0.617975,
+      "fact": 0.315465,
+      "relationship": 0.116723,
       "unanswerable": 0.0
     },
     "toolchain": {
-      "mycelium": "0.3.0",
+      "mycelium": "0.4.0",
       "python": "3.12.10"
     }
   },
   "mycelium": {
-    "blessed_from_snapshot": "01M23HS48R031CFBA46YE2ZWFC",
+    "blessed_from_snapshot": "01M2B76TV8Q70RGC2N4P3742EN",
     "cases": 19,
     "cases_digest": "sha256:ff37c047a54df80f2a022bcee0f3cc20ee29d4167a81fd8fe3acd82ad65cf2f9",
-    "content_digest": "sha256:ffd910473f755fa8b023aece2dd9ca6554889a00bc4754c8ef0e763dd4f8f5b7",
-    "corpus_digest": "sha256:ac32bba6a89dd6be756068f22b0d6f60643036fb60eb57a7a2910efc29019a1e",
-    "overall_ndcg_at_10": 0.533094,
+    "content_digest": "sha256:2ad9cd38b8d2ab1d30893aa52111c1324c1d7911550926dd5433a3e1faed8d9b",
+    "corpus_digest": "sha256:005cb2d8bf68e63b112e3d0126df6ca8fe3271a1015f02ac7f8872723b9fe8a9",
+    "overall_ndcg_at_10": 0.523178,
     "per_case": {
       "conceptual": {
         "r-0004": 0.386853,
         "r-0005": 0.315465,
-        "r-0006": 0.337352,
+        "r-0006": 0.574309,
         "r-0009": 1.0
       },
       "exact": {
         "r-0003": 1.0,
         "r-0015": 1.0,
         "r-0016": 0.70981,
-        "r-0017": 0.383194
+        "r-0017": 0.050695
       },
       "fact": {
         "r-0001": 1.0,
         "r-0002": 1.0,
         "r-0007": 0.0,
-        "r-0008": 0.112451,
+        "r-0008": 0.120167,
         "r-0010": 1.0,
         "r-0012": 0.0
       },
       "relationship": {
-        "r-0006": 0.337352,
+        "r-0006": 0.574309,
         "r-0011": 0.276141,
         "r-0018": 0.0,
-        "r-0019": 0.54134
+        "r-0019": 0.460591
       },
       "unanswerable": {
         "r-0013": 0.0,
@@ -90,10 +90,10 @@
       }
     },
     "per_slice": {
-      "conceptual": 0.509917,
-      "exact": 0.773251,
-      "fact": 0.518742,
-      "relationship": 0.288708,
+      "conceptual": 0.569157,
+      "exact": 0.690126,
+      "fact": 0.520028,
+      "relationship": 0.32776,
       "unanswerable": 0.0
     },
     "toolchain": {

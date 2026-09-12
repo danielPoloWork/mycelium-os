@@ -43,6 +43,7 @@ from mycelium.eval.metrics import (
 )
 from mycelium.eval.retrievers import (
     GrepRetriever,
+    LexicalRetriever,
     MyceliumRetriever,
     Retriever,
     build_retriever,
@@ -69,6 +70,7 @@ __all__ = [
     "RETRIEVAL_LIMIT",
     "EvaluationError",
     "GrepRetriever",
+    "LexicalRetriever",
     "MyceliumRetriever",
     "Retriever",
     "build_retriever",

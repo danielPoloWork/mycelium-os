@@ -30,7 +30,7 @@ project
     └── main.py
 ```
 
-Where the pyproject.toml contains:
+Where the `pyproject.toml` contains:
 
 ```
 [project]
@@ -51,7 +51,7 @@ dev = [
 ]
 ```
 
-And the main.py file contains:
+And the `main.py` file contains:
 
 ```Python
 import logging
@@ -218,7 +218,7 @@ $ aws lambda invoke \
 }
 ```
 
-Where event.json contains the event payload to pass to the Lambda function:
+Where `event.json` contains the event payload to pass to the Lambda function:
 
 ```JSON
 {
@@ -229,7 +229,7 @@ Where event.json contains the event payload to pass to the Lambda function:
 }
 ```
 
-And response.json contains the response from the Lambda function:
+And `response.json` contains the response from the Lambda function:
 
 ```JSON
 {
@@ -250,7 +250,7 @@ For details, see the [AWS Lambda documentation](https://docs.aws.amazon.com/lamb
 
 If a project includes local dependencies (e.g., via [Workspaces](../../concepts/projects/workspaces.md)), those too must be included in the deployment package.
 
-We'll start by extending the above example to include a dependency on a locally-developed library named library.
+We'll start by extending the above example to include a dependency on a locally-developed `library` named library.
 
 First, we'll create the library itself:
 
@@ -259,7 +259,7 @@ $ uv init --lib library
 $ uv add ./library
 ```
 
-Running uv init within the project directory will automatically convert project to a workspace and add library as a workspace member:
+Running `uv init` within the `project` directory will automatically convert `project` to a workspace and add `library` as a workspace member:
 
 ```
 [project]
@@ -288,7 +288,7 @@ members = [ "library" ]
 lib = { workspace = true }
 ```
 
-By default, uv init --lib will create a package that exports a hello function. We'll modify the application source code to call that function:
+By default, `uv init --lib` will create a package that exports a `hello` function. We'll modify the application source code to call that function:
 
 ```Python
 import logging
@@ -466,7 +466,7 @@ $ aws lambda invoke \
 }
 ```
 
-Where event.json contains the event payload to pass to the Lambda function:
+Where `event.json` contains the event payload to pass to the Lambda function:
 
 ```JSON
 {
@@ -477,7 +477,7 @@ Where event.json contains the event payload to pass to the Lambda function:
 }
 ```
 
-And response.json contains the response from the Lambda function:
+And `response.json` contains the response from the Lambda function:
 
 ```JSON
 {
@@ -500,7 +500,7 @@ In particular, we can create a lambda layer for application dependencies and att
 
 To create a Lambda layer, we'll follow similar steps, but create two separate zip archives: one for the application code and one for the application dependencies.
 
-First, we'll create the dependency layer. Lambda layers are expected to follow a slightly different structure, so we'll use --prefix rather than --target:
+First, we'll create the dependency layer. Lambda layers are expected to follow a slightly different structure, so we'll use `--prefix` rather than `--target`:
 
 ```
 $ uv export --frozen --no-dev --no-editable -o requirements.txt
@@ -552,7 +552,7 @@ $ aws lambda create-function \
    --role arn:aws:iam::111122223333:role/service-role/my-lambda-role
 ```
 
-Finally, we can attach the dependencies layer to the Lambda function, using the ARN returned by the publish-layer-version step:
+Finally, we can attach the dependencies layer to the Lambda function, using the ARN returned by the `publish-layer-version` step:
 
 ```
 $ aws lambda update-function-configuration --function-name myFunction \

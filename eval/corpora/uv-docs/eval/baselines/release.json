@@ -1,6 +1,6 @@
 {
   "grep": {
-    "blessed_from_snapshot": "01M20B7YBVYP1ZV10D7D92GX8B",
+    "blessed_from_snapshot": "01M2B77CF6RSRW4GVWKDFE74NG",
     "cases": 25,
     "cases_digest": "sha256:c94a2405626a5be10cdcbc3a1cb6a25dbc0f8578269450b5a95f2f51513a2be1",
     "content_digest": "sha256:44895398cedfc30a39759a8dfd9ab59ec2df26e6d251e8e619a6bc3ea4af2b06",
@@ -55,12 +55,12 @@
       "unanswerable": 0.0
     },
     "toolchain": {
-      "mycelium": "0.3.0",
+      "mycelium": "0.4.0",
       "python": "3.12.10"
     }
   },
   "mycelium": {
-    "blessed_from_snapshot": "01M235S62BBX30ZQMY77V4F13R",
+    "blessed_from_snapshot": "01M2B77CF6RSRW4GVWKDFE74NG",
     "cases": 25,
     "cases_digest": "sha256:c94a2405626a5be10cdcbc3a1cb6a25dbc0f8578269450b5a95f2f51513a2be1",
     "content_digest": "sha256:44895398cedfc30a39759a8dfd9ab59ec2df26e6d251e8e619a6bc3ea4af2b06",
@@ -115,7 +115,7 @@
       "unanswerable": 0.0
     },
     "toolchain": {
-      "mycelium": "0.3.0",
+      "mycelium": "0.4.0",
       "python": "3.12.10"
     }
   }

@@ -161,17 +161,39 @@ def on(**extra: bool) -> RetrievalConfig:
     return RetrievalConfig(symbol_lookup=True, **extra)
 
 
+def off(**extra: bool) -> RetrievalConfig:
+    """The control arm, pinned — never `RetrievalConfig()` (roadmap 5.25).
+
+    Bare defaults were the control here until the leg earned them at 5.25, at
+    which point three tests started comparing the leg against itself. It is the
+    same defect the ablation runners had (ADR-0096): an arm that inherits a
+    default cannot measure that default, and it reads as correct for exactly as
+    long as the default is off.
+    """
+    return RetrievalConfig(symbol_lookup=False, **extra)
+
+
 # ---------------------------------------------------------------------------
 # The default, and the constants it was measured at
 # ---------------------------------------------------------------------------
 
 
-def test_the_leg_is_off_by_default_because_the_ablation_said_so() -> None:
-    """Measured on six case sets across three corpora, it moved the `symbol`
-    slice by +0.0 % on every one of them — it cannot fire on a single judged case
-    in that slice. Flipping this without re-running
-    `tools/measure_symbol_leg.py` is what this test exists to stop (ADR-0080)."""
-    assert RetrievalConfig().symbol_lookup is False
+def test_the_leg_is_on_by_default_because_the_ablation_said_so() -> None:
+    """It shipped off for three items and the same runner turned it on.
+
+    At roadmap 5.9 the leg moved the `symbol` slice by +0.0 % on all six sets —
+    it could not fire on one judged case in that slice, because those name
+    multi-word commands and spec 04 §2's identifier test rejects them. 5.23 gave
+    commands a source; 5.25 stopped the evidence projector dropping the namings
+    that mint them, and the leg then cleared the bar on a *held-out* set
+    (`uv-ingested/release`, +5.6 % on the slice, +0.9 % overall, nothing
+    regressing) — ADR-0070's criterion, so the flag follows the measurement.
+
+    Flipping this in either direction without re-running
+    `tools/measure_symbol_leg.py --check` is what this test exists to stop
+    (ADR-0080, amended by ADR-0096).
+    """
+    assert RetrievalConfig().symbol_lookup is True
 
 
 def test_the_constants_are_the_ones_the_ablation_was_run_at() -> None:
@@ -306,7 +328,7 @@ def test_the_leg_adds_and_never_promotes(store: SqliteStore) -> None:
     vote anyway would make RRF pay one piece of evidence twice — measured at 5 %
     to 56 % when the graph leg did it.
     """
-    base = search(store, "RetryPolicy", limit=10, config=RetrievalConfig())
+    base = search(store, "RetryPolicy", limit=10, config=off())
     with_leg = search(store, "RetryPolicy", limit=10, config=on())
     assert anchors(with_leg.hits) == anchors(base.hits)
     assert [hit.score for hit in with_leg.hits] == [hit.score for hit in base.hits]
@@ -345,7 +367,7 @@ def test_a_definition_site_always_matches_its_own_name(store: SqliteStore) -> No
     the mechanism, not of these corpora.
     """
     for query in ("RetryPolicy", "bus.config"):
-        lexical = search(store, query, limit=10, config=RetrievalConfig())
+        lexical = search(store, query, limit=10, config=off())
         definitions = store.symbols_by_id(symbol_lookup_ids(query))
         sites = {ref for symbol in definitions for ref in symbol.doc_refs}
         assert sites, "the corpus defines the name"
@@ -367,10 +389,10 @@ def test_the_leg_adds_a_definition_site_the_ranking_outranked(tmp_path: Path) ->
     root = repo(tmp_path, OUTRANKED, name="outranked")
     build(root)
     with SqliteStore.open(root, read_only=True) as store:
-        deep = search(store, "WidgetFactory", limit=200, config=RetrievalConfig())
+        deep = search(store, "WidgetFactory", limit=200, config=off())
         assert anchors(deep.hits).index("knowledge/impl.md#rendering/0") + 1 > VECTOR_CANDIDATES
 
-        base = search(store, "WidgetFactory", limit=10, config=RetrievalConfig())
+        base = search(store, "WidgetFactory", limit=10, config=off())
         assert "knowledge/impl.md#rendering/0" not in anchors(base.hits)
 
         with_leg = search(store, "WidgetFactory", limit=10, config=on())

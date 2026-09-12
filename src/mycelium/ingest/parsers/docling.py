@@ -242,9 +242,21 @@ def _item(  # noqa: C901
     if kind == "InlineGroup":
         # docling splits a run of differently-formatted text into sibling items;
         # KIR stores one paragraph, because that is the unit a reader cites.
-        runs = [str(getattr(ref.resolve(document), "text", "")) for ref in item.children]
+        resolved = [ref.resolve(document) for ref in item.children]
+        runs = [str(getattr(run, "text", "")) for run in resolved]
         node_id = builder.add(
-            NodeKind.PARAGRAPH, parent=parent, text=_join_runs(runs), src=_src(item)
+            NodeKind.PARAGRAPH,
+            parent=parent,
+            text=_join_runs(runs),
+            src=_src(item),
+            # A run docling labels `code` *inside an inline group* is an inline
+            # code span — `<code>` in a `<p>` — and the label is the whole
+            # discriminator: a block code fence is a `CodeItem` whose parent is
+            # the section, never the inline group. Keeping them is what lets the
+            # projector write the span back as a span (roadmap 5.25, ADR-0096);
+            # without it `uv cache prune --ci` reaches the compiler as four
+            # ordinary words and nothing names the command.
+            spans=_inline_spans(resolved),
         )
         _links(builder, item, document, node_id)
         return
@@ -305,6 +317,30 @@ def _item(  # noqa: C901
     )
     _links(builder, item, document, node_id)
     _children(builder, item, document, state, parent=node_id)
+
+
+def _inline_spans(runs: list[Any]) -> tuple[str, ...]:
+    """The inline code runs of an inline group, in order — KIR's `spans` (5.25).
+
+    **HTML only, and that is a measured limit rather than an omission.** An
+    HTML `<code>` inside a paragraph reaches here as a `code`-labelled run of an
+    inline group, so the naming survives. A DOCX does not: pandoc writes inline
+    code as a `VerbatimChar` character run (224 of them in the corpus's largest
+    DOCX), and docling's DOCX backend exposes a run's formatting as bold,
+    italic, underline, strikethrough and script — with no monospace among them —
+    so by the time the document reaches this adapter the distinction is gone.
+    A PDF text layer never had it. Inventing one from a heuristic (a token that
+    looks like a flag, a word with a dot in it) is the plausible-looking wrong
+    answer this project refuses elsewhere, and D-007 puts repairing docling out
+    of scope. So the span survives from HTML, is *reported* as absent from the
+    other two, and ADR-0096 records what that costs.
+    """
+    return tuple(
+        text
+        for run in runs
+        if str(getattr(getattr(run, "label", None), "value", "") or "") == "code"
+        and (text := str(getattr(run, "text", "") or "").strip())
+    )
 
 
 _NO_SPACE_BEFORE: Final = frozenset(".,;:!?)]}%»…’”")

@@ -106,9 +106,9 @@ access to a free account running on AWS. If you're not running on AWS, you can e
 a valid `region` for your cloud provider or remove the `region` line above.
 ```
 
-The comments tell Coiled to use the official [uv Docker image](../integration/docker.md) when running the script (ensuring uv is available) and to run in the us-east-2 region on AWS (where this example data file happens to live) to avoid any data egress.
+The comments tell Coiled to use the official [uv Docker image](../integration/docker.md) when running the script (ensuring uv is available) and to run in the `us-east-2` region on AWS (where this example data file happens to live) to avoid any data egress.
 
-To submit a batch job for Coiled to run, use [coiled batch run](https://docs.coiled.io/user_guide/api.html?utm_source=uv-docs#coiled-batch-run) to execute the uv run command in the cloud:
+To submit a batch job for Coiled to run, use [coiled batch run](https://docs.coiled.io/user_guide/api.html?utm_source=uv-docs#coiled-batch-run) to execute the `uv run` command in the cloud:
 
 ```Bash
 $ uvx coiled batch run \
@@ -117,7 +117,7 @@ uv run process.py
 
 The same process that previously ran locally is now running on a remote cloud VM on AWS.
 
-You can monitor the progress of the batch job in the UI at [cloud.coiled.io](https://cloud.coiled.io/) or from the terminal using the coiled batch status, coiled batch wait, and coiled batch logs commands.
+You can monitor the progress of the batch job in the UI at [cloud.coiled.io](https://cloud.coiled.io/) or from the terminal using the `coiled batch status`, `coiled batch wait`, and `coiled batch logs` commands.
 
 Coiled UI
 

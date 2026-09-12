@@ -376,7 +376,10 @@ def main() -> int:
                 _coverage(name, root, store)
                 measured += 1
                 continue
-            base_retriever = build_retriever("mycelium", store)
+            # The control is the lexical leg *pinned* off, never `mycelium` —
+            # which is the shipped product and would carry the leg under test
+            # the moment it earns its default (ADR-0096).
+            base_retriever = build_retriever("lexical", store)
             leg_retriever = build_retriever("symbol", store)
             for set_name in SETS:
                 path = root / "eval" / f"{set_name}.jsonl"

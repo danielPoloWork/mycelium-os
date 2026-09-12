@@ -21,7 +21,7 @@ When writing a reproducible example, the goal is to provide all the context nece
 - The version of other relevant tools
 -
 
-  The relevant files (the uv.lock, pyproject.toml, etc.)
+  The relevant files (the `uv.lock`, `pyproject.toml`, etc.)
 - The commands to run
 
 To ensure your reproduction is minimal, remove as many dependencies, settings, and files as possible. Be sure to test your reproduction before sharing it. We recommend including verbose logs from your reproduction; they may differ on your machine in a critical way. Using a [Gist](https://gist.github.com/) can be helpful for very long logs.
@@ -56,7 +56,7 @@ When writing a Docker MRE with uv, it's best to start with one of [uv's Docker i
 FROM ghcr.io/astral-sh/uv:0.12.0-debian-slim
 ```
 
-While Docker images are isolated from the system, the build will use your system's architecture by default. When sharing a reproduction, you can explicitly set the platform to ensure a reproducer gets the expected behavior. uv publishes images for linux/amd64 (e.g., Intel or AMD) and linux/arm64 (e.g., Apple M Series or ARM)
+While Docker images are isolated from the system, the build will use your system's architecture by default. When sharing a reproduction, you can explicitly set the platform to ensure a reproducer gets the expected behavior. uv publishes images for `linux/amd64` (e.g., Intel or AMD) and `linux/arm64` (e.g., Apple M Series or ARM)
 
 ```Dockerfile
 FROM --platform=linux/amd64 ghcr.io/astral-sh/uv:0.12.0-debian-slim
@@ -93,7 +93,7 @@ WORKDIR /mre
 RUN uv lock
 ```
 
-If you need to write many files, it's better to create and publish a [Git repository](#git-repository). You can combine these approaches and include a Dockerfile in the repository.
+If you need to write many files, it's better to create and publish a [Git repository](#git-repository). You can combine these approaches and include a `Dockerfile` in the repository.
 
 When sharing a Docker reproduction, it's helpful to include the build logs. You can see more output from the build steps by disabling caching and the fancy output:
 
@@ -114,9 +114,9 @@ uv run -v python -c "import pydantic"
 
 If your reproduction requires many files, use a [Git repository](#git-repository) to share them.
 
-In addition to the script, include verbose logs (i.e., with the -v flag) of the failure and the complete error message.
+In addition to the script, include verbose logs (i.e., with the `-v` flag) of the failure and the complete error message.
 
-Whenever a script relies on external state, be sure to share that information. For example, if you wrote the script on Windows, and it uses a Python version that you installed with choco and runs on PowerShell 6.2, please include that in the report.
+Whenever a script relies on external state, be sure to share that information. For example, if you wrote the script on Windows, and it uses a Python version that you installed with `choco` and runs on PowerShell 6.2, please include that in the report.
 
 ### Git repository
 
@@ -129,7 +129,7 @@ $ git checkout <commit>
 $ <commands to produce error>
 ```
 
-You can quickly create a new repository in the [GitHub UI](https://github.com/new) or with the gh CLI:
+You can quickly create a new repository in the [GitHub UI](https://github.com/new) or with the `gh` CLI:
 
 ```
 $ gh repo create uv-mre-1234 --clone
