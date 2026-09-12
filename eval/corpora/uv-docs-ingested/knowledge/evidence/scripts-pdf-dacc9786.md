@@ -6,17 +6,17 @@ source_digest: "sha256:dacc978697c9e643c362755013c3defdd9cdb6f35e488ba87e466cecd
 ---
 
 Running scripts
-A Python script is a file intended for standalone execution, e.g., with python <script>.py. Using uv
+A Python script is a file intended for standalone execution, e.g., with python \<script>.py. Using uv
 to execute scripts ensures that script dependencies are managed without manually managing
 environments.
 !!! note
 If you are not familiar with Python environments: every Python installation has an
 environment
-that packages can be installed in. Typically, creating [_virtual_ environments]
+that packages can be installed in. Typically, creating \[\_virtual\_ environments\]
 (https://docs.python.org/3/library/venv.html) is recommended to
 isolate packages required by each script. uv automatically manages virtual
 environments for you
-and prefers a [declarative](#declaring-script-dependencies) approach to dependencies.
+and prefers a \[declarative\](#declaring-script-dependencies) approach to dependencies.
 Running a script without dependencies
 If your script has no dependencies, you can execute it with uv run:
 print("Hello world")
@@ -24,12 +24,12 @@ $ uv run example.py
 Hello world
 Similarly, if your script depends on a module in the standard library, there's nothing more to do:
 import os
-print(os.path.expanduser("~"))
+print(os.path.expanduser("\~"))
 $ uv run example.py
 /Users/astral
 Arguments may be provided to the script:
 import sys
-print(" ".join(sys.argv[1:]))
+print(" ".join(sys.argv\[1:\]))
 $ uv run example.py test
 test
 $ uv run example.py hello world!
@@ -37,13 +37,13 @@ hello world!
 Additionally, your script can be read directly from stdin:
 $ echo 'print("hello world!")' | uv run -
 Or, if your shell supports here-documents:
-uv run - <<EOF
+uv run - \<\<EOF
 print("hello world!")
 EOF
 Note that if you use uv run in a project, i.e., a directory with a pyproject.toml, it will install the
 current project before running the script. If your script does not depend on the project, use the --
 no-project flag to skip this:
-$ # Note: the `--no-project` flag must be provided _before_ the script name.
+$ # Note: the \`--no-project\` flag must be provided \_before\_ the script name.
 $ uv run --no-project example.py
 See the projects guide for more details on working in projects.
 
@@ -94,10 +94,10 @@ import requests
 from rich.pretty import pprint
 resp = requests.get("https://peps.python.org/api/peps.json")
 data = resp.json()
-pprint([(k, v["title"]) for k, v in data.items()][:10])
+pprint(\[(k, v\["title"\]) for k, v in data.items()\]\[:10\])
 uv will automatically create an environment with the dependencies necessary to run the script, e.g.:
 $ uv run example.py
-[
+\[
 │ ('1', 'PEP Purpose and Guidelines'),
 │ ('2', 'Procedure for Adding New Modules'),
 │ ('3', 'Guidelines for Handling Bug Reports'),
@@ -108,20 +108,20 @@ $ uv run example.py
 │ ('8', 'Style Guide for Python Code'),
 │ ('9', 'Sample Plaintext PEP Template'),
 │ ('10', 'Voting Guidelines')
-]
+\]
 !!! important
-When using inline script metadata, even if `uv run` is [used in a _project_](../
-concepts/projects/run.md), the project's dependencies will be ignored. The `--no￾project` flag is not required.
+When using inline script metadata, even if \`uv run\` is \[used in a \_project\_\](../
+concepts/projects/run.md), the project's dependencies will be ignored. The \`--no￾project\` flag is not required.
 uv also respects Python version requirements:
 \# /// script
 \# requires-python = ">=3.12"
-\# dependencies = []
+\# dependencies = \[\]
 \# ///
 \# Use some syntax added in Python 3.12
-type Point = tuple[float, float]
+type Point = tuple\[float, float\]
 print(Point)
 !!! note
-The `dependencies` field must be provided even if empty.
+The \`dependencies\` field must be provided even if empty.
 uv run will search for and use the required Python version. The Python version will download if it
 is not installed — see the documentation on Python versions for more details.
 Using a shebang to create an executable file
@@ -139,16 +139,16 @@ Declaration of dependencies is also supported in this context, for example:
 \#
 \# /// script
 \# requires-python = ">=3.12"
-\# dependencies = ["httpx"]
+\# dependencies = \["httpx"\]
 \# ///
 import httpx
 print(httpx.get("https://example.com"))
 Using alternative package indexes
 If you wish to use an alternative package index to resolve dependencies, you can provide the index
 with the --index option:
-$ uv add --index "https://example.com/simple" --script example.py 'requests<3' 'rich'
+$ uv add --index "https://example.com/simple" --script example.py 'requests\<3' 'rich'
 This will include the package data in the inline metadata:
-\# [[tool.uv.index]]
+\# \[\[tool.uv.index\]\]
 \# url = "https://example.com/simple"
 If you require authentication to access the package index, then please refer to the package index
 documentation.
@@ -167,19 +167,19 @@ inline script metadata to limit uv to only considering distributions released be
 This is useful for improving the reproducibility of your script when run at a later point in time.
 The date should be specified as an RFC 3339 timestamp (e.g., 2006-12-02T02:07:43Z).
 \# /// script
-\# dependencies = [
+\# dependencies = \[
 \# "requests",
-\# ]
-\# [tool.uv]
+\# \]
+\# \[tool.uv\]
 \# exclude-newer = "2023-10-16T00:00:00Z"
 \# ///
 
 import requests
-print(requests.__version__)
+print(requests.\_\_version\_\_)
 Using different Python versions
 uv allows arbitrary Python versions to be requested on each script invocation, for example:
 import sys
-print(".".join(map(str, sys.version_info[:3])))
+print(".".join(map(str, sys.version\_info\[:3\])))
 $ # Use the default Python version, may differ on your machine
 $ uv run example.py
 3.12.6
@@ -204,15 +204,15 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QGridLayout
 app = QApplication(sys.argv)
 widget = QWidget()
 grid = QGridLayout()
-text_label = QLabel()
-text_label.setText("Hello World!")
-grid.addWidget(text_label)
+text\_label = QLabel()
+text\_label.setText("Hello World!")
+grid.addWidget(text\_label)
 widget.setLayout(grid)
 widget.setGeometry(100, 100, 200, 50)
 widget.setWindowTitle("uv")
 widget.show()
-sys.exit(app.exec_())
-PS> uv run --with PyQt5 example_pyqt.pyw
+sys.exit(app.exec\_())
+PS> uv run --with PyQt5 example\_pyqt.pyw
 Run Result{: style="height:50px;width:150px"}
 
 Next steps

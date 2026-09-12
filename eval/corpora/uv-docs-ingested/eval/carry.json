@@ -5,7 +5,7 @@
       "twin": "knowledge/evidence/certificates-docx-f6fc880d.md#custom-certificates/0"
     },
     "docs/concepts/authentication/cli.md#logging-in-to-a-service/": {
-      "coverage": 0.988,
+      "coverage": 1.0,
       "twin": "knowledge/evidence/cli-html-cbfc86dd.md#logging-in-to-a-service/0"
     },
     "docs/concepts/authentication/http.md#/0": {
@@ -66,7 +66,7 @@
     },
     "docs/concepts/projects/config.md#project-environment-path/": {
       "coverage": 0.8649,
-      "twin": "knowledge/evidence/config-pdf-2839f69e.md#/1"
+      "twin": "knowledge/evidence/config-pdf-2839f69e.md#/2"
     },
     "docs/concepts/projects/dependencies.md#adding-dependencies/": {
       "coverage": 0.8738,
@@ -133,7 +133,7 @@
       "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/4"
     },
     "docs/concepts/python-versions.md#managed-and-system-python-installations/0": {
-      "coverage": 0.9821,
+      "coverage": 1.0,
       "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/0"
     },
     "docs/concepts/python-versions.md#requesting-a-version/": {
@@ -173,7 +173,7 @@
       "twin": "knowledge/evidence/projects-docx-85ca2960.md#working-on-projects/creating-a-new-project/0"
     },
     "docs/guides/scripts.md#/": {
-      "coverage": 0.9697,
+      "coverage": 1.0,
       "twin": "knowledge/evidence/scripts-pdf-dacc9786.md#/0"
     },
     "docs/guides/tools.md#installing-tools/": {

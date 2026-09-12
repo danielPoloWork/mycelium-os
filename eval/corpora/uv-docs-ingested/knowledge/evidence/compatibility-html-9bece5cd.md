@@ -255,7 +255,7 @@ return False
 
 ## Bytecode compilation
 
-Unlike `pip`, uv does not compile`.py` files to`.pyc` files during installation by default (i.e., uv does not create or populate __pycache__ directories). To enable bytecode compilation during installs, pass the `--compile-bytecode` flag to `uv pip install` or `uv pip sync`, or set the `UV_COMPILE_BYTECODE` environment variable to `1`.
+Unlike `pip`, uv does not compile`.py` files to`.pyc` files during installation by default (i.e., uv does not create or populate \_\_pycache\_\_ directories). To enable bytecode compilation during installs, pass the `--compile-bytecode` flag to `uv pip install` or `uv pip sync`, or set the `UV_COMPILE_BYTECODE` environment variable to `1`.
 
 Skipping bytecode compilation can be undesirable in workflows; for example, we recommend enabling bytecode compilation in [Docker builds](../guides/integration/docker.md) to improve startup times (at the cost of increased build times).
 

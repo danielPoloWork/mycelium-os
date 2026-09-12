@@ -78,7 +78,7 @@ see exactly where something was lost, which is the whole point of an
 """
 
 import re
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Final
@@ -124,6 +124,20 @@ _RULE: Final = re.compile(r"^(?:-+|=+|_{3,}|\*{3,})\s*$")
 a *heading* out of the lines above it, so a line of dashes in projected prose can
 promote the paragraph before it. Any run of ``-`` or ``=`` underlines; a break
 needs three."""
+_INLINE: Final = re.compile(r"[\\`*_\[\]<&~]")
+"""The ASCII punctuation CommonMark can start an *inline* construct with.
+
+The block-shape list above is a list because each shape's damage is its own
+sentence. This is not a list at all — it is every character that could pair into
+emphasis, a code span, a link, an autolink, an entity or a strikethrough —
+because it is applied only where the compiler has already been asked and has
+already answered that the text does not survive (:func:`_repaired`). A narrower
+set would mean predicting which pairings CommonMark makes, and that prediction is
+what was wrong: ``__token__`` was read as strong emphasis and indexed as
+``token`` (roadmap 5.28).
+
+``!`` is absent because it is only significant before ``[``, which is here."""
+
 _SLUG_STRIP: Final = re.compile(r"[^a-z0-9]+")
 
 _PROBE_DOC_ID: Final = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
@@ -158,6 +172,16 @@ class Projection:
     holding a line break, or one overlapping a reference already rendered. Counted
     for the same reason the reference drops are — a silent drop is the failure
     this lane exists to make impossible."""
+
+    escaped: int = 0
+    """Blocks whose source text asserted inline syntax it did not author, and whose
+    prose was therefore backslashed so the compiler reads back the characters the
+    source actually had (roadmap 5.28)."""
+
+    unreadable: int = 0
+    """Blocks the compiler still does not read back after escaping. Zero on all
+    three corpora; counted because a silent one would be indistinguishable from a
+    block that never needed repair."""
 
 
 def evidence_path(
@@ -218,6 +242,8 @@ def project(
         references_dropped=tally.dropped,
         spans=tally.spans_carried,
         spans_dropped=tally.spans_dropped,
+        escaped=tally.escaped,
+        unreadable=tally.unreadable,
     )
 
 
@@ -276,6 +302,8 @@ class _Tally:
     dropped: int = 0
     spans_carried: int = 0
     spans_dropped: int = 0
+    escaped: int = 0
+    unreadable: int = 0
 
 
 def _blocks(kir: KirDocument, tally: "_Tally") -> Iterator[str]:
@@ -345,6 +373,7 @@ def _with_references(
     tally: _Tally,
     *,
     in_cell: bool = False,
+    finalize: "Callable[[str], str] | None" = None,
 ) -> str:
     """`text` with the node's own references rendered back where their labels sit.
 
@@ -385,21 +414,76 @@ def _with_references(
     if spans:
         spans = _spans_that_read_back(text, placements, spans, tally)
     placements.extend(spans)
-    if not placements:
-        return text
-    return _apply(text, placements)
+    return _repaired(text, placements, tally, finalize=finalize)
 
 
-def _apply(text: str, placements: Sequence[tuple[int, int, str]]) -> str:
-    """`text` with each placement's span replaced by its rendering, in order."""
+def _apply(text: str, placements: Sequence[tuple[int, int, str]], *, escape: bool = False) -> str:
+    """`text` with each placement's span replaced by its rendering, in order.
+
+    `escape` backslashes the inline punctuation of the **gaps** — the stretches
+    that are still the source's own characters — and never inside a placement's
+    rendering, which is syntax this projector wrote on purpose and means. That
+    seam is what makes the repair possible at all: a rendered link keeps its
+    brackets while the prose around it stops pretending to be one (roadmap 5.28).
+    """
     out: list[str] = []
     cursor = 0
     for start, end, rendered in sorted(placements):
-        out.append(text[cursor:start])
+        gap = text[cursor:start]
+        out.append(_escaped(gap) if escape else gap)
         out.append(rendered)
         cursor = end
-    out.append(text[cursor:])
+    tail = text[cursor:]
+    out.append(_escaped(tail) if escape else tail)
     return "".join(out)
+
+
+def _escaped(text: str) -> str:
+    """Every inline-significant character in `text`, backslashed."""
+    return _INLINE.sub(lambda match: "\\" + match.group(0), text)
+
+
+def _repaired(
+    text: str,
+    placements: Sequence[tuple[int, int, str]],
+    tally: _Tally,
+    *,
+    finalize: "Callable[[str], str] | None" = None,
+) -> str:
+    """The rendering the compiler reads back as `text`, escaping only if it must.
+
+    The projector is handed verbatim source text and owes the compiler the same
+    characters back. Most of the time it already does — 2 657 of 2 699 blocks on
+    the vendored ingested corpus — and those pay nothing: not one backslash is
+    written, and the evidence document stays as readable as the source it came
+    from.
+
+    Where it does not, the source's prose is asserting *inline* syntax it never
+    authored, exactly as roadmap 5.22 found it asserting block syntax. An HTML
+    source says ``<code>__token__</code>``; the projector flattened it; the
+    compiler read strong emphasis and indexed ``token`` — the corpus's own word
+    for the thing, lost, and silently. A PDF's text layer shows
+    ``[preview](../preview.md)`` because the upstream rendering flattened it, and
+    the compiler makes that a link and drops the target from the text. Both are
+    the same defect and both are repaired here.
+
+    **Asked, not predicted.** :func:`_extracted` is the reader the build uses, so
+    *does this survive* is answered by the thing whose answer matters rather than
+    by a rule about Markdown — the discipline ADR-0096 established for code spans,
+    applied to the prose it sits in. A block that still does not read back after
+    escaping is counted and written unescaped: there is no third thing to try, and
+    an uncounted failure is the one outcome this lane refuses.
+    """
+    done = finalize or (lambda rendered: rendered)
+    plain = _apply(text, placements)
+    if _extracted(done(plain)) == text:
+        return plain
+    repaired = _apply(text, placements, escape=True)
+    if _extracted(done(repaired)) == text:
+        tally.escaped += 1
+        return repaired
+    tally.unreadable += 1
+    return plain
 
 
 def _spans_that_read_back(
@@ -629,7 +713,7 @@ def _block(  # noqa: C901 - one branch per node kind reads better than a dispatc
     # The paragraph path, and every kind KIR models as prose. References are
     # rendered first and the escape runs over the result, so a label that begins
     # a line is already wrapped in `[` by the time the shapes are tested.
-    return neutralise(_with_references(text, node, children, tally))
+    return neutralise(_with_references(text, node, children, tally, finalize=neutralise))
 
 
 def _opaque(node: KirNode) -> str:

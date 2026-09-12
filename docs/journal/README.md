@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-12 — the invariant it did not ask of itself (roadmap 5.28)](2026/09/2026-09-12-the-invariant-it-did-not-ask-of-itself.md)
 - [2026-09-12 — the renderer the PDFs already named (roadmap 5.27)](2026/09/2026-09-12-the-renderer-the-pdfs-already-named.md)
 - [2026-09-12 — the twin was easier than its source (roadmap 5.26)](2026/09/2026-09-12-the-twin-was-easier-than-its-source.md)
 - [2026-09-10 — the merge that was refused one directory too deep (roadmap 5.8)](2026/09/2026-09-10-say-what-the-repo-tracks.md)

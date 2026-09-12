@@ -18,7 +18,7 @@ uv does not distinguish between Python versions installed by the operating syste
 those
 installed and managed by other tools. For example, if a Python installation is
 managed with
-`pyenv`, it would still be considered a _system_ Python version in uv.
+\`pyenv\`, it would still be considered a \_system\_ Python version in uv.
 Requesting a version
 A specific Python version can be requested with the --python flag in most uv commands. For
 example, when creating a virtual environment:
@@ -26,19 +26,19 @@ $ uv venv --python 3.11.6
 uv will ensure that Python 3.11.6 is available — downloading and installing it if necessary — then
 create the virtual environment with it.
 The following Python version request formats are supported:
-• <version> (e.g., 3, 3.12, 3.12.3)
-• <version-specifier> (e.g., >=3.12,<3.13)
-• <version><short-variant> (e.g., 3.13t, 3.12.0d)
-• <version>+<variant> (e.g., 3.13+freethreaded, 3.12.0+debug, 3.14+gil)
-• <implementation> (e.g., cpython or cp)
-• <implementation>@<version> (e.g., cpython@3.12)
-• <implementation><version> (e.g., cpython3.12 or cp312)
-• <implementation><version-specifier> (e.g., cpython>=3.12,<3.13)
-• <implementation>-<version>-<os>-<arch>-<libc> (e.g., cpython-3.12.3-macos-aarch64-none)
+• \<version> (e.g., 3, 3.12, 3.12.3)
+• \<version-specifier> (e.g., >=3.12,\<3.13)
+• \<version>\<short-variant> (e.g., 3.13t, 3.12.0d)
+• \<version>+\<variant> (e.g., 3.13+freethreaded, 3.12.0+debug, 3.14+gil)
+• \<implementation> (e.g., cpython or cp)
+• \<implementation>@\<version> (e.g., cpython@3.12)
+• \<implementation>\<version> (e.g., cpython3.12 or cp312)
+• \<implementation>\<version-specifier> (e.g., cpython>=3.12,\<3.13)
+• \<implementation>-\<version>-\<os>-\<arch>-\<libc> (e.g., cpython-3.12.3-macos-aarch64-none)
 Additionally, a specific system Python interpreter can be requested with:
-• <executable-path> (e.g., /opt/homebrew/bin/python3)
-• <executable-name> (e.g., mypython3)
-• <install-dir> (e.g., /some/environment/)
+• \<executable-path> (e.g., /opt/homebrew/bin/python3)
+• \<executable-name> (e.g., mypython3)
+• \<install-dir> (e.g., /some/environment/)
 By default, uv will automatically download Python versions if they cannot be found on the system.
 This behavior can be disabled with the python-downloads option.
 Python version files
@@ -57,13 +57,13 @@ Installing a Python version
 uv bundles a list of downloadable CPython and PyPy distributions for macOS, Linux, and Windows.
 !!! tip
 By default, Python versions are automatically downloaded as needed without using
-`uv python install`.
+\`uv python install\`.
 To install a Python version at a specific version:
 $ uv python install 3.12.3
 To install the latest patch version:
 $ uv python install 3.12
 To install a version that satisfies constraints:
-$ uv python install '>=3.8,<3.10'
+$ uv python install '>=3.8,\<3.10'
 To install multiple versions:
 $ uv python install 3.9 3.10 3.11
 To install a specific implementation:
@@ -81,21 +81,21 @@ you may need upgrade uv.
 See the storage documentation for details about where installed Python versions are stored.
 Installing Python executables
 uv installs Python executables into your PATH by default, e.g., on Unix uv python install 3.12 will
-install a Python executable into ~/.local/bin, e.g., as python3.12. See the storage documentation
+install a Python executable into \~/.local/bin, e.g., as python3.12. See the storage documentation
 for more details about the target directory.
 !!! tip
-If `~/.local/bin` is not in your `PATH`, you can add it with `uv python update￾shell`.
+If \`\~/.local/bin\` is not in your \`PATH\`, you can add it with \`uv python update￾shell\`.
 To install python and python3 executables, include the experimental --default option:
 
 $ uv python install 3.12 --default
 When installing Python executables, uv will only overwrite an existing executable if it is managed
-by uv — e.g., if ~/.local/bin/python3.12 exists already uv will not overwrite it without the --
+by uv — e.g., if \~/.local/bin/python3.12 exists already uv will not overwrite it without the --
 force flag.
 uv will update executables that it manages. However, it will prefer the latest patch version of each
 Python minor version by default. For example:
-$ uv python install 3.12.7 # Adds `python3.12` to `~/.local/bin`
-$ uv python install 3.12.6 # Does not update `python3.12`
-$ uv python install 3.12.8 # Updates `python3.12` to point to 3.12.8
+$ uv python install 3.12.7 # Adds \`python3.12\` to \`\~/.local/bin\`
+$ uv python install 3.12.6 # Does not update \`python3.12\`
+$ uv python install 3.12.8 # Updates \`python3.12\` to point to 3.12.8
 Upgrading Python versions
 !!! important
 Upgrades are only supported for uv-managed Python versions.
@@ -118,10 +118,10 @@ If a virtual environment was created with an explicitly requested patch version,
 Minor version directories
 Automatic upgrades for virtual environments are implemented using a directory with the Python
 minor version, e.g.:
-~/.local/share/uv/python/cpython-3.12-macos-aarch64-none
+\~/.local/share/uv/python/cpython-3.12-macos-aarch64-none
 which is a symbolic link (on Unix) or junction (on Windows) pointing to a specific patch version:
-$ readlink ~/.local/share/uv/python/cpython-3.12-macos-aarch64-none
-~/.local/share/uv/python/cpython-3.12.11-macos-aarch64-none
+$ readlink \~/.local/share/uv/python/cpython-3.12-macos-aarch64-none
+\~/.local/share/uv/python/cpython-3.12.11-macos-aarch64-none
 If this link is resolved by another tool, e.g., by canonicalizing the Python interpreter path, and used
 to create a virtual environment, it will not be automatically upgraded.
 
@@ -217,10 +217,10 @@ By default, uv will automatically download Python versions when needed.
 The python-downloads option can be used to disable this behavior. By default, it is set to automatic;
 set to manual to only allow Python downloads during uv python install.
 !!! tip
-The `python-downloads` setting can be set in a
-[persistent configuration file](./configuration-files.md) to change the default
+The \`python-downloads\` setting can be set in a
+\[persistent configuration file\](./configuration-files.md) to change the default
 behavior, or
-the `--no-python-downloads` flag can be passed to any uv command.
+the \`--no-python-downloads\` flag can be passed to any uv command.
 Requiring or disabling managed Python versions
 By default, uv will attempt to use Python versions found on the system and only download managed
 Python versions when necessary. To ignore system Python versions, and only use managed Python
@@ -242,7 +242,7 @@ Equivalent to --managed-python.
 • only-system: Only use system Python installations; never use managed Python installations.
 Equivalent to --no-managed-python.
 !!! note
-Automatic Python version downloads can be [disabled](#disabling-automatic-python￾downloads)
+Automatic Python version downloads can be \[disabled\](#disabling-automatic-python￾downloads)
 without changing the preference.
 
 Python implementation support
