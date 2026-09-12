@@ -10,27 +10,30 @@ for updates.</p>
 <p>Dependabot supports updating <code>uv.lock</code> files. To enable
 it, add the uv <code>package-ecosystem</code> to your
 <code>updates</code> list in the <code>dependabot.yml</code>:</p>
-<p>```yaml title=“dependabot.yml” version: 2</p>
-<p>updates: - package-ecosystem: “uv” directory: “/” schedule: interval:
-“weekly”</p>
-<pre><code>
-## Dependency cooldown
-
-If you use [`exclude-newer`](../../reference/settings.md#exclude-newer) option, it is recommended to
-also set the equivalent
-[`cooldown`](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#cooldown-)
-option in Dependabot, to avoid ending up with pull requests where uv would not be able to lock the
-dependencies.
-
-For instance, if you&#39;ve set `exclude-newer` to `1 week`, you can set:
-
-```yaml title=&quot;dependabot.yml&quot;
-version: 2
-
-updates:
-  - package-ecosystem: &quot;uv&quot;
-    directory: &quot;/&quot;
-    schedule:
-      interval: &quot;weekly&quot;
-    cooldown:
-      default-days: 7</code></pre>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">version</span><span class="kw">:</span><span class="at"> </span><span class="dv">2</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">updates</span><span class="kw">:</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">package-ecosystem</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;uv&quot;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">directory</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;/&quot;</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">schedule</span><span class="kw">:</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">interval</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;weekly&quot;</span></span></code></pre></div>
+<h2 id="dependency-cooldown">Dependency cooldown</h2>
+<p>If you use <a
+href="../../reference/settings.md#exclude-newer"><code>exclude-newer</code></a>
+option, it is recommended to also set the equivalent <a
+href="https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#cooldown-"><code>cooldown</code></a>
+option in Dependabot, to avoid ending up with pull requests where uv
+would not be able to lock the dependencies.</p>
+<p>For instance, if you've set <code>exclude-newer</code> to
+<code>1 week</code>, you can set:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">version</span><span class="kw">:</span><span class="at"> </span><span class="dv">2</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">updates</span><span class="kw">:</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="kw">-</span><span class="at"> </span><span class="fu">package-ecosystem</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;uv&quot;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">directory</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;/&quot;</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">schedule</span><span class="kw">:</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">interval</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;weekly&quot;</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">cooldown</span><span class="kw">:</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">default-days</span><span class="kw">:</span><span class="at"> </span><span class="dv">7</span></span></code></pre></div>

@@ -3,16 +3,26 @@
 of modifying environments with ad-hoc installations. Once dependencies
 are defined, they can be <a href="./compile.md">locked</a> to create a
 consistent, reproducible environment.</p>
-<h2 id="using-pyproject.toml">Using <code>pyproject.toml</code></h2>
+<h2 id="using-pyprojecttoml">Using <code>pyproject.toml</code></h2>
 <p>The <code>pyproject.toml</code> file is the Python standard for
 defining configuration for a project.</p>
 <p>To define project dependencies in a <code>pyproject.toml</code>
 file:</p>
-<p><code>toml title="pyproject.toml" [project] dependencies = [   "httpx",   "ruff&gt;=0.3.0" ]</code></p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[project]</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="dt">dependencies</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;httpx&quot;</span><span class="op">,</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;ruff&gt;=0.3.0&quot;</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="op">]</span></span></code></pre></div>
 <p>To define optional dependencies in a <code>pyproject.toml</code>
 file:</p>
-<p><code>toml title="pyproject.toml" [project.optional-dependencies] cli = [   "rich",   "click", ]</code></p>
-<p>Each of the keys defines an “extra”, which can be installed using the
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[project.optional-dependencies]</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">cli</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;rich&quot;</span><span class="op">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">&quot;click&quot;</span><span class="op">,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="op">]</span></span></code></pre></div>
+<p>Each of the keys defines an "extra", which can be installed using the
 <code>--extra</code> and <code>--all-extras</code> flags or
 <code>package[&lt;extra&gt;]</code> syntax. See the documentation on <a
 href="./packages.md#installing-packages-from-files">installing
@@ -21,7 +31,7 @@ packages</a> for more details.</p>
 href="https://packaging.python.org/en/latest/guides/writing-pyproject-toml/"><code>pyproject.toml</code>
 guide</a> for more details on getting started with a
 <code>pyproject.toml</code>.</p>
-<h2 id="using-requirements.in">Using <code>requirements.in</code></h2>
+<h2 id="using-requirementsin">Using <code>requirements.in</code></h2>
 <p>It is also common to use a lightweight <a
 href="https://pip.pypa.io/en/stable/reference/requirements-file-format/">requirements
 file format</a> to declare the dependencies for the project. Each
@@ -30,5 +40,6 @@ requirement is defined on its own line. Commonly, this file is called
 <code>requirements.txt</code> which is used for the locked
 dependencies.</p>
 <p>To define dependencies in a <code>requirements.in</code> file:</p>
-<p><code>requirements title="requirements.in" httpx ruff&gt;=0.3.0</code></p>
+<pre class="requirements"><code>httpx
+ruff&gt;=0.3.0</code></pre>
 <p>Optional dependencies groups are not supported in this format.</p>

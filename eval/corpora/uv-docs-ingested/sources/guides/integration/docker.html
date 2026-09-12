@@ -23,6 +23,7 @@ image:</p>
 </ul>
 <p>And the following derived images are available:</p>
 <!-- prettier-ignore-start -->
+
 <ul>
 <li>Based on <code>alpine:3.23</code>:
 <ul>
@@ -100,6 +101,7 @@ image:</p>
 </ul></li>
 </ul>
 <!-- prettier-ignore-end -->
+
 <p>As with the distroless image, each derived image is published with uv
 version tags as
 <code>ghcr.io/astral-sh/uv:{major}.{minor}.{patch}-{base}</code> and
@@ -115,31 +117,29 @@ Container</a> page.</p>
 <h3 id="installing-uv">Installing uv</h3>
 <p>Use one of the above images with uv pre-installed or install uv by
 copying the binary from the official distroless Docker image:</p>
-<p><code>dockerfile title="Dockerfile" FROM python:3.12-slim-trixie COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/</code></p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> python:3.12-slim-trixie</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="op">--from=ghcr.io/astral-sh/uv:latest</span> /uv /uvx /bin/</span></code></pre></div>
 <p>Or, with the installer:</p>
-<p>```dockerfile title=“Dockerfile” FROM python:3.12-slim-trixie</p>
-<h1
-id="the-installer-requires-curl-and-certificates-to-download-the-release-archive">The
-installer requires curl (and certificates) to download the release
-archive</h1>
-<p>RUN apt-get update &amp;&amp; apt-get install -y
-–no-install-recommends curl ca-certificates</p>
-<h1 id="download-the-latest-installer">Download the latest
-installer</h1>
-<p>ADD https://astral.sh/uv/install.sh /uv-installer.sh</p>
-<h1 id="run-the-installer-then-remove-it">Run the installer then remove
-it</h1>
-<p>RUN sh /uv-installer.sh &amp;&amp; rm /uv-installer.sh</p>
-<h1 id="ensure-the-installed-binary-is-on-the-path">Ensure the installed
-binary is on the <code>PATH</code></h1>
-<p>ENV PATH=“/root/.local/bin/:$PATH”</p>
-<pre><code>
-Note this requires `curl` to be available.
-
-In either case, it is best practice to pin to a specific uv version, e.g., with:
-
-```dockerfile
-COPY --from=ghcr.io/astral-sh/uv:0.12.7 /uv /uvx /bin/</code></pre>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> python:3.12-slim-trixie</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="co"># The installer requires curl (and certificates) to download the release archive</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">apt-get</span> update <span class="kw">&amp;&amp;</span> <span class="ex">apt-get</span> install <span class="at">-y</span> <span class="at">--no-install-recommends</span> curl ca-certificates</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Download the latest installer</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="kw">ADD</span> https://astral.sh/uv/install.sh /uv-installer.sh</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Run the installer then remove it</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="fu">sh</span> /uv-installer.sh <span class="kw">&amp;&amp;</span> <span class="fu">rm</span> /uv-installer.sh</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Ensure the installed binary is on the `PATH`</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> PATH=<span class="st">&quot;/root/.local/bin/:$PATH&quot;</span></span></code></pre></div>
+<p>Note this requires <code>curl</code> to be available.</p>
+<p>In either case, it is best practice to pin to a specific uv version,
+e.g., with:</p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="op">--from=ghcr.io/astral-sh/uv:0.12.7</span> /uv /uvx /bin/</span></code></pre></div>
 <p>!!! tip</p>
 <pre><code>While the Dockerfile example above pins to a specific tag, it&#39;s also
 possible to pin a specific SHA256. Pinning a specific SHA256 is considered
@@ -151,33 +151,29 @@ be moved across different commit SHAs.
 COPY --from=ghcr.io/astral-sh/uv@sha256:2381d6aa60c326b71fd40023f921a0a3b8f91b14d5db6b90402e65a635053709 /uv /uvx /bin/
 ```</code></pre>
 <p>Or, with the installer:</p>
-<div class="sourceCode" id="cb5"><pre
-class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">ADD</span> https://astral.sh/uv/0.12.7/install.sh /uv-installer.sh</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">ADD</span> https://astral.sh/uv/0.12.7/install.sh /uv-installer.sh</span></code></pre></div>
 <h3 id="installing-a-project">Installing a project</h3>
-<p>If you’re using uv to manage your project, you can copy it into the
+<p>If you're using uv to manage your project, you can copy it into the
 image and install it:</p>
-<p>```dockerfile title=“Dockerfile” # Copy the project into the image
-COPY . /app</p>
-<h1 id="disable-development-dependencies">Disable development
-dependencies</h1>
-<p>ENV UV_NO_DEV=1</p>
-<h1
-id="sync-the-project-into-a-new-environment-asserting-the-lockfile-is-up-to-date">Sync
-the project into a new environment, asserting the lockfile is up to
-date</h1>
-<p>WORKDIR /app RUN uv sync –locked</p>
-<pre><code>
-!!! important
-
-    It is best practice to add `.venv` to a [`.dockerignore` file](https://docs.docker.com/build/concepts/context/#dockerignore-files)
-    in your repository to prevent it from being included in image builds. The project virtual
-    environment is dependent on your local platform and should be created from scratch in the image.
-
-Then, to start your application by default:
-
-```dockerfile title=&quot;Dockerfile&quot;
-# Presuming there is a `my_app` command provided by the project
-CMD [&quot;uv&quot;, &quot;run&quot;, &quot;my_app&quot;]</code></pre>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy the project into the image</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> . /app</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Disable development dependencies</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> UV_NO_DEV=1</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Sync the project into a new environment, asserting the lockfile is up to date</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /app</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> sync <span class="at">--locked</span></span></code></pre></div>
+<p>!!! important</p>
+<pre><code>It is best practice to add `.venv` to a [`.dockerignore` file](https://docs.docker.com/build/concepts/context/#dockerignore-files)
+in your repository to prevent it from being included in image builds. The project virtual
+environment is dependent on your local platform and should be created from scratch in the image.</code></pre>
+<p>Then, to start your application by default:</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Presuming there is a `my_app` command provided by the project</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="kw">CMD</span> [<span class="st">&quot;uv&quot;</span>, <span class="st">&quot;run&quot;</span>, <span class="st">&quot;my_app&quot;</span>]</span></code></pre></div>
 <p>!!! tip</p>
 <pre><code>It is best practice to use [intermediate layers](#intermediate-layers) separating installation
 of dependencies and the project itself to improve Docker image build times.</code></pre>
@@ -188,10 +184,12 @@ project</a>.</p>
 <p>Once the project is installed, you can either <em>activate</em> the
 project virtual environment by placing its binary directory at the front
 of the path:</p>
-<p><code>dockerfile title="Dockerfile" ENV PATH="/app/.venv/bin:$PATH"</code></p>
+<div class="sourceCode" id="cb12"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> PATH=<span class="st">&quot;/app/.venv/bin:$PATH&quot;</span></span></code></pre></div>
 <p>Or, you can use <code>uv run</code> for any commands that require the
 environment:</p>
-<p><code>dockerfile title="Dockerfile" RUN uv run some_script.py</code></p>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> run some_script.py</span></code></pre></div>
 <p>!!! tip</p>
 <pre><code>Alternatively, the
 [`UV_PROJECT_ENVIRONMENT` setting](../../concepts/projects/config.md#project-environment-path) can
@@ -201,7 +199,9 @@ entirely.</code></pre>
 <p>To use installed tools, ensure the <a
 href="../../concepts/tools.md#tool-executables">tool bin directory</a>
 is on the path:</p>
-<p><code>dockerfile title="Dockerfile" ENV PATH=/root/.local/bin:$PATH RUN uv tool install cowsay</code></p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> PATH=/root/.local/bin:$PATH</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> tool install cowsay</span></code></pre></div>
 <pre class="console"><code>$ docker run -it $(docker build -q .) /bin/bash -c &quot;cowsay -t hello&quot;
   _____
 | hello |
@@ -223,7 +223,7 @@ Alternatively, it can be set to a constant location:
 ENV UV_TOOL_BIN_DIR=/opt/uv-bin/
 ```</code></pre>
 <h2 id="developing-in-a-container">Developing in a container</h2>
-<p>When developing, it’s useful to mount the project directory into a
+<p>When developing, it's useful to mount the project directory into a
 container. With this setup, changes to the project can be immediately
 reflected in a containerized service without rebuilding the image.
 However, it is important <em>not</em> to include the project virtual
@@ -258,46 +258,48 @@ href="https://docs.docker.com/compose/compose-application-model/#the-compose-fil
 compose file</a> to mount the project directory without syncing the
 project virtual environment and to rebuild the image when the
 configuration changes:</p>
-<p>```yaml title=“compose.yaml” services: example: build: .</p>
-<pre><code># ...
-
-develop:
-  # Create a `watch` configuration to update the app
-  #
-  watch:
-    # Sync the working directory with the `/app` directory in the container
-    - action: sync
-      path: .
-      target: /app
-      # Exclude the project virtual environment
-      ignore:
-        - .venv/
-
-    # Rebuild the image on changes to the `pyproject.toml`
-    - action: rebuild
-      path: ./pyproject.toml</code></pre>
-<pre><code>
-Then, run `docker compose watch` to run the container with the development setup.
-
-See a complete example in the
-[`uv-docker-example` project](https://github.com/astral-sh/uv-docker-example/blob/main/compose.yml).
-
-## Optimizations
-
-### Compiling bytecode
-
-Compiling Python source files to bytecode is typically desirable for production images as it tends
-to improve startup time (at the cost of increased installation time and image size).
-
-To enable bytecode compilation, use the `--compile-bytecode` flag:
-
-```dockerfile title=&quot;Dockerfile&quot;
-RUN uv python install --compile-bytecode
-RUN uv sync --compile-bytecode</code></pre>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="fu">services</span><span class="kw">:</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">example</span><span class="kw">:</span></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">build</span><span class="kw">:</span><span class="at"> .</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="co">    # ...</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">develop</span><span class="kw">:</span></span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a><span class="co">      # Create a `watch` configuration to update the app</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a><span class="co">      #</span></span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">watch</span><span class="kw">:</span></span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a><span class="co">        # Sync the working directory with the `/app` directory in the container</span></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="kw">-</span><span class="at"> </span><span class="fu">action</span><span class="kw">:</span><span class="at"> sync</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">path</span><span class="kw">:</span><span class="at"> .</span></span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">target</span><span class="kw">:</span><span class="at"> /app</span></span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a><span class="co">          # Exclude the project virtual environment</span></span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">ignore</span><span class="kw">:</span></span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a><span class="at">            </span><span class="kw">-</span><span class="at"> .venv/</span></span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a><span class="co">        # Rebuild the image on changes to the `pyproject.toml`</span></span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="kw">-</span><span class="at"> </span><span class="fu">action</span><span class="kw">:</span><span class="at"> rebuild</span></span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="fu">path</span><span class="kw">:</span><span class="at"> ./pyproject.toml</span></span></code></pre></div>
+<p>Then, run <code>docker compose watch</code> to run the container with
+the development setup.</p>
+<p>See a complete example in the <a
+href="https://github.com/astral-sh/uv-docker-example/blob/main/compose.yml"><code>uv-docker-example</code>
+project</a>.</p>
+<h2 id="optimizations">Optimizations</h2>
+<h3 id="compiling-bytecode">Compiling bytecode</h3>
+<p>Compiling Python source files to bytecode is typically desirable for
+production images as it tends to improve startup time (at the cost of
+increased installation time and image size).</p>
+<p>To enable bytecode compilation, use the
+<code>--compile-bytecode</code> flag:</p>
+<div class="sourceCode" id="cb22"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> python install <span class="at">--compile-bytecode</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> sync <span class="at">--compile-bytecode</span></span></code></pre></div>
 <p>Alternatively, you can set the <code>UV_COMPILE_BYTECODE</code>
 environment variable to ensure that all commands within the Dockerfile
 compile bytecode:</p>
-<p><code>dockerfile title="Dockerfile" ENV UV_COMPILE_BYTECODE=1</code></p>
+<div class="sourceCode" id="cb23"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> UV_COMPILE_BYTECODE=1</span></code></pre></div>
 <p>!!! note</p>
 <pre><code> uv will only compile the standard library of _managed_ Python versions during
 `uv python install`. The distributor of unmanaged Python versions decides if the
@@ -307,24 +309,26 @@ have a compiled standard library.</code></pre>
 <p>A <a
 href="https://docs.docker.com/build/guide/mounts/#add-a-cache-mount">cache
 mount</a> can be used to improve performance across builds:</p>
-<p>```dockerfile title=“Dockerfile” ENV UV_LINK_MODE=copy</p>
-<p>RUN –mount=type=cache,target=/root/.cache/uv<br />
-uv sync</p>
-<pre><code>
-Changing the [`UV_LINK_MODE`](../../reference/settings.md#link-mode) silences warnings about not
-being able to link files since the cache and sync target are on separate file systems.
-
-If you&#39;re not mounting the cache, image size can be reduced by using the `--no-cache` flag or
-setting `UV_NO_CACHE`.
-
-By default, managed Python installations are not cached before being installed. Setting
-`UV_PYTHON_CACHE_DIR` can be used in combination with a cache mount:
-
-```dockerfile title=&quot;Dockerfile&quot;
-ENV UV_PYTHON_CACHE_DIR=/root/.cache/uv/python
-
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv python install</code></pre>
+<div class="sourceCode" id="cb25"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> UV_LINK_MODE=copy</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="op">--mount=type=cache,target=/root/.cache/uv</span> <span class="op">\</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> sync</span></code></pre></div>
+<p>Changing the <a
+href="../../reference/settings.md#link-mode"><code>UV_LINK_MODE</code></a>
+silences warnings about not being able to link files since the cache and
+sync target are on separate file systems.</p>
+<p>If you're not mounting the cache, image size can be reduced by using
+the <code>--no-cache</code> flag or setting
+<code>UV_NO_CACHE</code>.</p>
+<p>By default, managed Python installations are not cached before being
+installed. Setting <code>UV_PYTHON_CACHE_DIR</code> can be used in
+combination with a cache mount:</p>
+<div class="sourceCode" id="cb26"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> UV_PYTHON_CACHE_DIR=/root/.cache/uv/python</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="op">--mount=type=cache,target=/root/.cache/uv</span> <span class="op">\</span></span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> python install</span></code></pre></div>
 <p>!!! note</p>
 <pre><code>The cache directory&#39;s location can be determined by running the `uv cache dir` command in the
 container.
@@ -335,62 +339,66 @@ Alternatively, the cache can be set to a constant location:
 ENV UV_CACHE_DIR=/opt/uv-cache/
 ```</code></pre>
 <h3 id="intermediate-layers">Intermediate layers</h3>
-<p>If you’re using uv to manage your project, you can improve build
+<p>If you're using uv to manage your project, you can improve build
 times by moving your transitive dependency installation into its own
 layer via the <code>--no-install</code> options.</p>
 <p><code>uv sync --no-install-project</code> will install the
 dependencies of the project but not the project itself. Since the
 project changes frequently, but its dependencies are generally static,
 this can be a big time saver.</p>
-<p>```dockerfile title=“Dockerfile” # Install uv FROM python:3.12-slim
-COPY –from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/</p>
-<h1 id="change-the-working-directory-to-the-app-directory">Change the
-working directory to the <code>app</code> directory</h1>
-<p>WORKDIR /app</p>
-<h1 id="install-dependencies">Install dependencies</h1>
-<p>RUN –mount=type=cache,target=/root/.cache/uv<br />
-–mount=type=bind,source=uv.lock,target=uv.lock<br />
-–mount=type=bind,source=pyproject.toml,target=pyproject.toml<br />
-uv sync –locked –no-install-project</p>
-<h1 id="copy-the-project-into-the-image">Copy the project into the
-image</h1>
-<p>COPY . /app</p>
-<h1 id="sync-the-project">Sync the project</h1>
-<p>RUN –mount=type=cache,target=/root/.cache/uv<br />
-uv sync –locked</p>
-<pre><code>
-Note that the `pyproject.toml` is required to identify the project root and name, but the project
-_contents_ are not copied into the image until the final `uv sync` command.
-
-!!! tip
-
-    If you want to remove additional, specific packages from the sync,
-    use `--no-install-package &lt;name&gt;`.
-
-#### Intermediate layers in workspaces
-
-If you&#39;re using a [workspace](../../concepts/projects/workspaces.md), then a couple changes are
-needed:
-
-- Use `--frozen` instead of `--locked` during the initial sync.
-- Use the `--no-install-workspace` flag which excludes the project _and_ any workspace members.
-
-```dockerfile title=&quot;Dockerfile&quot;
-# Install uv
-FROM python:3.12-slim
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
-
-WORKDIR /app
-
-RUN --mount=type=cache,target=/root/.cache/uv \
-    --mount=type=bind,source=uv.lock,target=uv.lock \
-    --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
-    uv sync --frozen --no-install-workspace
-
-COPY . /app
-
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked</code></pre>
+<div class="sourceCode" id="cb28"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Install uv</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> python:3.12-slim</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="op">--from=ghcr.io/astral-sh/uv:latest</span> /uv /uvx /bin/</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Change the working directory to the `app` directory</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /app</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Install dependencies</span></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="op">--mount=type=cache,target=/root/.cache/uv</span> <span class="op">\</span></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=uv.lock,target=uv.lock</span> <span class="op">\</span></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=pyproject.toml,target=pyproject.toml</span> <span class="op">\</span></span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> sync <span class="at">--locked</span> <span class="at">--no-install-project</span></span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy the project into the image</span></span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> . /app</span>
+<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-17"><a href="#cb28-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Sync the project</span></span>
+<span id="cb28-18"><a href="#cb28-18" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="op">--mount=type=cache,target=/root/.cache/uv</span> <span class="op">\</span></span>
+<span id="cb28-19"><a href="#cb28-19" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> sync <span class="at">--locked</span></span></code></pre></div>
+<p>Note that the <code>pyproject.toml</code> is required to identify the
+project root and name, but the project <em>contents</em> are not copied
+into the image until the final <code>uv sync</code> command.</p>
+<p>!!! tip</p>
+<pre><code>If you want to remove additional, specific packages from the sync,
+use `--no-install-package &lt;name&gt;`.</code></pre>
+<h4 id="intermediate-layers-in-workspaces">Intermediate layers in
+workspaces</h4>
+<p>If you're using a <a
+href="../../concepts/projects/workspaces.md">workspace</a>, then a
+couple changes are needed:</p>
+<ul>
+<li>Use <code>--frozen</code> instead of <code>--locked</code> during
+the initial sync.</li>
+<li>Use the <code>--no-install-workspace</code> flag which excludes the
+project <em>and</em> any workspace members.</li>
+</ul>
+<div class="sourceCode" id="cb30"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Install uv</span></span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> python:3.12-slim</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="op">--from=ghcr.io/astral-sh/uv:latest</span> /uv /uvx /bin/</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /app</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="op">--mount=type=cache,target=/root/.cache/uv</span> <span class="op">\</span></span>
+<span id="cb30-8"><a href="#cb30-8" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=uv.lock,target=uv.lock</span> <span class="op">\</span></span>
+<span id="cb30-9"><a href="#cb30-9" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=pyproject.toml,target=pyproject.toml</span> <span class="op">\</span></span>
+<span id="cb30-10"><a href="#cb30-10" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> sync <span class="at">--frozen</span> <span class="at">--no-install-workspace</span></span>
+<span id="cb30-11"><a href="#cb30-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-12"><a href="#cb30-12" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> . /app</span>
+<span id="cb30-13"><a href="#cb30-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb30-14"><a href="#cb30-14" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="op">--mount=type=cache,target=/root/.cache/uv</span> <span class="op">\</span></span>
+<span id="cb30-15"><a href="#cb30-15" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> sync <span class="at">--locked</span></span></code></pre></div>
 <p>uv cannot assert that the <code>uv.lock</code> file is up-to-date
 without each of the workspace member <code>pyproject.toml</code> files,
 so we use <code>--frozen</code> instead of <code>--locked</code> to skip
@@ -411,64 +419,82 @@ code.</p>
 synced virtual environment from one stage, then copy the virtual
 environment alone (and not the source code) into the final image.</p>
 <p>For example:</p>
-<p>```dockerfile title=“Dockerfile” # Install uv FROM python:3.12-slim
-AS builder COPY –from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/</p>
-<h1 id="use-the-system-python-across-both-stages">Use the system Python
-across both stages</h1>
-<p>ENV UV_PYTHON_DOWNLOADS=0</p>
-<h1 id="change-the-working-directory-to-the-app-directory-1">Change the
-working directory to the <code>app</code> directory</h1>
-<p>WORKDIR /app</p>
-<h1 id="install-dependencies-1">Install dependencies</h1>
-<p>RUN –mount=type=cache,target=/root/.cache/uv<br />
-–mount=type=bind,source=uv.lock,target=uv.lock<br />
-–mount=type=bind,source=pyproject.toml,target=pyproject.toml<br />
-uv sync –locked –no-install-project –no-editable</p>
-<h1 id="copy-the-project-into-the-intermediate-image">Copy the project
-into the intermediate image</h1>
-<p>COPY . /app</p>
-<h1 id="sync-the-project-1">Sync the project</h1>
-<p>RUN –mount=type=cache,target=/root/.cache/uv<br />
-uv sync –locked –no-editable</p>
-<p>FROM python:3.12-slim</p>
-<h1 id="copy-the-environment-but-not-the-source-code">Copy the
-environment, but not the source code</h1>
-<p>COPY –from=builder /app/.venv /app/.venv</p>
-<h1 id="run-the-application">Run the application</h1>
-<p>CMD [“/app/.venv/bin/hello”]</p>
-<pre><code>
-### Using uv temporarily
-
-If uv isn&#39;t needed in the final image, the binary can be mounted in each invocation:
-
-```dockerfile title=&quot;Dockerfile&quot;
-RUN --mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv \
-    uv sync</code></pre>
+<div class="sourceCode" id="cb31"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Install uv</span></span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> python:3.12-slim <span class="kw">AS</span> builder</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="op">--from=ghcr.io/astral-sh/uv:latest</span> /uv /uvx /bin/</span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Use the system Python across both stages</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> UV_PYTHON_DOWNLOADS=0</span>
+<span id="cb31-7"><a href="#cb31-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-8"><a href="#cb31-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Change the working directory to the `app` directory</span></span>
+<span id="cb31-9"><a href="#cb31-9" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /app</span>
+<span id="cb31-10"><a href="#cb31-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-11"><a href="#cb31-11" aria-hidden="true" tabindex="-1"></a><span class="co"># Install dependencies</span></span>
+<span id="cb31-12"><a href="#cb31-12" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="op">--mount=type=cache,target=/root/.cache/uv</span> <span class="op">\</span></span>
+<span id="cb31-13"><a href="#cb31-13" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=uv.lock,target=uv.lock</span> <span class="op">\</span></span>
+<span id="cb31-14"><a href="#cb31-14" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=pyproject.toml,target=pyproject.toml</span> <span class="op">\</span></span>
+<span id="cb31-15"><a href="#cb31-15" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> sync <span class="at">--locked</span> <span class="at">--no-install-project</span> <span class="at">--no-editable</span></span>
+<span id="cb31-16"><a href="#cb31-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-17"><a href="#cb31-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy the project into the intermediate image</span></span>
+<span id="cb31-18"><a href="#cb31-18" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> . /app</span>
+<span id="cb31-19"><a href="#cb31-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-20"><a href="#cb31-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Sync the project</span></span>
+<span id="cb31-21"><a href="#cb31-21" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="op">--mount=type=cache,target=/root/.cache/uv</span> <span class="op">\</span></span>
+<span id="cb31-22"><a href="#cb31-22" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> sync <span class="at">--locked</span> <span class="at">--no-editable</span></span>
+<span id="cb31-23"><a href="#cb31-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-24"><a href="#cb31-24" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> python:3.12-slim</span>
+<span id="cb31-25"><a href="#cb31-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-26"><a href="#cb31-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy the environment, but not the source code</span></span>
+<span id="cb31-27"><a href="#cb31-27" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="op">--from=builder</span> /app/.venv /app/.venv</span>
+<span id="cb31-28"><a href="#cb31-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb31-29"><a href="#cb31-29" aria-hidden="true" tabindex="-1"></a><span class="co"># Run the application</span></span>
+<span id="cb31-30"><a href="#cb31-30" aria-hidden="true" tabindex="-1"></a><span class="kw">CMD</span> [<span class="st">&quot;/app/.venv/bin/hello&quot;</span>]</span></code></pre></div>
+<h3 id="using-uv-temporarily">Using uv temporarily</h3>
+<p>If uv isn't needed in the final image, the binary can be mounted in
+each invocation:</p>
+<div class="sourceCode" id="cb32"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="op">--mount=from=ghcr.io/astral-sh/uv,source=/uv,target=/bin/uv</span> <span class="op">\</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> sync</span></code></pre></div>
 <h2 id="using-the-pip-interface">Using the pip interface</h2>
 <h3 id="installing-a-package">Installing a package</h3>
 <p>The system Python environment is safe to use in this context, since a
 container is already isolated. The <code>--system</code> flag can be
 used to install in the system environment:</p>
-<p><code>dockerfile title="Dockerfile" RUN uv pip install --system ruff</code></p>
+<div class="sourceCode" id="cb33"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> pip install <span class="at">--system</span> ruff</span></code></pre></div>
 <p>To use the system Python environment by default, set the
 <code>UV_SYSTEM_PYTHON</code> variable:</p>
-<p><code>dockerfile title="Dockerfile" ENV UV_SYSTEM_PYTHON=1</code></p>
+<div class="sourceCode" id="cb34"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> UV_SYSTEM_PYTHON=1</span></code></pre></div>
 <p>Alternatively, a virtual environment can be created and
 activated:</p>
-<p><code>dockerfile title="Dockerfile" RUN uv venv /opt/venv # Use the virtual environment automatically ENV VIRTUAL_ENV=/opt/venv # Place entry points in the environment at the front of the path ENV PATH="/opt/venv/bin:$PATH"</code></p>
+<div class="sourceCode" id="cb35"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> venv /opt/venv</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Use the virtual environment automatically</span></span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> VIRTUAL_ENV=/opt/venv</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Place entry points in the environment at the front of the path</span></span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> PATH=<span class="st">&quot;/opt/venv/bin:$PATH&quot;</span></span></code></pre></div>
 <p>When using a virtual environment, the <code>--system</code> flag
 should be omitted from uv invocations:</p>
-<p><code>dockerfile title="Dockerfile" RUN uv pip install ruff</code></p>
+<div class="sourceCode" id="cb36"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> pip install ruff</span></code></pre></div>
 <h3 id="installing-requirements">Installing requirements</h3>
 <p>To install requirements files, copy them into the container:</p>
-<p><code>dockerfile title="Dockerfile" COPY requirements.txt . RUN uv pip install -r requirements.txt</code></p>
+<div class="sourceCode" id="cb37"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> requirements.txt .</span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> pip install <span class="at">-r</span> requirements.txt</span></code></pre></div>
 <h3 id="installing-a-project-1">Installing a project</h3>
 <p>When installing a project alongside requirements, it is best practice
 to separate copying the requirements from the rest of the source code.
 This allows the dependencies of the project (which do not change often)
 to be cached separately from the project itself (which changes very
 frequently).</p>
-<p><code>dockerfile title="Dockerfile" COPY pyproject.toml . RUN uv pip install -r pyproject.toml COPY . . RUN uv pip install -e .</code></p>
+<div class="sourceCode" id="cb38"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> pyproject.toml .</span>
+<span id="cb38-2"><a href="#cb38-2" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> pip install <span class="at">-r</span> pyproject.toml</span>
+<span id="cb38-3"><a href="#cb38-3" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> . .</span>
+<span id="cb38-4"><a href="#cb38-4" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> pip install <span class="at">-e</span> .</span></code></pre></div>
 <h2 id="verifying-image-provenance">Verifying image provenance</h2>
 <p>The Docker images are signed during the build process to provide
 proof of their origin. These attestations can be used to verify that an
@@ -491,7 +517,7 @@ sha256:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx was atte
 REPO          PREDICATE_TYPE                  WORKFLOW
 astral-sh/uv  https://slsa.dev/provenance/v1  .github/workflows/build-docker.yml@refs/heads/main</code></pre>
 <p>This tells you that the specific Docker image was built by the
-official uv GitHub release workflow and hasn’t been tampered with
+official uv GitHub release workflow and hasn't been tampered with
 since.</p>
 <p>GitHub attestations build on the <a
 href="https://www.sigstore.dev/">sigstore.dev infrastructure</a>. As

@@ -3,7 +3,7 @@
 <p>To install a package into the virtual environment, e.g., Flask:</p>
 <pre class="console"><code>$ uv pip install flask</code></pre>
 <p>To install a package with optional dependencies enabled, e.g., Flask
-with the “dotenv” extra:</p>
+with the "dotenv" extra:</p>
 <pre class="console"><code>$ uv pip install &quot;flask[dotenv]&quot;</code></pre>
 <p>To install multiple packages, e.g., Flask and Ruff:</p>
 <pre class="console"><code>$ uv pip install flask ruff</code></pre>
@@ -47,12 +47,12 @@ files.</p>
 <p>Install from a <code>pyproject.toml</code> file:</p>
 <pre class="console"><code>$ uv pip install -r pyproject.toml</code></pre>
 <p>Install from a <code>pyproject.toml</code> file with optional
-dependencies enabled, e.g., the “foo” extra:</p>
+dependencies enabled, e.g., the "foo" extra:</p>
 <pre class="console"><code>$ uv pip install -r pyproject.toml --extra foo</code></pre>
 <p>Install from a <code>pyproject.toml</code> file with all optional
 dependencies enabled:</p>
 <pre class="console"><code>$ uv pip install -r pyproject.toml --all-extras</code></pre>
-<p>To install dependency groups in the current project directory’s
+<p>To install dependency groups in the current project directory's
 <code>pyproject.toml</code>, for example the group <code>foo</code>:</p>
 <pre class="console"><code>$ uv pip install --group foo</code></pre>
 <p>To specify the project directory where groups should be sourced

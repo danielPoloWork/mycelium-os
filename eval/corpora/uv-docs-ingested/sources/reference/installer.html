@@ -4,11 +4,11 @@ path</h2>
 <p>By default, uv is installed in the user <a
 href="./storage.md#executable-directory">executable directory</a>.</p>
 <p>To change the installation path, use <code>UV_INSTALL_DIR</code>:</p>
-<p>=== “macOS and Linux”</p>
+<p>=== "macOS and Linux"</p>
 <pre><code>```console
 $ curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=&quot;/custom/path&quot; sh
 ```</code></pre>
-<p>=== “Windows”</p>
+<p>=== "Windows"</p>
 <pre><code>```pwsh-session
 PS&gt; powershell -ExecutionPolicy ByPass -c {$env:UV_INSTALL_DIR = &quot;C:\Custom\Path&quot;;irm https://astral.sh/uv/install.ps1 | iex}
 ```</code></pre>

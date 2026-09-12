@@ -3,43 +3,45 @@
 <p>Astral provides <a href="docker.md#available-images">Docker
 images</a> with uv preinstalled. Select a variant that is suitable for
 your workflow.</p>
-<p>```yaml title=“.gitlab-ci.yml” variables: UV_VERSION: “0.12.7”
-PYTHON_VERSION: “3.12” BASE_LAYER: trixie-slim # GitLab CI creates a
-separate mountpoint for the build directory, # so we need to copy
-instead of using hard links. UV_LINK_MODE: copy</p>
-<p>uv: image: ghcr.io/astral-sh/uv:<span
-class="math inline"><em>U</em><em>V</em><sub><em>V</em></sub><em>E</em><em>R</em><em>S</em><em>I</em><em>O</em><em>N</em> − <em>p</em><em>y</em><em>t</em><em>h</em><em>o</em><em>n</em></span>PYTHON_VERSION-$BASE_LAYER
-script: # your <code>uv</code> commands</p>
-<pre><code>
-!!! note
-
-    If you are using a distroless image, you have to specify the entrypoint:
-    ```yaml
-    uv:
-      image:
-        name: ghcr.io/astral-sh/uv:$UV_VERSION
-        entrypoint: [&quot;&quot;]
-      # ...
-    ```
-
-## Caching
-
-Persisting the uv cache between workflow runs can improve performance.
-
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">variables</span><span class="kw">:</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">UV_VERSION</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;0.12.7&quot;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">PYTHON_VERSION</span><span class="kw">:</span><span class="at"> </span><span class="st">&quot;3.12&quot;</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">BASE_LAYER</span><span class="kw">:</span><span class="at"> trixie-slim</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co">  # GitLab CI creates a separate mountpoint for the build directory,</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co">  # so we need to copy instead of using hard links.</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">UV_LINK_MODE</span><span class="kw">:</span><span class="at"> copy</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">uv</span><span class="kw">:</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">image</span><span class="kw">:</span><span class="at"> ghcr.io/astral-sh/uv:$UV_VERSION-python$PYTHON_VERSION-$BASE_LAYER</span></span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">script</span><span class="kw">:</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co">    # your `uv` commands</span></span></code></pre></div>
+<p>!!! note</p>
+<pre><code>If you are using a distroless image, you have to specify the entrypoint:
 ```yaml
-uv-install:
-  variables:
-    UV_CACHE_DIR: .uv-cache
-  cache:
-    - key:
-        files:
-          - uv.lock
-      paths:
-        - $UV_CACHE_DIR
-  script:
-    # Your `uv` commands
-  after_script:
-    - uv cache prune --ci</code></pre>
+uv:
+  image:
+    name: ghcr.io/astral-sh/uv:$UV_VERSION
+    entrypoint: [&quot;&quot;]
+  # ...
+```</code></pre>
+<h2 id="caching">Caching</h2>
+<p>Persisting the uv cache between workflow runs can improve
+performance.</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">uv-install</span><span class="kw">:</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">variables</span><span class="kw">:</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="fu">UV_CACHE_DIR</span><span class="kw">:</span><span class="at"> .uv-cache</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">cache</span><span class="kw">:</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> </span><span class="fu">key</span><span class="kw">:</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="fu">files</span><span class="kw">:</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="at">          </span><span class="kw">-</span><span class="at"> uv.lock</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="at">      </span><span class="fu">paths</span><span class="kw">:</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a><span class="at">        </span><span class="kw">-</span><span class="at"> $UV_CACHE_DIR</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">script</span><span class="kw">:</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="co">    # Your `uv` commands</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">after_script</span><span class="kw">:</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="at">    </span><span class="kw">-</span><span class="at"> uv cache prune --ci</span></span></code></pre></div>
 <p>See the <a href="https://docs.gitlab.com/ee/ci/caching/">GitLab
 caching documentation</a> for more details on configuring caching.</p>
 <p>Using <code>uv cache prune --ci</code> at the end of the job is
@@ -57,9 +59,11 @@ different scopes. You can read more about how <a
 href="https://docs.gitlab.com/ee/ci/variables/">variables and their
 precedence works in GitLab here</a></p>
 <p>Opt-in for the entire workflow by defining it at the top level:</p>
-<p>```yaml title=“.gitlab-ci.yml” variables: UV_SYSTEM_PYTHON: 1</p>
-<h1 id="section">[…]</h1>
-<p>```</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">variables</span><span class="kw">:</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="at">  </span><span class="fu">UV_SYSTEM_PYTHON</span><span class="kw">:</span><span class="at"> </span><span class="dv">1</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="co"># [...]</span></span></code></pre></div>
 <p>To opt-out again, the <code>--no-system</code> flag can be used in
 any uv invocation.</p>
 <p>When persisting the cache, you may want to use

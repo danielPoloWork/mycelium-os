@@ -22,8 +22,8 @@ Resolved 1 package in 62ms
 
       hint: `distutils` was removed from the standard library in Python 3.12. Consider adding a constraint (like `numpy &gt;1.19.5`) to avoid building a version of `numpy` that depends
       on `distutils`.</code></pre>
-<p>Notice that the error message is prefaced by “The build backend
-returned an error”.</p>
+<p>Notice that the error message is prefaced by "The build backend
+returned an error".</p>
 <p>The build failure includes the <code>[stderr]</code> (and
 <code>[stdout]</code>, if present) from the build backend that was used
 for the build. The error logs are not from uv itself.</p>
@@ -93,10 +93,11 @@ all of that fails, it builds the package.</p>
 for each package. If no matching wheel exists in the index, uv tries to
 build the source distribution.</p>
 <p>You can check which wheels exist for a PyPI project under “Download
-Files”, e.g. https://pypi.org/project/numpy/2.1.1.md#files. Wheels with
-<code>...-py3-none-any.whl</code> filenames work everywhere, others have
-the operating system and platform in the filename. In the linked
-<code>numpy</code> example, you can see that there are pre-built
+Files”, e.g. <a
+href="https://pypi.org/project/numpy/2.1.1.md#files">https://pypi.org/project/numpy/2.1.1.md#files</a>.
+Wheels with <code>...-py3-none-any.whl</code> filenames work everywhere,
+others have the operating system and platform in the filename. In the
+linked <code>numpy</code> example, you can see that there are pre-built
 distributions for Python 3.10 to 3.13 on macOS, Linux and Windows.</p>
 <h2 id="common-build-failures">Common build failures</h2>
 <p>The following examples demonstrate common build failures and how to
@@ -105,6 +106,7 @@ resolve them.</p>
 <p>If the build error mentions a missing command, for example,
 <code>gcc</code>:</p>
 <!-- docker run --platform linux/x86_64 -it ghcr.io/astral-sh/uv:python3.10-trixie-slim /bin/bash -c "uv pip install --system pysha3==1.0.2" -->
+
 <pre class="hl_lines=&quot;17&quot;"><code>× Failed to build `pysha3==1.0.2`
 ├─▶ The build backend returned an error
 ╰─▶ Call to `setuptools.build_meta:__legacy__.build_wheel` failed (exit status: 1)
@@ -123,7 +125,7 @@ resolve them.</p>
 
     [stderr]
     error: command &#39;gcc&#39; failed: No such file or directory</code></pre>
-<p>Then, you’ll need to install it with your system package manager,
+<p>Then, you'll need to install it with your system package manager,
 e.g., to resolve the error above:</p>
 <pre class="console"><code>$ apt install gcc</code></pre>
 <p>!!! tip</p>
@@ -138,11 +140,12 @@ $ apt install build-essential
 ```</code></pre>
 <h3 id="header-or-library-is-missing">Header or library is missing</h3>
 <p>If the build error mentions a missing header or library, e.g., a
-<code>.h</code> file, then you’ll need to install it with your system
+<code>.h</code> file, then you'll need to install it with your system
 package manager.</p>
 <p>For example, installing <code>pygraphviz</code> requires Graphviz to
 be installed:</p>
 <!-- docker run --platform linux/x86_64 -it ghcr.io/astral-sh/uv:python3.12-trixie /bin/bash -c "uv pip install --system 'pygraphviz'" -->
+
 <pre class="hl_lines=&quot;18-19&quot;"><code>× Failed to build `pygraphviz==1.14`
 ├─▶ The build backend returned an error
 ╰─▶ Call to `setuptools.build_meta.build_wheel` failed (exit status: 1)
@@ -168,7 +171,7 @@ be installed:</p>
   error: command &#39;/usr/bin/gcc&#39; failed with exit code 1
 
   hint: This error likely indicates that you need to install a library that provides &quot;graphviz/cgraph.h&quot; for `pygraphviz@1.14`</code></pre>
-<p>To resolve this error on Debian, you’d install the
+<p>To resolve this error on Debian, you'd install the
 <code>libgraphviz-dev</code> package:</p>
 <pre class="console"><code>$ apt install libgraphviz-dev</code></pre>
 <p>Note that installing the <code>graphviz</code> package is not
@@ -183,6 +186,7 @@ isolation</a>.</p>
 <p>For example, some packages assume that <code>pip</code> is available
 without declaring it as a build dependency:</p>
 <!-- docker run --platform linux/x86_64 -it ghcr.io/astral-sh/uv:python3.12-trixie-slim /bin/bash -c "uv pip install --system chumpy" -->
+
 <pre class="hl_lines=&quot;7&quot;"><code>  × Failed to build `chumpy==0.70`
   ├─▶ The build backend returned an error
   ╰─▶ Call to `setuptools.build_meta:__legacy__.build_wheel` failed (exit status: 1)
@@ -229,6 +233,7 @@ bounds.</p>
 <pre class="title=&quot;requirements.txt&quot;"><code>dill&lt;0.3.9,&gt;=0.2.2
 apache-beam&lt;=2.49.0</code></pre>
 <!-- docker run --platform linux/x86_64 -it ghcr.io/astral-sh/uv:python3.10-trixie-slim /bin/bash -c "printf 'dill<0.3.9,>=0.2.2\napache-beam<=2.49.0' | uv pip compile -" -->
+
 <pre class="hl_lines=&quot;1&quot;"><code>× Failed to build `apache-beam==2.0.0`
 ├─▶ The build backend returned an error
 ╰─▶ Call to `setuptools.build_meta:__legacy__.build_wheel` failed (exit status: 1)
@@ -256,7 +261,10 @@ given build requirements.</p>
 href="https://github.com/astral-sh/uv/issues/5551#issuecomment-2256055975">#5551</a>
 could be addressed by specifying a build constraint that excludes
 <code>setuptools</code> version <code>72.0.0</code>:</p>
-<p><code>toml title="pyproject.toml" [tool.uv] # Prevent setuptools version 72.0.0 from being used as a build dependency. build-constraint-dependencies = ["setuptools!=72.0.0"]</code></p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv]</span></span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Prevent setuptools version 72.0.0 from being used as a build dependency.</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a><span class="dt">build-constraint-dependencies</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;setuptools!=72.0.0&quot;</span><span class="op">]</span></span></code></pre></div>
 <p>The build constraint will thus ensure that any package requiring
 <code>setuptools</code> during the build process will avoid using the
 problematic version, preventing build failures caused by incompatible

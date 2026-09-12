@@ -11,56 +11,56 @@ href="https://learn.microsoft.com/en-us/windows/win32/shell/known-folders">Known
 Folder</a> scheme on Windows.</p>
 <h3 id="temporary-directory">Temporary directory</h3>
 <p>The temporary directory is used for ephemeral data.</p>
-<p>=== “Unix”</p>
+<p>=== "Unix"</p>
 <pre><code>1. `$TMPDIR`
 1. `/tmp`</code></pre>
-<p>=== “Windows”</p>
+<p>=== "Windows"</p>
 <pre><code>1. `%TMP%`
 1. `%TEMP%`
 1. `%USERPROFILE%`</code></pre>
 <h3 id="cache-directory">Cache directory</h3>
 <p>The cache directory is used for data that is disposable, but is
 useful to be long-lived.</p>
-<p>=== “Unix”</p>
+<p>=== "Unix"</p>
 <pre><code>1. `$XDG_CACHE_HOME/uv`
 1. `$HOME/.cache/uv`</code></pre>
-<p>=== “Windows”</p>
+<p>=== "Windows"</p>
 <pre><code>1. `%LOCALAPPDATA%\uv\cache`
 1. `uv\cache` within [`FOLDERID_LocalAppData`](https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#FOLDERID_LocalAppData)</code></pre>
 <h3 id="persistent-data-directory">Persistent data directory</h3>
 <p>The persistent data directory is used for non-disposable data.</p>
-<p>=== “Unix”</p>
+<p>=== "Unix"</p>
 <pre><code>1. `$XDG_DATA_HOME/uv`
 1. `$HOME/.local/share/uv`
 1. `$CWD/.uv`</code></pre>
-<p>=== “Windows”</p>
+<p>=== "Windows"</p>
 <pre><code>1. `%APPDATA%\uv\data`
 1. `.\.uv`</code></pre>
 <h3 id="configuration-directories">Configuration directories</h3>
-<p>The configuration directories are used to store changes to uv’s
+<p>The configuration directories are used to store changes to uv's
 settings.</p>
 <p>User-level configuration</p>
-<p>=== “Unix”</p>
+<p>=== "Unix"</p>
 <pre><code>1. `$XDG_CONFIG_HOME/uv`
 1. `$HOME/.config/uv`</code></pre>
-<p>=== “Windows”</p>
+<p>=== "Windows"</p>
 <pre><code>1. `%APPDATA%\uv`
 1. `uv` within [`FOLDERID_RoamingAppData`](https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#FOLDERID_RoamingAppData)</code></pre>
 <p>System-level configuration</p>
-<p>=== “Unix”</p>
+<p>=== "Unix"</p>
 <pre><code>1. `$XDG_CONFIG_DIRS/uv`
 1. `/etc/uv`</code></pre>
-<p>=== “Windows”</p>
+<p>=== "Windows"</p>
 <pre><code>1. `%PROGRAMDATA%\uv`
 1. `uv` within [`FOLDERID_AppDataProgramData`](https://learn.microsoft.com/en-us/windows/win32/shell/knownfolderid#FOLDERID_AppDataProgramData)</code></pre>
 <h3 id="executable-directory">Executable directory</h3>
 <p>The executable directory is used to store files that can be run by
 the user, i.e., a directory that should be on the <code>PATH</code>.</p>
-<p>=== “Unix”</p>
+<p>=== "Unix"</p>
 <pre><code>1. `$XDG_BIN_HOME`
 1. `$XDG_DATA_HOME/../bin`
 1. `$HOME/.local/bin`</code></pre>
-<p>=== “Windows”</p>
+<p>=== "Windows"</p>
 <pre><code>1. `%XDG_BIN_HOME%`
 1. `%XDG_DATA_HOME%\..\bin`
 1. `%USERPROFILE%\.local\bin`</code></pre>
@@ -123,14 +123,14 @@ directory.</p>
 <p>Use the <code>UV_TOOL_BIN_DIR</code> environment variable to
 configure the tool executable directory.</p>
 <h3 id="the-uv-executable">The uv executable</h3>
-<p>When using uv’s <a href="./installer.md">standalone installer</a> to
+<p>When using uv's <a href="./installer.md">standalone installer</a> to
 install uv, the <code>uv</code> and <code>uvx</code> executables are
 installed into the <a href="#executable-directory">executable
 directory</a>.</p>
 <p>Use the <code>UV_INSTALL_DIR</code> environment variable to configure
-uv’s installation directory.</p>
+uv's installation directory.</p>
 <h3 id="configuration-files">Configuration files</h3>
-<p>uv’s behavior can be configured through TOML files.</p>
+<p>uv's behavior can be configured through TOML files.</p>
 <p>Configuration files are discovered in the <a
 href="#configuration-directories">configuration directories</a>.</p>
 <p>For more details, see the <a

@@ -48,6 +48,20 @@ Images become their alt text first, uniformly for all three formats: the vendore
 corpus dropped the image files, so a reference to one is a dangling path that
 typst refuses and the other two writers silently keep.
 
+**The reader is `gfm`, and which dialect reads this corpus is load-bearing**
+(roadmap 5.24, ADR-0095). The corpus is mkdocs-material Markdown, whose fenced
+blocks carry attributes — ```` ```toml title="pyproject.toml" hl_lines="4" ````.
+pandoc's *own* `markdown` dialect requires those in braces and rejects the bare
+form, so it reads the opening fence as **prose** — and the closing fence then
+opens a block instead of shutting one, inverting every boundary after it until
+the next unambiguous fence. Headings, prose and links fall inside code blocks
+and code falls out of them. Measured over the 81 documents: **127 headings lost
+and 59 fabricated across 21 of them** under `markdown`, and **0 and 0** under
+`gfm`, which allows an arbitrary info string exactly as CommonMark, GitHub,
+mkdocs and this project's own markdown-it reader all do. `render_plan` refuses
+before it writes anything if a document's headings do not survive the reader, so
+the dialect cannot drift back silently.
+
 **The rendered binaries are committed, and they have to be.** typst embeds a
 build identifier, so compiling the same markup twice produces two different PDFs
 — measured, and not fixable with `SOURCE_DATE_EPOCH`. A corpus whose inputs
@@ -70,6 +84,7 @@ re-measure behind it, not something a routine invocation should do by accident.
 
 import argparse
 import filecmp
+import json
 import re
 import shutil
 import subprocess
@@ -77,6 +92,7 @@ import sys
 import tempfile
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Final
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
@@ -180,6 +196,127 @@ def markdown_documents() -> Iterator[str]:
         yield path.relative_to(SOURCE_CORPUS).as_posix()
 
 
+READER: Final = "gfm"
+"""The pandoc dialect the corpus is read in (roadmap 5.24, ADR-0095).
+
+Not pandoc's own `markdown`: that dialect spells a fenced block's attributes in
+braces and rejects mkdocs-material's bare ```` ```toml title="x" ````, reading the
+opener as prose — which turns the *closing* fence into an opener and inverts the
+block structure of everything after it. `gfm` accepts an arbitrary info string,
+which is what CommonMark specifies, what mkdocs renders, and what this project's
+own markdown-it reader does to the same file."""
+
+_ATX = re.compile(r"^ {0,3}(#{1,6})\s+(\S.*?)\s*#*\s*$")
+_FENCE = re.compile(r"^ {0,3}(`{3,}|~{3,})")
+
+
+def _normalise(text: str) -> str:
+    """Heading text as a reader compares it: no markup, no case, no punctuation."""
+    return re.sub(r"[^a-z0-9]+", " ", text.replace("`", "").lower()).strip()
+
+
+def source_headings(text: str) -> list[str]:
+    """The ATX headings a human reading the Markdown would count.
+
+    Fenced blocks are skipped, because a `#` inside one is a comment in some
+    other language. Deliberately naive about everything else: this is the
+    *claim* the check below tests the reader against, so it has to be something
+    a person can verify by eye.
+    """
+    found: list[str] = []
+    in_fence = False
+    for line in text.split("\n"):
+        if _FENCE.match(line):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+        match = _ATX.match(line)
+        if match:
+            found.append(match.group(2))
+    return found
+
+
+def reader_headings(text: str) -> list[str]:
+    """The headings pandoc's reader finds — asked of the AST, not of a rendering.
+
+    The defect this guards against lives in the *reader*, so the reader is what
+    is questioned; going through a writer would add a second thing that could be
+    blamed. `--to json` is pandoc's own parse, and `Header` blocks are its own
+    word for what a heading is.
+    """
+    argv = ["pandoc", "--sandbox", "--from", READER, "--to", "json", "--output", "-"]
+    completed = subprocess.run(  # fixed argument vector, no shell
+        argv, input=text.encode("utf-8"), capture_output=True, check=False
+    )
+    if completed.returncode != 0:
+        detail = completed.stderr.decode("utf-8", errors="replace").strip()
+        msg = f"pandoc could not read a source document: {detail}"
+        raise SystemExit(msg)
+    document = json.loads(completed.stdout)
+    return [_inline_text(block["c"][2]) for block in document["blocks"] if block["t"] == "Header"]
+
+
+def _inline_text(inlines: object) -> str:
+    """Flatten pandoc inlines to their text, the way a heading reads."""
+    if isinstance(inlines, list):
+        return "".join(_inline_text(item) for item in inlines)
+    if isinstance(inlines, dict):
+        kind = inlines.get("t")
+        content = inlines.get("c")
+        if kind == "Str":
+            return str(content)
+        if kind == "Code":
+            # `Code` is `[attr, text]`; the text is what a reader sees.
+            return str(content[1]) if isinstance(content, list) and len(content) == 2 else ""
+        if kind in {"Space", "SoftBreak", "LineBreak"}:
+            return " "
+        return _inline_text(content)
+    return ""
+
+
+def unreadable(text: str) -> tuple[list[str], list[str]]:
+    """`(headings the reader loses, headings it invents)` for one document."""
+    want = [_normalise(item) for item in source_headings(text)]
+    got = [_normalise(item) for item in reader_headings(text)]
+    lost = [item for item in want if item not in got]
+    invented = [item for item in got if item not in want]
+    return lost, invented
+
+
+def refuse_unreadable_sources() -> int:
+    """Refuse to render a corpus this reader cannot see the structure of.
+
+    Run *before* anything is written, so a failure leaves no half-rendered tree.
+    It is the check that would have caught roadmap 5.24 the day the corpus was
+    first rendered: the renderings were faithful to what pandoc read, and what
+    pandoc read was missing a fifth of the corpus's headings. Nothing downstream
+    could have noticed — docling read the HTML correctly, the adapter mapped it
+    correctly, and the fidelity report correctly said no element was lost between
+    the rendering and KIR (ADR-0095).
+    """
+    problems: list[str] = []
+    for relative in sorted(markdown_documents()):
+        text = _IMAGE.sub(r"\1", (SOURCE_CORPUS / relative).read_text(encoding="utf-8"))
+        lost, invented = unreadable(text)
+        if lost or invented:
+            problems.append(f"  {relative}: {len(lost)} heading(s) lost, {len(invented)} invented")
+            for heading in lost[:3]:
+                problems.append(f"      lost: {heading}")
+            for heading in invented[:3]:
+                problems.append(f"      invented: {heading}")
+    if problems:
+        print(f"`--from {READER}` does not read the structure of these documents:")
+        print("\n".join(problems))
+        print(
+            "\nRendering them would commit that loss as provenance, which is what "
+            "roadmap 5.24 had to undo. Fix the reader dialect, or the document, "
+            "before rendering."
+        )
+        return 1
+    return 0
+
+
 def render(source: Path, destination: Path, fmt: str, *, typst_root: Path) -> None:
     """Render one Markdown document into `fmt` at `destination`."""
     text = _IMAGE.sub(r"\1", source.read_text(encoding="utf-8"))
@@ -203,7 +340,7 @@ def _pandoc(text: str, destination: Path, writer: str) -> None:
         "pandoc",
         "--sandbox",
         "--from",
-        "markdown",
+        READER,
         "--to",
         writer,
         "--output",
@@ -372,6 +509,9 @@ def main() -> int:
             return 1
         if not (SOURCE_CORPUS / "docs").is_dir():
             print(f"the corpus this one mirrors is missing: {SOURCE_CORPUS / 'docs'}")
+            return 1
+        # Before anything is written: can the reader see what the documents say?
+        if refuse_unreadable_sources():
             return 1
         # The order is recorded *before* anything is rendered, so a run that
         # fails halfway leaves the record of what was claimed rather than a plan

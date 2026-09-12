@@ -4,7 +4,7 @@
 choice.</p>
 <h3 id="standalone-installer">Standalone installer</h3>
 <p>uv provides a standalone installer to download and install uv:</p>
-<p>=== “macOS and Linux”</p>
+<p>=== "macOS and Linux"</p>
 <pre><code>Use `curl` to download the script and execute it with `sh`:
 
 ```console
@@ -22,7 +22,7 @@ Request a specific version by including it in the URL:
 ```console
 $ curl -LsSf https://astral.sh/uv/0.12.7/install.sh | sh
 ```</code></pre>
-<p>=== “Windows”</p>
+<p>=== "Windows"</p>
 <pre><code>Use `irm` to download the script and execute it with `iex`:
 
 ```pwsh-session
@@ -107,7 +107,7 @@ itself on-demand:</p>
 <pre><code>Updating uv will re-run the installer and can modify your shell profiles. To disable this
 behavior, set `UV_NO_MODIFY_PATH=1`.</code></pre>
 <p>When another installation method is used, self-updates are disabled.
-Use the package manager’s upgrade method instead. For example, with
+Use the package manager's upgrade method instead. For example, with
 <code>pip</code>:</p>
 <pre class="console"><code>$ pip install --upgrade uv</code></pre>
 <h2 id="shell-autocompletion">Shell autocompletion</h2>
@@ -115,23 +115,23 @@ Use the package manager’s upgrade method instead. For example, with
 <pre><code>You can run `echo $SHELL` to help you determine your shell.</code></pre>
 <p>To enable shell autocompletion for uv commands, run one of the
 following:</p>
-<p>=== “Bash”</p>
+<p>=== "Bash"</p>
 <pre><code>```bash
 echo &#39;eval &quot;$(uv generate-shell-completion bash)&quot;&#39; &gt;&gt; ~/.bashrc
 ```</code></pre>
-<p>=== “Zsh”</p>
+<p>=== "Zsh"</p>
 <pre><code>```bash
 echo &#39;eval &quot;$(uv generate-shell-completion zsh)&quot;&#39; &gt;&gt; ~/.zshrc
 ```</code></pre>
-<p>=== “fish”</p>
+<p>=== "fish"</p>
 <pre><code>```bash
 echo &#39;uv generate-shell-completion fish | source&#39; &gt; ~/.config/fish/completions/uv.fish
 ```</code></pre>
-<p>=== “Elvish”</p>
+<p>=== "Elvish"</p>
 <pre><code>```bash
 echo &#39;eval (uv generate-shell-completion elvish | slurp)&#39; &gt;&gt; ~/.elvish/rc.elv
 ```</code></pre>
-<p>=== “PowerShell / pwsh”</p>
+<p>=== "PowerShell / pwsh"</p>
 <pre><code>```powershell
 if (!(Test-Path -Path $PROFILE)) {
   New-Item -ItemType File -Path $PROFILE -Force
@@ -139,23 +139,23 @@ if (!(Test-Path -Path $PROFILE)) {
 Add-Content -Path $PROFILE -Value &#39;(&amp; uv generate-shell-completion powershell) | Out-String | Invoke-Expression&#39;
 ```</code></pre>
 <p>To enable shell autocompletion for uvx, run one of the following:</p>
-<p>=== “Bash”</p>
+<p>=== "Bash"</p>
 <pre><code>```bash
 echo &#39;eval &quot;$(uvx --generate-shell-completion bash)&quot;&#39; &gt;&gt; ~/.bashrc
 ```</code></pre>
-<p>=== “Zsh”</p>
+<p>=== "Zsh"</p>
 <pre><code>```bash
 echo &#39;eval &quot;$(uvx --generate-shell-completion zsh)&quot;&#39; &gt;&gt; ~/.zshrc
 ```</code></pre>
-<p>=== “fish”</p>
+<p>=== "fish"</p>
 <pre><code>```bash
 echo &#39;uvx --generate-shell-completion fish | source&#39; &gt; ~/.config/fish/completions/uvx.fish
 ```</code></pre>
-<p>=== “Elvish”</p>
+<p>=== "Elvish"</p>
 <pre><code>```bash
 echo &#39;eval (uvx --generate-shell-completion elvish | slurp)&#39; &gt;&gt; ~/.elvish/rc.elv
 ```</code></pre>
-<p>=== “PowerShell / pwsh”</p>
+<p>=== "PowerShell / pwsh"</p>
 <pre><code>```powershell
 if (!(Test-Path -Path $PROFILE)) {
   New-Item -ItemType File -Path $PROFILE -Force
@@ -174,11 +174,11 @@ $ rm -r &quot;$(uv tool dir)&quot;</code></pre>
 <pre><code>Before removing the binaries, you may want to remove any data that uv has stored. See the
 [storage reference](../reference/storage.md) for details on where uv stores data.</code></pre></li>
 <li><p>Remove the uv, uvx, and uvw binaries:</p>
-<p>=== “macOS and Linux”</p>
+<p>=== "macOS and Linux"</p>
 <pre><code>```console
 $ rm ~/.local/bin/uv ~/.local/bin/uvx
 ```</code></pre>
-<p>=== “Windows”</p>
+<p>=== "Windows"</p>
 <pre><code>```pwsh-session
 PS&gt; rm $HOME\.local\bin\uv.exe
 PS&gt; rm $HOME\.local\bin\uvx.exe

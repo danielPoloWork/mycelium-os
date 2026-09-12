@@ -1,9 +1,9 @@
 <h1 id="using-workspaces">Using workspaces</h1>
 <p>Inspired by the <a
 href="https://doc.rust-lang.org/cargo/reference/workspaces.html">Cargo</a>
-concept of the same name, a workspace is “a collection of one or more
+concept of the same name, a workspace is "a collection of one or more
 packages, called <em>workspace members</em>, that are managed
-together.”</p>
+together."</p>
 <p>Workspaces organize large codebases by splitting them into multiple
 packages with common dependencies. Think: a FastAPI-based web
 application, alongside a series of libraries that are versioned and
@@ -28,47 +28,54 @@ rooted at that package.</p>
 (required) and <code>exclude</code> (optional) keys, which direct the
 workspace to include or exclude specific directories as members
 respectively, and accept lists of globs:</p>
-<p>```toml title=“pyproject.toml” [project] name = “albatross” version =
-“0.1.0” requires-python = “&gt;=3.12” dependencies = [“bird-feeder”,
-“tqdm&gt;=4,&lt;5”]</p>
-<p>[tool.uv.sources] bird-feeder = { workspace = true }</p>
-<p>[tool.uv.workspace] members = [“packages/*”] exclude =
-[“packages/seeds”]</p>
-<pre><code>
-Every directory included by the `members` globs (and not excluded by the `exclude` globs) must
-contain a `pyproject.toml` file. However, workspace members can be _either_
-[applications](./init.md#applications) or [libraries](./init.md#libraries); both are supported in
-the workspace context.
-
-Every workspace needs a root, which is _also_ a workspace member. In the above example, `albatross`
-is the workspace root, and the workspace members include all projects under the `packages`
-directory, except `seeds`.
-
-By default, `uv run` and `uv sync` operates on the workspace root. For example, in the above
-example, `uv run` and `uv run --package albatross` would be equivalent, while
-`uv run --package bird-feeder` would run the command in the `bird-feeder` package.
-
-## Workspace sources
-
-Within a workspace, dependencies on workspace members are facilitated via
-[`tool.uv.sources`](./dependencies.md), as in:
-
-```toml title=&quot;pyproject.toml&quot;
-[project]
-name = &quot;albatross&quot;
-version = &quot;0.1.0&quot;
-requires-python = &quot;&gt;=3.12&quot;
-dependencies = [&quot;bird-feeder&quot;, &quot;tqdm&gt;=4,&lt;5&quot;]
-
-[tool.uv.sources]
-bird-feeder = { workspace = true }
-
-[tool.uv.workspace]
-members = [&quot;packages/*&quot;]
-
-[build-system]
-requires = [&quot;uv_build&gt;=0.12.7,&lt;0.13&quot;]
-build-backend = &quot;uv_build&quot;</code></pre>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[project]</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;albatross&quot;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dt">version</span> <span class="op">=</span> <span class="st">&quot;0.1.0&quot;</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="dt">requires-python</span> <span class="op">=</span> <span class="st">&quot;&gt;=3.12&quot;</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="dt">dependencies</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;bird-feeder&quot;</span><span class="op">,</span> <span class="st">&quot;tqdm&gt;=4,&lt;5&quot;</span><span class="op">]</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.sources]</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="dt">bird-feeder</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">workspace</span><span class="op"> =</span> <span class="cn">true</span><span class="op"> }</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.workspace]</span></span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a><span class="dt">members</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;packages/*&quot;</span><span class="op">]</span></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a><span class="dt">exclude</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;packages/seeds&quot;</span><span class="op">]</span></span></code></pre></div>
+<p>Every directory included by the <code>members</code> globs (and not
+excluded by the <code>exclude</code> globs) must contain a
+<code>pyproject.toml</code> file. However, workspace members can be
+<em>either</em> <a href="./init.md#applications">applications</a> or <a
+href="./init.md#libraries">libraries</a>; both are supported in the
+workspace context.</p>
+<p>Every workspace needs a root, which is <em>also</em> a workspace
+member. In the above example, <code>albatross</code> is the workspace
+root, and the workspace members include all projects under the
+<code>packages</code> directory, except <code>seeds</code>.</p>
+<p>By default, <code>uv run</code> and <code>uv sync</code> operates on
+the workspace root. For example, in the above example,
+<code>uv run</code> and <code>uv run --package albatross</code> would be
+equivalent, while <code>uv run --package bird-feeder</code> would run
+the command in the <code>bird-feeder</code> package.</p>
+<h2 id="workspace-sources">Workspace sources</h2>
+<p>Within a workspace, dependencies on workspace members are facilitated
+via <a href="./dependencies.md"><code>tool.uv.sources</code></a>, as
+in:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[project]</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;albatross&quot;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="dt">version</span> <span class="op">=</span> <span class="st">&quot;0.1.0&quot;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="dt">requires-python</span> <span class="op">=</span> <span class="st">&quot;&gt;=3.12&quot;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="dt">dependencies</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;bird-feeder&quot;</span><span class="op">,</span> <span class="st">&quot;tqdm&gt;=4,&lt;5&quot;</span><span class="op">]</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.sources]</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a><span class="dt">bird-feeder</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">workspace</span><span class="op"> =</span> <span class="cn">true</span><span class="op"> }</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.workspace]</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a><span class="dt">members</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;packages/*&quot;</span><span class="op">]</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="kw">[build-system]</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a><span class="dt">requires</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;uv_build&gt;=0.12.7,&lt;0.13&quot;</span><span class="op">]</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a><span class="dt">build-backend</span> <span class="op">=</span> <span class="st">&quot;uv_build&quot;</span></span></code></pre></div>
 <p>In this example, the <code>albatross</code> project depends on the
 <code>bird-feeder</code> project, which is a member of the workspace.
 The <code>workspace = true</code> key-value pair in the
@@ -86,35 +93,39 @@ uv selects the member that matches the dependency name.</p>
 apply to all members, unless overridden in the
 <code>tool.uv.sources</code> of a specific member. For example, given
 the following <code>pyproject.toml</code>:</p>
-<p>```toml title=“pyproject.toml” [project] name = “albatross” version =
-“0.1.0” requires-python = “&gt;=3.12” dependencies = [“bird-feeder”,
-“tqdm&gt;=4,&lt;5”]</p>
-<p>[tool.uv.sources] bird-feeder = { workspace = true } tqdm = { git =
-“https://github.com/tqdm/tqdm” }</p>
-<p>[tool.uv.workspace] members = [“packages/*”]</p>
-<p>[build-system] requires = [“uv_build&gt;=0.12.7,&lt;0.13”]
-build-backend = “uv_build”</p>
-<pre><code>
-Every workspace member would, by default, install `tqdm` from GitHub, unless a specific member
-overrides the `tqdm` entry in its own `tool.uv.sources` table.
-
-!!! note
-
-    If a workspace member provides `tool.uv.sources` for some dependency, it will ignore any
-    `tool.uv.sources` for the same dependency in the workspace root, even if the member&#39;s source is
-    limited by a [marker](dependencies.md#platform-specific-sources) that doesn&#39;t match the current
-    platform.
-
-## Workspace layouts
-
-The most common workspace layout can be thought of as a root project with a series of accompanying
-libraries.
-
-For example, continuing with the above example, this workspace has an explicit root at `albatross`,
-with two libraries (`bird-feeder` and `seeds`) in the `packages` directory:
-
-```text
-albatross
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[project]</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;albatross&quot;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="dt">version</span> <span class="op">=</span> <span class="st">&quot;0.1.0&quot;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="dt">requires-python</span> <span class="op">=</span> <span class="st">&quot;&gt;=3.12&quot;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="dt">dependencies</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;bird-feeder&quot;</span><span class="op">,</span> <span class="st">&quot;tqdm&gt;=4,&lt;5&quot;</span><span class="op">]</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.sources]</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="dt">bird-feeder</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">workspace</span><span class="op"> =</span> <span class="cn">true</span><span class="op"> }</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="dt">tqdm</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">git</span><span class="op"> =</span> <span class="st">&quot;https://github.com/tqdm/tqdm&quot;</span><span class="op"> }</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.workspace]</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="dt">members</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;packages/*&quot;</span><span class="op">]</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="kw">[build-system]</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="dt">requires</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;uv_build&gt;=0.12.7,&lt;0.13&quot;</span><span class="op">]</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="dt">build-backend</span> <span class="op">=</span> <span class="st">&quot;uv_build&quot;</span></span></code></pre></div>
+<p>Every workspace member would, by default, install <code>tqdm</code>
+from GitHub, unless a specific member overrides the <code>tqdm</code>
+entry in its own <code>tool.uv.sources</code> table.</p>
+<p>!!! note</p>
+<pre><code>If a workspace member provides `tool.uv.sources` for some dependency, it will ignore any
+`tool.uv.sources` for the same dependency in the workspace root, even if the member&#39;s source is
+limited by a [marker](dependencies.md#platform-specific-sources) that doesn&#39;t match the current
+platform.</code></pre>
+<h2 id="workspace-layouts">Workspace layouts</h2>
+<p>The most common workspace layout can be thought of as a root project
+with a series of accompanying libraries.</p>
+<p>For example, continuing with the above example, this workspace has an
+explicit root at <code>albatross</code>, with two libraries
+(<code>bird-feeder</code> and <code>seeds</code>) in the
+<code>packages</code> directory:</p>
+<pre class="text"><code>albatross
 ├── packages
 │   ├── bird-feeder
 │   │   ├── pyproject.toml
@@ -160,21 +171,28 @@ example, rather than grouping <code>albatross</code> and its members in
 a workspace, you can always define each package as its own independent
 project, with inter-package dependencies defined as path dependencies in
 <code>tool.uv.sources</code>:</p>
-<p>```toml title=“pyproject.toml” [project] name = “albatross” version =
-“0.1.0” requires-python = “&gt;=3.12” dependencies = [“bird-feeder”,
-“tqdm&gt;=4,&lt;5”]</p>
-<p>[tool.uv.sources] bird-feeder = { path = “packages/bird-feeder” }</p>
-<p>[build-system] requires = [“uv_build&gt;=0.12.7,&lt;0.13”]
-build-backend = “uv_build” ```</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[project]</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;albatross&quot;</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="dt">version</span> <span class="op">=</span> <span class="st">&quot;0.1.0&quot;</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="dt">requires-python</span> <span class="op">=</span> <span class="st">&quot;&gt;=3.12&quot;</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a><span class="dt">dependencies</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;bird-feeder&quot;</span><span class="op">,</span> <span class="st">&quot;tqdm&gt;=4,&lt;5&quot;</span><span class="op">]</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.sources]</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a><span class="dt">bird-feeder</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">path</span><span class="op"> =</span> <span class="st">&quot;packages/bird-feeder&quot;</span><span class="op"> }</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="kw">[build-system]</span></span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="dt">requires</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;uv_build&gt;=0.12.7,&lt;0.13&quot;</span><span class="op">]</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a><span class="dt">build-backend</span> <span class="op">=</span> <span class="st">&quot;uv_build&quot;</span></span></code></pre></div>
 <p>This approach conveys many of the same benefits, but allows for more
 fine-grained control over dependency resolution and virtual environment
 management (with the downside that <code>uv run --package</code> is no
 longer available; instead, commands must be run from the relevant
 package directory).</p>
-<p>Finally, uv’s workspaces enforce a single
+<p>Finally, uv's workspaces enforce a single
 <code>requires-python</code> for the entire workspace, taking the
-intersection of all members’ <code>requires-python</code> values. If you
-need to support testing a given member on a Python version that isn’t
+intersection of all members' <code>requires-python</code> values. If you
+need to support testing a given member on a Python version that isn't
 supported by the rest of the workspace, you may need to use
 <code>uv pip</code> to install that member in a separate virtual
 environment.</p>

@@ -10,6 +10,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Fixed
+
+- **The third judged corpus was rendered by a Markdown dialect it is not written in** (roadmap 5.24,
+  [ADR-0095](docs/adr/0095-read-the-corpus-in-the-dialect-it-is-written-in.md), [BUG-0025](docs/bugs/2026/09/BUG-0025-the-corpus-renderer-reads-a-dialect-the-corpus-is-not-written-in.md)). `tools/build_ingested_corpus.py` rendered the
+  vendored `uv` documentation with `pandoc --from markdown`, pandoc's own dialect, which spells a
+  fenced block's attributes in braces and rejects mkdocs-material's bare
+  ```` ```toml title="pyproject.toml" ````. It read each such opening fence as prose, so the
+  *closing* fence opened a block instead of shutting one and every boundary after it inverted:
+  headings, prose and links fell inside code blocks. Measured across the 81 documents, the
+  committed renderings had lost **127 headings and fabricated 59, across 21 of them**; under `gfm`
+  it is 0 and 0. The corpus is re-rendered, re-ingested, its judged anchors re-carried and both
+  baselines re-blessed — no document changed format or parser, and nothing was re-judged. The
+  reported lead over the `grep` incumbent **narrows, +0.045 → +0.038**, because the repair gives
+  the incumbent more than it gives us. A new pre-render guard refuses to render any corpus whose
+  headings do not survive the configured reader, so the dialect cannot drift back silently.
+  Affects the evaluation corpus only; no product behaviour changes.
+
 ### Added
 
 - **A command the corpus both demonstrates and names is a symbol** (roadmap 5.23, [ADR-0094](docs/adr/0094-mint-a-command-the-corpus-demonstrates-and-names-and-report-what-promotion-can-and-cannot-reorder.md)).

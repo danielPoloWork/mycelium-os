@@ -2,11 +2,11 @@
 <p>Each Python installation has an environment that is active when
 Python is used. Packages can be installed into an environment to make
 their modules available from your Python scripts. Generally, it is
-considered best practice not to modify a Python installation’s
+considered best practice not to modify a Python installation's
 environment. This is especially important for Python installations that
 come with the operating system which often manage the packages
 themselves. A virtual environment is a lightweight way to isolate
-packages from a Python installation’s environment. Unlike
+packages from a Python installation's environment. Unlike
 <code>pip</code>, uv requires using a virtual environment by
 default.</p>
 <h2 id="creating-a-virtual-environment">Creating a virtual
@@ -32,13 +32,13 @@ invocations.</p>
 
 $ # Install a package in the new virtual environment
 $ uv pip install ruff</code></pre>
-<p>The virtual environment can be “activated” to make its packages
+<p>The virtual environment can be "activated" to make its packages
 available:</p>
-<p>=== “macOS and Linux”</p>
+<p>=== "macOS and Linux"</p>
 <pre><code>```console
 $ source .venv/bin/activate
 ```</code></pre>
-<p>=== “Windows”</p>
+<p>=== "Windows"</p>
 <pre><code>```pwsh-session
 PS&gt; .venv\Scripts\activate
 ```</code></pre>
@@ -108,14 +108,14 @@ environments.</p>
 notoriously difficult. uv supports the common cases, but will not work
 in all cases. For example, installing into system Python on Debian prior
 to Python 3.10 is unsupported due to the <a
-href="https://ffy00.github.io/blog/02-python-debian-and-the-install-locations/">distribution’s
+href="https://ffy00.github.io/blog/02-python-debian-and-the-install-locations/">distribution's
 patching of <code>distutils</code> (but not <code>sysconfig</code>)</a>.
 While we always recommend the use of virtual environments, uv considers
 them to be required in these non-standard environments.</p>
 <p>If uv is installed in a Python environment, e.g., with
 <code>pip</code>, it can still be used to modify other environments.
 However, when invoked with <code>python -m uv</code>, uv will default to
-using the parent interpreter’s environment. Invoking uv via Python adds
+using the parent interpreter's environment. Invoking uv via Python adds
 startup overhead and is not recommended for general usage.</p>
 <p>uv itself does not depend on Python, but it does need to locate a
 Python environment to (1) install dependencies into the environment and

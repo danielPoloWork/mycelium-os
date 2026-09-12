@@ -16,104 +16,98 @@ following structure:</p>
     ├── __init__.py
     └── main.py</code></pre>
 <p>Where the <code>pyproject.toml</code> contains:</p>
-<p>```toml title=“pyproject.toml” [project] name =
-“uv-aws-lambda-example” version = “0.1.0” requires-python = “&gt;=3.13”
-dependencies = [ # FastAPI is a modern web framework for building APIs
-with Python. “fastapi”, # Mangum is a library that adapts ASGI
-applications to AWS Lambda and API Gateway. “mangum”,]</p>
-<p>[dependency-groups] dev = [ # In development mode, include the
-FastAPI development server. “fastapi[standard]&gt;=0.115”,]</p>
-<pre><code>
-And the `main.py` file contains:
-
-```python title=&quot;app/main.py&quot;
-import logging
-
-from fastapi import FastAPI
-from mangum import Mangum
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
-app = FastAPI()
-handler = Mangum(app)
-
-
-@app.get(&quot;/&quot;)
-async def root() -&gt; str:
-    return &quot;Hello, world!&quot;</code></pre>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[project]</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;uv-aws-lambda-example&quot;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="dt">version</span> <span class="op">=</span> <span class="st">&quot;0.1.0&quot;</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="dt">requires-python</span> <span class="op">=</span> <span class="st">&quot;&gt;=3.13&quot;</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="dt">dependencies</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># FastAPI is a modern web framework for building APIs with Python.</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;fastapi&quot;</span><span class="op">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Mangum is a library that adapts ASGI applications to AWS Lambda and API Gateway.</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;mangum&quot;</span><span class="op">,</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a><span class="op">]</span></span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a><span class="kw">[dependency-groups]</span></span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a><span class="dt">dev</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="co"># In development mode, include the FastAPI development server.</span></span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;fastapi[standard]&gt;=0.115&quot;</span><span class="op">,</span></span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a><span class="op">]</span></span></code></pre></div>
+<p>And the <code>main.py</code> file contains:</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> logging</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> fastapi <span class="im">import</span> FastAPI</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> mangum <span class="im">import</span> Mangum</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>logger <span class="op">=</span> logging.getLogger()</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>logger.setLevel(logging.INFO)</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>app <span class="op">=</span> FastAPI()</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>handler <span class="op">=</span> Mangum(app)</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a><span class="at">@app.get</span>(<span class="st">&quot;/&quot;</span>)</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> root() <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> <span class="st">&quot;Hello, world!&quot;</span></span></code></pre></div>
 <p>We can run this application locally with:</p>
 <pre class="console"><code>$ uv run fastapi dev</code></pre>
-<p>From there, opening http://127.0.0.1:8000/ in a web browser will
-display “Hello, world!”</p>
+<p>From there, opening <a
+href="http://127.0.0.1:8000/">http://127.0.0.1:8000/</a> in a web
+browser will display "Hello, world!"</p>
 <h2 id="deploying-a-docker-image">Deploying a Docker image</h2>
 <p>To deploy to AWS Lambda, we need to build a container image that
 includes the application code and dependencies in a single output
 directory.</p>
-<p>We’ll follow the principles outlined in the <a
+<p>We'll follow the principles outlined in the <a
 href="./docker.md">Docker guide</a> (in particular, a multi-stage build)
 to ensure that the final image is as small and cache-friendly as
 possible.</p>
-<p>In the first stage, we’ll populate a single directory with all
-application code and dependencies. In the second stage, we’ll copy this
+<p>In the first stage, we'll populate a single directory with all
+application code and dependencies. In the second stage, we'll copy this
 directory over to the final image, omitting the build tools and other
 unnecessary files.</p>
-<p>```dockerfile title=“Dockerfile” FROM ghcr.io/astral-sh/uv:0.12.7 AS
-uv</p>
-<h1 id="first-bundle-the-dependencies-into-the-task-root.">First, bundle
-the dependencies into the task root.</h1>
-<p>FROM public.ecr.aws/lambda/python:3.13 AS builder</p>
-<h1
-id="enable-bytecode-compilation-to-improve-cold-start-performance.">Enable
-bytecode compilation, to improve cold-start performance.</h1>
-<p>ENV UV_COMPILE_BYTECODE=1</p>
-<h1
-id="disable-installer-metadata-to-create-a-deterministic-layer.">Disable
-installer metadata, to create a deterministic layer.</h1>
-<p>ENV UV_NO_INSTALLER_METADATA=1</p>
-<h1 id="enable-copy-mode-to-support-bind-mount-caching.">Enable copy
-mode to support bind mount caching.</h1>
-<p>ENV UV_LINK_MODE=copy</p>
-<h1
-id="bundle-the-dependencies-into-the-lambda-task-root-via-uv-pip-install---target.">Bundle
-the dependencies into the Lambda task root via
-<code>uv pip install --target</code>.</h1>
-<h1 id="section"></h1>
-<h1
-id="omit-any-local-packages---no-emit-workspace-and-development-dependencies---no-dev.">Omit
-any local packages (<code>--no-emit-workspace</code>) and development
-dependencies (<code>--no-dev</code>).</h1>
-<h1
-id="this-ensures-that-the-docker-layer-cache-is-only-invalidated-when-the-pyproject.toml-or-uv.lock">This
-ensures that the Docker layer cache is only invalidated when the
-<code>pyproject.toml</code> or <code>uv.lock</code></h1>
-<h1
-id="files-change-but-remains-robust-to-changes-in-the-application-code.">files
-change, but remains robust to changes in the application code.</h1>
-<p>RUN –mount=from=uv,source=/uv,target=/bin/uv<br />
-–mount=type=cache,target=/root/.cache/uv<br />
-–mount=type=bind,source=uv.lock,target=uv.lock<br />
-–mount=type=bind,source=pyproject.toml,target=pyproject.toml<br />
-uv export –frozen –no-emit-workspace –no-dev –no-editable -o
-requirements.txt &amp;&amp;<br />
-uv pip install -r requirements.txt –target “${LAMBDA_TASK_ROOT}”</p>
-<p>FROM public.ecr.aws/lambda/python:3.13</p>
-<h1 id="copy-the-runtime-dependencies-from-the-builder-stage.">Copy the
-runtime dependencies from the builder stage.</h1>
-<p>COPY –from=builder ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}</p>
-<h1 id="copy-the-application-code.">Copy the application code.</h1>
-<p>COPY ./app ${LAMBDA_TASK_ROOT}/app</p>
-<h1 id="set-the-aws-lambda-handler.">Set the AWS Lambda handler.</h1>
-<p>CMD [“app.main.handler”]</p>
-<pre><code>
-!!! tip
-
-    To deploy to ARM-based AWS Lambda runtimes, replace `public.ecr.aws/lambda/python:3.13` with `public.ecr.aws/lambda/python:3.13-arm64`.
-
-We can build the image with, e.g.:
-
-```console
-$ uv lock
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> ghcr.io/astral-sh/uv:0.12.7 <span class="kw">AS</span> uv</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co"># First, bundle the dependencies into the task root.</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> public.ecr.aws/lambda/python:3.13 <span class="kw">AS</span> builder</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Enable bytecode compilation, to improve cold-start performance.</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> UV_COMPILE_BYTECODE=1</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Disable installer metadata, to create a deterministic layer.</span></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> UV_NO_INSTALLER_METADATA=1</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Enable copy mode to support bind mount caching.</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> UV_LINK_MODE=copy</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Bundle the dependencies into the Lambda task root via `uv pip install --target`.</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Omit any local packages (`--no-emit-workspace`) and development dependencies (`--no-dev`).</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a><span class="co"># This ensures that the Docker layer cache is only invalidated when the `pyproject.toml` or `uv.lock`</span></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a><span class="co"># files change, but remains robust to changes in the application code.</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="op">--mount=from=uv,source=/uv,target=/bin/uv</span> <span class="op">\</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=cache,target=/root/.cache/uv</span> <span class="op">\</span></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=uv.lock,target=uv.lock</span> <span class="op">\</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=pyproject.toml,target=pyproject.toml</span> <span class="op">\</span></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> export <span class="at">--frozen</span> <span class="at">--no-emit-workspace</span> <span class="at">--no-dev</span> <span class="at">--no-editable</span> <span class="at">-o</span> requirements.txt <span class="kw">&amp;&amp;</span> <span class="dt">\</span></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> pip install <span class="at">-r</span> requirements.txt <span class="at">--target</span> <span class="st">&quot;</span><span class="va">${LAMBDA_TASK_ROOT}</span><span class="st">&quot;</span></span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> public.ecr.aws/lambda/python:3.13</span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy the runtime dependencies from the builder stage.</span></span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="op">--from=builder</span> ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}</span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy the application code.</span></span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> ./app ${LAMBDA_TASK_ROOT}/app</span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a><span class="co"># Set the AWS Lambda handler.</span></span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a><span class="kw">CMD</span> [<span class="st">&quot;app.main.handler&quot;</span>]</span></code></pre></div>
+<p>!!! tip</p>
+<pre><code>To deploy to ARM-based AWS Lambda runtimes, replace `public.ecr.aws/lambda/python:3.13` with `public.ecr.aws/lambda/python:3.13-arm64`.</code></pre>
+<p>We can build the image with, e.g.:</p>
+<pre class="console"><code>$ uv lock
 $ docker build -t fastapi-app .</code></pre>
 <p>The core benefits of this Dockerfile structure are as follows:</p>
 <ol type="1">
@@ -182,10 +176,26 @@ or the AWS CLI, e.g.:</p>
 }</code></pre>
 <p>Where <code>event.json</code> contains the event payload to pass to
 the Lambda function:</p>
-<p><code>json title="event.json" {   "httpMethod": "GET",   "path": "/",   "requestContext": {},   "version": "1.0" }</code></p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;httpMethod&quot;</span><span class="fu">:</span> <span class="st">&quot;GET&quot;</span><span class="fu">,</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;path&quot;</span><span class="fu">:</span> <span class="st">&quot;/&quot;</span><span class="fu">,</span></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;requestContext&quot;</span><span class="fu">:</span> <span class="fu">{},</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;version&quot;</span><span class="fu">:</span> <span class="st">&quot;1.0&quot;</span></span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>And <code>response.json</code> contains the response from the Lambda
 function:</p>
-<p><code>json title="response.json" {   "statusCode": 200,   "headers": {     "content-length": "14",     "content-type": "application/json"   },   "multiValueHeaders": {},   "body": "\"Hello, world!\"",   "isBase64Encoded": false }</code></p>
+<div class="sourceCode" id="cb16"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;statusCode&quot;</span><span class="fu">:</span> <span class="dv">200</span><span class="fu">,</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;headers&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;content-length&quot;</span><span class="fu">:</span> <span class="st">&quot;14&quot;</span><span class="fu">,</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;content-type&quot;</span><span class="fu">:</span> <span class="st">&quot;application/json&quot;</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;multiValueHeaders&quot;</span><span class="fu">:</span> <span class="fu">{},</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;body&quot;</span><span class="fu">:</span> <span class="st">&quot;</span><span class="ch">\&quot;</span><span class="st">Hello, world!</span><span class="ch">\&quot;</span><span class="st">&quot;</span><span class="fu">,</span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;isBase64Encoded&quot;</span><span class="fu">:</span> <span class="kw">false</span></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>For details, see the <a
 href="https://docs.aws.amazon.com/lambda/latest/dg/python-image.html">AWS
 Lambda documentation</a>.</p>
@@ -193,140 +203,130 @@ Lambda documentation</a>.</p>
 <p>If a project includes local dependencies (e.g., via <a
 href="../../concepts/projects/workspaces.md">Workspaces</a>), those too
 must be included in the deployment package.</p>
-<p>We’ll start by extending the above example to include a dependency on
+<p>We'll start by extending the above example to include a dependency on
 a locally-developed library named <code>library</code>.</p>
-<p>First, we’ll create the library itself:</p>
+<p>First, we'll create the library itself:</p>
 <pre class="console"><code>$ uv init --lib library
 $ uv add ./library</code></pre>
 <p>Running <code>uv init</code> within the <code>project</code>
 directory will automatically convert <code>project</code> to a workspace
 and add <code>library</code> as a workspace member:</p>
-<p>```toml title=“pyproject.toml” [project] name =
-“uv-aws-lambda-example” version = “0.1.0” requires-python = “&gt;=3.13”
-dependencies = [ # FastAPI is a modern web framework for building APIs
-with Python. “fastapi”, # A local library. “library”, # Mangum is a
-library that adapts ASGI applications to AWS Lambda and API Gateway.
-“mangum”,]</p>
-<p>[dependency-groups] dev = [ # In development mode, include the
-FastAPI development server. “fastapi[standard]”,]</p>
-<p>[tool.uv.workspace] members = [“library”]</p>
-<p>[tool.uv.sources] lib = { workspace = true }</p>
-<pre><code>
-By default, `uv init --lib` will create a package that exports a `hello` function. We&#39;ll modify the
-application source code to call that function:
-
-```python title=&quot;app/main.py&quot;
-import logging
-
-from fastapi import FastAPI
-from mangum import Mangum
-
-from library import hello
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
-app = FastAPI()
-handler = Mangum(app)
-
-
-@app.get(&quot;/&quot;)
-async def root() -&gt; str:
-    return hello()</code></pre>
+<div class="sourceCode" id="cb18"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[project]</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;uv-aws-lambda-example&quot;</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a><span class="dt">version</span> <span class="op">=</span> <span class="st">&quot;0.1.0&quot;</span></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a><span class="dt">requires-python</span> <span class="op">=</span> <span class="st">&quot;&gt;=3.13&quot;</span></span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="dt">dependencies</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    <span class="co"># FastAPI is a modern web framework for building APIs with Python.</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;fastapi&quot;</span><span class="op">,</span></span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># A local library.</span></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;library&quot;</span><span class="op">,</span></span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Mangum is a library that adapts ASGI applications to AWS Lambda and API Gateway.</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;mangum&quot;</span><span class="op">,</span></span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a><span class="op">]</span></span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a><span class="kw">[dependency-groups]</span></span>
+<span id="cb18-15"><a href="#cb18-15" aria-hidden="true" tabindex="-1"></a><span class="dt">dev</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb18-16"><a href="#cb18-16" aria-hidden="true" tabindex="-1"></a>    <span class="co"># In development mode, include the FastAPI development server.</span></span>
+<span id="cb18-17"><a href="#cb18-17" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;fastapi[standard]&quot;</span><span class="op">,</span></span>
+<span id="cb18-18"><a href="#cb18-18" aria-hidden="true" tabindex="-1"></a><span class="op">]</span></span>
+<span id="cb18-19"><a href="#cb18-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-20"><a href="#cb18-20" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.workspace]</span></span>
+<span id="cb18-21"><a href="#cb18-21" aria-hidden="true" tabindex="-1"></a><span class="dt">members</span> <span class="op">=</span> <span class="op">[</span><span class="st">&quot;library&quot;</span><span class="op">]</span></span>
+<span id="cb18-22"><a href="#cb18-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-23"><a href="#cb18-23" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.sources]</span></span>
+<span id="cb18-24"><a href="#cb18-24" aria-hidden="true" tabindex="-1"></a><span class="dt">lib</span> <span class="op">=</span> <span class="op">{ </span><span class="dt">workspace</span><span class="op"> =</span> <span class="cn">true</span><span class="op"> }</span></span></code></pre></div>
+<p>By default, <code>uv init --lib</code> will create a package that
+exports a <code>hello</code> function. We'll modify the application
+source code to call that function:</p>
+<div class="sourceCode" id="cb19"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> logging</span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> fastapi <span class="im">import</span> FastAPI</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> mangum <span class="im">import</span> Mangum</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a><span class="im">from</span> library <span class="im">import</span> hello</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>logger <span class="op">=</span> logging.getLogger()</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>logger.setLevel(logging.INFO)</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>app <span class="op">=</span> FastAPI()</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>handler <span class="op">=</span> Mangum(app)</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a><span class="at">@app.get</span>(<span class="st">&quot;/&quot;</span>)</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a><span class="cf">async</span> <span class="kw">def</span> root() <span class="op">-&gt;</span> <span class="bu">str</span>:</span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> hello()</span></code></pre></div>
 <p>We can run the modified application locally with:</p>
 <pre class="console"><code>$ uv run fastapi dev</code></pre>
-<p>And confirm that opening http://127.0.0.1:8000/ in a web browser
-displays, “Hello from library!” (instead of “Hello, World!”)</p>
-<p>Finally, we’ll update the Dockerfile to include the local library in
+<p>And confirm that opening <a
+href="http://127.0.0.1:8000/">http://127.0.0.1:8000/</a> in a web
+browser displays, "Hello from library!" (instead of "Hello, World!")</p>
+<p>Finally, we'll update the Dockerfile to include the local library in
 the deployment package:</p>
-<p>```dockerfile title=“Dockerfile” FROM ghcr.io/astral-sh/uv:0.12.7 AS
-uv</p>
-<h1 id="first-bundle-the-dependencies-into-the-task-root.-1">First,
-bundle the dependencies into the task root.</h1>
-<p>FROM public.ecr.aws/lambda/python:3.13 AS builder</p>
-<h1
-id="enable-bytecode-compilation-to-improve-cold-start-performance.-1">Enable
-bytecode compilation, to improve cold-start performance.</h1>
-<p>ENV UV_COMPILE_BYTECODE=1</p>
-<h1
-id="disable-installer-metadata-to-create-a-deterministic-layer.-1">Disable
-installer metadata, to create a deterministic layer.</h1>
-<p>ENV UV_NO_INSTALLER_METADATA=1</p>
-<h1 id="enable-copy-mode-to-support-bind-mount-caching.-1">Enable copy
-mode to support bind mount caching.</h1>
-<p>ENV UV_LINK_MODE=copy</p>
-<h1
-id="bundle-the-dependencies-into-the-lambda-task-root-via-uv-pip-install---target.-1">Bundle
-the dependencies into the Lambda task root via
-<code>uv pip install --target</code>.</h1>
-<h1 id="section-1"></h1>
-<h1
-id="omit-any-local-packages---no-emit-workspace-and-development-dependencies---no-dev.-1">Omit
-any local packages (<code>--no-emit-workspace</code>) and development
-dependencies (<code>--no-dev</code>).</h1>
-<h1
-id="this-ensures-that-the-docker-layer-cache-is-only-invalidated-when-the-pyproject.toml-or-uv.lock-1">This
-ensures that the Docker layer cache is only invalidated when the
-<code>pyproject.toml</code> or <code>uv.lock</code></h1>
-<h1
-id="files-change-but-remains-robust-to-changes-in-the-application-code.-1">files
-change, but remains robust to changes in the application code.</h1>
-<p>RUN –mount=from=uv,source=/uv,target=/bin/uv<br />
-–mount=type=cache,target=/root/.cache/uv<br />
-–mount=type=bind,source=uv.lock,target=uv.lock<br />
-–mount=type=bind,source=pyproject.toml,target=pyproject.toml<br />
-uv export –frozen –no-emit-workspace –no-dev –no-editable -o
-requirements.txt &amp;&amp;<br />
-uv pip install -r requirements.txt –target “${LAMBDA_TASK_ROOT}”</p>
-<h1 id="if-you-have-a-workspace-copy-it-over-and-install-it-too.">If you
-have a workspace, copy it over and install it too.</h1>
-<h1 id="section-2"></h1>
-<h1
-id="by-omitting---no-emit-workspace-library-will-be-copied-into-the-task-root.-using-a-separate">By
-omitting <code>--no-emit-workspace</code>, <code>library</code> will be
-copied into the task root. Using a separate</h1>
-<h1
-id="run-command-ensures-that-all-third-party-dependencies-are-cached-separately-and-remain"><code>RUN</code>
-command ensures that all third-party dependencies are cached separately
-and remain</h1>
-<h1 id="robust-to-changes-in-the-workspace.">robust to changes in the
-workspace.</h1>
-<p>RUN –mount=from=uv,source=/uv,target=/bin/uv<br />
-–mount=type=cache,target=/root/.cache/uv<br />
-–mount=type=bind,source=uv.lock,target=uv.lock<br />
-–mount=type=bind,source=pyproject.toml,target=pyproject.toml<br />
-–mount=type=bind,source=library,target=library<br />
-uv export –frozen –no-dev –no-editable -o requirements.txt
-&amp;&amp;<br />
-uv pip install -r requirements.txt –target “${LAMBDA_TASK_ROOT}”</p>
-<p>FROM public.ecr.aws/lambda/python:3.13</p>
-<h1 id="copy-the-runtime-dependencies-from-the-builder-stage.-1">Copy
-the runtime dependencies from the builder stage.</h1>
-<p>COPY –from=builder ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}</p>
-<h1 id="copy-the-application-code.-1">Copy the application code.</h1>
-<p>COPY ./app ${LAMBDA_TASK_ROOT}/app</p>
-<h1 id="set-the-aws-lambda-handler.-1">Set the AWS Lambda handler.</h1>
-<p>CMD [“app.main.handler”]</p>
-<pre><code>
-!!! tip
-
-    To deploy to ARM-based AWS Lambda runtimes, replace `public.ecr.aws/lambda/python:3.13` with `public.ecr.aws/lambda/python:3.13-arm64`.
-
-From there, we can build and deploy the updated image as before.
-
-## Deploying a zip archive
-
-AWS Lambda also supports deployment via zip archives. For simple applications, zip archives can be a
-more straightforward and efficient deployment method than Docker images; however, zip archives are
-limited to
-[250 MB](https://docs.aws.amazon.com/lambda/latest/dg/python-package.html#python-package-create-update)
-in size.
-
-Returning to the FastAPI example, we can bundle the application dependencies into a local directory
-for AWS Lambda via:
-
-```console
-$ uv export --frozen --no-dev --no-editable -o requirements.txt
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> ghcr.io/astral-sh/uv:0.12.7 <span class="kw">AS</span> uv</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="co"># First, bundle the dependencies into the task root.</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> public.ecr.aws/lambda/python:3.13 <span class="kw">AS</span> builder</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Enable bytecode compilation, to improve cold-start performance.</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> UV_COMPILE_BYTECODE=1</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Disable installer metadata, to create a deterministic layer.</span></span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> UV_NO_INSTALLER_METADATA=1</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Enable copy mode to support bind mount caching.</span></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a><span class="kw">ENV</span> UV_LINK_MODE=copy</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a><span class="co"># Bundle the dependencies into the Lambda task root via `uv pip install --target`.</span></span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb21-17"><a href="#cb21-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Omit any local packages (`--no-emit-workspace`) and development dependencies (`--no-dev`).</span></span>
+<span id="cb21-18"><a href="#cb21-18" aria-hidden="true" tabindex="-1"></a><span class="co"># This ensures that the Docker layer cache is only invalidated when the `pyproject.toml` or `uv.lock`</span></span>
+<span id="cb21-19"><a href="#cb21-19" aria-hidden="true" tabindex="-1"></a><span class="co"># files change, but remains robust to changes in the application code.</span></span>
+<span id="cb21-20"><a href="#cb21-20" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="op">--mount=from=uv,source=/uv,target=/bin/uv</span> <span class="op">\</span></span>
+<span id="cb21-21"><a href="#cb21-21" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=cache,target=/root/.cache/uv</span> <span class="op">\</span></span>
+<span id="cb21-22"><a href="#cb21-22" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=uv.lock,target=uv.lock</span> <span class="op">\</span></span>
+<span id="cb21-23"><a href="#cb21-23" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=pyproject.toml,target=pyproject.toml</span> <span class="op">\</span></span>
+<span id="cb21-24"><a href="#cb21-24" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> export <span class="at">--frozen</span> <span class="at">--no-emit-workspace</span> <span class="at">--no-dev</span> <span class="at">--no-editable</span> <span class="at">-o</span> requirements.txt <span class="kw">&amp;&amp;</span> <span class="dt">\</span></span>
+<span id="cb21-25"><a href="#cb21-25" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> pip install <span class="at">-r</span> requirements.txt <span class="at">--target</span> <span class="st">&quot;</span><span class="va">${LAMBDA_TASK_ROOT}</span><span class="st">&quot;</span></span>
+<span id="cb21-26"><a href="#cb21-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-27"><a href="#cb21-27" aria-hidden="true" tabindex="-1"></a><span class="co"># If you have a workspace, copy it over and install it too.</span></span>
+<span id="cb21-28"><a href="#cb21-28" aria-hidden="true" tabindex="-1"></a><span class="co">#</span></span>
+<span id="cb21-29"><a href="#cb21-29" aria-hidden="true" tabindex="-1"></a><span class="co"># By omitting `--no-emit-workspace`, `library` will be copied into the task root. Using a separate</span></span>
+<span id="cb21-30"><a href="#cb21-30" aria-hidden="true" tabindex="-1"></a><span class="co"># `RUN` command ensures that all third-party dependencies are cached separately and remain</span></span>
+<span id="cb21-31"><a href="#cb21-31" aria-hidden="true" tabindex="-1"></a><span class="co"># robust to changes in the workspace.</span></span>
+<span id="cb21-32"><a href="#cb21-32" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="op">--mount=from=uv,source=/uv,target=/bin/uv</span> <span class="op">\</span></span>
+<span id="cb21-33"><a href="#cb21-33" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=cache,target=/root/.cache/uv</span> <span class="op">\</span></span>
+<span id="cb21-34"><a href="#cb21-34" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=uv.lock,target=uv.lock</span> <span class="op">\</span></span>
+<span id="cb21-35"><a href="#cb21-35" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=pyproject.toml,target=pyproject.toml</span> <span class="op">\</span></span>
+<span id="cb21-36"><a href="#cb21-36" aria-hidden="true" tabindex="-1"></a>    <span class="op">--mount=type=bind,source=library,target=library</span> <span class="op">\</span></span>
+<span id="cb21-37"><a href="#cb21-37" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> export <span class="at">--frozen</span> <span class="at">--no-dev</span> <span class="at">--no-editable</span> <span class="at">-o</span> requirements.txt <span class="kw">&amp;&amp;</span> <span class="dt">\</span></span>
+<span id="cb21-38"><a href="#cb21-38" aria-hidden="true" tabindex="-1"></a>    <span class="ex">uv</span> pip install <span class="at">-r</span> requirements.txt <span class="at">--target</span> <span class="st">&quot;</span><span class="va">${LAMBDA_TASK_ROOT}</span><span class="st">&quot;</span></span>
+<span id="cb21-39"><a href="#cb21-39" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-40"><a href="#cb21-40" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> public.ecr.aws/lambda/python:3.13</span>
+<span id="cb21-41"><a href="#cb21-41" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-42"><a href="#cb21-42" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy the runtime dependencies from the builder stage.</span></span>
+<span id="cb21-43"><a href="#cb21-43" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="op">--from=builder</span> ${LAMBDA_TASK_ROOT} ${LAMBDA_TASK_ROOT}</span>
+<span id="cb21-44"><a href="#cb21-44" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-45"><a href="#cb21-45" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy the application code.</span></span>
+<span id="cb21-46"><a href="#cb21-46" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> ./app ${LAMBDA_TASK_ROOT}/app</span>
+<span id="cb21-47"><a href="#cb21-47" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-48"><a href="#cb21-48" aria-hidden="true" tabindex="-1"></a><span class="co"># Set the AWS Lambda handler.</span></span>
+<span id="cb21-49"><a href="#cb21-49" aria-hidden="true" tabindex="-1"></a><span class="kw">CMD</span> [<span class="st">&quot;app.main.handler&quot;</span>]</span></code></pre></div>
+<p>!!! tip</p>
+<pre><code>To deploy to ARM-based AWS Lambda runtimes, replace `public.ecr.aws/lambda/python:3.13` with `public.ecr.aws/lambda/python:3.13-arm64`.</code></pre>
+<p>From there, we can build and deploy the updated image as before.</p>
+<h2 id="deploying-a-zip-archive">Deploying a zip archive</h2>
+<p>AWS Lambda also supports deployment via zip archives. For simple
+applications, zip archives can be a more straightforward and efficient
+deployment method than Docker images; however, zip archives are limited
+to <a
+href="https://docs.aws.amazon.com/lambda/latest/dg/python-package.html#python-package-create-update">250
+MB</a> in size.</p>
+<p>Returning to the FastAPI example, we can bundle the application
+dependencies into a local directory for AWS Lambda via:</p>
+<pre class="console"><code>$ uv export --frozen --no-dev --no-editable -o requirements.txt
 $ uv pip install \
    --no-installer-metadata \
    --no-compile-bytecode \
@@ -380,10 +380,26 @@ or the AWS CLI, e.g.:</p>
 }</code></pre>
 <p>Where <code>event.json</code> contains the event payload to pass to
 the Lambda function:</p>
-<p><code>json title="event.json" {   "httpMethod": "GET",   "path": "/",   "requestContext": {},   "version": "1.0" }</code></p>
+<div class="sourceCode" id="cb32"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;httpMethod&quot;</span><span class="fu">:</span> <span class="st">&quot;GET&quot;</span><span class="fu">,</span></span>
+<span id="cb32-3"><a href="#cb32-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;path&quot;</span><span class="fu">:</span> <span class="st">&quot;/&quot;</span><span class="fu">,</span></span>
+<span id="cb32-4"><a href="#cb32-4" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;requestContext&quot;</span><span class="fu">:</span> <span class="fu">{},</span></span>
+<span id="cb32-5"><a href="#cb32-5" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;version&quot;</span><span class="fu">:</span> <span class="st">&quot;1.0&quot;</span></span>
+<span id="cb32-6"><a href="#cb32-6" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>And <code>response.json</code> contains the response from the Lambda
 function:</p>
-<p><code>json title="response.json" {   "statusCode": 200,   "headers": {     "content-length": "14",     "content-type": "application/json"   },   "multiValueHeaders": {},   "body": "\"Hello, world!\"",   "isBase64Encoded": false }</code></p>
+<div class="sourceCode" id="cb33"><pre
+class="sourceCode json"><code class="sourceCode json"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;statusCode&quot;</span><span class="fu">:</span> <span class="dv">200</span><span class="fu">,</span></span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;headers&quot;</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;content-length&quot;</span><span class="fu">:</span> <span class="st">&quot;14&quot;</span><span class="fu">,</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>    <span class="dt">&quot;content-type&quot;</span><span class="fu">:</span> <span class="st">&quot;application/json&quot;</span></span>
+<span id="cb33-6"><a href="#cb33-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb33-7"><a href="#cb33-7" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;multiValueHeaders&quot;</span><span class="fu">:</span> <span class="fu">{},</span></span>
+<span id="cb33-8"><a href="#cb33-8" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;body&quot;</span><span class="fu">:</span> <span class="st">&quot;</span><span class="ch">\&quot;</span><span class="st">Hello, world!</span><span class="ch">\&quot;</span><span class="st">&quot;</span><span class="fu">,</span></span>
+<span id="cb33-9"><a href="#cb33-9" aria-hidden="true" tabindex="-1"></a>  <span class="dt">&quot;isBase64Encoded&quot;</span><span class="fu">:</span> <span class="kw">false</span></span>
+<span id="cb33-10"><a href="#cb33-10" aria-hidden="true" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <h3 id="using-a-lambda-layer">Using a Lambda layer</h3>
 <p>AWS Lambda also supports the deployment of multiple composed <a
 href="https://docs.aws.amazon.com/lambda/latest/dg/python-layers.html">Lambda
@@ -395,11 +411,11 @@ dependencies and attach it to the Lambda function, separate from the
 application code itself. This setup can improve cold-start performance
 for application updates, as the dependencies layer can be reused across
 deployments.</p>
-<p>To create a Lambda layer, we’ll follow similar steps, but create two
+<p>To create a Lambda layer, we'll follow similar steps, but create two
 separate zip archives: one for the application code and one for the
 application dependencies.</p>
-<p>First, we’ll create the dependency layer. Lambda layers are expected
-to follow a slightly different structure, so we’ll use
+<p>First, we'll create the dependency layer. Lambda layers are expected
+to follow a slightly different structure, so we'll use
 <code>--prefix</code> rather than <code>--target</code>:</p>
 <pre class="console"><code>$ uv export --frozen --no-dev --no-editable -o requirements.txt
 $ uv pip install \
@@ -409,7 +425,7 @@ $ uv pip install \
    --python 3.13 \
    --prefix packages \
    -r requirements.txt</code></pre>
-<p>We’ll then zip the dependencies in adherence with the expected layout
+<p>We'll then zip the dependencies in adherence with the expected layout
 for Lambda layers:</p>
 <pre class="console"><code>$ mkdir python
 $ cp -r packages/lib python/

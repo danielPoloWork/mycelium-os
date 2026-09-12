@@ -2,7 +2,10 @@
 <p>uv can install packages from JFrog Artifactory, either by using a
 username and password or a JWT token.</p>
 <p>To use it, add the index to your project:</p>
-<p><code>toml title="pyproject.toml" [[tool.uv.index]] name = "private-registry" url = "https://&lt;organization&gt;.jfrog.io/artifactory/api/pypi/&lt;repository&gt;/simple"</code></p>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[[tool.uv.index]]</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;private-registry&quot;</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="dt">url</span> <span class="op">=</span> <span class="st">&quot;https://&lt;organization&gt;.jfrog.io/artifactory/api/pypi/&lt;repository&gt;/simple&quot;</span></span></code></pre></div>
 <h2 id="authenticate-with-username-and-password">Authenticate with
 username and password</h2>
 <pre class="console"><code>$ export UV_INDEX_PRIVATE_REGISTRY_USERNAME=&quot;&lt;username&gt;&quot;
@@ -14,7 +17,11 @@ $ export UV_INDEX_PRIVATE_REGISTRY_PASSWORD=&quot;$JFROG_JWT_TOKEN&quot;</code><
 <pre><code>Replace `PRIVATE_REGISTRY` in the environment variable names with the actual index name defined in your `pyproject.toml`.</code></pre>
 <h2 id="publishing-packages">Publishing packages</h2>
 <p>Add a <code>publish-url</code> to your index definition:</p>
-<p><code>toml title="pyproject.toml" [[tool.uv.index]] name = "private-registry" url = "https://&lt;organization&gt;.jfrog.io/artifactory/api/pypi/&lt;repository&gt;/simple" publish-url = "https://&lt;organization&gt;.jfrog.io/artifactory/api/pypi/&lt;repository&gt;"</code></p>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[[tool.uv.index]]</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;private-registry&quot;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="dt">url</span> <span class="op">=</span> <span class="st">&quot;https://&lt;organization&gt;.jfrog.io/artifactory/api/pypi/&lt;repository&gt;/simple&quot;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="dt">publish-url</span> <span class="op">=</span> <span class="st">&quot;https://&lt;organization&gt;.jfrog.io/artifactory/api/pypi/&lt;repository&gt;&quot;</span></span></code></pre></div>
 <p>!!! important</p>
 <pre><code>If you use `--token &quot;$JFROG_TOKEN&quot;` or `UV_PUBLISH_TOKEN` with JFrog, you will receive a
 401 Unauthorized error as JFrog requires an empty username but uv passes `__token__` for as

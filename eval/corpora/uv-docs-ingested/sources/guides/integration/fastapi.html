@@ -46,38 +46,49 @@ unpackaged project</a>.</p>
         └── admin.py</code></pre>
 <p>And the contents of the <code>pyproject.toml</code> file should look
 something like this:</p>
-<p><code>toml title="pyproject.toml" [project] name = "uv-fastapi-example" version = "0.1.0" description = "FastAPI project" readme = "README.md" requires-python = "&gt;=3.12" dependencies = [     "fastapi[standard]", ]</code></p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[project]</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;uv-fastapi-example&quot;</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="dt">version</span> <span class="op">=</span> <span class="st">&quot;0.1.0&quot;</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="dt">description</span> <span class="op">=</span> <span class="st">&quot;FastAPI project&quot;</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="dt">readme</span> <span class="op">=</span> <span class="st">&quot;README.md&quot;</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="dt">requires-python</span> <span class="op">=</span> <span class="st">&quot;&gt;=3.12&quot;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="dt">dependencies</span> <span class="op">=</span> <span class="op">[</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;fastapi[standard]&quot;</span><span class="op">,</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a><span class="op">]</span></span></code></pre></div>
 <p>From there, you can run the FastAPI application with:</p>
 <pre class="console"><code>$ uv run fastapi dev</code></pre>
 <p><code>uv run</code> will automatically resolve and lock the project
 dependencies (i.e., create a <code>uv.lock</code> alongside the
 <code>pyproject.toml</code>), create a virtual environment, and run the
 command in that environment.</p>
-<p>Test the app by opening http://127.0.0.1:8000/?token=jessica in a web
-browser.</p>
+<p>Test the app by opening <a
+href="http://127.0.0.1:8000/?token=jessica">http://127.0.0.1:8000/?token=jessica</a>
+in a web browser.</p>
 <h2 id="deployment">Deployment</h2>
 <p>To deploy the FastAPI application with Docker, you can use the
 following <code>Dockerfile</code>:</p>
-<p>```dockerfile title=“Dockerfile” FROM python:3.12-slim</p>
-<h1 id="install-uv.">Install uv.</h1>
-<p>COPY –from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/</p>
-<h1 id="copy-the-application-into-the-container.">Copy the application
-into the container.</h1>
-<p>COPY . /app</p>
-<h1 id="install-the-application-dependencies.">Install the application
-dependencies.</h1>
-<p>WORKDIR /app RUN uv sync –frozen –no-cache</p>
-<h1 id="run-the-application.">Run the application.</h1>
-<p>CMD [“/app/.venv/bin/fastapi”, “run”, “app/main.py”, “–port”, “80”,
-“–host”, “0.0.0.0”]</p>
-<pre><code>
-Build the Docker image with:
-
-```console
-$ docker build -t fastapi-app .</code></pre>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> python:3.12-slim</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Install uv.</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> <span class="op">--from=ghcr.io/astral-sh/uv:latest</span> /uv /uvx /bin/</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Copy the application into the container.</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> . /app</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Install the application dependencies.</span></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /app</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> sync <span class="at">--frozen</span> <span class="at">--no-cache</span></span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-13"><a href="#cb8-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Run the application.</span></span>
+<span id="cb8-14"><a href="#cb8-14" aria-hidden="true" tabindex="-1"></a><span class="kw">CMD</span> [<span class="st">&quot;/app/.venv/bin/fastapi&quot;</span>, <span class="st">&quot;run&quot;</span>, <span class="st">&quot;app/main.py&quot;</span>, <span class="st">&quot;--port&quot;</span>, <span class="st">&quot;80&quot;</span>, <span class="st">&quot;--host&quot;</span>, <span class="st">&quot;0.0.0.0&quot;</span>]</span></code></pre></div>
+<p>Build the Docker image with:</p>
+<pre class="console"><code>$ docker build -t fastapi-app .</code></pre>
 <p>Run the Docker container locally with:</p>
 <pre class="console"><code>$ docker run -p 8000:80 fastapi-app</code></pre>
-<p>Navigate to http://127.0.0.1:8000/?token=jessica in your browser to
-verify that the app is running correctly.</p>
+<p>Navigate to <a
+href="http://127.0.0.1:8000/?token=jessica">http://127.0.0.1:8000/?token=jessica</a>
+in your browser to verify that the app is running correctly.</p>
 <p>!!! tip</p>
 <pre><code>For more on using uv with Docker, see the [Docker guide](./docker.md).</code></pre>
