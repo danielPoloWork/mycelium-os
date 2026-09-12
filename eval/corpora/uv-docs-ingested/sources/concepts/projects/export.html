@@ -2,7 +2,7 @@
 <p>uv can export a lockfile to different formats for integration with
 other tools and workflows. The <code>uv export</code> command supports
 multiple output formats, each suited to different use cases.</p>
-<p>For more details on lockfiles and how they’re created, see the <a
+<p>For more details on lockfiles and how they're created, see the <a
 href="./layout.md">project layout</a> and <a href="./sync.md">locking
 and syncing</a> documentation.</p>
 <h2 id="overview-of-export-formats">Overview of export formats</h2>
@@ -29,7 +29,7 @@ $ uv export --format requirements.txt --output-file requirements.txt
 $ uv export --format pylock.toml --output-file pylock.toml
 $ uv export --format cyclonedx1.5 --output-file sbom.json
 ```</code></pre>
-<h2 id="requirements.txt-format"><code>requirements.txt</code>
+<h2 id="requirementstxt-format"><code>requirements.txt</code>
 format</h2>
 <p>The <code>requirements.txt</code> format is the most widely supported
 format for Python dependencies. It can be used with <code>pip</code> and
@@ -44,14 +44,14 @@ installed via <code>uv pip install</code>, or with other tools like
 `uv.lock` format is more powerful and includes features that cannot be expressed in
 `requirements.txt`. If you find yourself exporting a `uv.lock` file, consider opening an issue
 to discuss your use case.</code></pre>
-<h2 id="pylock.toml-format"><code>pylock.toml</code> format</h2>
+<h2 id="pylocktoml-format"><code>pylock.toml</code> format</h2>
 <p><a href="https://peps.python.org/pep-0751/">PEP 751</a> defines a
 TOML-based lockfile format for Python dependencies. uv can export your
-project’s dependency lockfile to this format.</p>
+project's dependency lockfile to this format.</p>
 <h3 id="basic-usage-1">Basic usage</h3>
 <pre class="console"><code>$ uv export --format pylock.toml</code></pre>
 <h2 id="cyclonedx-sbom-format">CycloneDX SBOM format</h2>
-<p>uv can export your project’s dependency lockfile as a Software Bill
+<p>uv can export your project's dependency lockfile as a Software Bill
 of Materials (SBOM) in CycloneDX format. SBOMs provide a comprehensive
 inventory of all software components in your application, which is
 useful for security auditing, compliance, and supply chain
@@ -65,7 +65,7 @@ CycloneDX is machine readable and widely supported by security scanning
 tools, vulnerability databases, and Software Composition Analysis (SCA)
 platforms.</p>
 <h3 id="basic-usage-2">Basic usage</h3>
-<p>To export your project’s lockfile as a CycloneDX SBOM:</p>
+<p>To export your project's lockfile as a CycloneDX SBOM:</p>
 <pre class="console"><code>$ uv export --format cyclonedx1.5</code></pre>
 <p>This will generate a JSON-encoded CycloneDX v1.5 document containing
 your project and all of its dependencies.</p>

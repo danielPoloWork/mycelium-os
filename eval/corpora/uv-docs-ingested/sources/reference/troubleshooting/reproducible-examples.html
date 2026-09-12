@@ -13,7 +13,7 @@ example</h2>
 context necessary for someone else to reproduce your example. This
 includes:</p>
 <ul>
-<li>The platform you’re using (e.g., the operating system and
+<li>The platform you're using (e.g., the operating system and
 architecture)</li>
 <li>Any relevant system state (e.g., explicitly set environment
 variables)</li>
@@ -29,7 +29,7 @@ before sharing it. We recommend including verbose logs from your
 reproduction; they may differ on your machine in a critical way. Using a
 <a href="https://gist.github.com">Gist</a> can be helpful for very long
 logs.</p>
-<p>Below, we’ll cover several specific <a
+<p>Below, we'll cover several specific <a
 href="#strategies-for-reproducible-examples">strategies</a> for creating
 and sharing reproducible examples.</p>
 <p>!!! tip</p>
@@ -40,29 +40,29 @@ reproducible examples</h2>
 <h3 id="docker-image">Docker image</h3>
 <p>Writing a Docker image is often the best way to share a reproducible
 example because it is entirely self-contained. This means that the state
-from the reproducer’s system does not affect the problem.</p>
+from the reproducer's system does not affect the problem.</p>
 <p>!!! note</p>
 <pre><code>Using a Docker image is only feasible if the issue is reproducible on Linux. When using macOS,
 it&#39;s prudent to ensure your image is not reproducible on Linux but some bugs _are_ specific
 to the operating system. While using Docker to run Windows containers is feasible, it&#39;s not
 commonplace. These sorts of bugs are expected to be reported as a [script](#script) instead.</code></pre>
-<p>When writing a Docker MRE with uv, it’s best to start with one of <a
-href="../../guides/integration/docker.md#available-images">uv’s Docker
+<p>When writing a Docker MRE with uv, it's best to start with one of <a
+href="../../guides/integration/docker.md#available-images">uv's Docker
 images</a>. When doing so, be sure to pin to a specific version of
 uv.</p>
 <div class="sourceCode" id="cb3"><pre
-class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> ghcr.io/astral-sh/uv:0.12.0-debian-slim</span></code></pre></div>
+class="sourceCode Dockerfile"><code class="sourceCode dockerfile"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> ghcr.io/astral-sh/uv:0.12.0-debian-slim</span></code></pre></div>
 <p>While Docker images are isolated from the system, the build will use
-your system’s architecture by default. When sharing a reproduction, you
+your system's architecture by default. When sharing a reproduction, you
 can explicitly set the platform to ensure a reproducer gets the expected
 behavior. uv publishes images for <code>linux/amd64</code> (e.g., Intel
 or AMD) and <code>linux/arm64</code> (e.g., Apple M Series or ARM)</p>
 <div class="sourceCode" id="cb4"><pre
-class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> <span class="op">--platform=linux/amd64</span> ghcr.io/astral-sh/uv:0.12.0-debian-slim</span></code></pre></div>
+class="sourceCode Dockerfile"><code class="sourceCode dockerfile"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> <span class="op">--platform=linux/amd64</span> ghcr.io/astral-sh/uv:0.12.0-debian-slim</span></code></pre></div>
 <p>Docker images are best for reproducing issues that can be constructed
 with commands, e.g.:</p>
 <div class="sourceCode" id="cb5"><pre
-class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> <span class="op">--platform=linux/amd64</span> ghcr.io/astral-sh/uv:0.12.0-debian-slim</span>
+class="sourceCode Dockerfile"><code class="sourceCode dockerfile"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> <span class="op">--platform=linux/amd64</span> ghcr.io/astral-sh/uv:0.12.0-debian-slim</span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> init /mre</span>
 <span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /mre</span>
@@ -71,7 +71,7 @@ class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb5-
 <span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> run <span class="at">-v</span> python <span class="at">-c</span> <span class="st">&quot;import pydantic&quot;</span></span></code></pre></div>
 <p>However, you can also write files into the image inline:</p>
 <div class="sourceCode" id="cb6"><pre
-class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> <span class="op">--platform=linux/amd64</span> ghcr.io/astral-sh/uv:0.12.0-debian-slim</span>
+class="sourceCode Dockerfile"><code class="sourceCode dockerfile"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">FROM</span> <span class="op">--platform=linux/amd64</span> ghcr.io/astral-sh/uv:0.12.0-debian-slim</span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="kw">COPY</span> &lt;&lt;EOF /mre/pyproject.toml</span>
 <span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>[project]</span>
@@ -85,16 +85,16 @@ class="sourceCode dockerfile"><code class="sourceCode dockerfile"><span id="cb6-
 <span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a><span class="kw">WORKDIR</span> /mre</span>
 <span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="kw">RUN</span> <span class="ex">uv</span> lock</span></code></pre></div>
-<p>If you need to write many files, it’s better to create and publish a
+<p>If you need to write many files, it's better to create and publish a
 <a href="#git-repository">Git repository</a>. You can combine these
 approaches and include a <code>Dockerfile</code> in the repository.</p>
-<p>When sharing a Docker reproduction, it’s helpful to include the build
+<p>When sharing a Docker reproduction, it's helpful to include the build
 logs. You can see more output from the build steps by disabling caching
 and the fancy output:</p>
 <pre class="console"><code>docker build . --progress plain --no-cache</code></pre>
 <h3 id="script">Script</h3>
 <p>When reporting platform-specific bugs that cannot be reproduced in a
-<a href="#docker-image">container</a>, it’s best practice to include a
+<a href="#docker-image">container</a>, it's best practice to include a
 script showing the commands that can be used to reproduce the bug,
 e.g.:</p>
 <div class="sourceCode" id="cb8"><pre

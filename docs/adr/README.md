@@ -126,3 +126,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0092](0092-leave-the-amendment-relation-in-prose-and-check-the-prose.md) | Leave the amendment relation in prose, and check the prose | Accepted |
 | [0093](0093-escape-the-prose-that-would-open-a-block-and-report-what-that-costs.md) | Escape the prose that would open a block, and report what that costs | Accepted |
 | [0094](0094-mint-a-command-the-corpus-demonstrates-and-names-and-report-what-promotion-can-and-cannot-reorder.md) | Mint a command the corpus both demonstrates and names, and report what promotion can and cannot reorder | Accepted |
+| [0095](0095-read-the-corpus-in-the-dialect-it-is-written-in.md) | Read the corpus in the dialect it is written in, and let the generator check that it did | Accepted |

@@ -2,7 +2,7 @@
   "anchors": {
     "docs/concepts/authentication/certificates.md#custom-certificates/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/certificates-docx-ea888d8c.md#custom-certificates/0"
+      "twin": "knowledge/evidence/certificates-docx-f6fc880d.md#custom-certificates/0"
     },
     "docs/concepts/authentication/cli.md#logging-in-to-a-service/": {
       "coverage": 0.988,
@@ -10,211 +10,211 @@
     },
     "docs/concepts/authentication/http.md#/0": {
       "coverage": 0.9792,
-      "twin": "knowledge/evidence/http-pdf-6ddd4d71.md#/0"
+      "twin": "knowledge/evidence/http-pdf-bcd8d846.md#/0"
     },
     "docs/concepts/build-backend.md#using-the-uv-build-backend/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/build-backend-pdf-ca2bf91d.md#/0"
+      "twin": "knowledge/evidence/build-backend-pdf-3e359788.md#/0"
     },
     "docs/concepts/cache.md#cache-directory/": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/cache-docx-c3426c17.md#cache-directory/0"
+      "twin": "knowledge/evidence/cache-docx-abb8aeee.md#cache-directory/0"
     },
     "docs/concepts/cache.md#cache-directory/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/cache-docx-c3426c17.md#cache-directory/0"
+      "twin": "knowledge/evidence/cache-docx-abb8aeee.md#cache-directory/0"
     },
     "docs/concepts/cache.md#cache-versioning/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/cache-docx-c3426c17.md#cache-versioning/0"
+      "twin": "knowledge/evidence/cache-docx-abb8aeee.md#cache-versioning/0"
     },
     "docs/concepts/cache.md#clearing-the-cache/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/cache-docx-c3426c17.md#clearing-the-cache/0"
+      "twin": "knowledge/evidence/cache-docx-abb8aeee.md#clearing-the-cache/0"
     },
     "docs/concepts/cache.md#dependency-caching/0": {
       "coverage": 0.7468,
-      "twin": "knowledge/evidence/cache-docx-c3426c17.md#for-local-dependencies-uv-caches-based-on-the-last-modified-time-of-the-source-archive-i-e-the-local-whl-or-tar-gz-file-for-directories-uv-caches-based-on-the-last-modified-time-of-the-pyproject-toml-setup-py-or-setup-cfg-file/0"
+      "twin": "knowledge/evidence/cache-docx-abb8aeee.md#for-local-dependencies-uv-caches-based-on-the-last-modified-time-of-the-source-archive-i-e-the-local-whl-or-tar-gz-file-for-directories-uv-caches-based-on-the-last-modified-time-of-the-pyproject-toml-setup-py-or-setup-cfg-file/0"
     },
     "docs/concepts/configuration-files.md#/": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/configuration-files-html-eafcabbb.md#/0"
+      "twin": "knowledge/evidence/configuration-files-html-aea04272.md#/0"
     },
     "docs/concepts/indexes.md#/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/indexes-pdf-9f8d98fc.md#/0"
+      "twin": "knowledge/evidence/indexes-pdf-d37689d3.md#/0"
     },
     "docs/concepts/indexes.md#defining-an-index/": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/indexes-pdf-9f8d98fc.md#/0"
+      "twin": "knowledge/evidence/indexes-pdf-d37689d3.md#/0"
     },
     "docs/concepts/indexes.md#pinning-a-package-to-an-index/": {
       "coverage": 0.9533,
-      "twin": "knowledge/evidence/indexes-pdf-9f8d98fc.md#/1"
+      "twin": "knowledge/evidence/indexes-pdf-d37689d3.md#/1"
     },
     "docs/concepts/preview.md#enabling-preview-features/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/preview-docx-0017e92d.md#enabling-preview-features/0"
+      "twin": "knowledge/evidence/preview-docx-74c46018.md#enabling-preview-features/0"
     },
     "docs/concepts/projects/build.md#/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/build-html-a52e977c.md#/0"
+      "twin": "knowledge/evidence/build-html-4da09144.md#/0"
     },
     "docs/concepts/projects/build.md#using-uv-build/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/build-html-a52e977c.md#using-uv-build/0"
+      "twin": "knowledge/evidence/build-html-4da09144.md#using-uv-build/0"
     },
     "docs/concepts/projects/config.md#project-environment-path/": {
-      "coverage": 0.8468,
-      "twin": "knowledge/evidence/config-pdf-4803c1e3.md#/2"
+      "coverage": 0.8649,
+      "twin": "knowledge/evidence/config-pdf-2839f69e.md#/1"
     },
     "docs/concepts/projects/dependencies.md#adding-dependencies/": {
       "coverage": 0.8738,
-      "twin": "knowledge/evidence/dependencies-docx-d90e9be4.md#adding-dependencies/0"
+      "twin": "knowledge/evidence/dependencies-docx-1c09b823.md#adding-dependencies/0"
     },
     "docs/concepts/projects/dependencies.md#dependency-sources/disabling-sources/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/dependencies-docx-d90e9be4.md#dependency-sources/disabling-sources/0"
+      "twin": "knowledge/evidence/dependencies-docx-1c09b823.md#dependency-sources/disabling-sources/0"
     },
     "docs/concepts/projects/dependencies.md#dependency-specifiers/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/dependencies-docx-d90e9be4.md#dependency-specifiers/0"
+      "twin": "knowledge/evidence/dependencies-docx-1c09b823.md#dependency-specifiers/0"
     },
     "docs/concepts/projects/init.md#/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/init-docx-8925fabb.md#/0"
+      "twin": "knowledge/evidence/init-docx-0951945b.md#/0"
     },
     "docs/concepts/projects/init.md#applications/": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/init-docx-8925fabb.md#applications/0"
+      "twin": "knowledge/evidence/init-docx-0951945b.md#applications/0"
     },
     "docs/concepts/projects/init.md#creating-a-minimal-project/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/init-docx-8925fabb.md#creating-a-minimal-project/0"
+      "twin": "knowledge/evidence/init-docx-0951945b.md#creating-a-minimal-project/0"
     },
     "docs/concepts/projects/init.md#libraries/": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/init-docx-8925fabb.md#libraries/0"
+      "twin": "knowledge/evidence/init-docx-0951945b.md#libraries/0"
     },
     "docs/concepts/projects/layout.md#the-lockfile/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/layout-html-02831e81.md#the-lockfile/0"
+      "twin": "knowledge/evidence/layout-html-ca5b0a5f.md#the-lockfile/0"
     },
     "docs/concepts/projects/layout.md#the-lockfile/relationship-to-pylock-toml/": {
       "coverage": 0.9091,
-      "twin": "knowledge/evidence/layout-html-02831e81.md#the-lockfile/relationship-to-pylock-toml/0"
+      "twin": "knowledge/evidence/layout-html-ca5b0a5f.md#the-lockfile/relationship-to-pylock-toml/0"
     },
     "docs/concepts/projects/layout.md#the-pyproject-toml/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/layout-html-02831e81.md#the-pyproject-toml/0"
+      "twin": "knowledge/evidence/layout-html-ca5b0a5f.md#the-pyproject-toml/0"
     },
     "docs/concepts/projects/run.md#/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/run-pdf-1537d99d.md#/0"
+      "twin": "knowledge/evidence/run-pdf-b372319f.md#/0"
     },
     "docs/concepts/projects/sync.md#automatic-lock-and-sync/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/sync-docx-001285de.md#automatic-lock-and-sync/0"
+      "twin": "knowledge/evidence/sync-docx-5e063fa4.md#automatic-lock-and-sync/0"
     },
     "docs/concepts/projects/sync.md#checking-the-lockfile/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/sync-docx-001285de.md#checking-the-lockfile/0"
+      "twin": "knowledge/evidence/sync-docx-5e063fa4.md#checking-the-lockfile/0"
     },
     "docs/concepts/projects/sync.md#exporting-the-lockfile/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/sync-docx-001285de.md#exporting-the-lockfile/0"
+      "twin": "knowledge/evidence/sync-docx-5e063fa4.md#exporting-the-lockfile/0"
     },
     "docs/concepts/projects/workspaces.md#/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/workspaces-html-45cf0a84.md#/0"
+      "twin": "knowledge/evidence/workspaces-html-9648e527.md#/0"
     },
     "docs/concepts/python-versions.md#free-threaded-python/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/python-versions-pdf-ea39018d.md#/4"
+      "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/4"
     },
     "docs/concepts/python-versions.md#managed-and-system-python-installations/0": {
       "coverage": 0.9821,
-      "twin": "knowledge/evidence/python-versions-pdf-ea39018d.md#/0"
+      "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/0"
     },
     "docs/concepts/python-versions.md#requesting-a-version/": {
       "coverage": 0.927,
-      "twin": "knowledge/evidence/python-versions-pdf-ea39018d.md#/0"
+      "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/0"
     },
     "docs/concepts/python-versions.md#requesting-a-version/python-version-files/0": {
       "coverage": 0.8387,
-      "twin": "knowledge/evidence/python-versions-pdf-ea39018d.md#/0"
+      "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/0"
     },
     "docs/concepts/resolution.md#/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/resolution-docx-0961b125.md#/0"
+      "twin": "knowledge/evidence/resolution-docx-dfb376de.md#/0"
     },
     "docs/concepts/tools.md#the-uv-tool-interface/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/tools-html-36b20d8c.md#the-uv-tool-interface/0"
+      "twin": "knowledge/evidence/tools-html-816d0891.md#the-uv-tool-interface/0"
     },
     "docs/getting-started/features.md#/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/features-html-b3a656a3.md#/0"
+      "twin": "knowledge/evidence/features-html-dba4b609.md#/0"
     },
     "docs/getting-started/features.md#python-versions/0": {
       "coverage": 0.6207,
-      "twin": "knowledge/evidence/features-html-b3a656a3.md#uv-python-pin-pin-the-current-project-to-use-a-specific-python-version/0"
+      "twin": "knowledge/evidence/features-html-dba4b609.md#uv-python-pin-pin-the-current-project-to-use-a-specific-python-version/0"
     },
     "docs/getting-started/features.md#the-pip-interface/0": {
       "coverage": 0.5269,
-      "twin": "knowledge/evidence/features-html-b3a656a3.md#uv-pip-compile-compile-requirements-into-a-lockfile/0"
+      "twin": "knowledge/evidence/features-html-dba4b609.md#uv-pip-compile-compile-requirements-into-a-lockfile/0"
     },
     "docs/guides/package.md#building-your-package/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/package-pdf-7694f0b8.md#/0"
+      "twin": "knowledge/evidence/package-pdf-f3f8365d.md#/0"
     },
     "docs/guides/projects.md#creating-a-new-project/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/projects-docx-e41d7476.md#working-on-projects/creating-a-new-project/0"
+      "twin": "knowledge/evidence/projects-docx-85ca2960.md#working-on-projects/creating-a-new-project/0"
     },
     "docs/guides/scripts.md#/": {
       "coverage": 0.9697,
-      "twin": "knowledge/evidence/scripts-pdf-5dcfc70b.md#/0"
+      "twin": "knowledge/evidence/scripts-pdf-dacc9786.md#/0"
     },
     "docs/guides/tools.md#installing-tools/": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/tools-docx-cf7bdde6.md#using-tools/installing-tools/0"
+      "twin": "knowledge/evidence/tools-docx-66994478.md#using-tools/installing-tools/0"
     },
     "docs/guides/tools.md#running-tools/": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/tools-docx-cf7bdde6.md#using-tools/running-tools/0"
+      "twin": "knowledge/evidence/tools-docx-66994478.md#using-tools/running-tools/0"
     },
     "docs/pip/compatibility.md#/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/compatibility-html-2dd53b8c.md#/0"
+      "twin": "knowledge/evidence/compatibility-html-9bece5cd.md#/0"
     },
     "docs/pip/environments.md#creating-a-virtual-environment/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/environments-html-2179e0a8.md#creating-a-virtual-environment/0"
+      "twin": "knowledge/evidence/environments-html-8c414191.md#creating-a-virtual-environment/0"
     },
     "docs/pip/environments.md#discovery-of-python-environments/0": {
       "coverage": 0.9143,
-      "twin": "knowledge/evidence/environments-html-2179e0a8.md#an-activated-conda-environment-based-on-the-conda-prefix-environment-variable/0"
+      "twin": "knowledge/evidence/environments-html-8c414191.md#an-activated-conda-environment-based-on-the-conda-prefix-environment-variable/0"
     },
     "docs/pip/environments.md#using-arbitrary-python-environments/": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/environments-html-2179e0a8.md#using-arbitrary-python-environments/0"
+      "twin": "knowledge/evidence/environments-html-8c414191.md#using-arbitrary-python-environments/0"
     },
     "docs/reference/policies/platforms.md#/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/platforms-pdf-2bd2cf2f.md#/0"
+      "twin": "knowledge/evidence/platforms-pdf-d7057eca.md#/0"
     },
     "docs/reference/policies/versioning.md#/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/versioning-docx-fdece17e.md#/0"
+      "twin": "knowledge/evidence/versioning-docx-45920d09.md#/0"
     },
     "docs/reference/policies/versioning.md#cache-versioning/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/versioning-docx-fdece17e.md#cache-versioning/0"
+      "twin": "knowledge/evidence/versioning-docx-45920d09.md#cache-versioning/0"
     },
     "docs/reference/storage.md#storage-directories/0": {
       "coverage": 1.0,
-      "twin": "knowledge/evidence/storage-html-07da213e.md#storage-directories/0"
+      "twin": "knowledge/evidence/storage-html-ca9fb50d.md#storage-directories/0"
     }
   },
   "min_coverage": 0.5,

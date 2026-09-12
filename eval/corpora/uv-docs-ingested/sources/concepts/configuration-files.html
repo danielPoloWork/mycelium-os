@@ -16,14 +16,20 @@ members.</p>
 configuration from the <code>[tool.uv]</code> table. For example, to set
 a persistent index URL, add the following to a
 <code>pyproject.toml</code>:</p>
-<p><code>toml title="pyproject.toml" [[tool.uv.index]] url = "https://test.pypi.org/simple" default = true</code></p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[[tool.uv.index]]</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">url</span> <span class="op">=</span> <span class="st">&quot;https://test.pypi.org/simple&quot;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dt">default</span> <span class="op">=</span> <span class="cn">true</span></span></code></pre></div>
 <p>(If there is no such table, the <code>pyproject.toml</code> file will
 be ignored, and uv will continue searching in the directory
 hierarchy.)</p>
 <p>uv will also search for <code>uv.toml</code> files, which follow an
 identical structure, but omit the <code>[tool.uv]</code> prefix. For
 example:</p>
-<p><code>toml title="uv.toml" [[index]] url = "https://test.pypi.org/simple" default = true</code></p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[[index]]</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="dt">url</span> <span class="op">=</span> <span class="st">&quot;https://test.pypi.org/simple&quot;</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="dt">default</span> <span class="op">=</span> <span class="cn">true</span></span></code></pre></div>
 <p>!!! note</p>
 <pre><code>`uv.toml` files take precedence over `pyproject.toml` files, so if both `uv.toml` and
 `pyproject.toml` files are present in a directory, configuration will be read from `uv.toml`, and
@@ -103,7 +109,7 @@ section have corollaries in the top-level namespace which <em>do</em>
 apply to the <code>uv pip</code> interface unless they are overridden by
 a value in the <code>uv.pip</code> section.</p>
 <p>The <code>uv.pip</code> settings are designed to adhere closely to
-pip’s interface and are declared separately to retain compatibility
+pip's interface and are declared separately to retain compatibility
 while allowing the global settings to use alternate designs (e.g.,
 <code>--no-build</code>).</p>
 <p>As an example, setting the <code>index-url</code> under
@@ -111,4 +117,6 @@ while allowing the global settings to use alternate designs (e.g.,
 <code>pyproject.toml</code>, would only affect the <code>uv pip</code>
 subcommands (e.g., <code>uv pip install</code>, but not
 <code>uv sync</code>, <code>uv lock</code>, or <code>uv run</code>):</p>
-<p><code>toml title="pyproject.toml" [tool.uv.pip] index-url = "https://test.pypi.org/simple"</code></p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[tool.uv.pip]</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="dt">index-url</span> <span class="op">=</span> <span class="st">&quot;https://test.pypi.org/simple&quot;</span></span></code></pre></div>

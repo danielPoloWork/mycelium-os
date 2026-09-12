@@ -8,28 +8,31 @@ package.</p>
 <pre><code>This guide assumes that [`gcloud`](https://cloud.google.com/sdk/gcloud) CLI is installed and
 authenticated.</code></pre>
 <p>To use Google Artifact Registry, add the index to your project:</p>
-<p><code>toml title="pyproject.toml" [[tool.uv.index]] name = "private-registry" url = "https://&lt;REGION&gt;-python.pkg.dev/&lt;PROJECT&gt;/&lt;REPOSITORY&gt;/simple/"</code></p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[[tool.uv.index]]</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;private-registry&quot;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="dt">url</span> <span class="op">=</span> <span class="st">&quot;https://&lt;REGION&gt;-python.pkg.dev/&lt;PROJECT&gt;/&lt;REPOSITORY&gt;/simple/&quot;</span></span></code></pre></div>
 <h2 id="authenticate-with-a-google-access-token">Authenticate with a
 Google access token</h2>
-<p>Credentials can be provided via “Basic” HTTP authentication scheme.
+<p>Credentials can be provided via "Basic" HTTP authentication scheme.
 Include access token in the password field of the URL. Username must be
 <code>oauth2accesstoken</code>, otherwise authentication will fail.</p>
 <p>Generate a token with <code>gcloud</code>:</p>
-<div class="sourceCode" id="cb2"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">ARTIFACT_REGISTRY_TOKEN</span><span class="op">=</span><span class="va">$(</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="ex">gcloud</span> auth application-default print-access-token</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="va">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">ARTIFACT_REGISTRY_TOKEN</span><span class="op">=</span><span class="va">$(</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="ex">gcloud</span> auth application-default print-access-token</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="va">)</span></span></code></pre></div>
 <p>!!! note</p>
 <pre><code>You might need to pass extra parameters to properly generate the token (like `--project`), this
 is a basic example.</code></pre>
 <p>Then set credentials for the index with:</p>
-<div class="sourceCode" id="cb4"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">UV_INDEX_PRIVATE_REGISTRY_USERNAME</span><span class="op">=</span>oauth2accesstoken</span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">UV_INDEX_PRIVATE_REGISTRY_PASSWORD</span><span class="op">=</span><span class="st">&quot;</span><span class="va">$ARTIFACT_REGISTRY_TOKEN</span><span class="st">&quot;</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">UV_INDEX_PRIVATE_REGISTRY_USERNAME</span><span class="op">=</span>oauth2accesstoken</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">UV_INDEX_PRIVATE_REGISTRY_PASSWORD</span><span class="op">=</span><span class="st">&quot;</span><span class="va">$ARTIFACT_REGISTRY_TOKEN</span><span class="st">&quot;</span></span></code></pre></div>
 <p>!!! note</p>
 <pre><code>`PRIVATE_REGISTRY` should match the name of the index defined in your `pyproject.toml`.</code></pre>
 <h2
-id="authenticate-with-keyring-and-keyrings.google-artifactregistry-auth">Authenticate
+id="authenticate-with-keyring-and-keyringsgoogle-artifactregistry-auth">Authenticate
 with <code>keyring</code> and
 <code>keyrings.google-artifactregistry-auth</code></h2>
 <p>You can also authenticate to Artifact Registry using <a
@@ -49,15 +52,15 @@ The <code>keyring</code> executable must be in the <code>PATH</code>,
 i.e., installed globally or in the active environment. The
 <code>keyring</code> CLI requires a username in the URL and it must be
 <code>oauth2accesstoken</code>.</p>
-<div class="sourceCode" id="cb6"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Pre-install keyring and Artifact Registry plugin from the public PyPI</span></span>
-<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> tool install keyring <span class="at">--with</span> keyrings.google-artifactregistry-auth</span>
-<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Enable keyring authentication</span></span>
-<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">UV_KEYRING_PROVIDER</span><span class="op">=</span>subprocess</span>
-<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Set the username for the index</span></span>
-<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">UV_INDEX_PRIVATE_REGISTRY_USERNAME</span><span class="op">=</span>oauth2accesstoken</span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Pre-install keyring and Artifact Registry plugin from the public PyPI</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ex">uv</span> tool install keyring <span class="at">--with</span> keyrings.google-artifactregistry-auth</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Enable keyring authentication</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">UV_KEYRING_PROVIDER</span><span class="op">=</span>subprocess</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Set the username for the index</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="bu">export</span> <span class="va">UV_INDEX_PRIVATE_REGISTRY_USERNAME</span><span class="op">=</span>oauth2accesstoken</span></code></pre></div>
 <p>!!! note</p>
 <pre><code>The [`tool.uv.keyring-provider`](../../reference/settings.md#keyring-provider)
 setting can be used to enable keyring in your `uv.toml` or `pyproject.toml`.
@@ -69,7 +72,11 @@ Registry, you can use <code>uv publish</code> as described in the <a
 href="../package.md">Building and publishing guide</a>.</p>
 <p>First, add a <code>publish-url</code> to the index you want to
 publish packages to. For example:</p>
-<p><code>toml title="pyproject.toml" hl_lines="4" [[tool.uv.index]] name = "private-registry" url = "https://&lt;REGION&gt;-python.pkg.dev/&lt;PROJECT&gt;/&lt;REPOSITORY&gt;/simple/" publish-url = "https://&lt;REGION&gt;-python.pkg.dev/&lt;PROJECT&gt;/&lt;REPOSITORY&gt;/"</code></p>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode toml"><code class="sourceCode toml"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a><span class="kw">[[tool.uv.index]]</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="dt">name</span> <span class="op">=</span> <span class="st">&quot;private-registry&quot;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="dt">url</span> <span class="op">=</span> <span class="st">&quot;https://&lt;REGION&gt;-python.pkg.dev/&lt;PROJECT&gt;/&lt;REPOSITORY&gt;/simple/&quot;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a><span class="dt">publish-url</span> <span class="op">=</span> <span class="st">&quot;https://&lt;REGION&gt;-python.pkg.dev/&lt;PROJECT&gt;/&lt;REPOSITORY&gt;/&quot;</span></span></code></pre></div>
 <p>Then, configure credentials (if not using keyring):</p>
 <pre class="console"><code>$ export UV_PUBLISH_USERNAME=oauth2accesstoken
 $ export UV_PUBLISH_PASSWORD=&quot;$ARTIFACT_REGISTRY_TOKEN&quot;</code></pre>

@@ -9,22 +9,32 @@ dependencies with uv</h2>
 <p>!!! note</p>
 <pre><code>We&#39;ll use this concrete example throughout this guide, but any Python script can be used with
 uv and Coiled.</code></pre>
-<p>We’ll use the following script as an example:</p>
-<p>```python title=“process.py” hl_lines=“1-8” # /// script #
-requires-python = “&gt;=3.12” # dependencies = [ # “pandas”, #
-“pyarrow”, # “s3fs”, # ] # ///</p>
-<p>import pandas as pd</p>
-<p>df = pd.read_parquet( “s3://coiled-data/uber/part.0.parquet”,
-storage_options={“anon”: True}, ) print(df.head())</p>
-<pre><code>
-The script uses [`pandas`](https://pandas.pydata.org/docs/) to load a Parquet file hosted in a
-public bucket on S3, then prints the first few rows. It uses
-[inline script metadata](https://peps.python.org/pep-0723/) to enumerate its dependencies.
-
-When running this script locally, e.g., with:
-
-```bash
-$ uv run process.py</code></pre>
+<p>We'll use the following script as an example:</p>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># /// script</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co"># requires-python = &quot;&gt;=3.12&quot;</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="co"># dependencies = [</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a><span class="co">#   &quot;pandas&quot;,</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="co">#   &quot;pyarrow&quot;,</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a><span class="co">#   &quot;s3fs&quot;,</span></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="co"># ]</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a><span class="co"># ///</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_parquet(</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;s3://coiled-data/uber/part.0.parquet&quot;</span>,</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>    storage_options<span class="op">=</span>{<span class="st">&quot;anon&quot;</span>: <span class="va">True</span>},</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df.head())</span></code></pre></div>
+<p>The script uses <a
+href="https://pandas.pydata.org/docs/"><code>pandas</code></a> to load a
+Parquet file hosted in a public bucket on S3, then prints the first few
+rows. It uses <a href="https://peps.python.org/pep-0723/">inline script
+metadata</a> to enumerate its dependencies.</p>
+<p>When running this script locally, e.g., with:</p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> uv run process.py</span></code></pre></div>
 <p>uv will automatically create a virtual environment and installs its
 dependencies.</p>
 <p>To learn more about using inline script metadata with uv, see the <a
@@ -34,7 +44,7 @@ cloud with Coiled</h2>
 <p>Using inline script metadata makes the script fully self-contained:
 it includes the information that is needed to run it. This makes it
 easier to run on other machines, like a machine in the cloud.</p>
-<p>There are many use cases where resources beyond what’s available on a
+<p>There are many use cases where resources beyond what's available on a
 local workstation are needed, e.g.:</p>
 <ul>
 <li>Processing large amounts of cloud-hosted data</li>
@@ -47,44 +57,48 @@ inputs, in parallel</li>
 <p>First, authenticate with Coiled using <a
 href="https://docs.coiled.io/user_guide/api.html?utm_source=uv-docs#coiled-login"><code>coiled login</code></a>
 :</p>
-<div class="sourceCode" id="cb3"><pre
-class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> uvx coiled login</span></code></pre></div>
-<p>You’ll be prompted to create a Coiled account if you don’t already
-have one — it’s free to start using Coiled.</p>
+<div class="sourceCode" id="cb4"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> uvx coiled login</span></code></pre></div>
+<p>You'll be prompted to create a Coiled account if you don't already
+have one — it's free to start using Coiled.</p>
 <p>To instruct Coiled to run the script on a virtual machine on AWS, add
 two comments to the top:</p>
-<p>```python title=“process.py” hl_lines=“1-2” # COILED container
-ghcr.io/astral-sh/uv:debian-slim # COILED region us-east-2</p>
-<h1 id="script">/// script</h1>
-<h1 id="requires-python-3.12">requires-python = “&gt;=3.12”</h1>
-<h1 id="dependencies">dependencies = [</h1>
-<h1 id="pandas">“pandas”,</h1>
-<h1 id="pyarrow">“pyarrow”,</h1>
-<h1 id="s3fs">“s3fs”,</h1>
-<h1 id="section">]</h1>
-<h1 id="section-1">///</h1>
-<p>import pandas as pd</p>
-<p>df = pd.read_parquet( “s3://coiled-data/uber/part.0.parquet”,
-storage_options={“anon”: True}, ) print(df.head())</p>
-<pre><code>
-!!! tip
-
-    While Coiled supports AWS, GCP, and Azure, this example assumes AWS is being used
-    (see the `region` option above). If you&#39;re new to Coiled, you&#39;ll automatically have
-    access to a free account running on AWS. If you&#39;re not running on AWS, you can either use
-    a valid `region` for your cloud provider or remove the `region` line above.
-
-The comments tell Coiled to use the official [uv Docker image](../integration/docker.md) when
-running the script (ensuring uv is available) and to run in the `us-east-2` region on AWS (where
-this example data file happens to live) to avoid any data egress.
-
-To submit a batch job for Coiled to run, use
-[`coiled batch run`](https://docs.coiled.io/user_guide/api.html?utm_source=uv-docs#coiled-batch-run)
-to execute the `uv run` command in the cloud:
-
-```bash hl_lines=&quot;1&quot;
-$ uvx coiled batch run \
-    uv run process.py</code></pre>
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode python"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># COILED container ghcr.io/astral-sh/uv:debian-slim</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="co"># COILED region us-east-2</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># /// script</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co"># requires-python = &quot;&gt;=3.12&quot;</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co"># dependencies = [</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co">#   &quot;pandas&quot;,</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co">#   &quot;pyarrow&quot;,</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co">#   &quot;s3fs&quot;,</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co"># ]</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co"># ///</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>df <span class="op">=</span> pd.read_parquet(</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;s3://coiled-data/uber/part.0.parquet&quot;</span>,</span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    storage_options<span class="op">=</span>{<span class="st">&quot;anon&quot;</span>: <span class="va">True</span>},</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(df.head())</span></code></pre></div>
+<p>!!! tip</p>
+<pre><code>While Coiled supports AWS, GCP, and Azure, this example assumes AWS is being used
+(see the `region` option above). If you&#39;re new to Coiled, you&#39;ll automatically have
+access to a free account running on AWS. If you&#39;re not running on AWS, you can either use
+a valid `region` for your cloud provider or remove the `region` line above.</code></pre>
+<p>The comments tell Coiled to use the official <a
+href="../integration/docker.md">uv Docker image</a> when running the
+script (ensuring uv is available) and to run in the
+<code>us-east-2</code> region on AWS (where this example data file
+happens to live) to avoid any data egress.</p>
+<p>To submit a batch job for Coiled to run, use <a
+href="https://docs.coiled.io/user_guide/api.html?utm_source=uv-docs#coiled-batch-run"><code>coiled batch run</code></a>
+to execute the <code>uv run</code> command in the cloud:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="ex">$</span> uvx coiled batch run <span class="dt">\</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>    uv run process.py</span></code></pre></div>
 <p>The same process that previously ran locally is now running on a
 remote cloud VM on AWS.</p>
 <p>You can monitor the progress of the batch job in the UI at <a
@@ -93,7 +107,7 @@ using the <code>coiled batch status</code>,
 <code>coiled batch wait</code>, and <code>coiled batch logs</code>
 commands.</p>
 <p>Coiled UI</p>
-<p>Note there’s additional configuration we could have specified, e.g.,
+<p>Note there's additional configuration we could have specified, e.g.,
 the instance type (the default is a 4-core virtual machine with 16 GiB
 of memory), disk size, whether to use spot instance, and more. See the
 <a

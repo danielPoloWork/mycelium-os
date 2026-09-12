@@ -3,14 +3,14 @@
 about your workspace or PEP 723 script as JSON so other tools can use
 it. In particular, if you want access to the information in a
 <code>uv.lock</code> or script lockfile, you should prefer this
-command’s output, as lockfiles are not a stable format we guarantee
+command's output, as lockfiles are not a stable format we guarantee
 anything about. Pass <code>--script path/to/script.py</code> to request
 metadata for a script.</p>
 <p>Pass <code>--sync</code> to install the selected packages before
 collecting module ownership information. Synchronization preserves
 unrelated installed packages by default; add <code>--exact</code> to
 remove them.</p>
-<p>The primary structure is the “resolution” field which contains the
+<p>The primary structure is the "resolution" field which contains the
 dependency graph with exact package versions that a <code>uv.lock</code>
 encodes.</p>
 <p>The edges of the graph are the <code>dependencies</code> every node
@@ -30,17 +30,17 @@ group name and the workspace path. All node ids should be treated as
 opaque.</p>
 <p>There are 5 kinds of node in the graph:</p>
 <ul>
-<li><code>"script"</code> – a PEP 723 script and its direct
+<li><code>"script"</code> -- a PEP 723 script and its direct
 dependencies</li>
-<li><code>"workspace"</code> – a workspace root and its
+<li><code>"workspace"</code> -- a workspace root and its
 workspace-exclusive dependency groups</li>
-<li><code>"package"</code> – the package itself</li>
-<li><code>{ "extra": "extraname" }</code> – an extra the package
+<li><code>"package"</code> -- the package itself</li>
+<li><code>{ "extra": "extraname" }</code> -- an extra the package
 defines</li>
-<li><code>{ "group": "groupname" }</code> – a dependency group a package
-or workspace root defines</li>
+<li><code>{ "group": "groupname" }</code> -- a dependency group a
+package or workspace root defines</li>
 </ul>
-<p>(In the future we will add “build” nodes for the dependencies of <a
+<p>(In the future we will add "build" nodes for the dependencies of <a
 href="../../concepts/projects/config.md#build-isolation">build
 environments</a>.)</p>
 <p>If you want to install <code>mypackage</code>, find its
@@ -85,8 +85,8 @@ if you select a set of packages to install that has no <a
 href="../../concepts/resolution.md#conflicting-dependencies">conflicts</a>,
 then the resulting set of packages to install will not have multiple
 versions of a package</strong>.</p>
-<p>If you just want to get “every version of pydantic this workspace
-uses” you’re free to iterate through the list of nodes and collect up
+<p>If you just want to get "every version of pydantic this workspace
+uses" you're free to iterate through the list of nodes and collect up
 every instance. If however you want to specifically analyze the graph
 and get actual resolutions you will likely need to consult
 <code>conflicts</code> and need to understand how to resolve
@@ -95,10 +95,10 @@ and get actual resolutions you will likely need to consult
 a package is to keep your queries into the dependency graph rooted in
 operations on the workspace root, workspace members, or the requested
 script. These are the natural entry-points to the graph and can give
-coherent responses for operations such as “install the workspace
-<code>dev</code> group”, “install <code>member1</code> and
-<code>member2[extra]</code>”, or “install this script’s declared
-dependencies”.</p>
+coherent responses for operations such as "install the workspace
+<code>dev</code> group", "install <code>member1</code> and
+<code>member2[extra]</code>", or "install this script's declared
+dependencies".</p>
 <p>Another way to put this is that when possible <em>you should avoid
 iterating over the <code>resolution</code> object to find a node</em>.
 Only access <code>resolution</code> like a map using ids that were
@@ -108,11 +108,11 @@ the <code>members</code> array. For a script, the initial id is
 <code>script.id</code>. From there you may recursively discover other
 packages by following dependency edges.</p>
 <p>So rather than trying to find a node for anyio in the dependency
-graph directly, you should decide what workspace member(s) you’re
+graph directly, you should decide what workspace member(s) you're
 interested in analyzing as if they were going to be installed. While
 traversing the <code>dependencies</code> of the things you want to
 install, you may visit an instance of anyio, which is the one you should
-use. If you visit multiple instances of anyio then that means you’ve
+use. If you visit multiple instances of anyio then that means you've
 selected a conflicting set of things to install which uv would never
 select.</p>
 <p>So if you wanted to analyze say, installing the <code>dev</code>

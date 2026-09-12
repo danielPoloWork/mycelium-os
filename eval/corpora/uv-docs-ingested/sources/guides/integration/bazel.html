@@ -13,11 +13,14 @@ files Bazel needs to fetch:</p>
 <p>Then, configure Bazel to invoke <a
 href="../../concepts/authentication/cli.md#using-credentials-with-external-tools"><code>uv auth helper</code></a>
 for matching hosts:</p>
-<p><code>text title=".bazelrc" common --credential_helper=packages.example.com=%workspace%/bazel/uv-auth-helper common --credential_helper=files.example.com=%workspace%/bazel/uv-auth-helper</code></p>
+<pre class="text"><code>common --credential_helper=packages.example.com=%workspace%/bazel/uv-auth-helper
+common --credential_helper=files.example.com=%workspace%/bazel/uv-auth-helper</code></pre>
 <p>Replace the host patterns with the hosts that serve the index and
 files Bazel will fetch.</p>
 <p>Finally, add the wrapper script referenced by
 <code>.bazelrc</code>:</p>
-<p><code>bash title="bazel/uv-auth-helper" #!/usr/bin/env bash exec uv --preview-features auth-helper auth helper --protocol=bazel "$@"</code></p>
+<div class="sourceCode" id="cb3"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co">#!/usr/bin/env bash</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="bu">exec</span> uv <span class="at">--preview-features</span> auth-helper auth helper <span class="at">--protocol</span><span class="op">=</span>bazel <span class="st">&quot;</span><span class="va">$@</span><span class="st">&quot;</span></span></code></pre></div>
 <p>The script must be executable:</p>
 <pre class="console"><code>$ chmod +x bazel/uv-auth-helper</code></pre>
