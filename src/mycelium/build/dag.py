@@ -81,8 +81,12 @@ CHUNK_STAGE_VERSION: Final = 2
 ASSEMBLE_STAGE_VERSION: Final = 1
 """Bump when Document-record derivation (title, stats, trust, …) changes."""
 
-EXTRACT_STAGE_VERSION: Final = 5
+EXTRACT_STAGE_VERSION: Final = 6
 """Bump when link or symbol extraction changes output for unchanged input.
+
+v5 to v6: a heading defines the name it is *about* rather than only the name
+it *is*, so `## The pyproject.toml` now names a term and an unchanged document
+yields sites it did not before (5.19, ADR-0091).
 
 v1 → v2: extraction also yields what a fence *uses*, and every definition
 records which syntax carried it, so an unchanged document produces a larger

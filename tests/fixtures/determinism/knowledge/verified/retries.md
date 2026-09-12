@@ -52,3 +52,11 @@ the build's own budget. See ![[architecture]] for where this sits in the pipelin
 policy = build_policy(attempts=5)
 assert policy.delay(4) == 16.0
 ```
+
+## The RetryPolicy
+
+`RetryPolicy` is the class the schedule above configures, documented here a second time
+under a heading that is the name and one framing word. A reference page writes its
+sections this way — `The pyproject.toml`, `pylock.toml format` — and the extract stage
+reads them, so this document and `api.md` both name the term and the record carries both
+(roadmap 5.19).

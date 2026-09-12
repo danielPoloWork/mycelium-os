@@ -61,11 +61,33 @@ def resolve_symbols(
     """Fold every document's references into one record per symbol id.
 
     Deterministic by construction: documents are visited in path order and
-    references in line order, so the *first* definition site — the one
-    ``defined_in`` names — is the same on every build of the same corpus, and
-    the records come out sorted by id. ``doc_refs`` collects every chunk that
-    defines the symbol, across documents, which is where it is documented when
-    the definition lives in a documentation fence.
+    references in line order, so the site ``defined_in`` names is the same on
+    every build of the same corpus, and the records come out sorted by id.
+    ``doc_refs`` collects every chunk that defines the symbol, across documents.
+
+    **``defined_in`` is the most *direct* naming site**: one whose syntax makes
+    the symbol its own subject — a fence definition, a definition-list term, or a
+    heading that *is* the name — before one that frames it in a phrase, and path
+    order between equals. That ordering is what makes roadmap 5.19's widening
+    purely additive: reading ``## The pyproject.toml`` as well as
+    ``### pyproject.toml`` adds a site to ``doc_refs`` and cannot move what
+    ``defined_in`` already said.
+
+    **It is deliberately not "where the thing is documented", and that is a
+    refusal with measurements behind it** (ADR-0091). On uv's four sites for
+    ``pyproject.toml`` every rankable signal disagrees with every other and with
+    the judge: most prose picks the guide's tour entry (247 tokens), most
+    mentions picks ``docs/pip/dependencies.md`` (six), and the section a judged
+    case grades relevant — ``docs/concepts/projects/layout.md`` — is the
+    *smallest* of the four and mentions the name *least*. Plain path order, tried
+    on the widened table, moved three records: one onto that judged section and
+    two onto pages that document nothing (a Renovate integration guide, for
+    ``uv.lock``). Which page of a corpus is its reference and which is its tour
+    is an editorial fact about the whole corpus, and a stage that sees one
+    document at a time cannot read it. So no field here claims to, and
+    ``doc_refs`` carries every site instead — where a reader can weigh them and
+    where the symbol leg ranks them by BM25 anyway, which is why *ordering* them
+    would be inert even if an order could be justified.
     """
     sites: dict[str, list[tuple[str, SymbolRef]]] = {}
     for state in sorted(states, key=lambda item: item.path):
@@ -76,7 +98,9 @@ def resolve_symbols(
 
     resolved: list[Symbol] = []
     for identity in sorted(sites):
-        path, first = sites[identity][0]
+        path, first = min(
+            sites[identity], key=lambda site: (not site[1].direct, site[0], site[1].line)
+        )
         defined_in = f"{path}#L{first.line}" if first.line > 0 else (first.anchor or path)
         doc_refs = tuple(
             sorted({reference.anchor for _, reference in sites[identity] if reference.anchor})

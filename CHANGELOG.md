@@ -10,7 +10,30 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Added
+
+- **A heading now defines the name it is *about*, not only the name it *is*** (roadmap 5.19,
+  [ADR-0091](docs/adr/0091-widen-the-heading-rule-and-refuse-to-guess-which-section-documents-a-name.md)).
+  `## The pyproject.toml`, `## pylock.toml format` and `## manylinux_compatible enforcement`
+  each define a documentation term, where before only a heading that was *exactly* an
+  identifier did. The bound is the name plus one framing word, and it is measured rather than
+  chosen: two is the widest setting at which none of the three evaluation corpora yields
+  something that is not a name. The vendored uv corpus goes from 14 symbols to 23 and from 16
+  definition sites to 29; its ingested twin from 12 to 19 and 12 to 23; this repository's own
+  documentation is unchanged at 3. The change is strictly additive — `defined_in` now prefers a
+  *direct* naming site (a fence, a definition-list term, a heading that is the name), so no
+  existing record's `defined_in` moves — and nothing about ranking changes: the symbol leg
+  still ships off and every judged case on every set is byte-identical.
+
 ### Changed
+
+- **`Symbol.defined_in` is documented as a naming fact, and no longer implies an editorial
+  one** (roadmap 5.19, [ADR-0091](docs/adr/0091-widen-the-heading-rule-and-refuse-to-guess-which-section-documents-a-name.md)).
+  It names the most direct site at which the corpus defines a name — never "where the thing is
+  best documented", which roadmap 5.19 measured four ways and could not compute: on the four
+  sites uv has for `pyproject.toml`, prose volume, mention count and path order each pick a
+  different section, and the one a judge grades relevant is the smallest and mentions the name
+  least. Every site the corpus holds is in `doc_refs` instead.
 
 - **Citation URIs carry a second query key, and a pre-0.5 client will refuse one**
   (roadmap 5.17, [ADR-0089](docs/adr/0089-put-content-identity-in-the-citation-and-make-the-grammar-extensible.md)). A parser built before this release accepted `?lines=`

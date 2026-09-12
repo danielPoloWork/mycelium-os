@@ -181,6 +181,18 @@ def test_the_corpus_still_covers_the_profile() -> None:
     assert not any(str(symbol["symbol"]).endswith(":policy") for symbol in symbols)
     assert all(str(symbol["defined_in"]).split("#L")[1].isdigit() for symbol in symbols)
 
+    # And the heading shape 5.19 added: the name with one framing word, in a
+    # *second* document, so the gate covers both the widened rule and what
+    # resolution does with two sites — `defined_in` is the first in path order
+    # and `doc_refs` holds them both (ADR-0091). Without this the corpus would
+    # exercise only the one-word rule and the widening would be ungated.
+    term = next(s for s in symbols if str(s["symbol"]) == "sym:doc:RetryPolicy")
+    assert str(term["defined_in"]).startswith("knowledge/verified/api.md#L")
+    assert tuple(term["doc_refs"]) == (
+        "knowledge/verified/api.md#retrypolicy/0",
+        "knowledge/verified/retries.md#the-retrypolicy/0",
+    )
+
     # Every type in D-014's controlled vocabulary (roadmap 5.10, ADR-0082). The
     # last one to gain a derivation was `supersedes`, which needed a frontmatter
     # key no closed contract had — so this assertion is what stops the gate

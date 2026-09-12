@@ -56,7 +56,7 @@ from mycelium.symbols import (
     extract_symbols,
     grammar_fingerprint,
     grammar_for,
-    heading_term,
+    heading_subject,
     load_grammar,
     resolve_symbols,
     symbols_digest,
@@ -446,6 +446,7 @@ def test_any_python_fence_is_read_without_error_and_deterministically(text: str)
 @pytest.mark.parametrize(
     ("heading", "term"),
     [
+        # The heading IS the name — ADR-0073's rule, unchanged.
         ("RetryPolicy", "RetryPolicy"),
         ("3.3 mycelium_neighbors", "mycelium_neighbors"),
         ("uv.lock", "uv.lock"),
@@ -455,9 +456,28 @@ def test_any_python_fence_is_read_without_error_and_deterministically(text: str)
         ("RetryPolicy:", "RetryPolicy"),
         ("docs/adr", "docs/adr"),
         ("std::fmt", "std::fmt"),
+        # The heading is the name and one framing word — 5.19's widening, and
+        # every one of these is a real section in the vendored uv corpus.
+        ("The pyproject.toml", "pyproject.toml"),
+        ("pylock.toml format", "pylock.toml"),
+        ("requirements.txt format", "requirements.txt"),
+        ("Using requirements.in", "requirements.in"),
+        ("manylinux_compatible enforcement", "manylinux_compatible"),
+        ("uv.lock output", "uv.lock"),
+        ("`uv.lock` output", "uv.lock"),
+        ("Installing PyTorch", "PyTorch"),
+        # Two names is a list or a sentence; a section documents one subject.
+        ("Using pyproject.toml and requirements.txt", None),
+        ("pyproject.toml, uv.lock", None),
+        # Three words is a phrase about something else, whatever it mentions.
+        ("The RetryPolicy class", None),
+        ("Transparent x86_64 emulation", None),
+        # A word is not a name because a sentence ended on it.
+        ("Learn more about uv.", None),
+        ("uv.", None),
+        # Titles, versions and non-names.
         ("Retries", None),
         ("Event Bus", None),
-        ("The RetryPolicy class", None),
         ("API", None),
         ("v0.4.0", None),
         ("4.2", None),
@@ -467,10 +487,30 @@ def test_any_python_fence_is_read_without_error_and_deterministically(text: str)
         ("", None),
     ],
 )
-def test_a_heading_defines_a_term_only_when_it_is_an_identifier(
-    heading: str, term: str | None
-) -> None:
-    assert heading_term(heading) == term
+def test_a_heading_defines_the_name_it_is_about(heading: str, term: str | None) -> None:
+    subject = heading_subject(heading)
+    assert (subject[0] if subject else None) == term
+
+
+def test_the_widening_only_adds(heading_corpus: tuple[str, ...] = ()) -> None:
+    """Every heading the one-word rule defined, the new rule still defines.
+
+    Stated as a property rather than a list because it is the promise that makes
+    the change safe to land on a corpus nobody here has read: a build that
+    upgrades may gain sites, never lose one (ADR-0091).
+    """
+    for text in (
+        "RetryPolicy",
+        "uv.lock",
+        ".python-version",
+        "mycelium_neighbors",
+        "docs/adr",
+        "std::fmt",
+        "helper()",
+        *heading_corpus,
+    ):
+        subject = heading_subject(text)
+        assert subject is not None and subject[1], text
 
 
 def test_definition_lists_define_their_terms() -> None:
