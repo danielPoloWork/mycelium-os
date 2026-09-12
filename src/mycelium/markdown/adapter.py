@@ -162,6 +162,24 @@ def _block_text(node: SyntaxTreeNode) -> str:
     return "".join(_flatten(child) for child in node.children if child.type == "inline")
 
 
+def _spans(node: SyntaxTreeNode) -> list[str]:
+    if node.type == "code_inline":
+        return [node.content]
+    return [span for child in node.children for span in _spans(child)]
+
+
+def _block_spans(node: SyntaxTreeNode) -> tuple[str, ...]:
+    """The inline code spans of a block's own inline content, in order.
+
+    The text they came from is still flattened (ADR-0006); this is the record of
+    which of its words were written as code — the syntax documentation names a
+    command with, and the one signal the flattening erased (roadmap 5.23).
+    """
+    return tuple(
+        span for child in node.children if child.type == "inline" for span in _spans(child)
+    )
+
+
 def _walk(
     builder: _Builder,
     nodes: list[SyntaxTreeNode],
@@ -195,6 +213,7 @@ def _convert(  # noqa: C901 - one branch per token type reads better than a disp
             node=node,
             level=level,
             text=_block_text(node),
+            spans=_block_spans(node),
         )
         for child in node.children:
             if child.type == "inline":
@@ -208,6 +227,7 @@ def _convert(  # noqa: C901 - one branch per token type reads better than a disp
             parent=_current_parent(parent, headings),
             node=node,
             text=_block_text(node),
+            spans=_block_spans(node),
         )
         for child in node.children:
             if child.type == "inline":
@@ -241,7 +261,15 @@ def _convert(  # noqa: C901 - one branch per token type reads better than a disp
         own_text = "".join(
             _block_text(child) for child in node.children if child.type == "paragraph"
         )
-        node_id = builder.add(NodeKind.LIST_ITEM, parent=parent, node=node, text=own_text)
+        own_spans = tuple(
+            span
+            for child in node.children
+            if child.type == "paragraph"
+            for span in _block_spans(child)
+        )
+        node_id = builder.add(
+            NodeKind.LIST_ITEM, parent=parent, node=node, text=own_text, spans=own_spans
+        )
         for child in node.children:
             if child.type == "paragraph":
                 for inline in child.children:
@@ -259,7 +287,11 @@ def _convert(  # noqa: C901 - one branch per token type reads better than a disp
                 row_id = builder.add(NodeKind.TABLE_ROW, parent=node_id, node=row, variant=variant)
                 for cell in row.children:
                     cell_id = builder.add(
-                        NodeKind.TABLE_CELL, parent=row_id, node=row, text=_block_text(cell)
+                        NodeKind.TABLE_CELL,
+                        parent=row_id,
+                        node=row,
+                        text=_block_text(cell),
+                        spans=_block_spans(cell),
                     )
                     for inline in cell.children:
                         if inline.type == "inline":
@@ -314,7 +346,13 @@ def _emit_callout_body(
         if child is head_paragraph:
             _, _, rest = _block_text(child).partition("\n")
             if rest.strip():
-                builder.add(NodeKind.PARAGRAPH, parent=callout_id, node=child, text=rest)
+                builder.add(
+                    NodeKind.PARAGRAPH,
+                    parent=callout_id,
+                    node=child,
+                    text=rest,
+                    spans=_block_spans(child),
+                )
                 for inline in child.children:
                     if inline.type == "inline":
                         _emit_inlines(builder, inline, callout_id, child)

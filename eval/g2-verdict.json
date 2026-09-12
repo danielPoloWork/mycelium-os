@@ -1,8 +1,8 @@
 {
   "corpora": {
     "ours": {
-      "chunks_digest": "sha256:c9e08dfde3b46aa86b9b6e8c3e64839f96080a52fb64b5694e52eb151f920aec",
-      "content_digest": "sha256:9cb0b007405b9af56080f2514145aa5aa6e899edf69e39f2ab4fc4559285ab15",
+      "chunks_digest": "sha256:0b530b4afd4a7191da36b30b88d5ebbdd181302c3fa4af0eb6fad64f934214c0",
+      "content_digest": "sha256:312e83f6610767b6d16f4f843121d3238c944f149102be19a258d9779a468299",
       "dated": false
     },
     "uv": {
@@ -23,15 +23,15 @@
   "decision": "lexical",
   "model_id": "bge-small-en-v1.5",
   "recorded_at": "2026-09-12",
-  "retrieval_identity": "sha256:107e2baf3d205cefaf40ac6673fd90a4db1801005306dfc5ac6a232ebaef4072",
+  "retrieval_identity": "sha256:d022dcdd31aa6d9fdb861bd54b56dd134d982ab0bcc3ec9b055f087ce508a150",
   "schema_version": "mycelium/g2-verdict/v0",
   "sets": {
     "ours/dev": {
       "cases": 16,
       "cases_digest": "sha256:c39aa93ef694f6a9b63dfeb51deb7024993a6c38346808dfff6e1839077ddd64",
-      "detail": "+15.0% overall (needs +5%); regressions past -2%: fact -5.5% (q-0005 0.6309->0.5000, q-0008 0.0379->0.0000)",
+      "detail": "+18.8% overall (needs +5%)",
       "hybrid_ndcg_at_10": 0.593422,
-      "lexical_ndcg_at_10": 0.516092,
+      "lexical_ndcg_at_10": 0.499519,
       "per_slice": {
         "conceptual": {
           "cases": 5,
@@ -46,7 +46,7 @@
         "fact": {
           "cases": 4,
           "hybrid": 0.456689,
-          "lexical": 0.483494
+          "lexical": 0.417203
         },
         "injection": {
           "cases": 1,
@@ -64,22 +64,20 @@
           "lexical": 0.514928
         }
       },
-      "regressions": [
-        "fact -5.5% (q-0005 0.6309->0.5000, q-0008 0.0379->0.0000)"
-      ],
-      "verdict": "fail"
+      "regressions": [],
+      "verdict": "pass"
     },
     "ours/release": {
       "cases": 17,
       "cases_digest": "sha256:5d5cb038211bac12ea7f23ee90195442877f166bb6203db8cc5be44edef88d09",
-      "detail": "+27.1% overall (needs +5%)",
+      "detail": "+26.7% overall (needs +5%)",
       "hybrid_ndcg_at_10": 0.635279,
-      "lexical_ndcg_at_10": 0.499666,
+      "lexical_ndcg_at_10": 0.501468,
       "per_slice": {
         "conceptual": {
           "cases": 4,
           "hybrid": 0.673536,
-          "lexical": 0.561495
+          "lexical": 0.569157
         },
         "exact": {
           "cases": 4,

@@ -63,13 +63,14 @@ import re
 from dataclasses import dataclass
 from typing import Final
 
-from mycelium.symbols import identifier_like
+from mycelium.symbols import command_phrase, identifier_like
 
 __all__ = [
     "GENERATORS",
     "GRAPH",
     "LEXICAL",
     "RELATIONSHIP_PHRASES",
+    "STOPWORDS",
     "SYMBOL",
     "VECTOR",
     "Plan",
@@ -129,6 +130,70 @@ deliberately not the lexical leg's word boundary, which splits `uv.lock` into
 _QUOTE: Final = re.compile(r"\"[^\"]+\"|'[^']+'")
 """A quoted phrase — spec 04 §2's other identifier-shaped signal."""
 
+STOPWORDS: Final = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "but",
+        "by",
+        "do",
+        "does",
+        "for",
+        "from",
+        "how",
+        "i",
+        "in",
+        "is",
+        "it",
+        "of",
+        "on",
+        "or",
+        "that",
+        "the",
+        "to",
+        "was",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "why",
+        "with",
+        "you",
+    }
+)
+"""Function words the **lexical** leg does not search on (roadmap 4.28).
+
+This list is not new and it is deliberately not re-chosen here: it has lived in
+the evaluation harness since the grep baseline was written, where it was applied
+to *both* retrievers so neither got an easier question. What it was never applied
+to is the product — so `mycelium search "what does resolution mean"` searched on
+`what` and `does`, and the harness that was supposed to notice had removed them
+before it looked (ADR-0057).
+
+Why a list rather than a statistic: because the statistic does not exist.
+Document frequency, measured on both corpora, does not separate a function word
+from a corpus's own central nouns — `what` reaches 37 % of this repository's
+chunks and `adr` reaches 60 %; on `uv`'s documentation `mean` reaches 2.8 % and
+`uv` itself reaches 88 %. An IDF floor calibrated to drop the first would drop
+the second, and BM25 already discounts by IDF, so the stems that hurt are the
+*rare* ones with nothing else behind them. The membership of this list is
+therefore an English fact, not a tuning parameter, and changing it is a separate
+decision from adopting it.
+
+The **vector** leg still sees the whole question: an embedder is asked in the
+words it was trained on, and the grammar is what it reads.
+
+Defined here rather than in :mod:`mycelium.retrieval` since roadmap 5.23,
+because the planner's `command` rule reads it too — a command-shaped query is
+one with no function word in it — and the two modules could not both own it
+without one importing the other. Retrieval re-exports it under the same name."""
+
 
 @dataclass(frozen=True, slots=True)
 class Plan:
@@ -169,6 +234,21 @@ def _identifier_tokens(query: str) -> tuple[str, ...]:
     return tuple(token for token in _TOKEN.findall(query) if identifier_like(token))
 
 
+def _command(query: str) -> str | None:
+    """The command a command-shaped query names, or ``None``.
+
+    Spec 04 §2's identifier signals — CamelCase, snake_case, a dotted path — are
+    orthographic, and a command has none of them: its words are separated by
+    spaces. The substitute signal is the *absence* of function words in a short
+    query whose tokens are a run of shell words followed by flags and arguments
+    (roadmap 5.23, ADR-0094): `uv tool install` and `uv lock --check` qualify,
+    `how do I install a tool` does not. The rule lives in
+    :func:`mycelium.symbols.command_phrase`, shared with the extractor that mints
+    the symbols the lookup must find.
+    """
+    return command_phrase(query, stopwords=STOPWORDS)
+
+
 def plan_query(query: str, *, related: bool = False) -> Plan:
     """Classify `query` against spec 04 §2's table. Pure, and cheap by design.
 
@@ -195,6 +275,18 @@ def plan_query(query: str, *, related: bool = False) -> Plan:
         reasons.append(
             f"identifier-like token ({found}): exact lookup in the symbol table, "
             "and the lexical leg searches the token as written"
+        )
+
+    # A quoted phrase is already the identifier rule's signal (spec 04 §2), and the
+    # lookup reads its command prefixes regardless; the `command` rule reports the
+    # *bare* command-shaped query, which the spec's table has no row for.
+    command = _command(query) if quoted is None else None
+    if command is not None:
+        rules.append("command")
+        generators.update({SYMBOL, VECTOR})
+        reasons.append(
+            f"command-shaped query ({command}): exact lookup of the whole phrase in the "
+            "symbol table's cli language"
         )
 
     phrase = _relationship_phrase(query)

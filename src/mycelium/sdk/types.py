@@ -480,13 +480,26 @@ class KirNode(Record):
     :data:`_KIND_FIELDS`, which declares the optional fields each kind may carry
     and is enforced on construction (ADR-0006).
 
-    ``text``, ``parent``, ``ord`` and ``src`` are the common core every kind may
-    use. KIR adds fields by minor version and never repurposes them.
+    ``text``, ``spans``, ``parent``, ``ord`` and ``src`` are the common core every
+    kind may use. KIR adds fields by minor version and never repurposes them:
+    ``spans`` joined at roadmap 5.23, because the adapter flattens inline code into
+    ``text`` (ADR-0006) and a command is named in documentation by exactly that
+    syntax — ``` `uv tool install` ``` — so the flattening had erased the one signal
+    a symbol source for commands needs (ADR-0094). The text is unchanged; the
+    spans say which of its words were code.
     """
 
     id: NonEmptyStr
     kind: NodeKind
     text: str | None = None
+    spans: tuple[str, ...] = Field(
+        default=(),
+        description=(
+            "The inline code spans inside `text`, in order, exactly as written. "
+            "Common core like `text` itself: any node whose text came from inline "
+            "content may carry them (roadmap 5.23)."
+        ),
+    )
     level: int | None = Field(default=None, ge=1, description="Heading depth, 1-6.")
     lang: str | None = Field(default=None, description="Code-block language tag.")
     variant: str | None = Field(

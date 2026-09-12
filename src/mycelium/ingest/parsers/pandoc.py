@@ -198,12 +198,17 @@ def _block(  # noqa: C901
 
     if tag == "Header":
         level, _attr, inlines = content
-        builder.add_heading(int(level), _inline_text(inlines))
+        builder.add_heading(int(level), _inline_text(inlines), spans=_inline_spans(inlines))
         _references(builder, inlines, builder.open_heading)
         return
 
     if tag in {"Para", "Plain"}:
-        node_id = builder.add(NodeKind.PARAGRAPH, parent=parent, text=_inline_text(content))
+        node_id = builder.add(
+            NodeKind.PARAGRAPH,
+            parent=parent,
+            text=_inline_text(content),
+            spans=_inline_spans(content),
+        )
         _references(builder, content, node_id)
         return
 
@@ -270,10 +275,12 @@ def _list_item(builder: KirBuilder, item: object, *, parent: str, depth: int = 0
     blocks = list(item) if isinstance(item, list) else []
     text = ""
     lead: object | None = None
+    spans: tuple[str, ...] = ()
     if blocks and _tag(blocks[0]) in {"Plain", "Para"}:
         lead = blocks.pop(0)
         text = _inline_text(_contents(lead))
-    item_id = builder.add(NodeKind.LIST_ITEM, parent=parent, text=text)
+        spans = _inline_spans(_contents(lead))
+    item_id = builder.add(NodeKind.LIST_ITEM, parent=parent, text=text, spans=spans)
     if lead is not None:
         _references(builder, _contents(lead), item_id)
     for child in blocks:
@@ -339,7 +346,15 @@ def _table_row(builder: KirBuilder, row: object, *, parent: str, variant: str) -
         parts = [
             _inline_text(_contents(block)) for block in blocks if _tag(block) in {"Plain", "Para"}
         ]
-        cell_id = builder.add(NodeKind.TABLE_CELL, parent=row_id, text=" ".join(parts))
+        cell_spans = tuple(
+            span
+            for block in blocks
+            if _tag(block) in {"Plain", "Para"}
+            for span in _inline_spans(_contents(block))
+        )
+        cell_id = builder.add(
+            NodeKind.TABLE_CELL, parent=row_id, text=" ".join(parts), spans=cell_spans
+        )
         for block in blocks:
             if _tag(block) in {"Plain", "Para"}:
                 _references(builder, _contents(block), cell_id)
@@ -390,6 +405,23 @@ def _inline_text(inlines: object) -> str:
     if not isinstance(inlines, list):
         return ""
     return "".join(_one_inline_text(inline) for inline in inlines)
+
+
+def _inline_spans(inlines: object) -> tuple[str, ...]:
+    """The `Code` inlines of a sequence, in order — KIR's `spans` (roadmap 5.23)."""
+    if not isinstance(inlines, list):
+        return ()
+    found: list[str] = []
+    for inline in inlines:
+        tag = _tag(inline)
+        content = _contents(inline)
+        if tag == "Code":
+            found.append(str(content[1]))
+        elif tag in _INLINE_MARKUP:
+            found.extend(_inline_spans(content))
+        elif tag in _INLINE_WRAPPED or tag in {"Link", "Image"}:
+            found.extend(_inline_spans(content[1]))
+    return tuple(found)
 
 
 def _one_inline_text(inline: object) -> str:

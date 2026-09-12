@@ -228,9 +228,9 @@ def test_an_identifier_like_token_is_looked_up(token: str) -> None:
     assert f"sym:python:{token}" in ids
 
 
-@pytest.mark.parametrize(
-    "query", ["what is a snapshot", "uv lock --check", "Retries", "v0.4.0", "how do I build"]
-)
+# `uv lock --check` left this list at roadmap 5.23: a command-shaped query is looked
+# up in the `cli` language (ADR-0094), and `tests/test_symbols_commands.py` owns it.
+@pytest.mark.parametrize("query", ["what is a snapshot", "Retries", "v0.4.0", "how do I build"])
 def test_a_query_with_no_identifier_like_token_looks_nothing_up(query: str) -> None:
     """The common case, and it must cost one regex rather than a store round trip."""
     assert symbol_lookup_ids(query) == ()
@@ -252,7 +252,10 @@ def test_the_lookup_is_exact_and_never_matches_a_tail(store: SqliteStore) -> Non
     last segment is right for an edge, where ambiguity can be refused and the
     claim is only that two names are related (ADR-0074), and wrong for a ranking.
     """
-    assert symbol_lookup_ids("config") == ()
+    # A one-word query is command-shaped (ADR-0094), so it asks for `sym:cli:config`
+    # — and nothing else: never `sym:doc:bus.config` by its tail.
+    assert symbol_lookup_ids("config") == ("sym:cli:config",)
+    assert store.symbols_by_id(symbol_lookup_ids("config")) == ()
     assert store.symbols_by_id(symbol_lookup_ids("bus.config")) != ()
     outcome = search(store, "config", limit=10, config=on())
     assert all(not hit.via_symbol for hit in outcome.hits)

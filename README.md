@@ -287,6 +287,16 @@ itself (`## uv.lock`), or the name and one framing word (`## The pyproject.toml`
 name, measured at zero occurrences across the three evaluation corpora and supported anyway,
 because it is the syntax.
 
+A **command** is a symbol too, since roadmap 5.23: what the corpus both *demonstrates* at a
+prompt (`$ uv tool install ruff`) and *names* as code (`` `uv tool install` ``) is minted as
+`sym:cli:uv tool install`, and neither half alone is — `uv add requests` is shown and never
+named, `uv cache prune` named and never shown. On the uv documentation that intersection is 45
+phrases and reads as the CLI's own command list; on this repository it is the `mycelium` and `uv`
+commands the README lists. A query that *is* a command (`uv lock --check`, `uvx`) is looked up
+whole and exactly, and the measured outcome is in
+[ADR-0094](docs/adr/0094-mint-a-command-the-corpus-demonstrates-and-names-and-report-what-promotion-can-and-cannot-reorder.md): the leg stays off, because promotion for commands clears the bar on the dev
+sets and moves nothing on the held-out ones.
+
 Each record says where the thing is defined — the Markdown line, `docs/api.md#L20` — and which
 chunks define it; it is in the export bundle's `symbols.jsonl` and in the manifest's counts and
 digests. `defined_in` is deliberately a *naming* fact and not an editorial one: it is the most

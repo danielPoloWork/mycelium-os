@@ -57,6 +57,11 @@ something to reach for, and small enough to build per module."""
     [
         ("SqliteStore", "identifier"),
         ("uv.lock", "identifier"),
+        # A bare run of shell words has a command's shape, whatever it turns out to
+        # name — the lookup decides; a function word makes it a question (ADR-0094).
+        ("uv tool install", "command"),
+        ("retry policy", "command"),
+        ("retry", "command"),
         ("what is in pyproject.toml", "identifier"),
         ('"an exact phrase"', "identifier"),
         ("what does the determinism gate depend on", "relationship"),

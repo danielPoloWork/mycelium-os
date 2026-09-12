@@ -176,8 +176,26 @@ def test_the_corpus_still_covers_the_profile() -> None:
     # Python fence, a Rust fence, a heading that is an identifier, a definition
     # list — and a Python fence that assigns and calls, which defines nothing.
     symbols = golden["symbols"]
-    assert {str(symbol["symbol"]).split(":")[1] for symbol in symbols} == {"doc", "python", "rust"}
-    assert {str(symbol["kind"]) for symbol in symbols} == {"term", "class", "method", "function"}
+    assert {str(symbol["symbol"]).split(":")[1] for symbol in symbols} == {
+        "cli",
+        "doc",
+        "python",
+        "rust",
+    }
+    assert {str(symbol["kind"]) for symbol in symbols} == {
+        "term",
+        "class",
+        "method",
+        "function",
+        "command",
+    }
+    # And the command source 5.23 added (ADR-0094): a prompt line demonstrates
+    # `mycelium build`, prose names it as code, and the intersection is the symbol —
+    # defined at the prompt line, documented at the section that holds both.
+    command = next(s for s in symbols if str(s["symbol"]) == "sym:cli:mycelium build")
+    assert str(command["defined_in"]).startswith("knowledge/verified/api.md#L")
+    assert "knowledge/verified/api.md#building-the-reference/0" in command["doc_refs"]
+    assert not any(str(s["symbol"]) == "sym:cli:mycelium build --no-pin" for s in symbols)
     assert not any(str(symbol["symbol"]).endswith(":policy") for symbol in symbols)
     assert all(str(symbol["defined_in"]).split("#L")[1].isdigit() for symbol in symbols)
 

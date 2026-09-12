@@ -87,11 +87,18 @@ class KirBuilder:
         )
         return node_id
 
-    def add_heading(self, level: int, text: str, *, src: SrcLocator | None = None) -> str:
+    def add_heading(
+        self,
+        level: int,
+        text: str,
+        *,
+        src: SrcLocator | None = None,
+        spans: tuple[str, ...] = (),
+    ) -> str:
         """Append a heading, closing every open heading at or below `level`."""
         while self._headings and self._headings[-1][0] >= level:
             self._headings.pop()
-        node_id = self.add(NodeKind.HEADING, text=text, level=level, src=src)
+        node_id = self.add(NodeKind.HEADING, text=text, level=level, src=src, spans=spans)
         self._headings.append((level, node_id))
         return node_id
 
