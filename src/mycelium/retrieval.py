@@ -27,7 +27,10 @@ none of the query's words contributes nothing (ADR-0075).
 **The symbol leg looks a name up and offers where it is defined.** Spec 04 §3
 asks for an *exact* lookup in the `symbols` table for the query's
 identifier-like tokens, and the chunks behind a symbol are its `doc_refs` — the
-places that define it (ADR-0073). Like the graph leg it may add and may not
+places that define it (ADR-0073). Since roadmap 5.23 a command-shaped query —
+`uv tool install`, `uv lock --check` — is looked up the same way in the `cli`
+language, whose symbols are the commands the corpus demonstrates at a prompt
+and names in prose (ADR-0094). Like the graph leg it may add and may not
 promote, and like the graph leg it is off by default, because its ablation lost
 too: on these three corpora it cannot fire on one judged `symbol` case, and
 where it does fire the definition site is a *naming* site rather than a
@@ -55,7 +58,16 @@ from typing import Final
 from mycelium.config import RetrievalConfig
 from mycelium.embedding import Embedder
 from mycelium.graph import nodes_of_anchor, split_section_ref
-from mycelium.planner import GRAPH, LEXICAL, RELATIONSHIP_PHRASES, SYMBOL, VECTOR, Plan, plan_query
+from mycelium.planner import (
+    GRAPH,
+    LEXICAL,
+    RELATIONSHIP_PHRASES,
+    STOPWORDS,
+    SYMBOL,
+    VECTOR,
+    Plan,
+    plan_query,
+)
 from mycelium.sdk.identity import digest_json
 from mycelium.sdk.types import Sha256Digest
 from mycelium.store import (
@@ -67,7 +79,14 @@ from mycelium.store import (
     field_weights,
     fts_schema,
 )
-from mycelium.symbols import DOC_LANGUAGE, GRAMMARS, identifier_like
+from mycelium.symbols import (
+    CLI_LANGUAGE,
+    DOC_LANGUAGE,
+    GRAMMARS,
+    MAX_COMMAND_WORDS,
+    command_phrase,
+    identifier_like,
+)
 
 __all__ = [
     "DEFAULT_LIMIT",
@@ -80,6 +99,7 @@ __all__ = [
     "SYMBOL_DISCOUNT",
     "SYMBOL_LANGUAGES",
     "SYMBOL_PROMOTE",
+    "SYMBOL_PROMOTE_LANGUAGES",
     "VECTOR_CANDIDATES",
     "FusedHit",
     "Plan",
@@ -162,6 +182,24 @@ promote, and the two readings needed measuring rather than arguing about: the
 runner flips this to score the other arm. Both readings lose, for different
 reasons, and ADR-0080 reports each."""
 
+SYMBOL_PROMOTE_LANGUAGES: Final[tuple[str, ...]] = ("cli",)
+"""Languages whose definition sites the leg offers *whether or not* another leg
+already returned them — promotion by language, where :data:`SYMBOL_PROMOTE` is
+promotion for all.
+
+`cli` and only `cli` (roadmap 5.23, ADR-0094). A command's sites are the
+sections that run it at a prompt or name it as code — the documentation of the
+command — where a filename's sites are the headings that spell it (ADR-0091),
+which is why promoting `doc` terms cost 1.1 % overall at ADR-0080 and promoting
+commands cost nothing: measured on all six sets, add-only is byte-identical to
+the lexical ranking, promotion for `cli` clears the slice bar on both dev sets
+(+7.7 % and +16.2 %, overall +1.3 % and +2.5 %) and is identical on both
+release sets and on this repository's own. That is *proposable*, not *earned*
+— a default needs a held-out gain — so the leg still ships off, and an operator
+who turns it on gets this reading rather than the inert one. Part of
+:func:`retrieval_identity` because it decides a ranking whenever the flag is
+on."""
+
 _LEXICAL: Final = LEXICAL
 _VECTOR: Final = VECTOR
 _GRAPH: Final = GRAPH
@@ -188,65 +226,6 @@ A query says `RetryPolicy`, not `sym:python:RetryPolicy`, so the lookup composes
 one candidate id per language and asks for all of them at once. Derived from the
 grammar registry rather than listed, so a grammar added to
 :mod:`mycelium.symbols.code` is searchable without a second edit here."""
-
-STOPWORDS: Final = frozenset(
-    {
-        "a",
-        "an",
-        "and",
-        "are",
-        "as",
-        "at",
-        "be",
-        "but",
-        "by",
-        "do",
-        "does",
-        "for",
-        "from",
-        "how",
-        "i",
-        "in",
-        "is",
-        "it",
-        "of",
-        "on",
-        "or",
-        "that",
-        "the",
-        "to",
-        "was",
-        "what",
-        "when",
-        "where",
-        "which",
-        "who",
-        "why",
-        "with",
-        "you",
-    }
-)
-"""Function words the **lexical** leg does not search on (roadmap 4.28).
-
-This list is not new and it is deliberately not re-chosen here: it has lived in
-the evaluation harness since the grep baseline was written, where it was applied
-to *both* retrievers so neither got an easier question. What it was never applied
-to is the product — so `mycelium search "what does resolution mean"` searched on
-`what` and `does`, and the harness that was supposed to notice had removed them
-before it looked (ADR-0057).
-
-Why a list rather than a statistic: because the statistic does not exist.
-Document frequency, measured on both corpora, does not separate a function word
-from a corpus's own central nouns — `what` reaches 37 % of this repository's
-chunks and `adr` reaches 60 %; on `uv`'s documentation `mean` reaches 2.8 % and
-`uv` itself reaches 88 %. An IDF floor calibrated to drop the first would drop
-the second, and BM25 already discounts by IDF, so the stems that hurt are the
-*rare* ones with nothing else behind them. The membership of this list is
-therefore an English fact, not a tuning parameter, and changing it is a separate
-decision from adopting it.
-
-The **vector** leg still sees the whole question: an embedder is asked in the
-words it was trained on, and the grammar is what it reads."""
 
 
 def retrieval_identity() -> Sha256Digest:
@@ -308,7 +287,9 @@ def retrieval_identity() -> Sha256Digest:
                 "candidates": SYMBOL_CANDIDATES,
                 "discount": SYMBOL_DISCOUNT,
                 "promote": SYMBOL_PROMOTE,
+                "promote_languages": list(SYMBOL_PROMOTE_LANGUAGES),
                 "languages": list(SYMBOL_LANGUAGES),
+                "command_words": MAX_COMMAND_WORDS,
             },
             "routing": {"relationship_phrases": sorted(RELATIONSHIP_PHRASES)},
             "stem_weight": STEM_WEIGHT,
@@ -635,9 +616,18 @@ def symbol_lookup_ids(query: str) -> tuple[str, ...]:
     and wrong for a ranking, where the claim is "read this passage".
     """
     names = [token for token in _QUERY_TOKEN.findall(query) if identifier_like(token)]
-    return tuple(
+    ids = [
         f"sym:{language}:{name}" for name in dict.fromkeys(names) for language in SYMBOL_LANGUAGES
-    )
+    ]
+    # A command is an identifier whose separator is a space (roadmap 5.23): a
+    # command-shaped or quoted query is looked up whole, in the `cli` language
+    # alone, and never by a prefix of itself. The shape test is the planner's
+    # `command` rule, shared here for the reason `identifier_like` is shared
+    # (ADR-0080, ADR-0094).
+    phrase = command_phrase(query, stopwords=STOPWORDS)
+    if phrase is not None:
+        ids.append(f"sym:{CLI_LANGUAGE}:{phrase}")
+    return tuple(dict.fromkeys(ids))
 
 
 def _symbol_candidates(
@@ -678,7 +668,13 @@ def _symbol_candidates(
         for anchor in symbol.doc_refs:
             defines.setdefault(anchor, []).append(symbol.symbol)
     via = {anchor: "defines " + ", ".join(ids) for anchor, ids in defines.items()}
-    candidates = tuple(anchor for anchor in via if SYMBOL_PROMOTE or anchor not in retrieved)
+    candidates = tuple(
+        anchor
+        for anchor, ids in defines.items()
+        if SYMBOL_PROMOTE
+        or anchor not in retrieved
+        or any(identity.split(":")[1] in SYMBOL_PROMOTE_LANGUAGES for identity in ids)
+    )
     if not candidates:
         return (), {}
 
@@ -900,8 +896,8 @@ def search(
             )
     elif settings.symbol_lookup:
         notes.append(
-            "symbol leg not planned: no identifier-like token or quoted phrase in this "
-            "query (spec 04 §2)"
+            "symbol leg not planned: no identifier-like token, quoted phrase or "
+            "command-shaped query (spec 04 §2, ADR-0094)"
         )
 
     via: dict[str, str] = {}

@@ -58,3 +58,15 @@ A fence that assigns and calls, and therefore defines nothing:
 policy = build_policy(attempts=3)
 assert policy.delay(2) == 4.0
 ```
+
+## Building the reference
+
+Compile with `mycelium build`; the `--no-pin` form leaves the tree untouched, which is how a
+corpus you do not own is measured. A command the corpus both demonstrates at a prompt and
+names in prose is a symbol of the `cli` language (roadmap 5.23).
+
+```console
+$ mycelium build --no-pin
+published snapshot 01KDVDNA0Z0000000000000000
+  7 documents, 30 chunks
+```

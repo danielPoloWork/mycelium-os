@@ -24,6 +24,7 @@ from mycelium.sdk.identity import digest_json, doc_ref, symbol_id
 from mycelium.sdk.types import Edge, EdgeProvenance, EdgeStatus, EdgeType, Sha256Digest, Symbol
 from mycelium.symbols.code import EXTRA
 from mycelium.symbols.extract import SymbolRef, decode_symbols
+from mycelium.symbols.shell import CLI_LANGUAGE
 
 __all__ = [
     "SymbolState",
@@ -96,15 +97,27 @@ def resolve_symbols(
             identity = symbol_id(reference.language, reference.name)
             sites.setdefault(identity, []).append((state.path, reference))
 
+    # A command is what the corpus both demonstrates and names (roadmap 5.23):
+    # a prompt line offers every prefix of its command run, and the corpus's
+    # own namings — code spans, shell-word headings — say which prefixes are
+    # commands. `uv add requests` is demonstrated and never named; `uv add` is
+    # both. The naming sites join `doc_refs`, because a section that names a
+    # command in prose is where the corpus documents it as often as one that
+    # runs it (ADR-0094).
+    namings = _command_namings(states)
+    for identity in [item for item in sites if item.startswith(f"sym:{CLI_LANGUAGE}:")]:
+        if identity not in namings:
+            del sites[identity]
+
     resolved: list[Symbol] = []
     for identity in sorted(sites):
         path, first = min(
             sites[identity], key=lambda site: (not site[1].direct, site[0], site[1].line)
         )
         defined_in = f"{path}#L{first.line}" if first.line > 0 else (first.anchor or path)
-        doc_refs = tuple(
-            sorted({reference.anchor for _, reference in sites[identity] if reference.anchor})
-        )
+        anchors = {reference.anchor for _, reference in sites[identity] if reference.anchor}
+        anchors.update(namings.get(identity, ()))
+        doc_refs = tuple(sorted(anchors))
         resolved.append(
             Symbol(
                 symbol=identity,
@@ -115,6 +128,20 @@ def resolve_symbols(
             )
         )
     return tuple(resolved)
+
+
+def _command_namings(states: Iterable[SymbolState]) -> dict[str, set[str]]:
+    """Every command the corpus names in prose, with the chunks that name it."""
+    namings: dict[str, set[str]] = {}
+    for state in states:
+        for use in decode_symbols(state.symbol_uses):
+            if use.language != CLI_LANGUAGE:
+                continue
+            identity = symbol_id(use.language, use.name)
+            namings.setdefault(identity, set())
+            if use.anchor:
+                namings[identity].add(use.anchor)
+    return namings
 
 
 def symbol_edges(
@@ -142,6 +169,11 @@ def symbol_edges(
     Unlike an unresolvable wikilink, an unresolvable use is **not** a warning: a
     wikilink asserts that a document exists, and a call site asserts nothing at
     all. Warning on every library call would bury the manifest.
+
+    A command named in prose (roadmap 5.23) is a use like any other: a document
+    that names `uv tool install` without demonstrating it gets a `references`
+    edge to `sym:cli:uv tool install`, one per document, at the first chunk that
+    names it — the one-edge-per-document rule a fence's calls already follow.
     """
     from mycelium.graph import edge_identity
 
@@ -187,14 +219,16 @@ def symbol_edges(
             if identity in by_id:
                 put(source, identity, EdgeType.DEFINES, reference)
 
+        referenced: set[str] = set()
         for use in sorted(decode_symbols(state.symbol_uses), key=lambda ref: (ref.line, ref.name)):
             identity_or_none = _resolve_use(use, by_id, by_tail)
-            if identity_or_none is None:
+            if identity_or_none is None or identity_or_none in referenced:
                 continue
             if state.path in definers.get(identity_or_none, set()):
                 # A document that defines a symbol is not also a *user* of it:
                 # the `defines` edge already says so, at a stronger type.
                 continue
+            referenced.add(identity_or_none)
             put(source, identity_or_none, EdgeType.REFERENCES, use)
 
     ordered = sorted(

@@ -154,7 +154,9 @@ def test_a_budget_too_small_for_one_result_is_a_typed_error(repo: Path) -> None:
 
 def test_explain_reports_the_plan_that_ran(repo: Path) -> None:
     assert "explain" not in search(repo)
-    explained = search(repo, explain=True)["explain"]
+    # A question rather than the bare `retry`, which since roadmap 5.23 has a
+    # command's shape and plans as one (ADR-0094); the plan under test is the default.
+    explained = search(repo, query="how do failed deliveries retry", explain=True)["explain"]
     # The plan, the configured profile and the legs that actually ran are three
     # separate facts, and an agent auditing a result needs all of them: what the
     # query was taken to be, what the configuration permits, and what happened.
@@ -345,10 +347,11 @@ def test_neighbors_of_an_unknown_document_is_not_found(repo: Path) -> None:
 
 
 def test_explain_reports_the_plan_the_timings_and_the_config(repo: Path) -> None:
-    payload = handle_explain(repo, {"query": "retry policy"})
+    question = "how do failed deliveries retry"  # a question: `retry policy` plans as a command
+    payload = handle_explain(repo, {"query": question})
 
     assert payload["snapshot_id"]
-    assert payload["query"] == "retry policy"
+    assert payload["query"] == question
     plan = payload["plan"]
     assert plan["profile"] == "lexical"  # the shipped default (ADR-0017)
     assert plan["stages"] == ["lexical"]

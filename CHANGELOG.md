@@ -10,6 +10,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Added
+
+- **A command the corpus both demonstrates and names is a symbol** (roadmap 5.23, [ADR-0094](docs/adr/0094-mint-a-command-the-corpus-demonstrates-and-names-and-report-what-promotion-can-and-cannot-reorder.md)).
+  A prompt line in a console or shell fence (`$ uv tool install ruff`) demonstrates every prefix of
+  its command run; a code span (`` `uv tool install` ``) or a shell-word heading names one; the
+  intersection is minted as `sym:cli:uv tool install`, kind `command`, with `defined_in` at the
+  first prompt line and `doc_refs` at every chunk that runs or names it. KIR nodes now carry
+  their inline code spans (`KirNode.spans`) beside the unchanged text, from the Markdown and
+  pandoc adapters. The planner gains a `command` rule — a command-shaped or quoted query is looked
+  up whole, exactly, in the `cli` language — as a stated amendment to spec 04 §2. Measured on all
+  six judged sets: the add-only leg stays byte-identical; promotion for `cli` clears the slice bar
+  on both dev sets with no regression anywhere and is identical on both release sets, which is
+  proposable rather than earned, so `[retrieval] symbol_lookup` still ships off and
+  `SYMBOL_PROMOTE_LANGUAGES = ("cli",)` is the reading an operator gets on turning it on.
+  `tools/measure_symbol_leg.py` gains `--oracle` (a perfect table's ceiling) and
+  `--promote-languages`, and its verdict now requires a held-out gain for a default.
+
 ### Fixed
 
 - **A projected paragraph that begins with a fence marker no longer turns the rest of the

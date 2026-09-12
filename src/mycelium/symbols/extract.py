@@ -22,6 +22,12 @@ document **defines**, and what it **uses**. They are extracted from the same
 parse of the same fence and separated in :class:`Extraction`, because they
 resolve differently — a definition mints a symbol, a use only ever points at
 one the corpus already has.
+
+Commands (roadmap 5.23) use both halves at once. A prompt line in a console
+fence is a *demonstration* and goes out as a definition of every prefix of its
+command run; a code span or a shell-word heading that names a command goes out
+as a *use*. Neither mints a symbol alone: resolution keeps a command the corpus
+both demonstrates and names (:mod:`mycelium.symbols.shell`, ADR-0094).
 """
 
 from collections.abc import Iterable, Mapping, Sequence
@@ -32,9 +38,19 @@ from mycelium.graph import anchor_of
 from mycelium.sdk.types import Chunk, KirDocument, NodeKind
 from mycelium.symbols.code import MAX_FENCE_BYTES, grammar_for, load_grammar, read_fence
 from mycelium.symbols.docs import DOC_LANGUAGE, TERM_KIND, definition_terms, heading_subject
+from mycelium.symbols.shell import (
+    CLI_LANGUAGE,
+    COMMAND_KIND,
+    command_prefixes,
+    named_command,
+    named_heading,
+    read_session,
+)
 
 __all__ = [
     "CODE_FENCE",
+    "CODE_SPAN",
+    "CONSOLE_SESSION",
     "DEFINITION_LIST",
     "HEADING",
     "Extraction",
@@ -52,6 +68,12 @@ HEADING: Final = "heading"
 
 DEFINITION_LIST: Final = "definition_list"
 """A term defined by Markdown's own definition-list syntax."""
+
+CONSOLE_SESSION: Final = "console_session"
+"""A command demonstrated at a prompt in a console fence (roadmap 5.23)."""
+
+CODE_SPAN: Final = "code_span"
+"""A command named in prose as inline code — a *use*, never a definition on its own."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,8 +151,11 @@ class Extraction:
     """What the document defines."""
     references: tuple[SymbolRef, ...] = ()
     """What its fences use, deduplicated per name — the input to the `references`
-    edges (roadmap 5.2). Only fences produce these: prose that mentions a symbol
-    is mining, which is an entity extractor's job (5.4) and a different status."""
+    edges (roadmap 5.2) — and which commands its prose *names* in inline code or
+    a shell-word heading, one per name per chunk, because a naming is a site a
+    reader can be sent to (roadmap 5.23). Prose that merely mentions a name
+    without marking it as code is mining, which is an entity extractor's job
+    (5.4) and a different status."""
     gaps: tuple[str, ...] = ()
     """Languages of fences this build could not read because their grammar is
     not installed — sorted, unique. The publication folds these into the
@@ -166,8 +191,49 @@ def extract_symbols(kir: KirDocument, chunks: Sequence[Chunk], *, doc_path: str)
     used: dict[tuple[str, str], SymbolRef] = {}
     gaps: set[str] = set()
     warnings: list[str] = []
+    named: set[tuple[str, str]] = set()
     for node in kir.nodes:
+        if node.spans:
+            # What the prose names as code. Every prefix of a span's command run
+            # is offered, and one naming per command per chunk is kept: the
+            # chunk is the site a reader is sent to, so a second span in the
+            # same chunk says nothing new (roadmap 5.23).
+            start = _source_line(node.src.lines if node.src else None)
+            anchor = anchor_of(node, by_id, anchors)
+            for span in node.spans:
+                for prefix in command_prefixes(named_command(span)):
+                    if (prefix, anchor) in named:
+                        continue
+                    named.add((prefix, anchor))
+                    used[(CLI_LANGUAGE, f"{prefix}@{anchor}")] = SymbolRef(
+                        CLI_LANGUAGE, prefix, COMMAND_KIND, CODE_SPAN, start, anchor
+                    )
         if node.kind is NodeKind.CODE_BLOCK:
+            if node.text:
+                start = _source_line(node.src.lines if node.src else None)
+                invocations = read_session(node.text, node.lang)
+                if invocations:
+                    # A prompt line demonstrates every prefix of its command run,
+                    # once per chunk; which prefix is the command is the corpus's
+                    # call at resolution (roadmap 5.23).
+                    anchor = anchor_of(node, by_id, anchors)
+                    shown: set[str] = set()
+                    for invocation in invocations:
+                        line = start + 1 + invocation.row if start else 0
+                        for prefix in command_prefixes(invocation.run):
+                            if prefix in shown:
+                                continue
+                            shown.add(prefix)
+                            found.append(
+                                SymbolRef(
+                                    CLI_LANGUAGE,
+                                    prefix,
+                                    COMMAND_KIND,
+                                    CONSOLE_SESSION,
+                                    line,
+                                    anchor,
+                                )
+                            )
             grammar = grammar_for(node.lang)
             if grammar is None or not node.text:
                 continue
@@ -211,11 +277,21 @@ def extract_symbols(kir: KirDocument, chunks: Sequence[Chunk], *, doc_path: str)
                     grammar.language, use.name, use.kind, CODE_FENCE, line, anchor
                 )
         elif node.kind is NodeKind.HEADING and node.text:
+            line = _source_line(node.src.lines if node.src else None)
+            for prefix in command_prefixes(named_heading(node.text)):
+                # A heading that *is* a run of shell words names a command the
+                # way a CLI reference page does (`### uv tool install`).
+                anchor = anchor_of(node, by_id, anchors)
+                if (prefix, anchor) in named:
+                    continue
+                named.add((prefix, anchor))
+                used[(CLI_LANGUAGE, f"{prefix}@{anchor}")] = SymbolRef(
+                    CLI_LANGUAGE, prefix, COMMAND_KIND, HEADING, line, anchor
+                )
             subject = heading_subject(node.text)
             if subject is None:
                 continue
             term, direct = subject
-            line = _source_line(node.src.lines if node.src else None)
             found.append(
                 SymbolRef(
                     DOC_LANGUAGE,

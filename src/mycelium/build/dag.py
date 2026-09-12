@@ -72,8 +72,10 @@ __all__ = [
     "encode_parse_artifact",
 ]
 
-PARSE_STAGE_VERSION: Final = 1
-"""Bump when the Markdown → KIR mapping changes output for unchanged input."""
+PARSE_STAGE_VERSION: Final = 2
+"""Bump when the Markdown → KIR mapping changes output for unchanged input.
+
+2 at roadmap 5.23: KIR nodes carry their inline code spans (ADR-0094)."""
 
 CHUNK_STAGE_VERSION: Final = 2
 """Bump when packing, anchoring, or token counting changes output for unchanged input."""
@@ -81,7 +83,7 @@ CHUNK_STAGE_VERSION: Final = 2
 ASSEMBLE_STAGE_VERSION: Final = 1
 """Bump when Document-record derivation (title, stats, trust, …) changes."""
 
-EXTRACT_STAGE_VERSION: Final = 6
+EXTRACT_STAGE_VERSION: Final = 7
 """Bump when link or symbol extraction changes output for unchanged input.
 
 v5 to v6: a heading defines the name it is *about* rather than only the name

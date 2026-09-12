@@ -433,10 +433,13 @@ def test_search_related_asks_for_the_graph_leg_the_planner_would_withhold(
     off by default and the plan would not ask for it either (ADR-0083)."""
     seeded(tmp_path)
     run_build(tmp_path)
-    plain = invoke("search", "retry policy", "--path", str(tmp_path), "--explain")
+    # A question, not a bare phrase: since roadmap 5.23 `retry policy` has a
+    # command's shape and plans as one (ADR-0094); this test is about the default.
+    question = "how do failed deliveries retry"
+    plain = invoke("search", question, "--path", str(tmp_path), "--explain")
     assert "plan: natural-language -> lexical" in plain.stdout
 
-    related = invoke("search", "retry policy", "--path", str(tmp_path), "--related", "--explain")
+    related = invoke("search", question, "--path", str(tmp_path), "--related", "--explain")
     assert related.exit_code == ExitCode.OK
     assert "plan: relationship -> lexical" in related.stdout
     assert "asked for with --related" in related.stdout
