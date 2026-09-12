@@ -97,6 +97,22 @@ Issues = "https://github.com/danielPoloWork/mycelium-os/issues"
 # ruff, mypy) and uv.lock ships alongside it — this is what flips CI's bootstrap probe to
 # ready=true, activating the build/lint/benchmark jobs.
 [dependency-groups]
+# The PDF renderer for `tools/build_ingested_corpus.py --render`, in a group of its own and
+# deliberately **not** in `dev` (roadmap 5.27, ADR-0098). It is 62.5 MB installed — a whole
+# typesetter in one wheel — and CI never renders: rendering is a one-time provenance act, and
+# every job in the matrix would carry those bytes to run `--check`, which reads the committed
+# PDFs and needs nothing. So a routine `uv sync --all-extras --dev` still removes it, by
+# design, and one documented command puts it back:
+#
+#     uv sync --group render
+#
+# Pinned exactly, and to a version read out of the corpus rather than chosen: every committed
+# PDF carries `Creator: Typst 0.15.0` in its own metadata, and
+# `tests/test_eval_ingested_corpus.py` asserts the two agree, so the pin and the artifacts
+# cannot drift apart. The bytes still are not reproducible — typst stamps a timestamp, measured
+# at ADR-0039 — but the *typesetter* is, which is what governs layout and the text layer a
+# parser reads back.
+render = ["typst==0.15.0"]
 dev = [
     "hatch>=1.13",
     "pytest>=8.3",
@@ -217,13 +233,14 @@ files = ["src", "contrib/chats/src"]
 # Optional dependencies loaded behind a runtime guard, none of which ship stubs. Their
 # surface is narrow and checked by tests instead.
 #
-# `typst` is the odd one and the reason this list grew at roadmap 4.43: it is declared
-# *nowhere* — not a dependency, not an extra — because it is a generator-only tool a
-# maintainer installs by hand to re-render the PDF fixtures, guarded by a try/except that
-# names the install command. So it is present on a machine that has rendered them and
-# absent everywhere else, including CI. That asymmetry is worth stating rather than
-# smoothing: `mypy --strict tools` passed locally and failed in CI on this one import, so
-# the local loop is a superset of CI only where the two environments agree (ADR-0071).
+# `typst` is the odd one and the reason this list grew at roadmap 4.43. It is now *declared*
+# — the `render` dependency group above, pinned (roadmap 5.27, ADR-0098) — but it is still
+# not installed by `uv sync --all-extras --dev`, so it is present on a machine that has
+# rendered the PDF fixtures and absent everywhere else, including CI. The override stays for
+# that reason and not for the old one: the asymmetry is deliberate now rather than an
+# omission. It is worth stating rather than smoothing, because `mypy --strict tools` passed
+# locally and failed in CI on this one import — the local loop is a superset of CI only where
+# the two environments agree (ADR-0071).
 [[tool.mypy.overrides]]
 module = [
     "onnxruntime.*",

@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The PDF renderer is declared and pinned** (roadmap 5.27, [ADR-0098](docs/adr/0098-declare-the-renderer-pin-it-to-what-the-artifacts-say.md)).
+  `tools/build_ingested_corpus.py --render` compiles the third corpus's PDFs with the `typst`
+  package, which was declared nowhere — not a dependency, not an extra, not in `uv.lock` —
+  so a routine `uv sync --all-extras --dev` removed it and three sessions in four days
+  reinstalled it by hand. It is now `[dependency-groups] render = ["typst==0.15.0"]`,
+  installed with `uv sync --group render` and still **left out of the default sync on
+  purpose**: it is 62.5 MB and CI never renders. The pin is read out of the corpus rather
+  than chosen — every committed PDF says `Creator: Typst 0.15.0` — and a test asserts the
+  two agree, so the pin and the artifacts cannot drift. `--render` now refuses before
+  writing anything when a PDF is due and the renderer is absent, naming the command, and
+  prints the version it used. No runtime dependency changes.
+
 - **`tools/measure_projection_cost.py` reports per case, and names any case that scores
   above its own source** (roadmap 5.26, [ADR-0097](docs/adr/0097-a-twin-case-that-outscores-its-source-is-the-defect-not-the-fall.md)).
   The twin corpus exists to measure what projection costs retrieval, and the comparison was

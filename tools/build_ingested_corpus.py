@@ -41,9 +41,13 @@ evidence, and the order is the record of how it got there (roadmap 4.26,
 ADR-0056).
 
 **Rendering.** pandoc writes the DOCX and the HTML. For PDF it writes typst
-markup, which the `typst` package compiles — chosen because it is one pip install
+markup, which the `typst` package compiles — chosen because it is one install
 with no LaTeX distribution behind it, and because a PDF has to come from a real
 typesetter if the text layer it produces is going to resemble a real document's.
+That package is declared in the `render` dependency group and pinned, and it is
+**not** part of `uv sync --all-extras --dev` (roadmap 5.27, ADR-0098): it is
+62.5 MB and CI never renders. `uv sync --group render` installs it, and `--render`
+refuses before it writes anything if a PDF is due and it is absent.
 Images become their alt text first, uniformly for all three formats: the vendored
 corpus dropped the image files, so a reference to one is a dangling path that
 typst refuses and the other two writers silently keep.
@@ -84,6 +88,8 @@ re-measure behind it, not something a routine invocation should do by accident.
 
 import argparse
 import filecmp
+import importlib.metadata
+import importlib.util
 import json
 import re
 import shutil
@@ -324,11 +330,10 @@ def render(source: Path, destination: Path, fmt: str, *, typst_root: Path) -> No
     if fmt == "pdf":
         markup = destination.with_suffix(".typ")
         _pandoc(text, markup, "typst")
-        try:
-            import typst
-        except ImportError as error:  # pragma: no cover - a generator-only dependency
-            msg = "PDF rendering needs the `typst` package: pip install typst"
-            raise SystemExit(msg) from error
+        # `require_typst` has already run and exited if this import would fail;
+        # it stays local because the module must import on a machine without it.
+        import typst
+
         typst.compile(str(markup), output=str(destination), root=str(typst_root))
         markup.unlink()
         return
@@ -355,6 +360,28 @@ def _pandoc(text: str, destination: Path, writer: str) -> None:
         raise SystemExit(msg)
 
 
+def require_typst(pending_pdfs: int) -> str:
+    """The renderer's version, or exit naming the command that installs it.
+
+    Called before the first byte is written rather than at the first PDF, which
+    is where the import used to fail — after pandoc had already produced several
+    DOCX and HTML files, leaving a half-rendered provenance act behind. A
+    generator-only dependency is exactly the kind a maintainer meets once every
+    few months, so the message has to be the command and not the package name
+    (roadmap 5.27, ADR-0098).
+    """
+    if not pending_pdfs:
+        return ""
+    if importlib.util.find_spec("typst") is None:  # pragma: no cover - generator-only
+        msg = (
+            f"{pending_pdfs} PDF(s) to render and the `typst` package is not installed.\n"
+            "It is declared in the `render` dependency group and left out of the default "
+            "sync on purpose (62.5 MB; CI never renders):\n\n    uv sync --group render"
+        )
+        raise SystemExit(msg)
+    return importlib.metadata.version("typst")
+
+
 def render_sources(sources: Path) -> list[str]:
     """Render what the plan asks for and disk does not already have.
 
@@ -364,8 +391,21 @@ def render_sources(sources: Path) -> list[str]:
     Returns the documents actually rendered, so a caller can report exactly what
     a provenance act touched.
     """
+    plan = sorted(assignment().items())
+    pending = [
+        (relative, fmt)
+        for relative, fmt in plan
+        if not (sources / Path(relative).relative_to("docs")).with_suffix(_EXTENSION[fmt]).is_file()
+    ]
+    version = require_typst(sum(1 for _, fmt in pending if fmt == "pdf"))
+    if version:
+        # A provenance act says what made the bytes. The PDFs carry it too —
+        # typst writes `Creator: Typst <version>` into each one — so this is the
+        # operator's copy of a fact the artifact already records (ADR-0098).
+        print(f"rendering {sum(1 for _, f in pending if f == 'pdf')} PDF(s) with typst {version}")
+
     written: list[str] = []
-    for relative, fmt in sorted(assignment().items()):
+    for relative, fmt in plan:
         stem = sources / Path(relative).relative_to("docs")
         target = stem.with_suffix(_EXTENSION[fmt])
         if target.is_file():

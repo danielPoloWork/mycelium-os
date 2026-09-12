@@ -69,6 +69,21 @@ python tools/build_ingested_corpus.py      # the third corpus's evidence documen
 python tools/build_ingested_cases.py       # ...and the judgements carried onto them
 ```
 
+Those four ingest and carry; none of them renders. Re-rendering the third corpus's binary
+sources is `--render`, a one-time provenance act, and it needs pandoc plus the pinned PDF
+renderer — which is declared in its own dependency group and deliberately left out of the
+default sync, because it is 62.5 MB and CI never renders
+([ADR-0098](../docs/adr/0098-declare-the-renderer-pin-it-to-what-the-artifacts-say.md)):
+
+```bash
+uv sync --group render                              # the pinned typst, 62.5 MB
+python tools/build_ingested_corpus.py --render      # a provenance act, not a refresh
+```
+
+`--render` refuses before writing anything if a PDF is due and the renderer is absent, and
+prints the version it used. A routine `uv sync --all-extras --dev` removes it again, by
+design.
+
 The judgments live in those scripts as data, so every anchor is validated against a real
 build before a set is written.
 
