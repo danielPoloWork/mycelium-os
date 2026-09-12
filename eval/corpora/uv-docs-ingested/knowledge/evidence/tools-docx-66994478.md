@@ -277,7 +277,7 @@ For more details on requesting [Python version](../concepts/python-versions.md#r
 
 ### Legacy Windows Scripts
 
-Tools also support running [legacy setuptools scripts](https://packaging.python.org/en/latest/guides/distributing-packages-using-setuptools/#scripts). These scripts are available via $(uv tool dir)\<tool-name>\Scripts when installed.
+Tools also support running [legacy setuptools scripts](https://packaging.python.org/en/latest/guides/distributing-packages-using-setuptools/#scripts). These scripts are available via $(uv tool dir)\\\<tool-name>\\Scripts when installed.
 
 Currently only legacy scripts with the .ps1, .cmd, and .bat extensions are supported.
 

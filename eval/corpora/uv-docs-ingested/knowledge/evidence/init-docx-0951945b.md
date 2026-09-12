@@ -33,7 +33,7 @@ Applications are the default target for uv init, but can also be specified with 
 $ uv init example-app
 ```
 
-The source code lives in a src directory with a module directory and an __init__.py file:
+The source code lives in a src directory with a module directory and an \_\_init\_\_.py file:
 
 ```
 $ tree example-app

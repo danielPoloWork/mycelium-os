@@ -287,10 +287,10 @@ If you need to remove uv from your system, follow these steps:
 
 -
 
-  Clean up stored data (optional): `$ uv cache clean $ rm -r "$(uv python dir)" $ rm -r "$(uv tool dir)"`!!! tip Before removing the binaries, you may want to remove any data that uv has stored. See the [storage reference](../reference/storage.md) for details on where uv stores data.
+  Clean up stored data (optional): `$ uv cache clean $ rm -r "$(uv python dir)" $ rm -r "$(uv tool dir)"`!!! tip Before removing the binaries, you may want to remove any data that uv has stored. See the \[storage reference\](../reference/storage.md) for details on where uv stores data.
 -
 
-  Remove the uv, uvx, and uvw binaries: === "macOS and Linux" ```console $ rm ~/.local/bin/uv ~/.local/bin/uvx ``` === "Windows" ```pwsh-session PS> rm $HOME\.local\bin\uv.exe PS> rm $HOME\.local\bin\uvx.exe PS> rm $HOME\.local\bin\uvw.exe ```!!! note Prior to 0.5.0, uv was installed into `~/.cargo/bin`. The binaries can be removed from there to uninstall. Upgrading from an older version will not automatically remove the binaries from `~/.cargo/bin`.
+  Remove the uv, uvx, and uvw binaries: === "macOS and Linux" \`\`\`console $ rm \~/.local/bin/uv \~/.local/bin/uvx \`\`\` === "Windows" \`\`\`pwsh-session PS> rm $HOME\\.local\\bin\\uv.exe PS> rm $HOME\\.local\\bin\\uvx.exe PS> rm $HOME\\.local\\bin\\uvw.exe \`\`\`!!! note Prior to 0.5.0, uv was installed into \`\~/.cargo/bin\`. The binaries can be removed from there to uninstall. Upgrading from an older version will not automatically remove the binaries from \`\~/.cargo/bin\`.
 
 ## Next steps
 

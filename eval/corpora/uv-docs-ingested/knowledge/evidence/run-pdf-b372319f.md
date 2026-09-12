@@ -13,17 +13,17 @@ $ uv run python -c "import example"
 When using run, uv will ensure that the project environment is up-to-date before running the given
 command.
 The given command can be provided by the project environment or exist outside of it, e.g.:
-$ # Presuming the project provides `example-cli`
+$ # Presuming the project provides \`example-cli\`
 $ uv run example-cli foo
-$ # Running a `bash` script that requires the project to be available
+$ # Running a \`bash\` script that requires the project to be available
 $ uv run bash scripts/foo.sh
 Requesting additional dependencies
 Additional dependencies or different versions of dependencies can be requested per invocation.
 The --with option is used to include a dependency for the invocation, e.g., to request a different
 version of httpx:
-$ uv run --with httpx==0.26.0 python -c "import httpx; print(httpx.__version__)"
+$ uv run --with httpx==0.26.0 python -c "import httpx; print(httpx.\_\_version\_\_)"
 0.26.0
-$ uv run --with httpx==0.25.0 python -c "import httpx; print(httpx.__version__)"
+$ uv run --with httpx==0.25.0 python -c "import httpx; print(httpx.\_\_version\_\_)"
 0.25.0
 The requested version will be respected regardless of the project's requirements. For example, even
 if the project requires httpx==0.24.0, the output above would be the same.
@@ -32,19 +32,19 @@ Scripts that declare inline metadata are automatically executed in environments 
 project. See the scripts guide for more details.
 For example, given a script:
 \# /// script
-\# dependencies = [
+\# dependencies = \[
 \# "httpx",
-\# ]
+\# \]
 \# ///
 import httpx
 resp = httpx.get("https://peps.python.org/api/peps.json")
 data = resp.json()
-print([(k, v["title"]) for k, v in data.items()][:10])
+print(\[(k, v\["title"\]) for k, v in data.items()\]\[:10\])
 The invocation uv run example.py would run isolated from the project with only the given
 dependencies listed.
 Legacy scripts on Windows
 Support is provided for legacy setuptools scripts. These types of scripts are additional files installed
-by setuptools in .venv\Scripts.
+by setuptools in .venv\\Scripts.
 Currently only legacy scripts with the .ps1, .cmd, and .bat extensions are supported.
 
 For example, below is an example running a Command Prompt script.

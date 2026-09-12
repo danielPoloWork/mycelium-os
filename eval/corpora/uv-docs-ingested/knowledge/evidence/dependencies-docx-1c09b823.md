@@ -229,7 +229,7 @@ To add Python package from a specific index, use the --index option:
 $ uv add torch --index pytorch=https://download.pytorch.org/whl/cpu
 ```
 
-uv will store the index in [[tool.uv.index]] and add a [tool.uv.sources] entry:
+uv will store the index in \[\[tool.uv.index\]\] and add a \[tool.uv.sources\] entry:
 
 ```
 [project]

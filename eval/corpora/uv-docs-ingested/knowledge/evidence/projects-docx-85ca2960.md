@@ -41,7 +41,7 @@ uv will create the following files and directories:
         └── __init__.py
 ```
 
-The pyproject.toml defines a hello-world entrypoint referring to a simple "Hello world" program in __init__.py. Try it out with uv run:
+The pyproject.toml defines a hello-world entrypoint referring to a simple "Hello world" program in \_\_init\_\_.py. Try it out with uv run:
 
 ```
 $ uv run hello-world

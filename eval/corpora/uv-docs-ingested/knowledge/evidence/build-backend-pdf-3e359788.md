@@ -8,7 +8,7 @@ source_digest: "sha256:3e359788f1d27e029161634c867aee4b13838b16b13c170da9516e904
 The uv build backend
 A build backend transforms a source tree (i.e., a directory) into a source distribution or a wheel.
 uv supports all build backends (as specified by PEP 517), but also provides a native build backend
-(uv_build) that integrates tightly with uv to improve performance and user experience.
+(uv\_build) that integrates tightly with uv to improve performance and user experience.
 Choosing a build backend
 The uv build backend is a great choice for most Python projects. It has reasonable defaults, with the
 goal of requiring zero configuration for most users, but provides flexible configuration to
@@ -21,18 +21,18 @@ required to build a library with extension modules.
 While the backend supports a number of options for configuring your project
 structure, when build scripts or
 a more flexible project layout are required, consider using the
-[hatchling](https://hatch.pypa.io/latest/config/build/#build-system) build backend
+\[hatchling\](https://hatch.pypa.io/latest/config/build/#build-system) build backend
 instead.
 Using the uv build backend
-To use uv as a build backend in an existing project, add uv_build to the [build-system] section in
+To use uv as a build backend in an existing project, add uv\_build to the \[build-system\] section in
 your pyproject.toml:
-[build-system]
-requires = ["uv_build>=0.12.7,<0.13"]
-build-backend = "uv_build"
+\[build-system\]
+requires = \["uv\_build>=0.12.7,\<0.13"\]
+build-backend = "uv\_build"
 !!! note
-The uv build backend follows the same [versioning policy](../reference/policies/
+The uv build backend follows the same \[versioning policy\](../reference/policies/
 versioning.md)
-as uv. Including an upper bound on the `uv_build` version ensures that your package
+as uv. Including an upper bound on the \`uv\_build\` version ensures that your package
 continues to
 build correctly as new versions are released.
 To create a new project that uses the uv build backend, use uv init:
@@ -40,11 +40,11 @@ $ uv init
 When the project is built, e.g., with uv build, the uv build backend will be used to create the source
 distribution and wheel.
 Bundled build backend
-The build backend is published as a separate package (uv_build) that is optimized for portability and
+The build backend is published as a separate package (uv\_build) that is optimized for portability and
 small binary size. However, the uv executable also includes a copy of the build backend, which will
 be used during builds performed by uv, e.g., during uv build, if its version is compatible with the
-uv_build requirement. If it's not compatible, a compatible version of the uv_build package will be
-used. Other build frontends, such as python -m build, will always use the uv_build package,
+uv\_build requirement. If it's not compatible, a compatible version of the uv\_build package will be
+used. Other build frontends, such as python -m build, will always use the uv\_build package,
 typically choosing the latest compatible version.
 
 Modules
@@ -136,7 +136,7 @@ To determine which files to include in a source distribution, uv first adds the 
 directories, then removes the excluded files and directories. This means that exclusions always take
 precedence over inclusions.
 
-By default, uv excludes __pycache__, *.pyc, and *.pyo.
+By default, uv excludes \_\_pycache\_\_, \*.pyc, and \*.pyo.
 When building a source distribution, the following files and directories are included:
 • The pyproject.toml. If uv detects TOML 1.1-only syntax, it issues a warning and automatically
 enables the toml-backwards-compatibility preview feature: the pyproject.toml is reformatted
@@ -162,20 +162,20 @@ must either be under the module root or in the appropriate data directory. Most 
 data in the module root alongside the source code.
 !!! tip
 When using the uv build backend through a frontend that is not uv, such as pip or
-`python -m build`, debug logging can be enabled through environment variables with
-`RUST_LOG=uv=debug` or `RUST_LOG=uv=verbose`. When used through uv, the uv build
+\`python -m build\`, debug logging can be enabled through environment variables with
+\`RUST\_LOG=uv=debug\` or \`RUST\_LOG=uv=verbose\`. When used through uv, the uv build
 backend shares
 the verbosity level of uv.
 Include and exclude syntax
-Includes are anchored, which means that pyproject.toml includes only <root>/pyproject.toml
-and not <root>/bar/pyproject.toml. To recursively include all files under a directory, use a /**
-suffix, e.g. src/**. Recursive inclusions are also anchored, e.g., assets/**/sample.csv includes all
-sample.csv files in <root>/assets or any of its children.
+Includes are anchored, which means that pyproject.toml includes only \<root>/pyproject.toml
+and not \<root>/bar/pyproject.toml. To recursively include all files under a directory, use a /\*\*
+suffix, e.g. src/\*\*. Recursive inclusions are also anchored, e.g., assets/\*\*/sample.csv includes all
+sample.csv files in \<root>/assets or any of its children.
 !!! note
-For performance and reproducibility, avoid patterns without an anchor such as `**/
-sample.csv`.
-Excludes are not anchored, which means that __pycache__ excludes all directories named
-__pycache__ regardless of its parent directory. All children of an exclusion are excluded as well. To
-anchor a directory, use a / prefix, e.g., /dist will exclude only <root>/dist.
+For performance and reproducibility, avoid patterns without an anchor such as \`\*\*/
+sample.csv\`.
+Excludes are not anchored, which means that \_\_pycache\_\_ excludes all directories named
+\_\_pycache\_\_ regardless of its parent directory. All children of an exclusion are excluded as well. To
+anchor a directory, use a / prefix, e.g., /dist will exclude only \<root>/dist.
 All fields accepting patterns use the reduced portable glob syntax from PEP 639, with the addition
 that characters can be escaped with a backslash.

@@ -8,12 +8,12 @@ source_digest: "sha256:bcd8d846efa929d6b40a592a8fbc6f2dfb4a548a2d8655f00fad43379
 HTTP credentials
 uv supports credentials over HTTP when querying package registries.
 Authentication can come from the following sources, in order of precedence:
-• The URL, e.g., https://[redacted: credentials-in-url]@<hostname>/...
+• The URL, e.g., https://\[redacted: credentials-in-url\]@\<hostname>/...
 • A netrc configuration file
 • The uv credentials store
 • A keyring provider (off by default)
 Authentication may be used for hosts specified in the following contexts:
-• [index]
+• \[index\]
 • index-url
 • extra-index-url
 • find-links
@@ -21,13 +21,13 @@ Authentication may be used for hosts specified in the following contexts:
 netrc files
 .netrc files are a long-standing plain text format for storing credentials on a system.
 Reading credentials from .netrc files is always enabled. The target file path will be loaded from the
-NETRC environment variable if defined, falling back to ~/.netrc if not.
+NETRC environment variable if defined, falling back to \~/.netrc if not.
 The uv credentials store
 uv can read and write credentials from a store using the uv auth commands.
-Credentials are stored in a plaintext file in uv's state directory, e.g., ~/.local/share/uv/
+Credentials are stored in a plaintext file in uv's state directory, e.g., \~/.local/share/uv/
 credentials/credentials.toml on Unix. This file is currently not intended to be edited manually.
 !!! note
-A secure, system native storage mechanism is in [preview](../preview.md) — it is
+A secure, system native storage mechanism is in \[preview\](../preview.md) — it is
 still
 experimental and being actively developed. In the future, this will become the
 default storage
@@ -40,7 +40,7 @@ Linux, it uses the DBus-based Secret Service API.
 Currently, uv only searches the native store for credentials it has added to the
 secret store —
 it will not retrieve credentials persisted by other applications.
-Set `UV_PREVIEW_FEATURES=native-auth` to use this storage mechanism.
+Set \`UV\_PREVIEW\_FEATURES=native-auth\` to use this storage mechanism.
 Keyring providers
 A keyring provider is a concept from pip allowing retrieval of credentials from an interface
 matching the popular keyring Python package.

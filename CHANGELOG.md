@@ -10,6 +10,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Fixed
+
+- **Projected prose no longer asserts inline syntax the source did not author** (roadmap 5.28,
+  [ADR-0099](docs/adr/0099-ask-the-compiler-whether-the-prose-survived.md)). An HTML source saying
+  `<code>__token__</code>` was flattened to text, the compiler read strong emphasis, and the
+  indexed word became `token`; `__init__.py` became `init.py`; a PDF text layer showing
+  `[preview](../preview.md)` lost the target. The projector now asks the build's own reader
+  whether each block it writes reads back as the characters it was handed — the invariant
+  roadmap 5.25 built for code spans and never applied to the prose around them — and escapes
+  only the blocks that fail. 2 657 of 2 699 blocks on the vendored ingested corpus pay nothing;
+  34 are repaired. The escape covers the source's own text and never the links and code spans
+  the projector deliberately writes. Eight blocks still do not survive, all of them leading
+  whitespace that no backslash can escape; they are counted on the projection record
+  (`escaped`, `unreadable`) and filed as roadmap 5.35.
+
 ### Changed
 
 - **The PDF renderer is declared and pinned** (roadmap 5.27, [ADR-0098](docs/adr/0098-declare-the-renderer-pin-it-to-what-the-artifacts-say.md)).

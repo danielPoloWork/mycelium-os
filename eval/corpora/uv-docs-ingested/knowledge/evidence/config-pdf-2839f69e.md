@@ -10,7 +10,7 @@ Python version requirement
 Projects may declare the Python versions supported by the project in the project.requires-python
 field of the pyproject.toml.
 It is recommended to set a requires-python value:
-[project]
+\[project\]
 name = "example"
 version = "0.1.0"
 requires-python = ">=3.12"
@@ -22,28 +22,28 @@ Entry points are the official term for an installed package to advertise interfa
 • Graphical user interfaces
 • Plugin entry points
 !!! important
-Using the entry point tables requires a [build system](#build-systems) to be defined.
+Using the entry point tables requires a \[build system\](#build-systems) to be defined.
 Command-line interfaces
-Projects may define command line interfaces (CLIs) for the project in the [project.scripts] table
+Projects may define command line interfaces (CLIs) for the project in the \[project.scripts\] table
 of the pyproject.toml.
 For example, to declare a command called hello that invokes the hello function in the example
 module:
-[project.scripts]
+\[project.scripts\]
 hello = "example:hello"
 Then, the command can be run from a console:
 $ uv run hello
 Graphical user interfaces
-Projects may define graphical user interfaces (GUIs) for the project in the [project.gui-scripts]
+Projects may define graphical user interfaces (GUIs) for the project in the \[project.gui-scripts\]
 table of the pyproject.toml.
 !!! important
-These are only different from [command-line interfaces](#command-line-interfaces) on
+These are only different from \[command-line interfaces\](#command-line-interfaces) on
 Windows, where
 they are wrapped by a GUI executable so they can be started without a console. On
 other platforms,
 they behave the same.
 For example, to declare a command called hello that invokes the app function in the example
 module:
-[project.gui-scripts]
+\[project.gui-scripts\]
 hello = "example:app"
 
 Plugin entry points
@@ -134,13 +134,13 @@ recommended
 for use for a single project in CI or Docker images.
 !!! note
 
-By default, uv does not read the `VIRTUAL_ENV` environment variable during project
+By default, uv does not read the \`VIRTUAL\_ENV\` environment variable during project
 operations.
-A warning will be displayed if `VIRTUAL_ENV` is set to a different path than the
+A warning will be displayed if \`VIRTUAL\_ENV\` is set to a different path than the
 project's
-environment. The `--active` flag can be used to opt-in to respecting `VIRTUAL_ENV`.
+environment. The \`--active\` flag can be used to opt-in to respecting \`VIRTUAL\_ENV\`.
 The
-`--no-active` flag can be used to silence the warning.
+\`--no-active\` flag can be used to silence the warning.
 Build isolation
 By default, uv builds all packages in isolated virtual environments alongside their declared build
 dependencies, as per PEP 517.
@@ -170,77 +170,77 @@ Augmenting build dependencies
 To augment the list of build dependencies for a specific package, add it to the extra-build￾dependencies list in your pyproject.toml.
 For example, to build cchardet with cython as an additional build dependency, include the
 following in your pyproject.toml:
-[project]
+\[project\]
 name = "project"
 version = "0.1.0"
 description = "..."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["cchardet"]
+dependencies = \["cchardet"\]
 
-[tool.uv.extra-build-dependencies]
-cchardet = ["cython"]
+\[tool.uv.extra-build-dependencies\]
+cchardet = \["cython"\]
 To ensure that a build dependency matches the version of the package that is or will be installed in
 the project environment, set match-runtime = true in the extra-build-dependencies table. For
 example, to build deepspeed with torch as an additional build dependency, include the following in
 your pyproject.toml:
-[project]
+\[project\]
 name = "project"
 version = "0.1.0"
 description = "..."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["deepspeed", "torch"]
-[tool.uv.extra-build-dependencies]
-deepspeed = [{ requirement = "torch", match-runtime = true }]
+dependencies = \["deepspeed", "torch"\]
+\[tool.uv.extra-build-dependencies\]
+deepspeed = \[{ requirement = "torch", match-runtime = true }\]
 This will ensure that deepspeed is built with the same version of torch that is installed in the
 project environment.
 !!! tip
-Pre-built `deepspeed` wheels are also available from the
-[Astral GPU indexes](../../guides/integration/pytorch.md#installing-gpu-enabled￾pytorch-extensions).
+Pre-built \`deepspeed\` wheels are also available from the
+\[Astral GPU indexes\](../../guides/integration/pytorch.md#installing-gpu-enabled￾pytorch-extensions).
 Similarly, to build flash-attn with torch as an additional build dependency, include the following
 in your pyproject.toml:
-[project]
+\[project\]
 name = "project"
 version = "0.1.0"
 description = "..."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["flash-attn", "torch"]
-[tool.uv.extra-build-dependencies]
-flash-attn = [{ requirement = "torch", match-runtime = true }]
-[tool.uv.extra-build-variables]
-flash-attn = { FLASH_ATTENTION_SKIP_CUDA_BUILD = "TRUE" }
+dependencies = \["flash-attn", "torch"\]
+\[tool.uv.extra-build-dependencies\]
+flash-attn = \[{ requirement = "torch", match-runtime = true }\]
+\[tool.uv.extra-build-variables\]
+flash-attn = { FLASH\_ATTENTION\_SKIP\_CUDA\_BUILD = "TRUE" }
 !!! note
-The `FLASH_ATTENTION_SKIP_CUDA_BUILD` environment variable enables `flash-attn` to be
+The \`FLASH\_ATTENTION\_SKIP\_CUDA\_BUILD\` environment variable enables \`flash-attn\` to be
 resolved from a pre-built wheel, rather than attempting to build it from source,
 which
 requires access to the CUDA development toolkit.
 If the CUDA toolkit is available during resolution, we recommend omitting the
-`FLASH_ATTENTION_SKIP_CUDA_BUILD` variable, as setting
-`FLASH_ATTENTION_SKIP_CUDA_BUILD`
-to `TRUE` can lead to an incompatible install if no compatible pre-built wheel is
+\`FLASH\_ATTENTION\_SKIP\_CUDA\_BUILD\` variable, as setting
+\`FLASH\_ATTENTION\_SKIP\_CUDA\_BUILD\`
+to \`TRUE\` can lead to an incompatible install if no compatible pre-built wheel is
 available
 for the target PyTorch version, GPU version, and platform.
 
 !!! tip
-Pre-built `flash-attn` wheels are also available from the
-[Astral GPU indexes](../../guides/integration/pytorch.md#installing-gpu-enabled￾pytorch-extensions).
-Similarly, deep_gemm follows the same pattern:
-[project]
+Pre-built \`flash-attn\` wheels are also available from the
+\[Astral GPU indexes\](../../guides/integration/pytorch.md#installing-gpu-enabled￾pytorch-extensions).
+Similarly, deep\_gemm follows the same pattern:
+\[project\]
 name = "project"
 version = "0.1.0"
 description = "..."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["deep_gemm", "torch"]
-[tool.uv.sources]
-deep_gemm = { git = "https://github.com/deepseek-ai/DeepGEMM" }
-[tool.uv.extra-build-dependencies]
-deep_gemm = [{ requirement = "torch", match-runtime = true }]
+dependencies = \["deep\_gemm", "torch"\]
+\[tool.uv.sources\]
+deep\_gemm = { git = "https://github.com/deepseek-ai/DeepGEMM" }
+\[tool.uv.extra-build-dependencies\]
+deep\_gemm = \[{ requirement = "torch", match-runtime = true }\]
 !!! tip
-Pre-built `deep_gemm` wheels are also available from the
-[Astral GPU indexes](../../guides/integration/pytorch.md#installing-gpu-enabled￾pytorch-extensions).
+Pre-built \`deep\_gemm\` wheels are also available from the
+\[Astral GPU indexes\](../../guides/integration/pytorch.md#installing-gpu-enabled￾pytorch-extensions).
 The use of extra-build-dependencies and extra-build-variables are tracked in the uv cache,
 such that changes to these settings will trigger a reinstall and rebuild of the affected packages. For
 example, in the case of flash-attn, upgrading the version of torch used in your project would
@@ -259,44 +259,44 @@ torch that is installed in the project environment. In this case, users should i
 version of torch that they intend to use in their project, and then augment the build dependencies
 with that version.
 For example, to build axolotl against torch==2.6.0, include the following in your pyproject.toml:
-[project]
+\[project\]
 name = "project"
 version = "0.1.0"
 description = "..."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["axolotl[deepspeed, flash-attn]", "torch==2.6.0"]
+dependencies = \["axolotl\[deepspeed, flash-attn\]", "torch==2.6.0"\]
 
-[tool.uv.extra-build-dependencies]
-axolotl = ["torch==2.6.0"]
-deepspeed = ["torch==2.6.0"]
-flash-attn = ["torch==2.6.0"]
+\[tool.uv.extra-build-dependencies\]
+axolotl = \["torch==2.6.0"\]
+deepspeed = \["torch==2.6.0"\]
+flash-attn = \["torch==2.6.0"\]
 Similarly, older versions of flash-attn did not declare static metadata, and thus would not have
 supported match-runtime = true out of the box. Unlike axolotl, though, flash-attn did not vary
 its dependencies based on dynamic properties of the build environment. As such, users could instead
 provide the flash-attn metadata upfront via the dependency-metadata setting, thereby forgoing
 the need to build the package during the dependency resolution phase. For example, to provide the
 flash-attn metadata upfront:
-[[tool.uv.dependency-metadata]]
+\[\[tool.uv.dependency-metadata\]\]
 name = "flash-attn"
 version = "2.6.3"
-requires-dist = ["torch", "einops"]
+requires-dist = \["torch", "einops"\]
 !!! tip
-To determine the package metadata for a package like `flash-attn`, navigate to the
+To determine the package metadata for a package like \`flash-attn\`, navigate to the
 appropriate Git repository,
-or look it up on [PyPI](https://pypi.org/project/flash-attn) and download the
+or look it up on \[PyPI\](https://pypi.org/project/flash-attn) and download the
 package's source distribution.
-The package requirements can typically be found in the `setup.py` or `setup.cfg`
+The package requirements can typically be found in the \`setup.py\` or \`setup.cfg\`
 file.
 (If the package includes a built distribution, you can unzip it to find the
-`METADATA` file; however, the presence
+\`METADATA\` file; however, the presence
 of a built distribution would negate the need to provide the metadata upfront, since
 it would already be available
 to uv.)
-The `version` field in `tool.uv.dependency-metadata` is optional for registry-based
+The \`version\` field in \`tool.uv.dependency-metadata\` is optional for registry-based
 dependencies (when omitted, uv will assume the metadata applies to all versions of
 the package),
-but _required_ for direct URL dependencies (like Git dependencies).
+but \_required\_ for direct URL dependencies (like Git dependencies).
 Disabling build isolation
 Installing packages without build isolation requires that the package's build dependencies are
 installed in the project environment prior to building the package itself.

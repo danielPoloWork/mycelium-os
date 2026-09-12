@@ -19,7 +19,7 @@ $ uv auth login example.com
 
 This will prompt for the credentials.
 
-The credentials can also be provided using the `--username` and `--password` options, or the `--token` option for services which use a __token__ or arbitrary username.
+The credentials can also be provided using the `--username` and `--password` options, or the `--token` option for services which use a \_\_token\_\_ or arbitrary username.
 
 !!! note
 
