@@ -11,9 +11,9 @@ It is best practice to declare dependencies in a static file instead of modifyin
 
 ## Using pyproject.toml
 
-The pyproject.toml file is the Python standard for defining configuration for a project.
+The `pyproject.toml` file is the Python standard for defining configuration for a project.
 
-To define project dependencies in a pyproject.toml file:
+To define project dependencies in a `pyproject.toml` file:
 
 ```
 [project]
@@ -23,7 +23,7 @@ dependencies = [
 ]
 ```
 
-To define optional dependencies in a pyproject.toml file:
+To define optional dependencies in a `pyproject.toml` file:
 
 ```
 [project.optional-dependencies]
@@ -33,15 +33,15 @@ cli = [
 ]
 ```
 
-Each of the keys defines an "extra", which can be installed using the --extra and --all-extras flags or package[<extra>] syntax. See the documentation on [installing packages](packages.md#installing-packages-from-files) for more details.
+Each of the keys defines an "extra", which can be installed using the `--extra` and `--all-extras` flags or `package[<extra>]` syntax. See the documentation on [installing packages](packages.md#installing-packages-from-files) for more details.
 
-See the official [pyproject.toml](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/) [guide](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/) for more details on getting started with a pyproject.toml.
+See the official [pyproject.toml](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/) [guide](https://packaging.python.org/en/latest/guides/writing-pyproject-toml/) for more details on getting started with a `pyproject.toml`.
 
 ## Using requirements.in
 
-It is also common to use a lightweight [requirements file format](https://pip.pypa.io/en/stable/reference/requirements-file-format/) to declare the dependencies for the project. Each requirement is defined on its own line. Commonly, this file is called requirements.in to distinguish it from requirements.txt which is used for the locked dependencies.
+It is also common to use a lightweight [requirements file format](https://pip.pypa.io/en/stable/reference/requirements-file-format/) to declare the dependencies for the project. Each requirement is defined on its own line. Commonly, this file is called `requirements.in` to distinguish it from `requirements.txt` which is used for the locked dependencies.
 
-To define dependencies in a requirements.in file:
+To define dependencies in a `requirements.in` file:
 
 ```
 httpx

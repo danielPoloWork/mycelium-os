@@ -32,6 +32,19 @@ anchor and every retrieval score where it was. Images are not rendered (a
 picture's target is a parser-internal reference, and its alt text is already
 prose) and tags need nothing (their ``#`` is already in the text).
 
+**An inline code span is syntax too** (roadmap 5.25, ADR-0096), and it comes back
+the same way a reference does — ``` `uv cache prune --ci` ``` around the very
+words the block's text already holds. The backticks are what a documentation
+corpus *names* a command with, so dropping them cost the ingested twin five
+commands in six against its Markdown original (ADR-0094). The compiler flattens a
+code span back to its content, so the block's text does not move here either;
+what changes is that the naming survives. A span that would overlap a reference
+is dropped in the reference's favour — a link carries an edge, a span carries
+emphasis — and so is one holding a line break, which CommonMark would fold into a
+space. **Only HTML carries them this far**: docling's DOCX backend reports a run's
+formatting without a monospace flag, and a PDF text layer never had one, so those
+two lanes are *reported* rather than guessed at.
+
 **A line that would open block structure is escaped, and only that**
 (roadmap 5.22, ADR-0093). KIR's text is verbatim, and a source whose upstream
 rendering flattened a code block into prose hands this module a paragraph whose
@@ -70,6 +83,7 @@ from dataclasses import dataclass
 from pathlib import PurePosixPath
 from typing import Final
 
+from mycelium.markdown.adapter import parse_markdown
 from mycelium.sdk.types import (
     KirDocument,
     KirNode,
@@ -112,6 +126,9 @@ promote the paragraph before it. Any run of ``-`` or ``=`` underlines; a break
 needs three."""
 _SLUG_STRIP: Final = re.compile(r"[^a-z0-9]+")
 
+_PROBE_DOC_ID: Final = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
+"""A fixed id for the round-trip probe below, so the check mints no identity."""
+
 
 @dataclass(frozen=True, slots=True)
 class Projection:
@@ -132,6 +149,15 @@ class Projection:
     """References that could not be placed: no label at all (an anchor around an
     image), or a label the block's text does not contain. Dropped as the whole
     class was before 5.18, and counted so the drop is visible rather than silent."""
+
+    spans: int = 0
+    """Inline code spans written back as code spans (roadmap 5.25)."""
+
+    spans_dropped: int = 0
+    """Spans that could not be placed: text the block does not contain, a span
+    holding a line break, or one overlapping a reference already rendered. Counted
+    for the same reason the reference drops are — a silent drop is the failure
+    this lane exists to make impossible."""
 
 
 def evidence_path(
@@ -190,6 +216,8 @@ def project(
         title=resolved,
         references=tally.carried,
         references_dropped=tally.dropped,
+        spans=tally.spans_carried,
+        spans_dropped=tally.spans_dropped,
     )
 
 
@@ -242,10 +270,12 @@ def _title_of(nodes: Sequence[KirNode], source_uri: str) -> str:
 
 @dataclass(slots=True)
 class _Tally:
-    """How many references the body carried, and how many it could not."""
+    """How much inline syntax the body carried back, and how much it could not."""
 
     carried: int = 0
     dropped: int = 0
+    spans_carried: int = 0
+    spans_dropped: int = 0
 
 
 def _blocks(kir: KirDocument, tally: "_Tally") -> Iterator[str]:
@@ -336,9 +366,7 @@ def _with_references(
     references = [
         child for child in children.get(node.id, ()) if child.kind in _CARRIED and child.target
     ]
-    if not references:
-        return text
-    out: list[str] = []
+    placements: list[tuple[int, int, str]] = []
     cursor = 0
     for reference in references:
         label = reference.text or ""
@@ -349,12 +377,149 @@ def _with_references(
         if in_cell and reference.kind is not NodeKind.LINK and label != reference.target:
             tally.dropped += 1
             continue
-        out.append(text[cursor:index])
-        out.append(_reference(reference, label))
+        placements.append((index, index + len(label), _reference(reference, label)))
         cursor = index + len(label)
         tally.carried += 1
+
+    spans = _span_placements(text, node, tally, taken=placements)
+    if spans:
+        spans = _spans_that_read_back(text, placements, spans, tally)
+    placements.extend(spans)
+    if not placements:
+        return text
+    return _apply(text, placements)
+
+
+def _apply(text: str, placements: Sequence[tuple[int, int, str]]) -> str:
+    """`text` with each placement's span replaced by its rendering, in order."""
+    out: list[str] = []
+    cursor = 0
+    for start, end, rendered in sorted(placements):
+        out.append(text[cursor:start])
+        out.append(rendered)
+        cursor = end
     out.append(text[cursor:])
     return "".join(out)
+
+
+def _spans_that_read_back(
+    text: str,
+    references: Sequence[tuple[int, int, str]],
+    spans: Sequence[tuple[int, int, str]],
+    tally: _Tally,
+) -> list[tuple[int, int, str]]:
+    """The spans the compiler reads back as exactly the words `text` already holds.
+
+    **The invariant, enforced rather than argued.** Roadmap 5.18 and 5.22 both
+    rest on the same promise — *the block's text does not move* — and both could
+    keep it by inspection, because a link label and a backslash escape are
+    inert to the reader that matters. A code span is not: it makes its content
+    literal, so wrapping words that Markdown was interpreting changes what the
+    compiler extracts. So the promise is *checked* here, by asking the compiler.
+
+    Measured on the vendored corpus, three spans in 1 226 fail it, and they are
+    the two shapes worth naming. ``__token__`` in projected prose is read as
+    emphasis and extracted as ``token``; wrapping it restores the underscores,
+    which is a **repair** — and one that moves a chunk's text, so it belongs to
+    an item that can re-bless the baselines rather than riding in here (roadmap
+    5.28). And a ``<pre><code>`` block that docling nests inside an inline group
+    arrives indistinguishable from an inline span — same label, same
+    ``code_language``, same ``content_layer``, measured — and one of them holds
+    a Markdown link whose target would become part of the extracted text.
+
+    The all-at-once path is one parse; the per-span retry runs only for a node
+    that fails it, which is three nodes in the corpus.
+    """
+    if _reads_back(text, _apply(text, [*references, *spans])):
+        return list(spans)
+    kept: list[tuple[int, int, str]] = []
+    for span in spans:
+        if _reads_back(text, _apply(text, [*references, *kept, span])):
+            kept.append(span)
+        else:
+            tally.spans_carried -= 1
+            tally.spans_dropped += 1
+    return kept
+
+
+def _reads_back(original: str, rendered: str) -> bool:
+    """Whether the compiler extracts the same words from both forms."""
+    return _extracted(rendered) == _extracted(original)
+
+
+def _extracted(markdown: str) -> str:
+    """What the compiler would index for this block — its *block* nodes' text.
+
+    The same reader the build uses, so the question is answered by the thing
+    whose answer matters rather than by a rule about Markdown. A fixed `doc_id`
+    keeps it a pure function; the block is parsed on its own, so any systematic
+    effect of parsing a fragment cancels between the two sides of the comparison.
+
+    Reference nodes are excluded, and getting that wrong is instructive: counting
+    them made *every* span in a block that also carries a link fail, because the
+    rendered side has a `link` node the bare-text side does not — 253 spans
+    dropped against 66 once the comparison asked the question it meant. A chunk's
+    text is its block nodes; a reference contributes an edge (ADR-0079), which is
+    not what this invariant is about.
+    """
+    parsed = parse_markdown(markdown, doc_id=_PROBE_DOC_ID)
+    return "\x00".join(node.text or "" for node in parsed.kir.nodes if node.kind not in _REFERENCES)
+
+
+def _span_placements(
+    text: str, node: KirNode, tally: _Tally, *, taken: Sequence[tuple[int, int, str]]
+) -> list[tuple[int, int, str]]:
+    """Where the node's inline code spans sit in `text` (roadmap 5.25, ADR-0096).
+
+    The same mechanism references use and for the same reason: KIR's locator is
+    line-grained (spec 03 §4), so a span carries its text and not its offset, and
+    the text is *found* from a cursor that advances with each placement — the
+    same word may be code twice in one paragraph.
+
+    A span that overlaps a reference already placed is dropped rather than
+    nested. Both orders are legal CommonMark, but which one the source meant is
+    not recoverable from a flattened text, and a link is worth more than a code
+    span here: it carries an edge into the graph (ADR-0079), where the span only
+    carries emphasis. A span holding a line break is dropped too — CommonMark
+    folds one into a space, so writing it back would change the block's text,
+    which is the one thing this rendering must not do.
+    """
+    spans = [span for span in node.spans if span.strip()]
+    if not spans:
+        return []
+    found: list[tuple[int, int, str]] = []
+    cursor = 0
+    for span in spans:
+        if "\n" in span:
+            tally.spans_dropped += 1
+            continue
+        index = text.find(span, cursor)
+        if index < 0:
+            tally.spans_dropped += 1
+            continue
+        end = index + len(span)
+        if any(start < end and index < stop for start, stop, _ in taken):
+            tally.spans_dropped += 1
+            cursor = end
+            continue
+        found.append((index, end, _code_span(span)))
+        cursor = end
+        tally.spans_carried += 1
+    return found
+
+
+def _code_span(content: str) -> str:
+    """`content` as a CommonMark code span that reads back as exactly itself.
+
+    The fence is one backtick longer than the longest run inside, and a content
+    that begins or ends with a backtick is padded with a space — both are the
+    spec's own rules, and together they make the span round-trip: the compiler
+    flattens it back to `content`, so the chunk text does not move.
+    """
+    longest = max((len(run) for run in re.findall(r"`+", content)), default=0)
+    fence = "`" * (longest + 1)
+    pad = " " if content.startswith("`") or content.endswith("`") else ""
+    return f"{fence}{pad}{content}{pad}{fence}"
 
 
 def _reference(node: KirNode, label: str) -> str:

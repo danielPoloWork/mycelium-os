@@ -436,28 +436,44 @@ class RetrievalConfig(_Section):
     numbers, the discount curve, and why the mechanism has no operating point
     under RRF are in ADR-0075."""
 
-    symbol_lookup: bool = False
-    """Whether the symbol leg runs (spec 04 §3). Off by default, and off because
-    it was **measured** off.
+    symbol_lookup: bool = True
+    """Whether the symbol leg runs (spec 04 §3). On since roadmap 5.25, and on
+    because the ablation **earned** it — after being off for three items because
+    the same ablation refused it.
 
     Spec 04 §3 asks for an exact lookup in the `symbols` table for a query's
     identifier-like tokens, and §2 routes such a query to it first. Roadmap 5.9
-    built the leg and ran the ablation on six case sets across three corpora.
-    It cannot fire on a single judged `symbol` case: the eleven of them name
-    CLI commands and classes discussed in prose, and what a documentation corpus
-    *defines* is `uv.lock`, `pyproject.toml` and `PyPI`. Where it does fire — two
-    cases, in the `fact` and `relationship` slices — the definition site is a
-    structural listing that names the thing, never the section that documents it,
-    so promoting it costs those cases and gains nothing.
+    built the leg and the ablation refused it: it could not fire on a single
+    judged `symbol` case, because those name CLI *commands* and spec 04 §2's
+    identifier test rejects a multi-word command on whitespace alone. 5.23 gave
+    commands a source and a multi-word lookup, and the ablation moved to
+    *proposable, not earned* — it cleared the bar on both dev sets and was
+    identical on every release set, and ADR-0070 requires a held-out gain.
+
+    What changed at 5.25 is the **corpus, not the ranker**: the evidence
+    projector was dropping the inline code spans that name a command, so the
+    ingested twin minted 11 commands against its Markdown original's 69 and could
+    fire on **none** of its four judged `symbol` cases (ADR-0096). With the
+    namings carried, it fires on all four and `uv-ingested/release` — a held-out
+    set — gains **+5.6 % on the slice and +0.9 % overall**, no set regressing.
+    That is ADR-0070's criterion met, so the flag follows the measurement, which
+    is the rule `tools/measure_symbol_leg.py --check` exists to enforce in both
+    directions.
+
+    **The caveat belongs here rather than in a footnote.** The held-out gain is
+    one set and, on the release sets, one case (`u-1025` 0.5000 → 0.6309), and
+    that set is the *twin* of `uv/release`, which gains 0.0 % — so what the leg
+    demonstrably does is compensate for what ingestion costs, on a corpus whose
+    headings and namings a rendering damaged. That is a real benefit and a
+    narrower one than "the leg is good": `ours/*` and `uv/release` are byte-
+    identical with it on.
 
     The leg is routed, and always was: it asks the store nothing unless the query
-    holds an identifier-like token. Since roadmap 5.11 that test lives in
-    `mycelium.planner`, where a plan can report it — identical behaviour,
-    measured identical on all six sets (ADR-0083).
-
-    Turning it on is supported and explained: `mycelium search --explain` labels
-    every passage the lookup offered with the symbol it defines. The numbers and
-    the two readings of *"symbol lookup first"* are in ADR-0080."""
+    holds an identifier-like token or is command-shaped. Since roadmap 5.11 that
+    test lives in `mycelium.planner`, where a plan can report it (ADR-0083).
+    `mycelium search --explain` labels every passage the lookup offered with the
+    symbol it defines. The numbers and the two readings of *"symbol lookup
+    first"* are in ADR-0080, amended by ADR-0096."""
 
     @property
     def hybrid(self) -> bool:

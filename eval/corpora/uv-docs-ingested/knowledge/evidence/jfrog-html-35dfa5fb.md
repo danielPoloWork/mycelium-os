@@ -39,7 +39,7 @@ Replace `PRIVATE_REGISTRY` in the environment variable names with the actual ind
 
 ## Publishing packages
 
-Add a publish-url to your index definition:
+Add a `publish-url` to your index definition:
 
 ```
 [[tool.uv.index]]

@@ -7,43 +7,43 @@ source_digest: "sha256:1d6d848abfd84196875ea0eaae33da1be4b5bcc87ecf257a6987d2dab
 
 # Workspace metadata
 
-uv workspace metadata exports the information uv has about your workspace or PEP 723 script as JSON so other tools can use it. In particular, if you want access to the information in a uv.lock or script lockfile, you should prefer this command's output, as lockfiles are not a stable format we guarantee anything about. Pass --script path/to/script.py to request metadata for a script.
+`uv workspace metadata` exports the information uv has about your workspace or PEP 723 script as JSON so other tools can use it. In particular, if you want access to the information in a `uv.lock` or script lockfile, you should prefer this command's output, as lockfiles are not a stable format we guarantee anything about. Pass `--script path/to/script.py` to request metadata for a script.
 
-Pass --sync to install the selected packages before collecting module ownership information. Synchronization preserves unrelated installed packages by default; add --exact to remove them.
+Pass `--sync` to install the selected packages before collecting module ownership information. Synchronization preserves unrelated installed packages by default; add `--exact` to remove them.
 
-The primary structure is the "resolution" field which contains the dependency graph with exact package versions that a uv.lock encodes.
+The primary structure is the "resolution" field which contains the dependency graph with exact package versions that a `uv.lock` encodes.
 
-The edges of the graph are the dependencies every node defines. These are the things that must also be installed for it to be installed (and their dependencies recursively, keeping in mind that cycles are perfectly normal to encounter in this graph). Each dependency entry will include an id for the node it refers to, and an optional marker that [specifies on what platforms the dependency is required](https://packaging.python.org/en/latest/specifications/dependency-specifiers/#dependency-specifiers) (if there is no marker the dependency is always required).
+The edges of the graph are the `dependencies` every node defines. These are the things that must also be installed for it to be installed (and their `dependencies` recursively, keeping in mind that cycles are perfectly normal to encounter in this graph). Each dependency entry will include an `id` for the node it refers to, and an optional `marker` that [specifies on what platforms the dependency is required](https://packaging.python.org/en/latest/specifications/dependency-specifiers/#dependency-specifiers) (if there is no marker the dependency is always required).
 
-Package-derived nodes in the graph are uniquely identified by package name, version, source, and kind. Script and workspace nodes are identified by their path. Workspace-root dependency group nodes are identified by their group name and the workspace path. All node ids should be treated as opaque.
+Package-derived nodes in the graph are uniquely identified by package `name`, `version`, `source`, and `kind`. Script and workspace nodes are identified by their path. Workspace-root dependency group nodes are identified by their group name and the workspace path. All node ids should be treated as opaque.
 
 There are 5 kinds of node in the graph:
 
 -
 
-  "script" -- a PEP 723 script and its direct dependencies
+  `"script"` -- a PEP 723 script and its direct dependencies
 -
 
-  "workspace" -- a workspace root and its workspace-exclusive dependency groups
+  `"workspace"` -- a workspace root and its workspace-exclusive dependency groups
 -
 
-  "package" -- the package itself
+  `"package"` -- the package itself
 -
 
-  { "extra": "extraname" } -- an extra the package defines
+  `{ "extra": "extraname" }` -- an extra the package defines
 -
 
-  { "group": "groupname" } -- a dependency group a package or workspace root defines
+  `{ "group": "groupname" }` -- a dependency group a package or workspace root defines
 
 (In the future we will add "build" nodes for the dependencies of [build environments](../../concepts/projects/config.md#build-isolation).)
 
-If you want to install mypackage, find its "kind": "package" node. This node will also include information on its sdist, its wheels, its extras (optional_dependencies), and dependency groups (dependency_groups).
+If you want to install `mypackage`, find its `"kind": "package"` node. This node will also include information on its sdist, its wheels, its extras (`optional_dependencies`), and dependency groups (`dependency_groups`).
 
-If you want to install mypackage[myextra] then find the node with "kind": { "extra": "myextra" } for mypackage (this node will always depend on mypackage). If you want to install mypackage[extra1, extra2], find the two nodes for mypackage[extra1] and mypackage[extra2].
+If you want to install `mypackage[myextra]` then find the node with `"kind": { "extra": "myextra" }` for `mypackage` (this node will always depend on `mypackage`). If you want to install `mypackage[extra1, extra2]`, find the two nodes for `mypackage[extra1]` and `mypackage[extra2]`.
 
-If you want to install the dependency group mypackage:mygroup then find the node with "kind": { "group": "mygroup" } for mypackage (this node will not depend on mypackage, as dependency groups are just lists of things you might want when working on the package itself).
+If you want to install the dependency group `mypackage:mygroup` then find the node with `"kind": { "group": "mygroup" }` for `mypackage` (this node will not depend on `mypackage`, as dependency groups are just lists of things you might want when working on the package itself).
 
-If the workspace root defines dependency groups but is not itself a package, its "workspace" node provides the corresponding group node ids through dependency_groups.
+If the workspace root defines dependency groups but is not itself a package, its `"workspace"` node provides the corresponding group node ids through `dependency_groups`.
 
 ## Handling multiple versions of a package
 
@@ -55,15 +55,15 @@ The second way is when a workspace has [conflicts](../../concepts/resolution.md#
 
 The specific guarantee we provide is that for any concrete choice of [markers](https://packaging.python.org/en/latest/specifications/dependency-specifiers/#dependency-specifiers), if you select a set of packages to install that has no [conflicts](../../concepts/resolution.md#conflicting-dependencies), then the resulting set of packages to install will not have multiple versions of a package.
 
-If you just want to get "every version of pydantic this workspace uses" you're free to iterate through the list of nodes and collect up every instance. If however you want to specifically analyze the graph and get actual resolutions you will likely need to consult conflicts and need to understand how to resolve markers for a specific platform.
+If you just want to get "every version of pydantic this workspace uses" you're free to iterate through the list of nodes and collect up every instance. If however you want to specifically analyze the graph and get actual resolutions you will likely need to consult `conflicts` and need to understand how to resolve `markers` for a specific platform.
 
-The best way to avoid mistakes when working with multiple versions of a package is to keep your queries into the dependency graph rooted in operations on the workspace root, workspace members, or the requested script. These are the natural entry-points to the graph and can give coherent responses for operations such as "install the workspace dev group", "install member1 and member2[extra] ", or "install this script's declared dependencies".
+The best way to avoid mistakes when working with multiple versions of a package is to keep your queries into the dependency graph rooted in operations on the workspace root, workspace members, or the requested script. These are the natural entry-points to the graph and can give coherent responses for operations such as "install the workspace `dev` group", "install `member1` and `member2[extra]` ", or "install this script's declared dependencies".
 
-Another way to put this is that when possible you should avoid iterating over the resolution object to find a node. Only access resolution like a map using ids that were provided by another part of the metadata. For a workspace, the workspace root is workspace.id and package entry points are listed in the members array. For a script, the initial id is script.id. From there you may recursively discover other packages by following dependency edges.
+Another way to put this is that when possible you should avoid iterating over the `resolution` object to find a node. Only access `resolution` like a map using ids that were provided by another part of the metadata. For a workspace, the workspace root is `workspace.id` and package entry points are listed in the `members` array. For a script, the initial id is `script.id`. From there you may recursively discover other packages by following dependency edges.
 
-So rather than trying to find a node for anyio in the dependency graph directly, you should decide what workspace member(s) you're interested in analyzing as if they were going to be installed. While traversing the dependencies of the things you want to install, you may visit an instance of anyio, which is the one you should use. If you visit multiple instances of anyio then that means you've selected a conflicting set of things to install which uv would never select.
+So rather than trying to find a node for anyio in the dependency graph directly, you should decide what workspace member(s) you're interested in analyzing as if they were going to be installed. While traversing the `dependencies` of the things you want to install, you may visit an instance of anyio, which is the one you should use. If you visit multiple instances of anyio then that means you've selected a conflicting set of things to install which uv would never select.
 
-So if you wanted to analyze say, installing the dev dependency group of the workspace member mypackage it would look something like:
+So if you wanted to analyze say, installing the `dev` dependency group of the workspace member `mypackage` it would look something like:
 
 ```Python
 member = find_by_name(metadata.members, "mypackage" )
@@ -100,7 +100,7 @@ script_node = metadata.resolution[metadata.script. id ]
 visit(metadata, [script_node])
 ```
 
-Where visit is your favourite graph traversal algorithm like depth-first-search:
+Where `visit` is your favourite graph traversal algorithm like depth-first-search:
 
 ```Python
 def visit(metadata: UvMetadata, to_analyze: list [Node]):

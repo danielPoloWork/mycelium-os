@@ -86,33 +86,33 @@ $ uv pip install -e "ruff @ ./project/ruff"
 
 Multiple packages can be installed at once from standard file formats.
 
-Install from a requirements.txt file:
+Install from a `requirements.txt` file:
 
 ```
 $ uv pip install -r requirements.txt
 ```
 
-See the [uv pip compile](compile.md) documentation for more information on requirements.txt files.
+See the [uv pip compile](compile.md) documentation for more information on `requirements.txt` files.
 
-Install from a pyproject.toml file:
+Install from a `pyproject.toml` file:
 
 ```
 $ uv pip install -r pyproject.toml
 ```
 
-Install from a pyproject.toml file with optional dependencies enabled, e.g., the "foo" extra:
+Install from a `pyproject.toml` file with optional dependencies enabled, e.g., the "foo" extra:
 
 ```
 $ uv pip install -r pyproject.toml --extra foo
 ```
 
-Install from a pyproject.toml file with all optional dependencies enabled:
+Install from a `pyproject.toml` file with all optional dependencies enabled:
 
 ```
 $ uv pip install -r pyproject.toml --all-extras
 ```
 
-To install dependency groups in the current project directory's pyproject.toml, for example the group foo:
+To install dependency groups in the current project directory's `pyproject.toml`, for example the group `foo`:
 
 ```
 $ uv pip install --group foo
@@ -124,7 +124,7 @@ To specify the project directory where groups should be sourced from:
 $ uv pip install --project some/path/ --group foo --group bar
 ```
 
-Alternatively, you can specify a path to a pyproject.toml for each group:
+Alternatively, you can specify a path to a `pyproject.toml` for each group:
 
 ```
 $ uv pip install --group some/path/pyproject.toml:foo --group other/pyproject.toml:bar

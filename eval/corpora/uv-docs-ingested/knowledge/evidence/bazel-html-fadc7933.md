@@ -11,7 +11,7 @@ For broader Bazel workflows with uv, see the [rules_py](https://github.com/aspec
 
 ## Authentication
 
-Bazel 7 and newer supports credential helpers via the --credential_helper option. To use credentials stored by uv for Bazel fetches, first authenticate uv with the service that hosts the files Bazel needs to fetch:
+Bazel 7 and newer supports credential helpers via the `--credential_helper` option. To use credentials stored by uv for Bazel fetches, first authenticate uv with the service that hosts the files Bazel needs to fetch:
 
 ```
 $ uv auth login https://packages.example.com
@@ -26,7 +26,7 @@ common --credential_helper=files.example.com=%workspace%/bazel/uv-auth-helper
 
 Replace the host patterns with the hosts that serve the index and files Bazel will fetch.
 
-Finally, add the wrapper script referenced by.bazelrc:
+Finally, add the wrapper script referenced by`.bazelrc`:
 
 ```Bash
 #!/usr/bin/env bash

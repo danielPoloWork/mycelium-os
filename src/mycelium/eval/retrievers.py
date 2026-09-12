@@ -45,6 +45,7 @@ __all__ = [
     "ExpandedRetriever",
     "GrepRetriever",
     "HybridRetriever",
+    "LexicalRetriever",
     "MyceliumRetriever",
     "Retriever",
     "build_retriever",
@@ -307,10 +308,60 @@ class SymbolRetriever:
         return [fused.hit.chunk.anchor for fused in outcome.hits]
 
 
+@dataclass(frozen=True, slots=True)
+class LexicalRetriever:
+    """The lexical leg alone — every optional leg explicitly off (roadmap 5.25).
+
+    **An ablation's control arm, and not the same thing as `mycelium`.**
+    `MyceliumRetriever` runs `RetrievalConfig()`, which is *the shipped product*
+    — so the moment an optional leg earns its default, the control arm acquires
+    the very leg under test and the ablation measures nothing. That is not a
+    hypothetical: at roadmap 5.25 the symbol leg cleared its bar, and turning it
+    on made `measure_symbol_leg.py --check` report "does not earn on any set",
+    which would have argued the flag straight back off again. The guard could
+    accept only one of the two answers it exists to choose between (ADR-0096).
+
+    So the control is pinned here rather than inherited. While every leg ships
+    off this is byte-identical to `mycelium` — which is why the defect stayed
+    latent through 5.3, 5.9 and 5.23, and why the ablations' historical numbers
+    are unaffected by the fix.
+
+    `graph_expansion` is pinned too, for the same reason and before it is needed:
+    an ablation arm that silently depends on another arm's default is the shape
+    of the bug, not this instance of it.
+    """
+
+    store: SqliteStore
+    name: str = "lexical"
+
+    @property
+    def config(self) -> dict[str, str | int | float | bool]:
+        return {
+            "engine": "fts5-bm25",
+            "weights": describe_field_weights(),
+            "stem_weight": STEM_WEIGHT,
+            "stopwords": len(STOPWORDS),
+            "hybrid": False,
+            "symbol_lookup": False,
+            "graph_expansion": False,
+        }
+
+    def search(self, query: str, limit: int) -> list[str]:
+        outcome = run_search(
+            self.store,
+            query,
+            limit=limit,
+            config=RetrievalConfig(symbol_lookup=False, graph_expansion=False),
+        )
+        return [fused.hit.chunk.anchor for fused in outcome.hits]
+
+
 def build_retriever(name: str, store: SqliteStore, embedder: Embedder | None = None) -> Retriever:
     """Resolve a retriever by name, refusing anything unknown."""
     if name == "mycelium":
         return MyceliumRetriever(store=store)
+    if name == "lexical":
+        return LexicalRetriever(store=store)
     if name == "grep":
         return GrepRetriever(store=store)
     if name == "graph":

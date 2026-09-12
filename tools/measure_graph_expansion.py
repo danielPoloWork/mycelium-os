@@ -226,7 +226,10 @@ def main() -> int:
         eval_dir = root / "eval"
         with SqliteStore.open(root, read_only=True) as store:
             resolvable = resolvable_anchors(store)
-            base_retriever = build_retriever("mycelium", store)
+            # Pinned off, not `mycelium`: an ablation whose control arm is the
+            # shipped product cannot measure a leg once that leg ships
+            # (ADR-0096). Byte-identical while expansion is off.
+            base_retriever = build_retriever("lexical", store)
             expanded_retriever = build_retriever(
                 "graph-every-query" if args.every_query else "graph", store
             )

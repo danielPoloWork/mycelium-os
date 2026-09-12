@@ -34,13 +34,13 @@ project
         └── admin.py
 ```
 
-To use uv with this application, inside the project directory run:
+To use uv with this application, inside the `project` directory run:
 
 ```
 $ uv init --no-package
 ```
 
-This creates a pyproject.toml file for a [flat, unpackaged project](../../concepts/projects/init.md#unpackaged-applications).
+This creates a `pyproject.toml` file for a [flat, unpackaged project](../../concepts/projects/init.md#unpackaged-applications).
 
 Then, add a dependency on FastAPI:
 
@@ -66,7 +66,7 @@ project
         └── admin.py
 ```
 
-And the contents of the pyproject.toml file should look something like this:
+And the contents of the `pyproject.toml` file should look something like this:
 
 ```
 [project]
@@ -86,13 +86,13 @@ From there, you can run the FastAPI application with:
 $ uv run fastapi dev
 ```
 
-uv run will automatically resolve and lock the project dependencies (i.e., create a uv.lock alongside the pyproject.toml), create a virtual environment, and run the command in that environment.
+`uv run` will automatically resolve and lock the project dependencies (i.e., create a `uv.lock` alongside the `pyproject.toml`), create a virtual environment, and run the command in that environment.
 
 Test the app by opening [http://127.0.0.1:8000/?token=jessica](http://127.0.0.1:8000/?token=jessica) in a web browser.
 
 ## Deployment
 
-To deploy the FastAPI application with Docker, you can use the following Dockerfile:
+To deploy the FastAPI application with Docker, you can use the following `Dockerfile`:
 
 ```Dockerfile
 FROM python:3.12-slim

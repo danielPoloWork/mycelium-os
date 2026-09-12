@@ -7,9 +7,9 @@ source_digest: "sha256:70561244e7b2fd489abc8967edf96200ca47c5b9472fa3f4b65efdff7
 
 # The pip interface
 
-uv provides a drop-in replacement for common pip, pip-tools, and virtualenv commands. These commands work directly with the virtual environment, in contrast to uv's primary interfaces where the virtual environment is managed automatically. The uv pip interface exposes the speed and functionality of uv to power users and projects that are not ready to transition away from pip and pip-tools.
+uv provides a drop-in replacement for common `pip`, `pip-tools`, and `virtualenv` commands. These commands work directly with the virtual environment, in contrast to uv's primary interfaces where the virtual environment is managed automatically. The `uv pip` interface exposes the speed and functionality of uv to power users and projects that are not ready to transition away from `pip` and `pip-tools`.
 
-The following sections discuss the basics of using uv pip:
+The following sections discuss the basics of using `uv pip`:
 
 - [Creating and using environments](environments.md)
 - [Installing and managing packages](packages.md)

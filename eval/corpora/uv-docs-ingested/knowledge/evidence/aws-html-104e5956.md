@@ -25,9 +25,9 @@ url = "https://<DOMAIN>-<ACCOUNT_ID>.d.codeartifact.<REGION>.amazonaws.com/pypi/
 
 ## Authenticate with an AWS access token
 
-Credentials can be provided via "Basic" HTTP authentication scheme. Include access token in the password field of the URL. Username must be aws, otherwise authentication will fail.
+Credentials can be provided via "Basic" HTTP authentication scheme. Include access token in the password field of the URL. Username must be `aws`, otherwise authentication will fail.
 
-Generate a token with awscli:
+Generate a token with `awscli`:
 
 ```Bash
 export AWS_CODEARTIFACT_TOKEN = " $(
@@ -63,9 +63,9 @@ export UV_INDEX_PRIVATE_REGISTRY_PASSWORD = " $AWS_CODEARTIFACT_TOKEN "
 
 You can also authenticate to Artifact Registry using [keyring](https://github.com/jaraco/keyring) package with the [keyrings.codeartifact](https://github.com/jmkeyes/keyrings.codeartifact) [plugin](https://github.com/jmkeyes/keyrings.codeartifact). Because these two packages are required to authenticate to Artifact Registry, they must be pre-installed from a source other than Artifact Registry.
 
-The keyrings.codeartifact plugin wraps [boto3](https://pypi.org/project/boto3/) to generate short-lived access tokens, securely store them in system keyring, and refresh them when they are expired.
+The `keyrings.codeartifact` plugin wraps [boto3](https://pypi.org/project/boto3/) to generate short-lived access tokens, securely store them in system keyring, and refresh them when they are expired.
 
-uv only supports using the keyring package in [subprocess mode](../../reference/settings.md#keyring-provider). The keyring executable must be in the PATH, i.e., installed globally or in the active environment. The keyring CLI requires a username in the URL and it must be aws.
+uv only supports using the `keyring` package in [subprocess mode](../../reference/settings.md#keyring-provider). The `keyring` executable must be in the `PATH`, i.e., installed globally or in the active environment. The `keyring` CLI requires a username in the URL and it must be `aws`.
 
 ```Bash
 # Pre-install keyring and AWS CodeArtifact plugin from the public PyPI
@@ -89,9 +89,9 @@ Similarly, the username for the index can be added directly to the index URL.
 
 ## Publishing packages
 
-If you also want to publish your own packages to AWS CodeArtifact, you can use uv publish as described in the [Building and publishing guide](../package.md).
+If you also want to publish your own packages to AWS CodeArtifact, you can use `uv publish` as described in the [Building and publishing guide](../package.md).
 
-First, add a publish-url to the index you want to publish packages to. For example:
+First, add a `publish-url` to the index you want to publish packages to. For example:
 
 ```
 [[tool.uv.index]]
@@ -113,7 +113,7 @@ And publish the package:
 $ uv publish --index private-registry
 ```
 
-To use uv publish without adding the publish-url to the project, you can set UV_PUBLISH_URL:
+To use `uv publish` without adding the `publish-url` to the project, you can set `UV_PUBLISH_URL`:
 
 ```
 $ export UV_PUBLISH_URL=https://<DOMAIN>-<ACCOUNT_ID>.d.codeartifact.<REGION>.amazonaws.com/pypi/<REPOSITORY>/

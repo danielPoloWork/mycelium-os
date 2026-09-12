@@ -696,3 +696,118 @@ def test_a_reference_that_begins_a_line_is_not_mistaken_for_a_marker() -> None:
     text = rendered(document)
     assert "[- dash label](x.md)" in text
     assert "\\[" not in text
+
+
+# ---------------------------------------------------------------------------
+# Inline code spans (roadmap 5.25, ADR-0096)
+# ---------------------------------------------------------------------------
+
+
+def test_a_span_is_written_back_where_its_words_sit() -> None:
+    """The naming a documentation corpus mints a command from (ADR-0094)."""
+    document = kir(
+        node(
+            0,
+            NodeKind.PARAGRAPH,
+            text="Using uv cache prune --ci at the end of the job is recommended.",
+            spans=("uv cache prune --ci",),
+        )
+    )
+    assert "Using `uv cache prune --ci` at the end" in rendered(document)
+
+
+def test_the_same_word_coded_twice_is_placed_twice() -> None:
+    """A cursor that advances, for the reason references need one (ADR-0090)."""
+    document = kir(
+        node(
+            0,
+            NodeKind.PARAGRAPH,
+            text="Run uv sync, then run uv sync again.",
+            spans=("uv sync", "uv sync"),
+        ),
+    )
+    assert rendered(document).count("`uv sync`") == 2
+
+
+def test_a_span_holding_a_line_break_is_dropped_and_counted() -> None:
+    """CommonMark folds the break into a space, which would move the block's text."""
+    document = kir(
+        node(0, NodeKind.PARAGRAPH, text="See the note below.", spans=("the\nnote",)),
+    )
+    projection = project(document, source_uri="file:///x.html", source_digest=DIGEST)
+    assert projection.spans == 0
+    assert projection.spans_dropped == 1
+    assert "`" not in projection.text.split("---", 2)[2]
+
+
+def test_a_span_inside_a_link_label_loses_to_the_link() -> None:
+    """A link carries an edge (ADR-0079); a span carries emphasis."""
+    document = kir(
+        node(0, NodeKind.PARAGRAPH, text="Read the uv docs here.", spans=("uv docs",)),
+        node(1, NodeKind.LINK, parent="n1", text="uv docs", target="uv.md"),
+    )
+    projection = project(document, source_uri="file:///x.html", source_digest=DIGEST)
+    assert "[uv docs](uv.md)" in projection.text
+    assert "`uv docs`" not in projection.text
+    assert projection.references == 1
+    assert projection.spans_dropped == 1
+
+
+def test_a_span_the_compiler_would_read_differently_is_refused() -> None:
+    """The invariant is checked rather than asserted (ADR-0096).
+
+    `__token__` is emphasis in projected prose, so the compiler extracts `token`;
+    wrapping it restores the underscores — a repair, and one that moves the
+    block's text, which this change may not do (roadmap 5.28).
+    """
+    document = kir(
+        node(
+            0,
+            NodeKind.PARAGRAPH,
+            text="Services which use a __token__ or a username.",
+            spans=("__token__",),
+        )
+    )
+    projection = project(document, source_uri="file:///x.html", source_digest=DIGEST)
+    assert "`__token__`" not in projection.text
+    assert projection.spans == 0 and projection.spans_dropped == 1
+
+
+def test_a_span_holding_a_backtick_is_fenced_long_enough_to_contain_it() -> None:
+    """CommonMark's own two rules: a longer fence, and a pad when it would touch.
+
+    The content carries one unmatched backtick, so projected prose leaves it
+    literal and the span can be written without moving the text — which is the
+    only shape where the widening is reachable. A *balanced* pair is already a
+    code span in prose, and the round-trip check refuses it for that reason.
+    """
+    document = kir(
+        node(0, NodeKind.PARAGRAPH, text="The a`b token is odd.", spans=("a`b",)),
+    )
+    body = rendered(document)
+    assert "``a`b``" in body
+    reparsed = parse_markdown(body, doc_id=DOC_ID).kir
+    assert [n.text for n in reparsed.nodes if n.kind is NodeKind.PARAGRAPH] == [
+        "The a`b token is odd."
+    ]
+
+
+def test_a_carried_span_never_moves_the_block_text() -> None:
+    """The property every span placement is admitted by (ADR-0096)."""
+    text = "Use uv pip install with the --system flag and UV_SYSTEM_PYTHON set."
+    document = kir(
+        node(
+            0,
+            NodeKind.PARAGRAPH,
+            text=text,
+            spans=("uv pip install", "--system", "UV_SYSTEM_PYTHON"),
+        )
+    )
+    projection = project(document, source_uri="file:///x.html", source_digest=DIGEST)
+    assert projection.spans == 3
+
+    def block_text(markdown: str) -> list[str]:
+        parsed = parse_markdown(markdown, doc_id=DOC_ID)
+        return [n.text or "" for n in parsed.kir.nodes if n.kind is NodeKind.PARAGRAPH]
+
+    assert block_text(projection.text) == block_text(f"---\ntitle: x\n---\n\n{text}\n")

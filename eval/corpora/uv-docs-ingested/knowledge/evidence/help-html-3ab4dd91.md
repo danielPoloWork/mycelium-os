@@ -9,41 +9,41 @@ source_digest: "sha256:3ab4dd9149c92c406202fde3a6105ee71dad6f49593fc60adecee8242
 
 ## Help menus
 
-The --help flag can be used to view the help menu for a command, e.g., for uv:
+The `--help` flag can be used to view the help menu for a command, e.g., for `uv`:
 
 ```
 $ uv --help
 ```
 
-To view the help menu for a specific command, e.g., for uv init:
+To view the help menu for a specific command, e.g., for `uv init`:
 
 ```
 $ uv init --help
 ```
 
-When using the --help flag, uv displays a condensed help menu. To view a longer help menu for a command, use uv help:
+When using the `--help` flag, uv displays a condensed help menu. To view a longer help menu for a command, use `uv help`:
 
 ```
 $ uv help
 ```
 
-To view the long help menu for a specific command, e.g., for uv init:
+To view the long help menu for a specific command, e.g., for `uv init`:
 
 ```
 $ uv help init
 ```
 
-When using the long help menu, uv will attempt to use less or more to "page" the output so it is not all displayed at once. To exit the pager, press q.
+When using the long help menu, uv will attempt to use `less` or `more` to "page" the output so it is not all displayed at once. To exit the pager, press `q`.
 
 ## Displaying verbose output
 
-The -v flag can be used to display verbose output for a command, e.g., for uv sync:
+The `-v` flag can be used to display verbose output for a command, e.g., for `uv sync`:
 
 ```
 $ uv sync -v
 ```
 
-The -v flag can be repeated to increase verbosity, e.g.:
+The `-v` flag can be repeated to increase verbosity, e.g.:
 
 ```
 $ uv sync -vv

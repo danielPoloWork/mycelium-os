@@ -15,10 +15,10 @@ Installing [Trio](https://trio.readthedocs.io/) 's dependencies with a warm cach
 
 -
 
-  A single tool to replace pip, pip-tools, pipx, poetry, pyenv, twine, virtualenv, and more.
+  A single tool to replace `pip`, `pip-tools`, `pipx`, `poetry`, `pyenv`, `twine`, `virtualenv`, and more.
 -
 
-  [10-100x faster](https://github.com/astral-sh/uv/blob/main/BENCHMARKS.md) than pip.
+  [10-100x faster](https://github.com/astral-sh/uv/blob/main/BENCHMARKS.md) than `pip`.
 -
 
   Provides [comprehensive project management](#projects), with a [universal lockfile](concepts/projects/layout.md#the-lockfile).
@@ -42,7 +42,7 @@ Installing [Trio](https://trio.readthedocs.io/) 's dependencies with a warm cach
   Disk-space efficient, with a [global cache](concepts/cache.md) for dependency deduplication.
 -
 
-  Installable without Rust or Python via curl or pip.
+  Installable without Rust or Python via `curl` or `pip`.
 - Supports macOS, Linux, and Windows.
 
 uv is backed by [Astral](https://astral.sh/), the creators of [Ruff](https://github.com/astral-sh/ruff).
@@ -78,7 +78,7 @@ uv may also be installed with pip, Homebrew, and more. See all of the methods on
 
 ## Projects
 
-uv manages project dependencies and environments, with support for lockfiles, workspaces, and more, similar to rye or poetry:
+uv manages project dependencies and environments, with support for lockfiles, workspaces, and more, similar to `rye` or `poetry`:
 
 ```
 $ uv init example
@@ -136,9 +136,9 @@ See the [scripts guide](guides/scripts.md) to get started.
 
 ## Tools
 
-uv executes and installs command-line tools provided by Python packages, similar to pipx.
+uv executes and installs command-line tools provided by Python packages, similar to `pipx`.
 
-Run a tool in an ephemeral environment using uvx (an alias for uv tool run):
+Run a tool in an ephemeral environment using `uvx` (an alias for `uv tool run`):
 
 ```
 $ uvx pycowsay 'hello world!'
@@ -157,7 +157,7 @@ Installed 1 package in 9ms
            ||     ||
 ```
 
-Install a tool with uv tool install:
+Install a tool with `uv tool install`:
 
 ```
 $ uv tool install ruff
@@ -215,11 +215,11 @@ See the [installing Python guide](guides/install-python.md) to get started.
 
 ## The pip interface
 
-uv provides a drop-in replacement for common pip, pip-tools, and virtualenv commands.
+uv provides a drop-in replacement for common `pip`, `pip-tools`, and `virtualenv` commands.
 
 uv extends their interfaces with advanced features, such as dependency version overrides, platform-independent resolutions, reproducible resolutions, alternative resolution strategies, and more.
 
-Migrate to uv without changing your existing workflows - and experience a 10-100x speedup - with the uv pip interface.
+Migrate to uv without changing your existing workflows - and experience a 10-100x speedup - with the `uv pip` interface.
 
 Compile requirements into a platform-independent requirements file:
 

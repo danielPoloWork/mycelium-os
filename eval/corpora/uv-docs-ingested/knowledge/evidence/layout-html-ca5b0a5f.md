@@ -35,13 +35,13 @@ Additional project metadata and configuration includes:
 
 ## The project environment
 
-When working on a project with uv, uv will create a virtual environment as needed. While some uv commands will create a temporary environment (e.g., uv run --isolated), uv also manages a persistent environment with the project and its dependencies in a.venv directory next to the pyproject.toml. By default, it is stored inside the project to make it easy for editors to find - they need the environment to give code completions and type hints. It is not recommended to include the.venv directory in version control; it is automatically excluded from git with an internal.gitignore file.
+When working on a project with uv, uv will create a virtual environment as needed. While some uv commands will create a temporary environment (e.g., `uv run --isolated`), uv also manages a persistent environment with the project and its dependencies in a`.venv` directory next to the `pyproject.toml`. By default, it is stored inside the project to make it easy for editors to find - they need the environment to give code completions and type hints. It is not recommended to include the`.venv` directory in version control; it is automatically excluded from `git` with an internal`.gitignore` file.
 
-To run a command in the project environment, use uv run. Alternatively the project environment can be activated as normal for a virtual environment.
+To run a command in the project environment, use `uv run`. Alternatively the project environment can be activated as normal for a virtual environment.
 
-When uv run is invoked, it will create the project environment if it does not exist yet or ensure it is up-to-date if it exists. The project environment can also be explicitly created with uv sync. See the [locking and syncing](sync.md) documentation for details.
+When `uv run` is invoked, it will create the project environment if it does not exist yet or ensure it is up-to-date if it exists. The project environment can also be explicitly created with `uv sync`. See the [locking and syncing](sync.md) documentation for details.
 
-It is not recommended to modify the project environment manually, e.g., with uv pip install. For project dependencies, use uv add to add a package to the environment. For one-off requirements, use [uvx](../../guides/tools.md) or [uv run --with](run.md#requesting-additional-dependencies).
+It is not recommended to modify the project environment manually, e.g., with `uv pip install`. For project dependencies, use `uv add` to add a package to the environment. For one-off requirements, use [uvx](../../guides/tools.md) or [uv run --with](run.md#requesting-additional-dependencies).
 
 !!! tip
 
@@ -57,42 +57,42 @@ managed = false
 
 ### Centralized project environments
 
-With the [centralized-project-envs](../preview.md) [preview feature](../preview.md), uv stores the default project environment in its cache. uv attempts to maintain a.venv directory link to the cached environment so existing activation and editor workflows can continue to use the usual path. If link creation fails, uv attempts to write the cached environment path to.venv instead. If both attempts fail, uv continues using the cached environment directly, but tools relying on.venv may not discover it. Switching interpreters selects separate cached environments and can reuse them later.
+With the [centralized-project-envs](../preview.md) [preview feature](../preview.md), uv stores the default project environment in its cache. uv attempts to maintain a`.venv` directory link to the cached environment so existing activation and editor workflows can continue to use the usual path. If link creation fails, uv attempts to write the cached environment path to`.venv` instead. If both attempts fail, uv continues using the cached environment directly, but tools relying on`.venv` may not discover it. Switching interpreters selects separate cached environments and can reuse them later.
 
-Explicit project environment paths, including UV_PROJECT_ENVIRONMENT and environments selected with --active, are not centralized. The feature has no effect when --no-cache is enabled.
+Explicit project environment paths, including `UV_PROJECT_ENVIRONMENT` and environments selected with `--active`, are not centralized. The feature has no effect when `--no-cache` is enabled.
 
-The feature also applies to pathless uv venv invocations from a project or workspace root.
+The feature also applies to pathless `uv venv` invocations from a project or workspace root.
 
 ## The lockfile
 
-uv creates a uv.lock file next to the pyproject.toml.
+uv creates a `uv.lock` file next to the `pyproject.toml`.
 
-uv.lock is a universal or cross-platform lockfile that captures the packages that would be installed across all possible Python markers such as operating system, architecture, and Python version.
+`uv.lock` is a universal or cross-platform lockfile that captures the packages that would be installed across all possible Python markers such as operating system, architecture, and Python version.
 
-Unlike the pyproject.toml, which is used to specify the broad requirements of your project, the lockfile contains the exact resolved versions that are installed in the project environment. This file should be checked into version control, allowing for consistent and reproducible installations across machines.
+Unlike the `pyproject.toml`, which is used to specify the broad requirements of your project, the lockfile contains the exact resolved versions that are installed in the project environment. This file should be checked into version control, allowing for consistent and reproducible installations across machines.
 
 A lockfile ensures that developers working on the project are using a consistent set of package versions. Additionally, it ensures when deploying the project as an application that the exact set of used package versions is known.
 
-The lockfile is [automatically created and updated](sync.md#automatic-lock-and-sync) during uv invocations that use the project environment, i.e., uv sync and uv run. The lockfile may also be explicitly updated using uv lock.
+The lockfile is [automatically created and updated](sync.md#automatic-lock-and-sync) during uv invocations that use the project environment, i.e., `uv sync` and `uv run`. The lockfile may also be explicitly updated using `uv lock`.
 
-uv.lock is a human-readable TOML file but is managed by uv and should not be edited manually. The uv.lock format is specific to uv and not usable by other tools.
+`uv.lock` is a human-readable TOML file but is managed by uv and should not be edited manually. The `uv.lock` format is specific to uv and not usable by other tools.
 
 ### Relationship to pylock.toml
 
-In [PEP 751](https://peps.python.org/pep-0751/), Python standardized a new resolution file format, pylock.toml.
+In [PEP 751](https://peps.python.org/pep-0751/), Python standardized a new resolution file format, `pylock.toml`.
 
-pylock.toml is a resolution output format intended to replace requirements.txt (e.g., in the context of uv pip compile, whereby a "locked" requirements.txt file is generated from a set of input requirements). pylock.toml is standardized and tool-agnostic, such that in the future, pylock.toml files generated by uv could be installed by other tools, and vice versa.
+`pylock.toml` is a resolution output format intended to replace `requirements.txt` (e.g., in the context of `uv pip compile`, whereby a "locked" `requirements.txt` file is generated from a set of input requirements). `pylock.toml` is standardized and tool-agnostic, such that in the future, `pylock.toml` files generated by uv could be installed by other tools, and vice versa.
 
-Some of uv's functionality cannot be expressed in the pylock.toml format; as such, uv will continue to use the uv.lock format within the project interface.
+Some of uv's functionality cannot be expressed in the `pylock.toml` format; as such, uv will continue to use the `uv.lock` format within the project interface.
 
-However, uv supports pylock.toml as an export target and in the uv pip CLI. For example:
+However, uv supports `pylock.toml` as an export target and in the `uv pip` CLI. For example:
 
 -
 
-  To export a uv.lock to the pylock.toml format, run: uv export -o pylock.toml
+  To export a `uv.lock` to the `pylock.toml` format, run: `uv export -o pylock.toml`
 -
 
-  To generate a pylock.toml file from a set of requirements, run: uv pip compile requirements.in -o pylock.toml
+  To generate a `pylock.toml` file from a set of requirements, run: `uv pip compile requirements.in -o pylock.toml`
 -
 
-  To install from a pylock.toml file, run: uv pip sync pylock.toml or uv pip install -r pylock.toml
+  To install from a `pylock.toml` file, run: `uv pip sync pylock.toml` or `uv pip install -r pylock.toml`

@@ -1,6 +1,6 @@
 {
   "grep": {
-    "blessed_from_snapshot": "01M2AZQPNQBC5NGD5TPQZJBFSF",
+    "blessed_from_snapshot": "01M2B77JPEX4PTTR5X6K1DCK94",
     "cases": 25,
     "cases_digest": "sha256:851c56df1bf3c9903ee383be13408b591155c599cb4789098fc2cf21de262323",
     "content_digest": "sha256:eba05883507643de978dfcc377af18c93b445084aed0e7609f8251e344c46ad7",
@@ -60,12 +60,12 @@
     }
   },
   "mycelium": {
-    "blessed_from_snapshot": "01M2AZQPNQBC5NGD5TPQZJBFSF",
+    "blessed_from_snapshot": "01M2B77JPEX4PTTR5X6K1DCK94",
     "cases": 25,
     "cases_digest": "sha256:851c56df1bf3c9903ee383be13408b591155c599cb4789098fc2cf21de262323",
     "content_digest": "sha256:eba05883507643de978dfcc377af18c93b445084aed0e7609f8251e344c46ad7",
     "corpus_digest": "sha256:4376f856865486eef450755310da075150be525bf3024f6c525bc3da597bde47",
-    "overall_ndcg_at_10": 0.612979,
+    "overall_ndcg_at_10": 0.618671,
     "per_case": {
       "conceptual": {
         "u-1002": 1.0,
@@ -99,7 +99,7 @@
         "u-1007": 0.436526,
         "u-1017": 1.0,
         "u-1019": 0.39621,
-        "u-1025": 0.5
+        "u-1025": 0.63093
       },
       "unanswerable": {
         "u-1011": 0.0,
@@ -111,7 +111,7 @@
       "exact": 0.760206,
       "fact": 0.504757,
       "relationship": 0.647286,
-      "symbol": 0.583184,
+      "symbol": 0.615916,
       "unanswerable": 0.0
     },
     "toolchain": {
