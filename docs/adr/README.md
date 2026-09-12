@@ -128,3 +128,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0094](0094-mint-a-command-the-corpus-demonstrates-and-names-and-report-what-promotion-can-and-cannot-reorder.md) | Mint a command the corpus both demonstrates and names, and report what promotion can and cannot reorder | Accepted |
 | [0095](0095-read-the-corpus-in-the-dialect-it-is-written-in.md) | Read the corpus in the dialect it is written in, and let the generator check that it did | Accepted |
 | [0096](0096-write-the-span-back-and-pin-the-arm-that-judges-it.md) | Write the code span back where the source named it, and pin the arm that judges the leg | Accepted |
+| [0097](0097-a-twin-case-that-outscores-its-source-is-the-defect-not-the-fall.md) | A twin case that outscores its source is the defect, not the fall that corrects it | Accepted |

@@ -26,11 +26,22 @@ carries lands in a document of that format, using `provenance.json`. The three
 formats lose different things — a PDF loses its headings entirely — so an
 average over all three would hide the only interesting variation in the result.
 
-What this cannot tell you: whether the *difference* generalises. 14 cases across
-three formats is a handful per format, and the mapping rule is not neutral —
-`build_ingested_cases.py` picks the twin chunk with the most word overlap with
-the judged passage, which is mildly favourable to the ingested side. Any reading
-of this table has to carry that sentence with it.
+**Per case, last, and that is the row that changes how the table is read.** An
+average over seven PDF cases can move because projection cost something or
+because one case moved a long way, and the two call for opposite conclusions.
+Roadmap 5.26 is the worked example: `u-1003` sat **+0.27 above its own source**
+for three milestones — a twin case cannot be easier than the Markdown it was
+projected from unless something is wrong — and nothing here said so, because
+nothing here printed a case. A corpus repair later moved it and it read as a
+*regression*. The per-case block prints every shared case, widest gap first, with
+no threshold and no verdict: a case above its source is a question about the
+corpus, not a number to act on.
+
+What this cannot tell you: whether the *difference* generalises. Twenty-five
+cases across three formats is a handful per format, and the mapping rule is not
+neutral — `build_ingested_cases.py` picks the twin chunk with the most word
+overlap with the judged passage, which is mildly favourable to the ingested side.
+Any reading of this table has to carry that sentence with it.
 """
 
 import argparse
@@ -79,12 +90,55 @@ def score(root: Path, cases: Sequence[EvalCase], case_set: str) -> MetricSummary
     return run_evaluation(root, cases, case_set=case_set).overall
 
 
+def per_case(root: Path, cases: Sequence[EvalCase], case_set: str) -> dict[str, float]:
+    """Each case's own nDCG@10, so the pairing can be read case by case."""
+    manifest = run_evaluation(root, cases, case_set=case_set)
+    return {result.case_id: result.ndcg_at_10 for result in manifest.results}
+
+
 def row(label: str, before: MetricSummary, after: MetricSummary, count: int) -> str:
     cells = []
     for _, field in METRICS:
         was, now = getattr(before, field), getattr(after, field)
         cells.append(f"{was:.3f}  {now:.3f}  {now - was:+.3f}")
     return f"{label:<14} {count:>3}   " + "   ".join(cells)
+
+
+def _report_per_case(
+    markdown: Sequence[EvalCase],
+    ingested: Sequence[EvalCase],
+    attribution: dict[str, str | None],
+    case_set: str,
+) -> None:
+    """Every shared case, widest gap first — the row the averages average away.
+
+    Printed without a threshold on purpose. A gap is evidence about the corpus,
+    and which way it points depends on the case: an ingested score *below* its
+    source is projection costing something, which is what this tool exists to
+    measure, while an ingested score *above* its source is the twin being easier
+    than the document it was made from, which is not a result but a defect
+    somewhere upstream of the measurement (roadmap 5.26). Naming a cut-off would
+    turn that reading into arithmetic, which is the fitted parameter this project
+    has refused every time it has been offered.
+    """
+    was = per_case(MARKDOWN_CORPUS, markdown, case_set)
+    now = per_case(INGESTED_CORPUS, ingested, case_set)
+    rows = sorted(
+        ((case_id, was[case_id], now[case_id]) for case_id in was if case_id in now),
+        key=lambda item: (-abs(item[2] - item[1]), item[0]),
+    )
+    print("\nper case, widest gap first (nDCG@10):")
+    print(f"  {'case':<9} {'format':<6} {'md':>6} {'ing':>6} {'delta':>7}")
+    for case_id, before, after in rows:
+        fmt = attribution.get(case_id) or "mixed"
+        print(f"  {case_id:<9} {fmt:<6} {before:6.3f} {after:6.3f} {after - before:+7.3f}")
+    above = [case_id for case_id, before, after in rows if after > before + 1e-9]
+    if above:
+        print(
+            f"  {len(above)} case(s) score higher on the twin than on the Markdown they were "
+            f"projected from: {', '.join(sorted(above))}"
+        )
+        print("  a twin cannot be easier than its source; read those cases (roadmap 5.26)")
 
 
 def _report_target_sizes(
@@ -179,6 +233,7 @@ def main() -> int:
         )
 
     _report_target_sizes(markdown, ingested, attribution)
+    _report_per_case(markdown, ingested, attribution, args.case_set)
 
     mixed = sorted(case_id for case_id, value in attribution.items() if value is None)
     if mixed:

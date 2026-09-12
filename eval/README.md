@@ -389,21 +389,34 @@ one and leaves the other standing.
 The third corpus exists to answer one question the other two cannot: **is an evidence
 document projected from a binary source as retrievable as the Markdown a human would have
 written?** `python tools/measure_projection_cost.py` scores both corpora over the cases they
-share and prints the difference per format. On the release set, the same 14 cases twice:
+share and prints the difference per format, then per case. On the release set, the same 25
+cases twice:
 
 | | n | nDCG@10 | MRR | R@10 | R@50 | judged passage |
 |---|---:|---|---|---|---|---|
-| overall | 14 | 0.327 → 0.385 | 0.266 → 0.387 | 0.583 → 0.583 | 0.958 → 0.958 | |
-| docx | 2 | 0.587 → 0.587 | 0.600 → 0.600 | 0.750 → 0.750 | 1.000 → 1.000 | 1.0× |
-| html | 3 | 0.167 → 0.167 | 0.135 → 0.136 | 0.333 → 0.333 | 1.000 → 1.000 | 1.0× |
-| pdf | 5 | 0.379 → 0.517 | 0.260 → 0.550 | 0.800 → 0.800 | 1.000 → 1.000 | **10.6×** |
+| overall | 25 | 0.611 → 0.619 | 0.589 → 0.615 | 0.826 → 0.783 | 0.891 → 0.848 | |
+| docx | 8 | 0.567 → 0.558 | 0.507 → 0.498 | 0.812 → 0.812 | 0.875 → 0.875 | 1.1× |
+| html | 3 | 0.667 → 0.667 | 0.667 → 0.667 | 0.667 → 0.667 | 0.667 → 0.667 | 1.0× |
+| pdf | 7 | 0.550 → 0.643 | 0.521 → 0.629 | 0.857 → 0.714 | 1.000 → 0.857 | **4.7×** |
 
-**Recall does not move.** Where structure survives — DOCX and HTML — the numbers are
-identical, not merely close. The one apparent gain is PDF's ranking, and the last column is
-why it is not one: a PDF has no headings, so its chunks are page-sized and the carried
-anchor is ten times the size of the Markdown chunk it came from. A bigger target is easier
-to rank highly. Reported, never gated: with two to five cases per format there is no
-threshold anyone could defend ([ADR-0039](../docs/adr/0039-measure-what-projection-costs.md)).
+**The one apparent gain is PDF's ranking, and it is not one.** The last column is the
+mechanism: a PDF has no headings, so its chunks are packed to the token budget and the
+carried anchor averages nearly five times the Markdown chunk it came from. A bigger target
+is easier to rank highly — and recall falls in the same row, which is what actually
+happened to those documents.
+
+**Read the per-case block before the averages.** Three release cases score *above* their own
+source — `u-1006` +0.569, `u-1001` +0.324, `u-1003` +0.144, all PDFs — and those three are
+the whole of the `pdf` row. A twin cannot be easier than the Markdown it was projected from;
+where it is, something upstream of the measurement is wrong, which is why the tool names
+those cases rather than averaging them away
+([ADR-0097](../docs/adr/0097-a-twin-case-that-outscores-its-source-is-the-defect-not-the-fall.md)).
+The dev set says the same thing from the other side: the twin is **worse overall** there
+(−0.032), `docx` −0.037 and `html` −0.108, and `pdf` is again the only row that rises
+(+0.111) on the strength of its one above-source case.
+
+Reported, never gated: with three to eight cases per format there is no threshold anyone
+could defend ([ADR-0039](../docs/adr/0039-measure-what-projection-costs.md)).
 
 The same run also found what projection costs that nobody was measuring: the Markdown corpus
 compiles **229 edges** and its ingested twin **10**. A relative link between two documents

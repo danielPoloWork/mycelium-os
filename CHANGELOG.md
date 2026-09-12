@@ -12,6 +12,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **`tools/measure_projection_cost.py` reports per case, and names any case that scores
+  above its own source** (roadmap 5.26, [ADR-0097](docs/adr/0097-a-twin-case-that-outscores-its-source-is-the-defect-not-the-fall.md)).
+  The twin corpus exists to measure what projection costs retrieval, and the comparison was
+  reported per format only — so a case scoring *higher* on the ingested copy than on the
+  Markdown it was projected from, which cannot be a real result, was invisible. Three release
+  cases were doing it, all PDFs, and together they are the whole of that format's apparent
+  ranking gain. No threshold and no gate: the block prints every shared case, widest gap
+  first, and says which ones are above their source.
+
 - **The symbol leg is on by default** (roadmap 5.25, [ADR-0096](docs/adr/0096-write-the-span-back-and-pin-the-arm-that-judges-it.md), amending
   [ADR-0080](docs/adr/0080-look-a-name-up-exactly-and-report-that-the-table-points-at-naming-sites.md)). Spec 04 §3's exact
   lookup in the `symbols` table has been built and switched off since roadmap 5.9, because its
