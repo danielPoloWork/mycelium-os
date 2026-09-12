@@ -11,6 +11,7 @@ deliverable — every PR ships its own doc updates in the same PR. The rules are
 | `README.md` | the public surface, build/test/run flow, or milestone status changes |
 | `docs/specs/` | behavior diverges from the frozen spec (update spec **or** add a superseding ADR) |
 | `docs/adr/` | a non-trivial design decision is made, or a pattern is adopted/superseded |
+| an existing ADR | a later decision changes **part** of it — record the amendment in place (below) |
 | `docs/patterns/README.md` | a pattern is introduced, refined, rejected, or superseded |
 | `ROADMAP.md` | an item completes (flip the checkbox) or new work is planned |
 | `CHANGELOG.md` | a user-visible change lands (add a line to `[Unreleased]`) |
@@ -25,6 +26,29 @@ follow-up" is not allowed (`AGENTS.md` §10). The consistency lint
 (`python tools/consistency_lint.py`) mechanically enforces the parts of this that can be
 checked: version lockstep, ADR index ↔ files, pattern rows ↔ ADR+code, spec coverage map,
 README ↔ ROADMAP milestone agreement, and bug-ledger integrity.
+
+## Amending an ADR (roadmap 5.21)
+
+A record that is wholly replaced is **superseded**: its status becomes `Superseded by ADR-XXXX`
+and the replacement declares `supersedes:` in its frontmatter, which compiles to the edge of the
+same name (ADR-0082). A record that is only *partly* changed is **amended**, and that is a
+different thing — the decision is still in force.
+
+An amendment is one line, placed as close to what moved as possible:
+
+- the **`Status:` field**, when the whole record needs qualifying;
+- a **blockquote note at the paragraph it changes**, opening
+  `> **Amended | Narrowed | Corrected at roadmap N ([ADR-XXXX](…)).**`
+
+Choose the verb — *corrected* for evidence that was wrong, *amended* for a decision that moved,
+*narrowed* for a rule that still holds in a smaller scope — and say what no longer holds **and
+what still does**. Two rules are enforced by `consistency_lint.py`: the amender is named as a
+link, and the amending ADR mentions the record it amends.
+
+There is no `amends` edge type and there deliberately will not be one. The relation attaches to
+a clause, a ruling or a paragraph, and the graph's smallest node is a section, so an edge could
+only assert that *something* changed while hiding what
+([ADR-0092](../adr/0092-leave-the-amendment-relation-in-prose-and-check-the-prose.md)).
 
 ## Translations (D-028)
 

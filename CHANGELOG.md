@@ -12,6 +12,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The congruence lint checks the amendment relation between ADRs** (roadmap 5.21,
+  [ADR-0092](docs/adr/0092-leave-the-amendment-relation-in-prose-and-check-the-prose.md)).
+  A later decision that changes *part* of a record which still stands is recorded in prose,
+  and `consistency_lint.py` now requires that prose to be followable: the amending ADR is
+  named as a link, it exists, and it mentions the record it amends. The edge vocabulary is
+  **unchanged at eight types** — `amends` was considered and refused, because the relation
+  attaches to a clause or a paragraph and the graph's smallest node is a section, so an edge
+  could only assert that something changed while hiding what. The convention is written down
+  in `docs/adr/README.md` and `docs/workflow/documentation.md`.
+
 - **A heading now defines the name it is *about*, not only the name it *is*** (roadmap 5.19,
   [ADR-0091](docs/adr/0091-widen-the-heading-rule-and-refuse-to-guess-which-section-documents-a-name.md)).
   `## The pyproject.toml`, `## pylock.toml format` and `## manylinux_compatible enforcement`

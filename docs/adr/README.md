@@ -12,6 +12,22 @@ or trivially reversible choices.
 
 Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `Deprecated`).
 
+**Amendments are not a status.** When a later decision changes *part* of a record that still
+stands, say so on one line, as close to what moved as possible — in the `Status:` field when the
+whole record is qualified, or in a blockquote note at the paragraph itself:
+
+```text
+- **Status:** Accepted — the `target_tokens` ruling is amended by [ADR-0023](0023-….md)
+
+> **Narrowed at roadmap 4.26 ([ADR-0056](0056-….md)).** …what no longer holds, and what does.
+```
+
+Pick the verb: *corrected* when the evidence was wrong, *amended* when a decision moved,
+*narrowed* when a rule still holds in a smaller scope. The amender must be a **link**, and it
+must mention the record it amends — `consistency_lint.py` enforces both. There is deliberately
+no `amends` edge type: the relation points at a clause rather than a document, so the graph
+cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-prose-and-check-the-prose.md)).
+
 ## Index
 
 | ADR | Title | Status |
@@ -107,3 +123,4 @@ Status transitions: `Proposed` → `Accepted` → (`Superseded by ADR-XXXX` | `D
 | [0089](0089-put-content-identity-in-the-citation-and-make-the-grammar-extensible.md) | Put content identity in the citation, and make the grammar extensible first | Accepted |
 | [0090](0090-project-a-sources-links-as-links-now-that-the-compiler-knows-who-asserted-them.md) | Project a source's links as links, now that the compiler knows who asserted them | Accepted |
 | [0091](0091-widen-the-heading-rule-and-refuse-to-guess-which-section-documents-a-name.md) | Widen the heading rule, and refuse to guess which section documents a name | Accepted |
+| [0092](0092-leave-the-amendment-relation-in-prose-and-check-the-prose.md) | Leave the amendment relation in prose, and check the prose | Accepted |

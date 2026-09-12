@@ -598,6 +598,79 @@ def check_supersedes() -> None:
                 )
 
 
+def check_amendments() -> None:
+    """An amendment names a record that exists, and the amender acknowledges it.
+
+    Roadmap 5.21 refused a ninth edge type for this relation (ADR-0092): it is
+    *partial* by definition, so what it relates is a clause, a ruling, a table or
+    a paragraph — and the graph has no node for one. The corpus states it in
+    prose instead, at the place it applies, which is the only granularity that
+    carries the payload.
+
+    A relation left to prose is only as good as the prose, so the two things a
+    machine *can* check are checked here, in the shape roadmap 5.10 used for
+    supersession: a rule you cannot break quietly beats one you have to remember.
+
+    **The declaration is one line.** Either the `Status:` field, or a blockquote
+    note opening `> **Amended|Narrowed|Corrected …` placed at the paragraph it
+    changes. Only that line is read, so an ADR mentioned in the note's prose is
+    not mistaken for a second amender.
+
+    Two rules, and both hold across the corpus's nine relations today:
+
+    1. **The amender is named as a link.** A bare `ADR-0023` is not followable,
+       and "a reader resolves it from prose" is the whole premise of the refusal.
+    2. **The amender mentions what it amends.** An amendment nobody acknowledges
+       from the other side is a claim about a document that never heard it — the
+       same disagreement `check_supersedes` catches, from the only side that
+       exists when neither end is machine-read.
+    """
+    name = "amendments"
+    adr_dir = os.path.join("docs", "adr")
+    if not exists(adr_dir):
+        return
+
+    files = sorted(f for f in os.listdir(adr_dir) if re.match(r"^\d{4}-.*\.md$", f))
+    by_number = {f[:4]: f for f in files}
+    verbs = ("amend", "correct", "narrow")
+
+    for filename in files:
+        text = read("docs", "adr", filename)
+        claims: list[str] = []
+
+        status = re.search(r"^- \*\*Status:\*\*\s*(.+)$", text, re.MULTILINE)
+        if status is not None and any(verb in status.group(1).lower() for verb in verbs):
+            claims.append(status.group(1))
+        claims.extend(re.findall(r"^> \*\*(?:Amended|Narrowed|Corrected)\b.*$", text, re.MULTILINE))
+
+        for claim in claims:
+            linked = set(re.findall(r"\[ADR-(\d{4})\]\([^)]+\)", claim))
+            for cited in re.findall(r"ADR-(\d{4})", claim):
+                if cited not in linked:
+                    fail(
+                        name,
+                        f"{filename} names ADR-{cited} in an amendment but does not link it; "
+                        "the relation lives in prose by decision (ADR-0092), so the prose "
+                        "has to be followable",
+                    )
+                    continue
+                amender = by_number.get(cited)
+                if amender is None:
+                    fail(
+                        name,
+                        f"{filename} says it is amended by ADR-{cited}, which has no file "
+                        "in docs/adr/",
+                    )
+                    continue
+                if f"ADR-{filename[:4]}" not in read("docs", "adr", amender):
+                    fail(
+                        name,
+                        f"{filename} says it is amended by ADR-{cited}, but {amender} "
+                        f"never mentions ADR-{filename[:4]} - one side of a relation that "
+                        "only prose carries (roadmap 5.21, ADR-0092)",
+                    )
+
+
 def check_posture() -> None:
     name = "posture"
     agents = read("AGENTS.md") if exists("AGENTS.md") else ""
@@ -626,6 +699,7 @@ CHECKS: Final[tuple[Callable[[], None], ...]] = (
     check_roadmap_numbering,
     check_threat_boundaries,
     check_supersedes,
+    check_amendments,
     check_bugs,
     check_i18n_freshness,
     check_posture,

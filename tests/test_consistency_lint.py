@@ -186,3 +186,161 @@ def test_a_threat_model_with_no_boundaries_is_reported(boundaries: Run) -> None:
 
 def test_the_boundary_check_is_registered() -> None:
     assert lint.check_threat_boundaries in lint.CHECKS
+
+
+# ---------------------------------------------------------------------------
+# The amendment relation, which stays in prose and is therefore checked (5.21)
+# ---------------------------------------------------------------------------
+
+type RunAdrs = Callable[[dict[str, str]], list[str]]
+
+
+@pytest.fixture
+def amendments(monkeypatch: pytest.MonkeyPatch) -> Iterator[RunAdrs]:
+    """Run the check against a synthetic `docs/adr/` and return the failures."""
+
+    def run(files: dict[str, str]) -> list[str]:
+        monkeypatch.setattr(lint, "exists", lambda *parts: True)
+        monkeypatch.setattr(lint.os, "listdir", lambda _: sorted(files))
+        monkeypatch.setattr(lint, "read", lambda *parts: files[parts[-1]])
+        lint.failures.clear()
+        lint.check_amendments()
+        return [message for _, message in lint.failures]
+
+    lint.failures.clear()
+    yield run
+    lint.failures.clear()
+
+
+def adr(number: str, status: str = "Accepted", body: str = "") -> str:
+    return (
+        f"# ADR-{number}: A decision\n\n"
+        f"- **Status:** {status}\n"
+        "- **Date:** 2026-09-12\n\n"
+        "## Context\n\n"
+        f"{body}\n"
+    )
+
+
+AMENDER = "[ADR-0023](0023-make-the-chunk-target-steer-size.md)"
+
+
+def test_the_committed_adrs_pass() -> None:
+    """The real corpus, whose nine relations are what the rules were derived from."""
+    lint.failures.clear()
+    lint.check_amendments()
+    assert lint.failures == []
+
+
+def test_an_amendment_in_the_status_line_passes(amendments: RunAdrs) -> None:
+    assert (
+        amendments(
+            {
+                "0014-a.md": adr("0014", status=f"Accepted — the ruling is amended by {AMENDER}"),
+                "0023-make-the-chunk-target-steer-size.md": adr("0023", body="Amends ADR-0014."),
+            }
+        )
+        == []
+    )
+
+
+def test_an_amendment_noted_at_the_paragraph_it_changes_passes(amendments: RunAdrs) -> None:
+    """The second placement the corpus uses, and the one a partial relation needs."""
+    assert (
+        amendments(
+            {
+                "0053-a.md": adr("0053", body=f"> **Narrowed at roadmap 4.26 ({AMENDER}).**"),
+                "0023-make-the-chunk-target-steer-size.md": adr("0023", body="Narrows ADR-0053."),
+            }
+        )
+        == []
+    )
+
+
+def test_an_unlinked_amender_fails(amendments: RunAdrs) -> None:
+    """The premise of the refusal is that a reader can follow the prose."""
+    assert amendments(
+        {
+            "0014-a.md": adr("0014", status="Accepted — the ruling is amended by ADR-0023"),
+            "0023-b.md": adr("0023", body="Amends ADR-0014."),
+        }
+    ) == [
+        "0014-a.md names ADR-0023 in an amendment but does not link it; the relation lives "
+        "in prose by decision (ADR-0092), so the prose has to be followable"
+    ]
+
+
+def test_an_amender_that_does_not_exist_fails(amendments: RunAdrs) -> None:
+    assert amendments(
+        {
+            "0014-a.md": adr("0014", status="Accepted — amended by [ADR-0999](0999-nothing.md)"),
+        }
+    ) == ["0014-a.md says it is amended by ADR-0999, which has no file in docs/adr/"]
+
+
+def test_an_amendment_the_amender_never_acknowledges_fails(amendments: RunAdrs) -> None:
+    assert amendments(
+        {
+            "0014-a.md": adr("0014", status=f"Accepted — the ruling is amended by {AMENDER}"),
+            "0023-make-the-chunk-target-steer-size.md": adr("0023", body="About something else."),
+        }
+    ) == [
+        "0014-a.md says it is amended by ADR-0023, but "
+        "0023-make-the-chunk-target-steer-size.md never mentions ADR-0014 - one side of a "
+        "relation that only prose carries (roadmap 5.21, ADR-0092)"
+    ]
+
+
+def test_one_pair_may_carry_several_amendments(amendments: RunAdrs) -> None:
+    """ADR-0053 is narrowed twice by ADR-0056, at two different paragraphs — the
+    case a single document-to-document edge could not have represented, which is
+    half of why the ninth type was refused (ADR-0092)."""
+    body = (
+        f"> **Narrowed at roadmap 4.26 ({AMENDER}).**\n\nProse.\n\n"
+        f"> **Narrowed at roadmap 4.26 ({AMENDER}).**\n"
+    )
+    assert (
+        amendments(
+            {
+                "0053-a.md": adr("0053", body=body),
+                "0023-make-the-chunk-target-steer-size.md": adr("0023", body="Narrows ADR-0053."),
+            }
+        )
+        == []
+    )
+
+
+def test_an_adr_mentioned_in_the_notes_prose_is_not_a_second_amender(
+    amendments: RunAdrs,
+) -> None:
+    """Only the declaring line is read, so discussion inside the note is prose."""
+    body = (
+        f"> **Narrowed at roadmap 4.26 ({AMENDER}).**\n"
+        "> The reasoning also touches [ADR-0999](0999-nothing.md), which does not exist.\n"
+    )
+    assert (
+        amendments(
+            {
+                "0053-a.md": adr("0053", body=body),
+                "0023-make-the-chunk-target-steer-size.md": adr("0023", body="Narrows ADR-0053."),
+            }
+        )
+        == []
+    )
+
+
+def test_a_supersession_is_not_read_as_an_amendment(amendments: RunAdrs) -> None:
+    """`check_supersedes` owns that relation; this one must not double-report it."""
+    assert (
+        amendments(
+            {
+                "0002-a.md": adr("0002", status="Superseded by [ADR-0003](0003-b.md) (2026-08-29)"),
+                "0003-b.md": adr("0003"),
+            }
+        )
+        == []
+    )
+
+
+def test_the_amendment_check_is_registered() -> None:
+    assert lint.check_amendments in lint.CHECKS
