@@ -409,10 +409,10 @@ cases twice:
 
 | | n | nDCG@10 | MRR | R@10 | R@50 | judged passage |
 |---|---:|---|---|---|---|---|
-| overall | 25 | 0.611 → 0.619 | 0.589 → 0.615 | 0.826 → 0.783 | 0.891 → 0.848 | |
+| overall | 25 | 0.614 → 0.619 | 0.590 → 0.615 | 0.826 → 0.783 | 0.891 → 0.848 | |
 | docx | 8 | 0.567 → 0.558 | 0.507 → 0.498 | 0.812 → 0.812 | 0.875 → 0.875 | 1.1× |
 | html | 3 | 0.667 → 0.667 | 0.667 → 0.667 | 0.667 → 0.667 | 0.667 → 0.667 | 1.0× |
-| pdf | 7 | 0.550 → 0.643 | 0.521 → 0.629 | 0.857 → 0.714 | 1.000 → 0.857 | **4.7×** |
+| pdf | 7 | 0.560 → 0.643 | 0.525 → 0.629 | 0.857 → 0.714 | 1.000 → 0.857 | **4.7×** |
 
 **The one apparent gain is PDF's ranking, and it is not one.** The last column is the
 mechanism: a PDF has no headings, so its chunks are packed to the token budget and the
@@ -421,7 +421,7 @@ is easier to rank highly — and recall falls in the same row, which is what act
 happened to those documents.
 
 **Read the per-case block before the averages.** Three release cases score *above* their own
-source — `u-1006` +0.569, `u-1001` +0.324, `u-1003` +0.144, all PDFs — and those three are
+source — `u-1006` +0.569, `u-1001` +0.324, `u-1003` +0.075, all PDFs — and those three are
 the whole of the `pdf` row. A twin cannot be easier than the Markdown it was projected from;
 where it is, something upstream of the measurement is wrong, which is why the tool names
 those cases rather than averaging them away

@@ -247,6 +247,12 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
         # 64 s and 15 s on this machine - real, and the safe direction is the one
         # this tool takes everywhere else (roadmap 4.40).
         ("ingested corpus", [python, "tools/build_ingested_corpus.py", "--check"]),
+        # The judged sets the carry below is derived *from*. Checking the
+        # derivation while the source goes unchecked is the weaker half of the
+        # pair: the uv sets had drifted ten cases from their generator and the
+        # carry still reproduced, because a carry copies whatever it is given
+        # ([BUG-0026], roadmap 5.30). 10 s on this machine.
+        ("judged cases", [python, "tools/build_uv_docs_cases.py", "--check"]),
         ("carried cases", [python, "tools/build_ingested_cases.py", "--check"]),
     ]
     if mode == "code":

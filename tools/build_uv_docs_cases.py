@@ -3,10 +3,25 @@
 # Copyright (c) 2026 Daniel Polo
 """Author the judged sets over the second corpus — `uv`'s documentation.
 
-    python tools/build_uv_docs_cases.py
+    python tools/build_uv_docs_cases.py [--check]
 
 Writes `eval/corpora/uv-docs/eval/{dev,release}.jsonl`, validating every anchor
 against a real build first (`mycelium.eval.cases.validate_judged_set`).
+
+**`--check` regenerates and compares instead of writing**, and it exists because
+running this file without it used to destroy work. The judgements below are the
+sets' only source, so a case added to a committed set by hand is invisible here
+and is deleted by the next run. That is not hypothetical: PRs #88 and #90 edited
+`dev.jsonl` directly — re-judging `u-0006` and adding `u-0013`..`u-0022` — and
+neither edit reached this file, so from 2026-09-08 until it was triggered at
+roadmap 5.30 this generator silently reverted ten judged cases and one
+re-judgement ([BUG-0026]). The sibling generators were already checked —
+`tools/build_ingested_cases.py --check` in CI, `tools/build_eval_cases.py`
+by a test — and this one was not, which is why only this one drifted. It is now
+a rung of `tools/verify.py` at `code` and a step in CI's `ingest / lanes` job,
+beside the carry check it is the upstream half of: checking that the carry still
+derives from the source, while the source itself goes unchecked, is the weaker
+half of the pair — and it is the half that held while this one drifted.
 
 **Judging provenance, precisely.** These queries and grades were assigned by the
 same agent that builds the retriever they measure — that bias is not removed by a
@@ -21,7 +36,9 @@ That is a discipline rather than an enforceable rule, so it is recorded where a
 reader can weigh it.
 """
 
+import json
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -80,10 +97,14 @@ DEV: tuple[Judgment, ...] = (
         "uvx",
         (EvalSlice.SYMBOL,),
         (
-            ("docs/concepts/tools.md#the-uv-tool-interface/0", 3),
-            ("docs/guides/tools.md#/0", 2),
+            ("docs/guides/tools.md#running-tools/", 3),
+            ("docs/concepts/tools.md#the-uv-tool-interface/0", 2),
+            ("docs/getting-started/features.md#tools/0", 1),
         ),
-        "A bare command name: the symbol slice, and it appears across several documents.",
+        "A bare command name: the symbol slice, and it appears across several "
+        "documents. Graded on the convention its siblings follow — the section "
+        "that documents the command at 3, the section that frames the interface "
+        "at 2, the feature-list entry at 1 (ADR-0062, ADR-0065).",
     ),
     (
         "u-0007",
@@ -95,7 +116,10 @@ DEV: tuple[Judgment, ...] = (
     (
         "u-0008",
         "how are breaking changes versioned",
-        (EvalSlice.CONCEPTUAL, EvalSlice.FACT),
+        (
+            EvalSlice.CONCEPTUAL,
+            EvalSlice.FACT,
+        ),
         (("docs/reference/policies/versioning.md#/0", 3),),
         "A policy stated in prose, asked in words the document does not use verbatim.",
     ),
@@ -127,6 +151,129 @@ DEV: tuple[Judgment, ...] = (
         (("docs/concepts/configuration-files.md#/", 3),),
         "A search-order fact stated in the document's first section.",
     ),
+    (
+        "u-0013",
+        "UV_PREVIEW",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/preview.md#enabling-preview-features/0", 3),),
+        "An environment variable name. The section that documents it names it "
+        "four times; `unicode61` splits it into `uv preview`, which is the same "
+        "shape u-0001 already has.",
+    ),
+    (
+        "u-0014",
+        "--bare",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/concepts/projects/init.md#creating-a-minimal-project/0", 3),
+            ("docs/concepts/projects/init.md#/0", 1),
+        ),
+        "A CLI flag. The section that documents it uses it five times; the "
+        "document's own root mentions it once, which is grade 1 for the reason "
+        "u-1019 gives - it answers only that the flag exists.",
+    ),
+    (
+        "u-0015",
+        "UV_PROJECT_ENVIRONMENT",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/projects/config.md#project-environment-path/", 3),),
+        "An environment variable whose tokens are all common words once split - "
+        "the harder end of `exact`, and deliberately kept. Section-scoped: 326 "
+        "tokens is one chunk under this setting and may not be under another "
+        "(ADR-0043).",
+    ),
+    (
+        "u-0016",
+        "uv build",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/concepts/projects/build.md#using-uv-build/0", 3),
+            ("docs/guides/package.md#building-your-package/0", 2),
+            ("docs/concepts/projects/build.md#/0", 1),
+        ),
+        "The heading of the grade-3 section names the command and its body uses "
+        "it eleven times; the guide teaches it in a tutorial step, and the "
+        "concept document's root frames building without naming the command.",
+    ),
+    (
+        "u-0017",
+        "uv venv",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/pip/environments.md#creating-a-virtual-environment/0", 3),
+            ("docs/getting-started/features.md#the-pip-interface/0", 1),
+        ),
+        "The section that documents the command is the one that runs it; the "
+        "feature list says only `uv venv: Create a new virtual environment`, "
+        "which is grade 1.",
+    ),
+    (
+        "u-0018",
+        "uv init",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/concepts/projects/init.md#/0", 3),
+            ("docs/guides/projects.md#creating-a-new-project/0", 2),
+            ("docs/getting-started/features.md#projects/0", 1),
+        ),
+        "The closest call in this batch: the concept document exists to document "
+        'this command ("uv supports creating a project with uv init") while the '
+        "guide teaches it as a tutorial step. Three tiers so the judgement does "
+        "not hinge on the tie - whichever a retriever prefers, it is credited.",
+    ),
+    (
+        "u-0019",
+        "can another tool read the lockfile uv writes",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            (
+                "docs/concepts/projects/layout.md#the-lockfile/relationship-to-pylock-toml/",
+                3,
+            ),
+            ("docs/concepts/projects/layout.md#the-lockfile/0", 2),
+        ),
+        "Relates uv's own lockfile to the standardised format: one is "
+        "tool-agnostic, the other is not, and uv keeps its own inside the "
+        "project. The query names neither `uv.lock` nor `pylock.toml`.",
+    ),
+    (
+        "u-0020",
+        "why can uv install into an environment it did not create",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/pip/environments.md#using-arbitrary-python-environments/", 3),
+            ("docs/pip/environments.md#discovery-of-python-environments/0", 2),
+        ),
+        "Two halves in one document: that uv has no dependency on Python and can "
+        "target any environment, and the order in which it discovers one. "
+        "Section-scoped on the first at 547 tokens (ADR-0043).",
+    ),
+    (
+        "u-0021",
+        "what has to be in pyproject.toml before the project can be built",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/build-backend.md#using-the-uv-build-backend/0", 3),
+            ("docs/concepts/projects/layout.md#the-pyproject-toml/0", 2),
+        ),
+        "Relates the build backend to the file that declares it: the grade-3 "
+        "section shows the `[build-system]` table that has to be there, the "
+        "grade-2 one lists a build system among the file's contents without "
+        "showing it.",
+    ),
+    (
+        "u-0022",
+        "what decides whether a new project is set up as an application or a library",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/init.md#applications/", 3),
+            ("docs/concepts/projects/init.md#libraries/", 2),
+        ),
+        "The two templates are documented in one section each and the answer is "
+        "the contrast between them - applications are the default, libraries need "
+        "`--lib` and always require a packaged project. Both section-scoped at "
+        "364 and 432 tokens.",
+    ),
 )
 
 RELEASE: tuple[Judgment, ...] = (
@@ -151,8 +298,16 @@ RELEASE: tuple[Judgment, ...] = (
         "u-1003",
         "tool.uv.index",
         (EvalSlice.EXACT,),
-        (("docs/concepts/indexes.md#/0", 3),),
-        "A literal configuration key.",
+        (
+            ("docs/concepts/indexes.md#defining-an-index/", 3),
+            ("docs/concepts/indexes.md#/0", 2),
+        ),
+        "A literal configuration key, documented in one section of the document that "
+        "names it twenty-six times. Re-judged at roadmap 5.30: the preamble names the "
+        "key in one subordinate clause and says what it is *for*, which is `u-1001`'s "
+        "grade for the same passage; the section says what an entry is, which fields "
+        "it takes, how indexes are prioritised and what the command line and "
+        "environment equivalents are (ADR-0101).",
     ),
     (
         "u-1004",
@@ -388,7 +543,25 @@ def cases_of(judgments: tuple[Judgment, ...]) -> tuple[EvalCase, ...]:
     )
 
 
+def encode_cases(cases: Sequence[EvalCase]) -> str:
+    """The bytes `write_cases` would write, without writing them.
+
+    The same one-liner as the writer rather than a re-implementation that could
+    disagree with it, and — for now — the same one-liner as
+    `tools/build_ingested_cases.py`'s. Both copies want to be one function in
+    `mycelium.eval.cases`, beside the writer they must agree with; that module is
+    a tuning path, so a change re-judging a frozen release set may not touch it
+    (`tools/check_frozen_release_sets.py`). Filed as roadmap 5.33.
+    """
+    lines = [
+        json.dumps(case.model_dump(mode="json"), sort_keys=True, ensure_ascii=False)
+        for case in cases
+    ]
+    return "\n".join(lines) + "\n"
+
+
 def main() -> int:
+    check_only = "--check" in sys.argv[1:]
     if not (CORPUS / "docs").is_dir():
         print(f"the vendored corpus is missing: {CORPUS / 'docs'}")
         return 1
@@ -411,10 +584,40 @@ def main() -> int:
         return 1
 
     destination = CORPUS / "eval"
+    summary = f"{len(dev)} dev and {len(release)} release cases"
+
+    if check_only:
+        # A judged set its own generator no longer reproduces is the defect, not
+        # a reason to regenerate quietly: the file on disk may be the only copy
+        # of a judgement somebody wrote ([BUG-0026]).
+        differences = [
+            (destination / f"{name}.jsonl").relative_to(ROOT).as_posix()
+            for name, cases in (("dev", dev), ("release", release))
+            if encode_cases(cases)
+            != (
+                (destination / f"{name}.jsonl").read_text(encoding="utf-8")
+                if (destination / f"{name}.jsonl").is_file()
+                else ""
+            )
+        ]
+        print(summary)
+        if differences:
+            print("the judged sets do not reproduce from this tree:")
+            for relative in differences:
+                print(f"  {relative}")
+            print(
+                "a case edited into the set by hand is invisible to this file and the "
+                "next run deletes it; move the judgement into DEV/RELEASE above, then "
+                "re-run `python tools/build_uv_docs_cases.py` and review the diff"
+            )
+            return 1
+        print("judged sets reproduce byte-for-byte")
+        return 0
+
     destination.mkdir(parents=True, exist_ok=True)
     write_cases(destination / "dev.jsonl", dev)
     write_cases(destination / "release.jsonl", release)
-    print(f"wrote {len(dev)} dev and {len(release)} release cases to {destination}")
+    print(f"wrote {summary} to {destination}")
     return 0
 
 

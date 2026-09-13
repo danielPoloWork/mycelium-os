@@ -132,3 +132,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0098](0098-declare-the-renderer-pin-it-to-what-the-artifacts-say.md) | Declare the renderer, pin it to what the artifacts already say, and keep it out of the default sync | Accepted |
 | [0099](0099-ask-the-compiler-whether-the-prose-survived.md) | Ask the compiler whether the prose survived, and escape only where it did not | Accepted |
 | [0100](0100-declare-what-a-lane-cannot-carry.md) | Declare what a lane cannot carry, per document, and report the split it creates | Accepted |
+| [0101](0101-let-the-exact-slice-name-the-section-that-documents-the-literal.md) | Let the `exact` slice name the section that documents the literal, because four of its five cases already do | Accepted |
