@@ -25,11 +25,34 @@ fixed and lets the *retrieval* be the only thing that varies.
 2. The judged anchor's text is read out of the Markdown corpus's own store — a
    chunk, or the concatenation of a section's chunks.
 3. Every chunk of the twin document is scored by **coverage**: what fraction of
-   the judged text's word tokens the candidate contains. The best-covered chunk
-   wins.
+   the judged text's *distinct* word tokens the candidate contains. The
+   best-covered chunk wins.
 4. Below `MIN_COVERAGE` nothing wins. The anchor is dropped, the case is reported,
    and if a case loses every anchor it is dropped whole — because a case whose
    answer is not in the corpus is not a hard case, it is a broken one.
+5. The winner's **`whole`** is recorded beside its coverage: the share of the
+   passage's word *occurrences* it can account for. Coverage answers "are the
+   passage's words here"; `whole` answers "is the passage here".
+
+## Why `whole` is recorded, and what coverage cannot see
+
+Coverage is over distinct tokens, so it is nearly blind to a passage that got
+**split** between two chunks — a section's vocabulary repeats across its
+examples while its topic sentence occurs once, so the chunk holding the examples
+can score high while the sentence that states the rule went next door. That is
+not hypothetical either: it is `u-1004` (roadmap 5.31, ADR-0102). Its section
+carries at coverage **0.9533**, comfortably the best of the document's six
+chunks — and `whole` is **0.8955**, because a PDF page boundary fell mid-section
+and left the opening in the chunk before. The case scores 0.000 on the twin and
+0.387 on its source, and for a session nobody could say why from the receipt.
+
+Recorded rather than acted on. `whole` does **not** choose the anchor and there
+is no floor on it: which chunk best holds a passage is a question about the
+projection, and re-deciding it by a second metric is how a carry starts being
+fitted. Measured over the current receipt, 43 of 54 anchors land whole; the two
+largest negatives in `tools/measure_projection_cost.py`'s per-case block are the
+two lowest `whole` values among scored cases, and the largest *gain* is also a
+split passage — so this is a number to read a case with, never a predictor.
 
 ## Why both builds are clean, and why that is the whole defect
 
@@ -54,9 +77,11 @@ penalising it for that would measure the chunker, not the projection.
 Every dropped anchor is printed, and every *mapped* one is written to
 `eval/carry.json` beside the sets — the receipt. Printing alone was not enough:
 the coverage of a surviving anchor is what moves first when something drifts, and
-a number nobody commits cannot show up in a diff. Three anchors currently map
-between 0.42 and 0.49 against a 0.50 floor, which is a cliff a reviewer should be
-able to see rather than discover.
+a number nobody commits cannot show up in a diff. The closest mapped anchor sits
+at **0.5269** against the 0.50 floor, which is a cliff a reviewer should be able
+to see rather than discover; the anchors that fall *through* it are printed as
+drops and are not in the receipt at all, which is why the three at 0.39–0.42 do
+not appear there.
 
 A silent drop would quietly make the ingested corpus easier than its twin, which
 is the one way this comparison could lie.
@@ -65,6 +90,7 @@ is the one way this comparison could lie.
 import json
 import re
 import sys
+from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -100,6 +126,23 @@ def coverage(judged: Sequence[str], candidate: Sequence[str]) -> float:
     if not wanted:
         return 0.0
     return len(wanted & set(candidate)) / len(wanted)
+
+
+def whole(judged: Sequence[str], candidate: Sequence[str]) -> float:
+    """The share of the passage's word *occurrences* `candidate` can account for.
+
+    A multiset intersection, so a word the passage uses six times and the
+    candidate twice contributes two rather than one — which is exactly the
+    difference that makes this see a split where :func:`coverage` cannot. 1.0
+    means the passage is in this chunk entire; anything less means part of it is
+    somewhere else, and the remainder is usually the neighbouring chunk.
+
+    Not used to choose an anchor and not floored. It is recorded (roadmap 5.31).
+    """
+    if not judged:
+        return 0.0
+    have = Counter(candidate)
+    return sum(min(count, have[word]) for word, count in Counter(judged).items()) / len(judged)
 
 
 def chunks_of_path(store: SqliteStore, doc_path: str) -> tuple[Chunk, ...]:
@@ -139,19 +182,25 @@ CARRY_RECEIPT = "carry.json"
 """Where each mapped anchor's coverage is recorded, beside the sets it explains."""
 
 
-def encode_receipt(mapped: Sequence[tuple[str, str, float]]) -> str:
-    """The carry as committed evidence: source anchor → twin anchor and coverage.
+def encode_receipt(mapped: Sequence[tuple[str, str, float, float]]) -> str:
+    """The carry as committed evidence: source anchor → twin anchor, and two numbers.
 
     Sorted and rounded so two runs of the same inputs produce the same bytes, and
     so a review reads a diff of *numbers* — the coverage of a surviving anchor is
     what moves first when the derivation drifts.
+
+    `whole` joined `coverage` at roadmap 5.31, because the two answer different
+    questions and only the second one was on the record: coverage says the
+    passage's words are here, `whole` says the passage is. A split passage moved
+    neither number enough to notice, and the case that exposed it took a session
+    to explain from a receipt that could have said so (ADR-0102).
     """
     document = {
-        "schema_version": "mycelium/eval-carry/v0",
+        "schema_version": "mycelium/eval-carry/v1",
         "min_coverage": MIN_COVERAGE,
         "anchors": {
-            source: {"twin": twin, "coverage": round(score, 4)}
-            for source, twin, score in sorted(mapped)
+            source: {"twin": twin, "coverage": round(score, 4), "whole": round(share, 4)}
+            for source, twin, score, share in sorted(mapped)
         },
     }
     return json.dumps(document, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
@@ -176,7 +225,7 @@ def main() -> int:  # noqa: C901 - a report is a sequence of stated steps
 
     dropped_anchors: list[str] = []
     dropped_cases: list[str] = []
-    mapped: list[tuple[str, str, float]] = []
+    mapped: list[tuple[str, str, float, float]] = []
 
     with (
         SqliteStore.open(MARKDOWN_CORPUS, read_only=True) as source_store,
@@ -194,17 +243,19 @@ def main() -> int:  # noqa: C901 - a report is a sequence of stated steps
                         dropped_anchors.append(f"{case.case_id}: {relevant.anchor} — no twin")
                         continue
                     wanted = tokens(judged_text(source_store, relevant.anchor))
-                    best, score = None, 0.0
+                    best, score, share = None, 0.0, 0.0
                     for chunk in chunks_of_path(twin_store, entry["evidence"]):
-                        found = coverage(wanted, tokens(chunk.text))
+                        candidate = tokens(chunk.text)
+                        found = coverage(wanted, candidate)
                         if found > score:
                             best, score = chunk.anchor, found
+                            share = whole(wanted, candidate)
                     if best is None or score < MIN_COVERAGE:
                         dropped_anchors.append(
                             f"{case.case_id}: {relevant.anchor} — best coverage {score:.2f}"
                         )
                         continue
-                    mapped.append((relevant.anchor, best, score))
+                    mapped.append((relevant.anchor, best, score, share))
                     anchors.append(RelevantAnchor(anchor=best, grade=relevant.grade))
 
                 if case.answerable and not anchors:
@@ -215,8 +266,12 @@ def main() -> int:  # noqa: C901 - a report is a sequence of stated steps
 
         errors, warnings = validate_judged_set(written["dev"] + written["release"], twin_store)
 
-    for anchor, best, score in mapped:
-        print(f"  {score:.2f}  {anchor}  ->  {best}")
+    for anchor, best, score, share in mapped:
+        # Stated as the fact the number is, never as a verdict: 0.98 and 0.51
+        # are both "not all here" and they do not mean the same thing, so the
+        # reader is given the share and no threshold (roadmap 5.31).
+        split = "  (part of the passage is elsewhere)" if share < 1.0 else ""
+        print(f"  {score:.2f}  whole {share:.2f}  {anchor}  ->  {best}{split}")
     for line in dropped_anchors:
         print(f"  dropped anchor  {line}")
     for case_id in dropped_cases:

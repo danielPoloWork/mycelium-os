@@ -133,3 +133,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0099](0099-ask-the-compiler-whether-the-prose-survived.md) | Ask the compiler whether the prose survived, and escape only where it did not | Accepted |
 | [0100](0100-declare-what-a-lane-cannot-carry.md) | Declare what a lane cannot carry, per document, and report the split it creates | Accepted |
 | [0101](0101-let-the-exact-slice-name-the-section-that-documents-the-literal.md) | Let the `exact` slice name the section that documents the literal, because four of its five cases already do | Accepted |
+| [0102](0102-record-whether-the-passage-landed-whole-and-read-a-large-negative-with-it.md) | Record whether the carried passage landed whole, and read a large negative with it | Accepted |

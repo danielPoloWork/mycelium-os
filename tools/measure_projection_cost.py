@@ -37,6 +37,16 @@ nothing here printed a case. A corpus repair later moved it and it read as a
 no threshold and no verdict: a case above its source is a question about the
 corpus, not a number to act on.
 
+**And a case is marked when its passage did not land whole.** The carry records
+`whole` per anchor — the share of the judged passage's word occurrences the
+chosen chunk actually holds (roadmap 5.31) — and a case marked `split` has at
+least one anchor below 1.0, meaning part of what it is judged on is in a
+neighbouring chunk that nothing credits. That is the first thing to check on a
+large negative, because it is what `u-1004` turned out to be: 0.000 on the twin
+against 0.387 on its source, from a page boundary that fell mid-section and left
+the sentence answering the query in the chunk before (ADR-0102). It is a reading
+aid and not a verdict — the largest *gain* in this table is also a split passage.
+
 What this cannot tell you: whether the *difference* generalises. Twenty-five
 cases across three formats is a handful per format, and the mapping rule is not
 neutral — `build_ingested_cases.py` picks the twin chunk with the most word
@@ -52,6 +62,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+
+sys.path.insert(0, str(ROOT / "tools"))
+
+from build_ingested_cases import CARRY_RECEIPT  # noqa: E402
 
 from mycelium.build import build  # noqa: E402
 from mycelium.chunking import estimate_tokens  # noqa: E402
@@ -104,6 +118,25 @@ def row(label: str, before: MetricSummary, after: MetricSummary, count: int) -> 
     return f"{label:<14} {count:>3}   " + "   ".join(cells)
 
 
+def split_passages() -> dict[str, float]:
+    """Per source anchor, the `whole` the carry recorded — below 1.0 only.
+
+    Read from the committed receipt rather than recomputed, so this table and
+    `eval/carry.json` cannot disagree about which passages were split. An older
+    receipt has no `whole` key and yields nothing, which is the right behaviour:
+    the marks vanish rather than being invented (roadmap 5.31).
+    """
+    receipt = INGESTED_CORPUS / "eval" / CARRY_RECEIPT
+    if not receipt.is_file():
+        return {}
+    anchors = json.loads(receipt.read_text(encoding="utf-8")).get("anchors", {})
+    return {
+        source: row["whole"]
+        for source, row in anchors.items()
+        if isinstance(row, dict) and row.get("whole", 1.0) < 1.0
+    }
+
+
 def _report_per_case(
     markdown: Sequence[EvalCase],
     ingested: Sequence[EvalCase],
@@ -127,11 +160,27 @@ def _report_per_case(
         ((case_id, was[case_id], now[case_id]) for case_id in was if case_id in now),
         key=lambda item: (-abs(item[2] - item[1]), item[0]),
     )
+    split = split_passages()
+    lowest = {
+        case.case_id: min(
+            (split[relevant.anchor] for relevant in case.relevant if relevant.anchor in split),
+            default=1.0,
+        )
+        for case in markdown
+    }
     print("\nper case, widest gap first (nDCG@10):")
-    print(f"  {'case':<9} {'format':<6} {'md':>6} {'ing':>6} {'delta':>7}")
+    print(f"  {'case':<9} {'format':<6} {'md':>6} {'ing':>6} {'delta':>7}  {'whole':>6}")
     for case_id, before, after in rows:
         fmt = attribution.get(case_id) or "mixed"
-        print(f"  {case_id:<9} {fmt:<6} {before:6.3f} {after:6.3f} {after - before:+7.3f}")
+        share = lowest.get(case_id, 1.0)
+        mark = f"  {share:6.3f}" if share < 1.0 else f"  {'':>6}"
+        print(f"  {case_id:<9} {fmt:<6} {before:6.3f} {after:6.3f} {after - before:+7.3f}{mark}")
+    marked = [case_id for case_id, *_ in rows if lowest.get(case_id, 1.0) < 1.0]
+    if marked:
+        print(
+            f"  `whole` < 1.0 on {len(marked)} case(s): part of what they are judged on is in a "
+            "neighbouring twin chunk that nothing credits"
+        )
     above = [case_id for case_id, before, after in rows if after > before + 1e-9]
     if above:
         print(
