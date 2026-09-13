@@ -137,3 +137,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0103](0103-generate-the-journal-index-because-every-row-already-lives-in-the-file.md) | Generate the journal index, because every row it holds already lives in the file it links to | Accepted |
 | [0104](0104-merge-what-the-projection-could-not-tell-apart-and-record-that-it-could-not.md) | Merge what the projection could not tell apart, and record that it could not | Accepted |
 | [0105](0105-pandoc-gets-a-floor-not-a-pin-because-nothing-it-writes-can-be-checked.md) | pandoc gets a floor, not a pin, because nothing it writes can be checked | Accepted |
+| [0106](0106-escape-what-commonmark-will-see-and-keep-the-repairs-that-worked.md) | Escape what CommonMark will see, and keep the repairs that worked | Accepted |

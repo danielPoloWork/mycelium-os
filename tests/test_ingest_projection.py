@@ -642,6 +642,35 @@ def test_what_is_deliberately_left_alone(line: str) -> None:
     assert neutralise(line) == line
 
 
+@pytest.mark.parametrize(("name", "raw", "escaped"), OPENERS, ids=[o[0] for o in OPENERS])
+@pytest.mark.parametrize("indent", [" ", "  ", "   "], ids=["one", "two", "three"])
+def test_a_shape_under_up_to_three_spaces_is_still_escaped(
+    name: str, raw: str, escaped: str, indent: str
+) -> None:
+    """CommonMark strips up to three leading spaces *before* looking for block
+    structure, so a shape test against the raw line had a blind spot that wide.
+
+    The corpus had four lines in it: ` + cchardet==2.1.7` in a PDF's text layer
+    was prose to `neutralise` and a bullet to the compiler, and the paragraph
+    holding it split in two (roadmap 5.35, ADR-0106).
+    """
+    assert neutralise(indent + raw) == indent + escaped
+
+
+@pytest.mark.parametrize(("name", "raw", "escaped"), OPENERS, ids=[o[0] for o in OPENERS])
+def test_the_indent_is_kept_in_front_of_the_escape(name: str, raw: str, escaped: str) -> None:
+    """The projector adds a character and removes none — including the spaces it
+    now has to look past. CommonMark will still eat them; this function does not."""
+    assert neutralise("  " + raw).startswith("  ")
+
+
+@pytest.mark.parametrize("line", ["    - four spaces is a code block", "     > and five"])
+def test_four_or_more_leading_spaces_stay_the_gap_they_were(line: str) -> None:
+    """ADR-0093's gap is unchanged: at four spaces the line is an indented code
+    block whatever precedes it, and no backslash reaches that."""
+    assert neutralise(line) == line
+
+
 def test_a_flattened_fence_no_longer_swallows_the_document() -> None:
     """BUG-0024, as a test: a paragraph beginning with a fence marker used to open
     a code block with no closing partner, and everything after it — headings,
@@ -811,3 +840,64 @@ def test_a_carried_span_never_moves_the_block_text() -> None:
         return [n.text or "" for n in parsed.kir.nodes if n.kind is NodeKind.PARAGRAPH]
 
     assert block_text(projection.text) == block_text(f"---\ntitle: x\n---\n\n{text}\n")
+
+
+# ---------------------------------------------------------------------------
+# A block that cannot be made whole still keeps the repairs that worked (5.35)
+# ---------------------------------------------------------------------------
+
+
+def test_an_unreadable_block_keeps_the_escapes_that_recovered_text() -> None:
+    """The fallback used to throw away repairs that worked (ADR-0106).
+
+    A PDF text layer whose paragraph loses a leading space is still a paragraph
+    saying `__init__.py` — and written unescaped the compiler read strong
+    emphasis and indexed `init.py`, the corpus's own identifier, for a reason
+    that had nothing to do with the space. The block is still counted
+    unreadable; it is no longer written plain when escaping recovers more of it.
+    """
+    # The indent is on an interior line: `_block` strips the block's own text, so
+    # a first-line indent is never the projector's to lose.
+    text = "For example, the structure would be:\n └── __init__.py"
+    projection = project(
+        kir(node(0, NodeKind.PARAGRAPH, text=text)),
+        source_uri="file:///x.pdf",
+        source_digest=DIGEST,
+    )
+    assert projection.unreadable == 1, "the leading space is still lost"
+    assert projection.escaped == 1, "and the escape that saved the identifier is kept"
+
+    body = "\n".join(
+        item.text or ""
+        for item in parse_markdown(projection.text, doc_id=DOC_ID).kir.nodes
+        if item.kind is NodeKind.PARAGRAPH
+    )
+    assert "__init__.py" in body, "the identifier survives"
+    assert "\\" not in body, "and the backslash does not"
+
+
+def test_a_block_nothing_recovers_is_still_written_plain() -> None:
+    """Where escaping recovers nothing, no backslash is written for nothing."""
+    projection = project(
+        kir(node(0, NodeKind.PARAGRAPH, text="prose\n only a leading space is lost here")),
+        source_uri="file:///x.pdf",
+        source_digest=DIGEST,
+    )
+    assert projection.unreadable == 1
+    assert projection.escaped == 0
+    assert "\\" not in projection.text
+
+
+def test_a_list_marker_under_one_space_no_longer_splits_its_paragraph() -> None:
+    """The four `config.pdf` lines, as the shape they are (roadmap 5.35)."""
+    text = "$ uv sync --extra build\n + cchardet==2.1.7\n + cython==3.1.3"
+    projection = project(
+        kir(node(0, NodeKind.PARAGRAPH, text=text)),
+        source_uri="file:///x.pdf",
+        source_digest=DIGEST,
+    )
+    reparsed = parse_markdown(projection.text, doc_id=DOC_ID).kir
+    kinds = [item.kind for item in reparsed.nodes if item.kind is not NodeKind.TAG_REF]
+    assert NodeKind.LIST not in kinds, "the paragraph must not split into a list"
+    body = "\n".join(item.text or "" for item in reparsed.nodes)
+    assert "+ cchardet==2.1.7" in body, "the content survives, less its leading space"

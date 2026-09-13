@@ -52,25 +52,25 @@ url = "https://download.pytorch.org/whl/cpu"
 
 Similarly, to pull from a different index based on the platform, you can provide a list of sources
 disambiguated by environment markers:
-[project]
-dependencies = ["torch"]
-[tool.uv.sources]
-torch = [
- { index = "pytorch-cpu", marker = "sys_platform == 'darwin'"},
- { index = "pytorch-cu130", marker = "sys_platform != 'darwin'"},
-]
-[[tool.uv.index]]
+\[project\]
+dependencies = \["torch"\]
+\[tool.uv.sources\]
+torch = \[
+ { index = "pytorch-cpu", marker = "sys\_platform == 'darwin'"},
+ { index = "pytorch-cu130", marker = "sys\_platform != 'darwin'"},
+\]
+\[\[tool.uv.index\]\]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
-[[tool.uv.index]]
+\[\[tool.uv.index\]\]
 name = "pytorch-cu130"
 url = "https://download.pytorch.org/whl/cu130"
 An index can be marked as explicit = true to prevent packages from being installed from that
 index unless explicitly pinned to it. For example, to ensure that torch is installed from the pytorch
 index, but all other packages are installed from PyPI, add the following to your pyproject.toml:
-[tool.uv.sources]
+\[tool.uv.sources\]
 torch = { index = "pytorch" }
-[[tool.uv.index]]
+\[\[tool.uv.index\]\]
 name = "pytorch"
 url = "https://download.pytorch.org/whl/cpu"
 explicit = true
@@ -82,14 +82,14 @@ index (i.e., only usable via tool.uv.sources) while also removing PyPI as the de
 Searching across multiple indexes
 By default, uv will stop at the first index on which a given package is available, and limit resolutions
 to those present on that first index (first-index).
-For example, if an internal index is specified via [[tool.uv.index]], uv's behavior is such that if a
+For example, if an internal index is specified via \[\[tool.uv.index\]\], uv's behavior is such that if a
 package exists on that internal index, it will always be installed from that internal index, and never
 from PyPI. The intent is to prevent "dependency confusion" attacks, in which an attacker publishes a
 malicious package on PyPI with the same name as an internal package, thus causing the malicious
 package to be installed instead of the internal package. See, for example, the torchtriton attack
 from December 2022.
 To opt in to alternate index behaviors, use the--index-strategy command-line option, or the
-UV_INDEX_STRATEGY environment variable, which supports the following values:
+UV\_INDEX\_STRATEGY environment variable, which supports the following values:
 • first-index (default): Search for each package across all indexes, limiting the candidate versions
 to those present in the first index that contains the package.
 

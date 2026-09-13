@@ -47,24 +47,24 @@ module:
 hello = "example:app"
 
 Plugin entry points
-Projects may define entry points for plugin discovery in the [project.entry-points] table of the
+Projects may define entry points for plugin discovery in the \[project.entry-points\] table of the
 pyproject.toml.
 For example, to register the example-plugin-a package as a plugin for example:
-[project.entry-points.'example.plugins']
-a = "example_plugin_a"
+\[project.entry-points.'example.plugins'\]
+a = "example\_plugin\_a"
 Then, in example, plugins would be loaded with:
-from importlib.metadata import entry_points
-for plugin in entry_points(group="example.plugins"):
+from importlib.metadata import entry\_points
+for plugin in entry\_points(group="example.plugins"):
  plugin.load()
 !!! note
-The `group` key can be an arbitrary value, it does not need to include the package
+The \`group\` key can be an arbitrary value, it does not need to include the package
 name or
 "plugins". However, it is recommended to namespace the key by the package name to
 avoid
 collisions with other packages.
 Build systems
 A build system determines how the project should be packaged and installed. Projects may declare
-and configure a build system in the [build-system] table of the pyproject.toml.
+and configure a build system in the \[build-system\] table of the pyproject.toml.
 uv uses the presence of a build system to determine if a project contains a package that should be
 installed in the project virtual environment. If a build system is not defined, uv will not attempt to
 build or install the project itself, just its dependencies. If a build system is defined, uv will build and
@@ -75,17 +75,17 @@ create a flat, unpackaged project instead.
 !!! note
 While uv will not build and install the current project without a build system
 definition,
-the presence of a `[build-system]` table is not required in other packages. For
+the presence of a \`\[build-system\]\` table is not required in other packages. For
 legacy reasons,
-if a build system is not defined, then `setuptools.build_meta:__legacy__` is used to
+if a build system is not defined, then \`setuptools.build\_meta:\_\_legacy\_\_\` is used to
 build the
 package. Packages you depend on may not explicitly declare their build system but are
 still
-installable. Similarly, if you [add a dependency on a local project](./
+installable. Similarly, if you \[add a dependency on a local project\](./
 dependencies.md#path)
-or install it with `uv pip`, uv will attempt to build and install it regardless of
+or install it with \`uv pip\`, uv will attempt to build and install it regardless of
 the presence
-of a `[build-system]` table.
+of a \`\[build-system\]\` table.
 Build systems are used to power the following features:
 • Including or excluding files from distributions
 • Editable installation behavior
@@ -327,9 +327,9 @@ no-build-isolation-package = ["cchardet"]
 When running uv sync, uv will first install cython and setuptools in the project environment,
 followed by cchardet (without build isolation):
 $ uv sync --extra build
- + cchardet==2.1.7
- + cython==3.1.3
- + setuptools==80.9.0
+ \+ cchardet==2.1.7
+ \+ cython==3.1.3
+ \+ setuptools==80.9.0
 Similarly, to install flash-attn without build isolation, include the following in your
 pyproject.toml:
 [project]
@@ -359,42 +359,42 @@ requires-python = ">=3.12"
 dependencies = ["cchardet"]
 [project.optional-dependencies]
 
-build = ["setuptools", "cython"]
-[tool.uv]
-no-build-isolation-package = ["cchardet"]
+build = \["setuptools", "cython"\]
+\[tool.uv\]
+no-build-isolation-package = \["cchardet"\]
 Given the above, a user would first sync with the build optional group, and then without it to
 remove the build dependencies:
 $ uv sync --extra build
- + cchardet==2.1.7
- + cython==3.1.3
- + setuptools==80.9.0
+ \+ cchardet==2.1.7
+ \+ cython==3.1.3
+ \+ setuptools==80.9.0
 $ uv sync
- - cython==3.1.3
- - setuptools==80.9.0
+ \- cython==3.1.3
+ \- setuptools==80.9.0
 Some packages, like cchardet, only require build dependencies for the installation phase of uv sync.
 Others require their build dependencies to be present even just to resolve the project's dependencies
 during the resolution phase.
 In such cases, the build dependencies can be installed prior to running any uv lock or uv sync
 commands, using the lower lower-level uv pip API. For example, given:
-[project]
+\[project\]
 name = "project"
 version = "0.1.0"
 description = "..."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = ["flash-attn"]
-[tool.uv]
-no-build-isolation-package = ["flash-attn"]
+dependencies = \["flash-attn"\]
+\[tool.uv\]
+no-build-isolation-package = \["flash-attn"\]
 You could run the following sequence of commands to sync flash-attn:
 $ uv venv
 $ uv pip install torch setuptools
 $ uv sync
 Alternatively, users can instead provide the flash-attn metadata upfront via the dependency￾metadata setting, thereby forgoing the need to build the package during the dependency resolution
 phase. For example, to provide the flash-attn metadata upfront:
-[[tool.uv.dependency-metadata]]
+\[\[tool.uv.dependency-metadata\]\]
 name = "flash-attn"
 version = "2.6.3"
-requires-dist = ["torch", "einops"]
+requires-dist = \["torch", "einops"\]
 Editable mode
 By default, the project will be installed in editable mode, such that changes to the source code are
 immediately reflected in the environment. uv sync and uv run both accept a --no-editable flag,

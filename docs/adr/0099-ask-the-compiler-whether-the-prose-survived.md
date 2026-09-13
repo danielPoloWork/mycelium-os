@@ -84,6 +84,16 @@ available would substitute different characters, which is precisely the text-mov
 refuses. ADR-0093 recorded the four-space case as "a gap rather than a decision" and measured
 it empty; it is not empty any more, and it is filed as roadmap 5.35 with the shape identified.
 
+> **Corrected at roadmap 5.35 ([ADR-0106](0106-escape-what-commonmark-will-see-and-keep-the-repairs-that-worked.md)).**
+> "Every one of them is leading whitespace" is true of why each *block* fails the whole-block
+> comparison, and false about what those blocks *lose*. Read line by line, the eight lost
+> **53** source lines and only **20** were a stripped space. The rest went two other ways, and
+> both were this decision's own doing: a block that failed was written **unescaped**, so every
+> inline repair that had worked was discarded with the one that had not — `__init__.py` was
+> indexed as `init.py` after all — and `neutralise` matched its block shapes against the raw
+> line, which CommonMark never sees, so ` + item` still split its paragraph. With both
+> corrected the loss is **34** lines and the claim above becomes true as written.
+
 ## Alternatives Considered
 
 - **Escape a chosen list of inline shapes** — `__`, `**`, `` ` ``, `[` — the way ADR-0093
