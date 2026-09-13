@@ -133,7 +133,22 @@ def profile_markdown_it() -> MarkdownIt:
     CommonMark plus GFM tables (the profile's first row), plus the wikilink,
     embed, and tag rules. HTML is *not* enabled: authored content is untrusted
     (D-017), and raw HTML has no place in a representation whose whole purpose is
-    to be typed and quotable — it reaches KIR as an ``opaque`` node instead.
+    to be typed and quotable — so it is never interpreted and **survives as
+    literal text**, markup included, which is what the adapter has always
+    documented and what a reader of a projected passage actually sees.
+
+    That sentence used to say an ``opaque`` node, which was wrong twice over and
+    cost roadmap 5.36 an afternoon looking for nodes that cannot exist: with
+    ``html: False`` markdown-it emits no ``html_block`` token at all, and the
+    adapter's branch for one — unreachable, and marked so — builds a paragraph
+    (ADR-0107).
+
+    GFM's ``strikethrough`` is deliberately **not** enabled, and that is a
+    decision rather than an omission: spec 03 §3.1 fixes this profile at
+    "CommonMark + GFM tables". Enabling it would flatten ``~~x~~`` to ``x`` with
+    no KIR change, which is exactly the one-line remedy ADR-0107 names for the
+    day a corpus first carries one — and until then it would widen a frozen
+    contract to fix nothing measurable.
     """
     md = MarkdownIt("commonmark", {"html": False}).enable("table")
     md.inline.ruler.before("link", "wikilink", _wikilink_rule)

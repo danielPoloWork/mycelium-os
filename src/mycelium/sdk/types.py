@@ -487,6 +487,14 @@ class KirNode(Record):
     syntax — ``` `uv tool install` ``` — so the flattening had erased the one signal
     a symbol source for commands needs (ADR-0094). The text is unchanged; the
     spans say which of its words were code.
+
+    There is deliberately **no companion field for emphasis**, and the question was
+    asked and answered rather than skipped (roadmap 5.36, ADR-0107). A code span
+    is a naming; bold and italic are not, and both lanes already index their text
+    identically. The measurement that settled it is worth keeping here: where the
+    authored and ingested lanes *do* disagree about a document, the cause is markup
+    the profile never parses, so a field would sit empty exactly where the
+    disagreement is.
     """
 
     id: NonEmptyStr
