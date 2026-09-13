@@ -418,3 +418,95 @@ def test_a_pandoc_below_the_floor_is_refused_by_its_own_reported_version(
 def test_nothing_is_required_when_only_pdfs_are_pending() -> None:
     """A render with no DOCX or HTML to write needs no pandoc."""
     assert require_pandoc(0) == ""
+
+
+# ---------------------------------------------------------------------------
+# The premise of the emphasis refusal (roadmap 5.36, ADR-0107)
+# ---------------------------------------------------------------------------
+
+# Markup that the twin's reader consumes as *formatting* and the authored
+# profile leaves as literal characters. Each was checked end to end — source
+# Markdown through `gfm` to HTML, HTML through docling to KIR — against the same
+# text parsed by the profile, and each came back different (ADR-0107).
+#
+# The strikethrough is GFM's; the eleven tags are raw HTML, which the profile
+# does not interpret at all (D-017) and pandoc passes through to a real element
+# docling then reads as formatting and drops.
+DIVERGENT_MARKUP = {
+    "GFM strikethrough": re.compile(r"~~(?!\s)[^~\n]+(?<!\s)~~"),
+    "inline HTML emphasis": re.compile(
+        r"<(?:b|strong|i|em|u|s|del|ins|mark|sub|sup)\b[^>]*>", re.IGNORECASE
+    ),
+}
+
+_FENCE = re.compile(r"^(```|~~~).*?^\1", re.MULTILINE | re.DOTALL)
+_CODE_SPAN = re.compile(r"`[^`\n]+`")
+
+
+def prose_of(text: str) -> str:
+    """The document with its code removed — fences blanked, spans dropped.
+
+    Code is excluded because it does not diverge: a span reaches the twin as a
+    `<code>` element whose text docling returns verbatim, so `` `<b>` `` says the
+    same thing on both sides. Only markup the *prose* carries can disagree.
+    """
+    return _CODE_SPAN.sub("", _FENCE.sub(lambda m: "\n" * m.group(0).count("\n"), text))
+
+
+# The sites that already diverge, each named and owned. `docs/index.md` wraps its
+# hero caption in a raw HTML block, which the profile keeps as literal text and
+# docling resolves into prose — measured at 5.36, and filed as roadmap 5.40 because
+# closing it moves chunk text. Nothing else in either corpus diverges, and the
+# assertion below is what keeps that true.
+KNOWN_DIVERGENT = {("uv-docs", "docs/index.md")}
+
+
+CORPORA_BY_NAME = {"uv-docs": TWIN, "uv-docs-ingested": CORPUS}
+
+
+@pytest.mark.parametrize("name", sorted(CORPORA_BY_NAME))
+def test_only_the_known_documents_carry_markup_the_lanes_read_differently(name: str) -> None:
+    """The premise of the refusal at roadmap 5.36 (ADR-0107), pinned.
+
+    KIR models no emphasis, deliberately, and ADR-0107 refused to change that —
+    on the evidence that the disagreement is *not* a vocabulary problem and that
+    its whole extent is one unjudged document. Both halves of that argument decay
+    silently if a re-vendored corpus brings more, so the extent is asserted rather
+    than remembered: a new site means re-reading the decision, not editing this set.
+    """
+    corpus = CORPORA_BY_NAME[name]
+    found = {
+        (name, path.relative_to(corpus).as_posix())
+        for path in sorted(corpus.rglob("*.md"))
+        for pattern in DIVERGENT_MARKUP.values()
+        if pattern.search(prose_of(path.read_text(encoding="utf-8")))
+    }
+    expected = {site for site in KNOWN_DIVERGENT if site[0] == name}
+    assert found == expected, (
+        "the set of documents whose markup the authored profile and the ingestion lane "
+        "read differently has changed, so the twin and its source now disagree about a "
+        "document neither lane thinks it damaged. Re-open roadmap 5.36 rather than "
+        f"editing KNOWN_DIVERGENT: ADR-0107's refusal rests on this extent. Found {found}, "
+        f"expected {expected}"
+    )
+
+
+def test_no_known_divergent_document_is_judged_by_any_case() -> None:
+    """Why 5.40 is filed rather than done: the divergence moves no measured number.
+
+    Read from :data:`KNOWN_DIVERGENT` rather than naming the document again, so
+    the two halves of the premise cannot drift apart. The moment a case grades a
+    chunk of one of these, the argument for deferring stops holding — and the
+    honest order is to fix the corpus before judging it, not after.
+    """
+    judged = {
+        relevant["anchor"].split("#")[0]
+        for name in ("dev", "release")
+        for line in (TWIN / "eval" / f"{name}.jsonl").read_text(encoding="utf-8").splitlines()
+        for relevant in json.loads(line).get("relevant", [])
+    }
+    diverging = {document for corpus, document in KNOWN_DIVERGENT if corpus == "uv-docs"}
+    assert not (judged & diverging), (
+        "a judged case now grades a document whose two lanes disagree, so roadmap 5.40 "
+        "is no longer free to wait: the divergence is inside a measured number"
+    )

@@ -296,3 +296,42 @@ def test_empty_document_is_lawful() -> None:
     doc = parse_markdown("")
     assert doc.kir.nodes == ()
     assert doc.kir.warnings == ()
+
+
+# ---------------------------------------------------------------------------
+# Emphasis: parsed away, never modelled (roadmap 5.36, ADR-0107)
+# ---------------------------------------------------------------------------
+
+
+def test_emphasis_is_flattened_into_the_text_and_nowhere_else() -> None:
+    """KIR has no emphasis field, and does not need one (ADR-0107).
+
+    `spans` exists for inline *code* because a code span is how a corpus names a
+    command (roadmap 5.23, ADR-0094). Bold and italic name nothing: the indexed
+    text is the same with or without them, which is the whole reason there is
+    nothing to record.
+    """
+    node = only("A **loud** and *soft* and _quiet_ word.\n", NodeKind.PARAGRAPH)
+    assert node.text == "A loud and soft and quiet word."
+    assert node.spans == ()
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "A ~~struck~~ word.",
+        "A <u>lined</u> word.",
+        "A <em>soft</em> word.",
+        "Water is H<sub>2</sub>O.",
+    ],
+)
+def test_markup_outside_the_profile_stays_in_the_text_verbatim(source: str) -> None:
+    """GFM strikethrough and inline HTML are not Profile v1 (spec 03 §3.1: the
+    profile is CommonMark *plus GFM tables*), so they are prose and stay prose.
+
+    Pinned rather than left to the parser's defaults because it is the premise of
+    a refusal: these are exactly the constructs the ingestion lane resolves into
+    plain text, so enabling one here without re-reading ADR-0107 would close a
+    divergence on one side of the corpus and not the other.
+    """
+    assert only(f"{source}\n", NodeKind.PARAGRAPH).text == source

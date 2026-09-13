@@ -5,9 +5,16 @@
 Mycelium OS owns the *representation*, not the parser (D-007): markdown-it produces
 the token stream, and this module adapts it into KIR — a thin, ordered, versioned
 AST whose node kinds are fixed by spec 03 §4. Everything markdown-it knows that
-KIR does not model (emphasis, inline code, list markup) flattens into node text;
-everything KIR models that CommonMark does not know (wikilinks, embeds, tags,
-callouts) comes from :mod:`mycelium.markdown.profile`.
+KIR does not model (emphasis, list markup) flattens into node text; inline code
+flattens too but is *also* recorded in ``spans``, because a code span is how a
+corpus names a command (5.23, ADR-0094); and everything KIR models that
+CommonMark does not know (wikilinks, embeds, tags, callouts) comes from
+:mod:`mycelium.markdown.profile`.
+
+Emphasis stays flattened and unrecorded by decision, not by omission: it names
+nothing a query can use, and the one place the authored and ingested lanes
+disagree about a document turned out not to be caused by the missing vocabulary
+at all (roadmap 5.36, ADR-0107).
 
 Shape rules, all consequences of "thin and ordered":
 

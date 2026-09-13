@@ -12,6 +12,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **Emphasis stays out of KIR, and the disagreement it was blamed for is somewhere else**
+  (roadmap 5.36, [ADR-0107](docs/adr/0107-refuse-to-model-emphasis-and-name-the-lane-the-disagreement-is-in.md)). Nothing in the compiler changes. `KirNode` models no
+  bold, italic or strikethrough, and the question of whether it should was settled by putting
+  eighteen constructs through both lanes end to end: twelve are read differently by the
+  authored profile and the ingestion lane (GFM strikethrough and eleven inline HTML tags),
+  six agree — including bold and italic, whose indexed text is identical either way. The
+  strikethrough the item was filed against occurs in **none** of the three corpora; the whole
+  real extent is a single `<i>` in **one** document, uv's `docs/index.md`, whose hero caption is a raw HTML
+  block that the profile keeps verbatim and docling resolves into prose. And the missing
+  vocabulary is not what causes it: the profile never parses that markup (HTML is off by
+  D-017), so an emphasis field would sit empty exactly where the two corpora differ — while
+  the strikethrough half would close with one parser rule and no KIR change at all, measured.
+  The extent is now asserted by a test rather than remembered, the affected document is
+  pinned as unjudged, and stripping HTML markup from indexed prose is filed as roadmap 5.40.
+  One wrong sentence is corrected on the way: `profile_markdown_it` had claimed since 2.4
+  that raw HTML *"reaches KIR as an `opaque` node"*, which it never has and cannot.
+
 - **The evidence projection escapes what CommonMark will actually see, and an unreadable block keeps the repairs that worked** (roadmap 5.35,
   [ADR-0106](docs/adr/0106-escape-what-commonmark-will-see-and-keep-the-repairs-that-worked.md)).
   Two corrections to the evidence lane. `neutralise` matched its block-opening shapes against the raw
