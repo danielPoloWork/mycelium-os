@@ -119,6 +119,12 @@ before ASCII punctuation, so ``\1.`` would leave a literal backslash in the text
 
 _QUOTE_MARK: Final = re.compile(r"^>")
 
+_MAX_INDENT: Final = 3
+"""How many leading spaces CommonMark strips before it looks for block structure.
+
+Three, not four: the fourth space is an indented code *block* rather than an
+indent, and is the shape ADR-0093 recorded as a gap no backslash can close."""
+
 _RULE: Final = re.compile(r"^(?:-+|=+|_{3,}|\*{3,})\s*$")
 """A thematic break, or a setext underline — which is worse than it looks: it makes
 a *heading* out of the lines above it, so a line of dashes in projected prose can
@@ -174,14 +180,25 @@ class Projection:
     this lane exists to make impossible."""
 
     escaped: int = 0
-    """Blocks whose source text asserted inline syntax it did not author, and whose
-    prose was therefore backslashed so the compiler reads back the characters the
-    source actually had (roadmap 5.28)."""
+    """Blocks written with backslashes, because their source text asserted inline
+    syntax it did not author (roadmap 5.28).
+
+    Since roadmap 5.35 this counts a block whose escaping recovered *some* of its
+    text without recovering all of it, so it overlaps :attr:`unreadable` rather
+    than partitioning against it. Both numbers stay true of the same block: it was
+    escaped, and it still does not read back whole."""
 
     unreadable: int = 0
-    """Blocks the compiler still does not read back after escaping. Zero on all
-    three corpora; counted because a silent one would be indistinguishable from a
-    block that never needed repair."""
+    """Blocks the compiler still does not read back, escaped or not.
+
+    **Eight on the vendored ingested corpus**, in four PDFs, and the docstring
+    that said zero was written before they existed (ADR-0093 measured the gap
+    empty; roadmap 5.28 found it was not). Every one of them is now a leading
+    space CommonMark strips inside a paragraph — one to three, four being a code
+    block — which no escape reaches, because a backslash is only an escape before
+    ASCII punctuation and anything else would substitute characters the source did
+    not have (ADR-0106). Counted rather than repaired, and counted because a silent
+    one would be indistinguishable from a block that never needed repair."""
 
 
 def evidence_path(
@@ -471,8 +488,27 @@ def _repaired(
     *does this survive* is answered by the thing whose answer matters rather than
     by a rule about Markdown — the discipline ADR-0096 established for code spans,
     applied to the prose it sits in. A block that still does not read back after
-    escaping is counted and written unescaped: there is no third thing to try, and
-    an uncounted failure is the one outcome this lane refuses.
+    escaping is counted, always: an uncounted failure is the one outcome this lane
+    refuses.
+
+    **A block that cannot be made whole still keeps the repairs that worked**
+    (roadmap 5.35, ADR-0106). This used to fall back to the unescaped rendering on
+    the reasoning that there was no third thing to try — and that threw away every
+    repair the escape *did* achieve. A PDF text layer whose paragraph also loses a
+    leading space is still a paragraph saying ``__init__.py``, and written plain
+    the compiler read strong emphasis and indexed ``init.py``: the corpus's own
+    identifier, gone, for a reason that had nothing to do with the space nothing
+    can fix. Over the eight such blocks on the vendored corpus the unescaped
+    fallback lost **53** source lines where the escaped one lost **34**.
+
+    The choice needs no metric, because an escape is *inert*: every character
+    ``_escaped`` backslashes is ASCII punctuation, so CommonMark consumes the
+    backslash and the reader gets the character — the property
+    ``test_the_escape_costs_the_text_nothing`` already pins. An escaped rendering
+    can therefore only ever hand back more of the source than the plain one, never
+    less. So if the two read back differently at all, the difference is text the
+    plain rendering was losing, and the escapes are kept. If they read back the
+    same, escaping achieved nothing here and no backslash is written for nothing.
     """
     done = finalize or (lambda rendered: rendered)
     plain = _apply(text, placements)
@@ -482,7 +518,11 @@ def _repaired(
     if _extracted(done(repaired)) == text:
         tally.escaped += 1
         return repaired
+
     tally.unreadable += 1
+    if _extracted(done(repaired)) != _extracted(done(plain)):
+        tally.escaped += 1
+        return repaired
     return plain
 
 
@@ -640,28 +680,60 @@ def neutralise(text: str) -> str:
     mid-block as readily as it opens one, so a rule for the first line alone
     would have left `dependencies-docx` exactly as broken as it was.
 
+    Each line is tested as the compiler will *see* it — with up to three leading
+    spaces removed, which is what CommonMark strips before it looks for block
+    structure. Testing the raw line instead was a blind spot exactly that wide,
+    and the corpus had four lines in it (roadmap 5.35, ADR-0106).
+
     What is deliberately *not* escaped: an inline tag (``#tag``, no space — its
     ``#`` is already in the text and the projector has always carried it), raw
     HTML (the Profile disables it, so ``<div>`` is already prose), and an indented
     line, which no backslash can neutralise — four leading spaces are a code block
-    whatever precedes them. The last one is a gap rather than a decision, and it
-    is empty on all three corpora: ADR-0093 records the measurement.
+    whatever precedes them. The last one is a gap rather than a decision, and
+    ADR-0093 records the measurement that it was empty on all three corpora. It
+    is **still** empty at four spaces; what was not empty is the one-to-three-space
+    case above it, which is a different shape and is now handled.
     """
     return "\n".join(_neutralise_line(line) for line in text.split("\n"))
 
 
 def _neutralise_line(line: str) -> str:
-    ordered = _ORDERED.match(line)
+    """One line, escaped if it opens a block *as the compiler will read it*.
+
+    The shapes are matched against the line with up to three leading spaces
+    removed, because that is what CommonMark does before it looks for block
+    structure — and matching the raw line instead left a blind spot exactly
+    that wide. Measured on the vendored corpus: ` + cchardet==2.1.7` in a PDF's
+    text layer is prose to this function and a bullet to the compiler, so the
+    paragraph holding it split into a paragraph and a list, and four such lines
+    left `config-pdf`'s block unreadable for a reason nobody had attributed
+    (roadmap 5.35).
+
+    The stripped spaces are put back in front of the backslash rather than
+    dropped: they are the source's characters, and this function's whole promise
+    is that it adds one character and removes none. They will still be eaten by
+    CommonMark — that is the residue roadmap 5.35 accepts and ADR-0106 records —
+    but they are not eaten *here*.
+
+    Four or more leading spaces are deliberately still left alone: that is an
+    indented code block whatever precedes it, `_INDENT` does not reach it, and no
+    backslash neutralises it (ADR-0093's gap, unchanged).
+    """
+    width = len(line) - len(line.lstrip(" "))
+    if width > _MAX_INDENT:
+        return line
+    indent, rest = line[:width], line[width:]
+    ordered = _ORDERED.match(rest)
     if ordered is not None:
-        return f"{ordered.group(1)}\\{ordered.group(2)}{line[ordered.end() :]}"
+        return f"{indent}{ordered.group(1)}\\{ordered.group(2)}{rest[ordered.end() :]}"
     if (
-        _FENCE.match(line)
-        or _ATX.match(line)
-        or _BULLET.match(line)
-        or _QUOTE_MARK.match(line)
-        or _RULE.match(line)
+        _FENCE.match(rest)
+        or _ATX.match(rest)
+        or _BULLET.match(rest)
+        or _QUOTE_MARK.match(rest)
+        or _RULE.match(rest)
     ):
-        return "\\" + line
+        return f"{indent}\\{rest}"
     return line
 
 

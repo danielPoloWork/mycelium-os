@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The evidence projection escapes what CommonMark will actually see, and an unreadable block keeps the repairs that worked** (roadmap 5.35,
+  [ADR-0106](docs/adr/0106-escape-what-commonmark-will-see-and-keep-the-repairs-that-worked.md)).
+  Two corrections to the evidence lane. `neutralise` matched its block-opening shapes against the raw
+  line while CommonMark strips up to three leading spaces first, so ` + item` in a PDF's text layer
+  was prose to the projector and a bullet to the compiler. And a block that could not be made to read
+  back whole was written *unescaped*, throwing away the repairs that had worked — `__init__.py` was
+  indexed as `init.py`. It now keeps its escapes whenever they change what comes back, which needs no
+  threshold: an escape is inert, so an escaped rendering can only ever return more of the source. On
+  the vendored ingested corpus the eight unreadable blocks go from losing **53** source lines to **34**,
+  and all 34 are now a stripped leading space — the one cause nothing can repair without substituting
+  characters, accepted and reported. One evaluation case (`u-1022`) crossed the nDCG@10 rank boundary
+  as a result and both twin baselines were re-blessed; the incumbent arm did not move at all.
 - **The ingested corpus's generator refuses to render DOCX/HTML with a pandoc too old to
   trust, before writing a byte** (roadmap 5.34,
   [ADR-0105](docs/adr/0105-pandoc-gets-a-floor-not-a-pin-because-nothing-it-writes-can-be-checked.md)).

@@ -49,24 +49,24 @@ typically choosing the latest compatible version.
 
 Modules
 Python packages are expected to contain one or more Python modules, which are directories
-containing an __init__.py. By default, a single root module is expected at src/<package_name>/
-__init__.py.
+containing an \_\_init\_\_.py. By default, a single root module is expected at src/\<package\_name>/
+\_\_init\_\_.py.
 For example, the structure for a project named foo would be:
 pyproject.toml
 src
 └── foo
- └── __init__.py
+ └── \_\_init\_\_.py
 uv normalizes the package name to determine the default module name: the package name is
 lowercased and dots and dashes are replaced with underscores, e.g., Foo-Bar would be converted to
-foo_bar.
+foo\_bar.
 The src/ directory is the default directory for module discovery.
 These defaults can be changed with the module-name and module-root settings. For example, to use
 a FOO module in the root directory, as in the project structure:
 pyproject.toml
 FOO
-└── __init__.py
+└── \_\_init\_\_.py
 The correct build configuration would be:
-[tool.uv.build-backend]
+\[tool.uv.build-backend\]
 module-name = "FOO"
 module-root = ""
 Namespace packages
@@ -78,12 +78,12 @@ pyproject.toml
 src
 └── foo
  └── bar
- └── __init__.py
+ └── \_\_init\_\_.py
 And the module-name configuration would be:
-[tool.uv.build-backend]
+\[tool.uv.build-backend\]
 module-name = "foo.bar"
 !!! important
-The `__init__.py` file is not included in `foo`, since it's the shared namespace
+The \`\_\_init\_\_.py\` file is not included in \`foo\`, since it's the shared namespace
 module.
 It's also possible to have a complex namespace package with more than one root module, e.g., with
 the project structure:
@@ -91,19 +91,19 @@ pyproject.toml
 src
 ├── foo
 
-│ └── __init__.py
+│ └── \_\_init\_\_.py
 └── bar
- └── __init__.py
+ └── \_\_init\_\_.py
 While we do not recommend this structure (i.e., you should use a workspace with multiple packages
 instead), it is supported by setting module-name to a list of names:
-[tool.uv.build-backend]
-module-name = ["foo", "bar"]
+\[tool.uv.build-backend\]
+module-name = \["foo", "bar"\]
 For packages with many modules or complex namespaces, the namespace = true option can be
 used to avoid explicitly declaring each module name, e.g.:
-[tool.uv.build-backend]
+\[tool.uv.build-backend\]
 namespace = true
 !!! warning
-Using `namespace = true` disables safety checks. Using an explicit list of module
+Using \`namespace = true\` disables safety checks. Using an explicit list of module
 names is
 strongly recommended outside of legacy projects.
 The namespace option can also be used with module-name to explicitly declare the root, e.g., for the
@@ -112,22 +112,22 @@ pyproject.toml
 src
 └── foo
  ├── bar
- │ └── __init__.py
+ │ └── \_\_init\_\_.py
  └── baz
- └── __init__.py
+ └── \_\_init\_\_.py
 The recommended configuration would be:
-[tool.uv.build-backend]
+\[tool.uv.build-backend\]
 module-name = "foo"
 namespace = true
 Stub packages
 The build backend also supports building type stub packages, which are identified by the -stubs
 suffix on the package or module name, e.g., foo-stubs. The module name for type stub packages
 must end in -stubs, so uv will not normalize the - to an underscore. Additionally, uv will search for
-a __init__.pyi file. For example, the project structure would be:
+a \_\_init\_\_.pyi file. For example, the project structure would be:
 pyproject.toml
 src
 └── foo-stubs
- └── __init__.pyi
+ └── \_\_init\_\_.pyi
 Type stub modules are also supported for namespace packages.
 File inclusion and exclusion
 The build backend is responsible for determining which files in a source tree should be packaged
