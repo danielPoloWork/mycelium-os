@@ -10,6 +10,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Added
+
+- **An ingestion lane now declares what it cannot carry** (roadmap 5.29, [ADR-0100](docs/adr/0100-declare-what-a-lane-cannot-carry.md)).
+  Roadmap 5.25 taught the evidence projector to keep an inline code naming, and reported that
+  the ingested corpus names commands — which was an HTML result presented as a corpus result.
+  A DOCX carries the naming in its container (224 `VerbatimChar` runs in one document) and
+  docling's backend reports a run as bold, italic, underline, strikethrough or script with no
+  monospace among them, so it is gone before the adapter sees it; a PDF text layer never had
+  one. Both lanes now say so once per document, in the KIR warnings that travel into the
+  fidelity report — a declared policy, not a loss, so nothing is charged to the loss budget
+  and no projected document changes. The HTML lane declares nothing, because the split is the
+  information: 1 215 spans across 46 of 62 HTML documents, 0 across 19 DOCX and PDF.
+
 ### Fixed
 
 - **Projected prose no longer asserts inline syntax the source did not author** (roadmap 5.28,

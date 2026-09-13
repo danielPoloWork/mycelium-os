@@ -437,6 +437,30 @@ The same run also found what projection costs that nobody was measuring: the Mar
 compiles **229 edges** and its ingested twin **10**. A relative link between two documents
 does not survive rendering and re-projection. Filed as roadmap 5.7.
 
+### The three lanes do not lose the same things
+
+An inline code span is how this corpus *names* a command, and only one of the twin's three
+lanes can carry one across (roadmap 5.29,
+[ADR-0100](../docs/adr/0100-declare-what-a-lane-cannot-carry.md)):
+
+| lane | documents | code spans carried | documents carrying one |
+|---|---:|---:|---:|
+| html | 62 | **1 215** | 46 |
+| docx | 10 | **0** | 0 |
+| pdf | 9 | **0** | 0 |
+
+So roadmap 5.25's result — *the twin names commands again* — is a statement about the HTML
+lane, and this table is what keeps it from reading as a statement about ingestion. The cause is
+not ours and not fixable here: pandoc writes inline code into a DOCX as a `VerbatimChar`
+character run (224 in the largest of them), and docling's DOCX backend exposes a run as bold,
+italic, underline, strikethrough or script with **no monospace**, so the distinction is
+destroyed before this project's adapter is called. A PDF text layer never had one.
+
+What *is* ours is saying so. Each DOCX and PDF projection carries the declaration in its
+fidelity report, so the corpus says which of its 81 documents are which rather than leaving it
+to a reader's memory. Nothing is charged to the loss budget: no content disappears —
+`__token__` arrives with every character — and only the naming is gone.
+
 ## What this set is not
 
 - **The judgments are still not independent, and only half the problem moved.** Nobody here

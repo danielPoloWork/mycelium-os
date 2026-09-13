@@ -187,6 +187,46 @@ def test_a_docx_without_notes_reports_none(registry: Registry) -> None:
     assert not [node for node in document.nodes if node.kind is NodeKind.OPAQUE]
 
 
+def test_a_docx_says_it_cannot_carry_an_inline_naming(registry: Registry) -> None:
+    """Roadmap 5.29: the lane's limit is declared, per document, or it is silent.
+
+    pandoc writes inline code into a DOCX as a `VerbatimChar` character run —
+    224 of them in the vendored corpus's largest — and docling's backend reports
+    a run as bold, italic, underline, strikethrough or script, with no monospace
+    among them. The naming is in the container and cannot come out, which is not
+    ours to fix (D-007) and *is* ours to say.
+    """
+    document = parse(registry, "source.docx")
+    assert any("DOCX inline code is not carried" in warning for warning in document.warnings)
+
+
+def test_the_html_lane_claims_no_such_limit(registry: Registry) -> None:
+    """Because it does not have one: HTML `<code>` survives (roadmap 5.25).
+
+    The pair matters more than either half. A declaration on every lane would say
+    nothing about which documents lost a naming, and that split — 62 HTML
+    documents against 19 that cannot carry one — is what roadmap 5.29 was filed
+    to make visible.
+    """
+    document = parse(registry, "corpus/elements.html")
+    assert not any("inline code is not carried" in warning for warning in document.warnings)
+
+
+def test_the_declaration_is_a_policy_and_never_an_opaque_node(registry: Registry) -> None:
+    """No content is lost, so nothing may be charged to the loss budget.
+
+    The contrast is `_account_for_notes`, one function above it: a DOCX note's
+    *body* never reaches the KIR, so it becomes an opaque `lost` node and the
+    budget counts it. Here `__token__` arrives with every character intact and
+    only the fact that the source called it code is gone. A node per lost naming
+    would put noise in the projection to make a counter tick, which is what the
+    fidelity report's own doctrine refuses (ADR-0034, ADR-0100).
+    """
+    document = parse(registry, "source.docx")
+    assert any("DOCX inline code is not carried" in warning for warning in document.warnings)
+    assert not [node for node in document.nodes if node.kind is NodeKind.OPAQUE]
+
+
 def test_docling_reports_the_engine_version_not_ours() -> None:
     meta = docling_parser.plugin().meta
     assert meta.id == "docling"
@@ -377,6 +417,19 @@ def test_pdf_says_on_every_document_what_it_cannot_see(registry: Registry) -> No
     document = parse(registry, "text-layer.pdf")
     assert any("text layer only" in warning for warning in document.warnings)
     assert not any(node.kind is NodeKind.HEADING for node in document.nodes)
+
+
+def test_a_pdf_says_it_cannot_carry_an_inline_naming_either(registry: Registry) -> None:
+    """Roadmap 5.29, and deliberately a second sentence rather than a longer first.
+
+    The structure notice is about *blocks*; this is about the naming inside them,
+    and the causes differ. A PDF has no headings because the format records none;
+    it has no inline code because a text layer is glyphs and positions — the fact
+    never existed to be lost, where the DOCX lane loses one its container is
+    still holding.
+    """
+    document = parse(registry, "text-layer.pdf")
+    assert any("PDF inline code is not carried" in warning for warning in document.warnings)
 
 
 def test_pdf_refuses_bytes_that_are_not_a_pdf() -> None:

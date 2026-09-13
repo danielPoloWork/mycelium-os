@@ -19,6 +19,7 @@ _(newest first)_
 
 #### September
 
+- [2026-09-13 — the promise that was never kept (roadmap 5.29)](2026/09/2026-09-13-the-promise-that-was-never-kept.md)
 - [2026-09-12 — the invariant it did not ask of itself (roadmap 5.28)](2026/09/2026-09-12-the-invariant-it-did-not-ask-of-itself.md)
 - [2026-09-12 — the renderer the PDFs already named (roadmap 5.27)](2026/09/2026-09-12-the-renderer-the-pdfs-already-named.md)
 - [2026-09-12 — the twin was easier than its source (roadmap 5.26)](2026/09/2026-09-12-the-twin-was-easier-than-its-source.md)
