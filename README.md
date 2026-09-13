@@ -838,7 +838,7 @@ on the release sets — the ones nobody develops against — the product now lea
 
 | release set | Mycelium OS | the `grep` loop |
 |---|---:|---:|
-| `uv`'s documentation (the corpus this was filed about) | **0.611** | 0.517 |
+| `uv`'s documentation (the corpus this was filed about) | **0.614** | 0.532 |
 | the same documents, ingested from DOCX/HTML/PDF | **0.619** | 0.575 |
 | this repository | **0.523** | 0.284 |
 
@@ -880,7 +880,7 @@ rather than every candidate document needing one (roadmap 4.23). The evidence re
 The overall lead still hides a slice, and the harness prints it rather than rounding it off:
 
 ```text
-vs grep: nDCG@10 0.611 against grep's 0.517 (+0.094) - ahead of the incumbent;
+vs grep: nDCG@10 0.614 against grep's 0.532 (+0.082) - ahead of the incumbent;
          still conceded: fact 0.438 vs 0.497
 ```
 

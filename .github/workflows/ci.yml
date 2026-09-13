@@ -292,6 +292,16 @@ jobs:
         # the projector shows up here rather than as a corpus that quietly stopped
         # matching its own provenance (roadmap 4.10, ADR-0039).
         run: uv run python tools/build_ingested_corpus.py --check
+      - name: ...the judged sets still reproduce from their own generator
+        shell: bash
+        # The upstream half of the check below, and the one that was missing. A
+        # carry copies whatever the source set holds, so it kept reproducing
+        # while the source drifted ten judged cases and one re-judgement away
+        # from the generator that is supposed to be their only home — hand edits
+        # in PRs #88 and #90 that never reached `tools/build_uv_docs_cases.py`,
+        # so the next run of it would have deleted them ([BUG-0026], roadmap
+        # 5.30). The sibling generators were checked; this one was not.
+        run: uv run python tools/build_uv_docs_cases.py --check
       - name: ...and its carried judgements still derive from that corpus
         shell: bash
         # The other half. The corpus check above proves the *documents* still match

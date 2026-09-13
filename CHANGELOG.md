@@ -10,6 +10,24 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **`u-1003` is judged where the key is documented, not where it is mentioned** (roadmap 5.30,
+  [ADR-0101](docs/adr/0101-let-the-exact-slice-name-the-section-that-documents-the-literal.md)). The case asks the literal
+  `tool.uv.index` and graded the document's 64-token preamble — which names the key once, in a
+  subordinate clause — while the section that documents it went ungraded. Four of the `exact`
+  slice's five other cases were already judged on the section that *explains* the literal, and
+  `u-1001` grades these same two passages 3 and 2 for a different query, so this case was the
+  outlier rather than the precedent. Now `#defining-an-index/` at 3 and the preamble at 2. One
+  case moves on the second corpus; the incumbent gains five times what we do (grep 0.0000 →
+  0.3390 against our 0.3562 → 0.4247) and our reported lead on that held-out set narrows from
+  +0.0936 to +0.0817. The ingested twin is byte-identical, because both anchors carry onto the
+  one page-sized chunk that holds them both — which is also why that case still scores above its
+  source, now by +0.075 rather than +0.144. All four baselines re-blessed, and gate G2's
+  verdict re-recorded because a judged set is a ranking input (ADR-0068): the default stays
+  `lexical`, `uv/dev` and `uv-ingested/dev` reproduce byte-identically, and `uv-ingested/release`
+  moves only its case digest.
+
 ### Added
 
 - **An ingestion lane now declares what it cannot carry** (roadmap 5.29, [ADR-0100](docs/adr/0100-declare-what-a-lane-cannot-carry.md)).
@@ -24,6 +42,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   information: 1 215 spans across 46 of 62 HTML documents, 0 across 19 DOCX and PDF.
 
 ### Fixed
+
+- **The second corpus's judged sets did not reproduce from their own generator** ([BUG-0026];
+  roadmap 5.30). Two pull requests edited `eval/corpora/uv-docs/eval/dev.jsonl` directly — adding
+  ten cases and re-judging one — and neither reached `tools/build_uv_docs_cases.py`, which holds
+  those judgements and rewrites the file from them. Running it deleted the ten and reverted the
+  re-judgement, silently; it was found by running it. The cases are transcribed back from the
+  committed set mechanically (no judgement changed, `dev.jsonl` is byte-identical), and the
+  generator gains the `--check` its two siblings already had, in `tools/verify.py` at `code` and
+  in CI beside the carry check it is the upstream half of.
 
 - **Projected prose no longer asserts inline syntax the source did not author** (roadmap 5.28,
   [ADR-0099](docs/adr/0099-ask-the-compiler-whether-the-prose-survived.md)). An HTML source saying
