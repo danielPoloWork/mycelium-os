@@ -128,7 +128,12 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from mycelium.build import build  # noqa: E402
-from mycelium.eval.cases import load_cases, validate_judged_set, write_cases  # noqa: E402
+from mycelium.eval.cases import (  # noqa: E402
+    encode_cases,
+    load_cases,
+    validate_judged_set,
+    write_cases,
+)
 from mycelium.sdk.types import Chunk, EvalCase, RelevantAnchor  # noqa: E402
 from mycelium.store import SqliteStore  # noqa: E402
 
@@ -240,20 +245,6 @@ def merge_landings(landings: Sequence[Landing]) -> tuple[tuple[RelevantAnchor, .
         twin for twin, landed in by_twin.items() if len({item.source for item in landed}) > 1
     ]
     return anchors, collapsed
-
-
-def encode_cases(cases: Sequence[EvalCase]) -> str:
-    """The bytes `write_cases` would write, without writing them.
-
-    Deliberately the same one-liner as the writer rather than a re-implementation
-    that could disagree with it: `--check` compares what a regeneration *would*
-    produce, so the two must render identically or the check tests itself.
-    """
-    lines = [
-        json.dumps(case.model_dump(mode="json"), sort_keys=True, ensure_ascii=False)
-        for case in cases
-    ]
-    return "\n".join(lines) + "\n"
 
 
 CARRY_RECEIPT = "carry.json"

@@ -17,7 +17,13 @@ from mycelium.sdk.types import EvalCase
 if TYPE_CHECKING:
     from mycelium.store import SqliteStore
 
-__all__ = ["HEADING_STUB_TOKENS", "load_cases", "validate_judged_set", "write_cases"]
+__all__ = [
+    "HEADING_STUB_TOKENS",
+    "encode_cases",
+    "load_cases",
+    "validate_judged_set",
+    "write_cases",
+]
 
 
 def load_cases(path: Path) -> tuple[EvalCase, ...]:
@@ -40,13 +46,29 @@ def load_cases(path: Path) -> tuple[EvalCase, ...]:
     return tuple(cases)
 
 
-def write_cases(path: Path, cases: Iterable[EvalCase]) -> None:
-    """Write a case set: one compact record per line, sorted keys, LF."""
+def encode_cases(cases: Iterable[EvalCase]) -> str:
+    """The bytes `write_cases` would write, without writing them.
+
+    One case per line, sorted keys, LF: the canonical form every judged set is
+    written and re-checked in. `write_cases` calls this rather than rendering
+    its own bytes, so a generator's `--check` — comparing this against a set on
+    disk — compares against what a write *would* produce by construction,
+    never against a second implementation that could quietly disagree with it.
+    Two tools carried their own copy of this exact function until roadmap 5.38
+    moved it here (filed at 5.30): both were "deliberately the same one-liner
+    as the writer", which is the argument for one function, stated twice, in
+    two files.
+    """
     lines = [
         json.dumps(case.model_dump(mode="json"), sort_keys=True, ensure_ascii=False)
         for case in cases
     ]
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    return "\n".join(lines) + "\n"
+
+
+def write_cases(path: Path, cases: Iterable[EvalCase]) -> None:
+    """Write a case set: one compact record per line, sorted keys, LF."""
+    path.write_text(encode_cases(cases), encoding="utf-8", newline="\n")
 
 
 def slices_of(cases: Sequence[EvalCase]) -> tuple[str, ...]:

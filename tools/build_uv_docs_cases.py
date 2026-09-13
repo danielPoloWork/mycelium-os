@@ -36,16 +36,14 @@ That is a discipline rather than an enforceable rule, so it is recorded where a
 reader can weigh it.
 """
 
-import json
 import sys
-from collections.abc import Sequence
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
 from mycelium.build import build  # noqa: E402
-from mycelium.eval.cases import validate_judged_set, write_cases  # noqa: E402
+from mycelium.eval.cases import encode_cases, validate_judged_set, write_cases  # noqa: E402
 from mycelium.sdk.types import EvalCase, EvalSlice, RelevantAnchor  # noqa: E402
 from mycelium.store import SqliteStore  # noqa: E402
 
@@ -541,23 +539,6 @@ def cases_of(judgments: tuple[Judgment, ...]) -> tuple[EvalCase, ...]:
         )
         for case_id, query, slices, relevant, note in judgments
     )
-
-
-def encode_cases(cases: Sequence[EvalCase]) -> str:
-    """The bytes `write_cases` would write, without writing them.
-
-    The same one-liner as the writer rather than a re-implementation that could
-    disagree with it, and — for now — the same one-liner as
-    `tools/build_ingested_cases.py`'s. Both copies want to be one function in
-    `mycelium.eval.cases`, beside the writer they must agree with; that module is
-    a tuning path, so a change re-judging a frozen release set may not touch it
-    (`tools/check_frozen_release_sets.py`). Filed as roadmap 5.33.
-    """
-    lines = [
-        json.dumps(case.model_dump(mode="json"), sort_keys=True, ensure_ascii=False)
-        for case in cases
-    ]
-    return "\n".join(lines) + "\n"
 
 
 def main() -> int:
