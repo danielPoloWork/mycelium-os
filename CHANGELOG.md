@@ -12,6 +12,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The carry receipt records whether a judged passage landed whole** (roadmap 5.31,
+  [ADR-0102](docs/adr/0102-record-whether-the-passage-landed-whole-and-read-a-large-negative-with-it.md)). `eval/carry.json` gains `whole` per
+  anchor — the share of the passage's word *occurrences* the chosen twin chunk holds — beside
+  the distinct-token `coverage` that selects it, and the receipt is now
+  `mycelium/eval-carry/v1`. The two answer different questions: coverage says the passage's
+  words are here, `whole` says the passage is. `tools/measure_projection_cost.py` marks the
+  cases in its per-case block. Recorded, never acted on: `whole` selects nothing and carries
+  no floor. No score moves and the carried sets are byte-identical.
+
 - **`u-1003` is judged where the key is documented, not where it is mentioned** (roadmap 5.30,
   [ADR-0101](docs/adr/0101-let-the-exact-slice-name-the-section-that-documents-the-literal.md)). The case asks the literal
   `tool.uv.index` and graded the document's 64-token preamble — which names the key once, in a

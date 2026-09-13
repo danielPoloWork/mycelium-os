@@ -430,6 +430,19 @@ The dev set says the same thing from the other side: the twin is **worse overall
 (−0.032), `docx` −0.037 and `html` −0.108, and `pdf` is again the only row that rises
 (+0.111) on the strength of its one above-source case.
 
+**And read the `whole` column with the negatives.** The carry records, per anchor, the share
+of the judged passage's word *occurrences* the twin chunk it chose actually holds (roadmap
+5.31). Below 1.0, part of what a case is judged on is in a neighbouring chunk that nothing
+credits — 43 of 54 anchors land whole, and the two largest negatives here are the two lowest
+shares among scored cases. `u-1004` is the worked example: 0.000 against 0.387 on its source,
+not because a page-sized chunk is too big for the query but because a page boundary fell
+*inside* the section and left the sentence that answers it in the chunk before, which both
+retrievers rank far higher and no judgement names
+([ADR-0102](../docs/adr/0102-record-whether-the-passage-landed-whole-and-read-a-large-negative-with-it.md)).
+The same boundary rule gains `u-1003` in the same document by merging two sections, so this
+is a number to read a case with and not a predictor: the largest *gain* in the table is a
+split passage too.
+
 Reported, never gated: with three to eight cases per format there is no threshold anyone
 could defend ([ADR-0039](../docs/adr/0039-measure-what-projection-costs.md)).
 
