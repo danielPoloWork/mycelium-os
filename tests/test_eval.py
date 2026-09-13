@@ -9,6 +9,7 @@ comparison D-010 insists on: Mycelium against the agent's grep loop.
 """
 
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -99,6 +100,28 @@ def test_ndcg_rewards_putting_the_best_result_first() -> None:
     assert ndcg_at_k(["x", "y"], judged, 10) == 0.0
     # A case with no ground truth scores 0, not 1: it cannot be answered well.
     assert ndcg_at_k(["a"], {}, 10) == 0.0
+
+
+def test_one_judged_anchor_scores_the_same_at_every_grade() -> None:
+    """Why merging a collapsed anchor cannot move a number (roadmap 5.33).
+
+    With a single judged anchor the gain appears in the DCG and in the ideal it
+    is divided by, so it cancels: what is left is the position. That is what
+    makes "merge to the highest grade" a claim about the chunk rather than a
+    choice about the score — and it is why the re-bless that carried the merge
+    changed two digests and not one number.
+    """
+    for rank, retrieved in enumerate([["a"], ["x", "a"], ["x", "y", "a"]], start=1):
+        scores = [ndcg_at_k(retrieved, {"a": grade}, 10) for grade in (1, 2, 3)]
+        # Exactly `1 / log2(rank + 1)` in arithmetic; in floating point the three
+        # agree to within an ulp, six orders of magnitude below the six decimals a
+        # baseline records — which is why the re-bless that carried the merge
+        # reproduced every score byte for byte.
+        assert scores == pytest.approx([1 / math.log2(rank + 1)] * 3)
+
+    # And it does *not* cancel once a second judged anchor exists, which is the
+    # case the merge rule would have to be argued on if one ever appeared.
+    assert ndcg_at_k(["a"], {"a": 3, "b": 1}, 10) != ndcg_at_k(["a"], {"a": 1, "b": 3}, 10)
 
 
 def test_ndcg_uses_exponential_gain() -> None:
@@ -200,6 +223,65 @@ def test_every_judged_anchor_exists_in_the_corpus(corpus: Path) -> None:
         errors, _ = validate_judged_set(load_cases(CASES), store)
         missing = [error for error in errors if "is not in the corpus" in error]
     assert missing == []
+
+
+def test_a_case_naming_one_anchor_twice_is_refused(corpus: Path) -> None:
+    """The fourth lint (roadmap 5.33, ADR-0104).
+
+    `_evaluate_case` keys judgements by anchor, so a repeated anchor is one
+    judged unit at whichever grade was written last — not two. Two carried cases
+    said it for four milestones and scored against the *lower* of their two
+    grades, on both retrievers, with nothing on either side reporting it.
+    """
+    from mycelium.eval.cases import validate_judged_set
+
+    real = load_cases(CASES)[0].relevant[0].anchor
+    doubled = EvalCase(
+        case_id="q-dup",
+        query="whatever this corpus is about",
+        slices=(EvalSlice.FACT,),
+        relevant=(
+            RelevantAnchor(anchor=real, grade=3),
+            RelevantAnchor(anchor=real, grade=2),
+        ),
+    )
+    with SqliteStore.open(corpus, read_only=True) as store:
+        errors, _ = validate_judged_set([doubled], store)
+
+    named = [error for error in errors if "named twice" in error]
+    assert len(named) == 1
+    # Both grades, because the fix depends on which one is true of the anchor.
+    assert "grades 3 and 2" in named[0]
+    assert real in named[0]
+
+
+def test_a_case_naming_two_different_anchors_is_not_refused(corpus: Path) -> None:
+    """The lint must not fire on the ordinary shape it sits next to."""
+    from mycelium.eval.cases import validate_judged_set
+
+    source = load_cases(CASES)
+    pair = next(case for case in source if len(case.relevant) > 1)
+    with SqliteStore.open(corpus, read_only=True) as store:
+        errors, _ = validate_judged_set([pair], store)
+    assert [error for error in errors if "named twice" in error] == []
+
+
+def test_the_committed_sets_name_no_anchor_twice() -> None:
+    """Every judged set this repository ships, including the derived ones."""
+    sets = [
+        CASES,
+        RELEASE,
+        UV_CORPUS / "eval" / "dev.jsonl",
+        UV_CORPUS / "eval" / "release.jsonl",
+        INGESTED_CORPUS / "eval" / "dev.jsonl",
+        INGESTED_CORPUS / "eval" / "release.jsonl",
+    ]
+    for path in sets:
+        for case in load_cases(path):
+            anchors = [relevant.anchor for relevant in case.relevant]
+            assert len(anchors) == len(set(anchors)), (
+                f"{path.name}: {case.case_id} repeats an anchor"
+            )
 
 
 def test_a_run_reports_metrics_gates_and_a_manifest(corpus: Path) -> None:

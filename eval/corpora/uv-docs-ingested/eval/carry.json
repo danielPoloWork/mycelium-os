@@ -271,6 +271,69 @@
       "whole": 1.0
     }
   },
+  "collapsed": {
+    "knowledge/evidence/cache-docx-abb8aeee.md#cache-directory/0": [
+      {
+        "case": "u-0001",
+        "grade": 3,
+        "source": "docs/concepts/cache.md#cache-directory/0"
+      },
+      {
+        "case": "u-0002",
+        "grade": 3,
+        "source": "docs/concepts/cache.md#cache-directory/0"
+      },
+      {
+        "case": "u-1013",
+        "grade": 1,
+        "source": "docs/concepts/cache.md#cache-directory/"
+      }
+    ],
+    "knowledge/evidence/indexes-pdf-d37689d3.md#/0": [
+      {
+        "case": "u-1001",
+        "grade": 2,
+        "source": "docs/concepts/indexes.md#/0"
+      },
+      {
+        "case": "u-1001",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#defining-an-index/"
+      },
+      {
+        "case": "u-1003",
+        "grade": 2,
+        "source": "docs/concepts/indexes.md#/0"
+      },
+      {
+        "case": "u-1003",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#defining-an-index/"
+      }
+    ],
+    "knowledge/evidence/python-versions-pdf-bae1444d.md#/0": [
+      {
+        "case": "u-1005",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#managed-and-system-python-installations/0"
+      },
+      {
+        "case": "u-1006",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#requesting-a-version/"
+      },
+      {
+        "case": "u-1019",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#requesting-a-version/python-version-files/0"
+      },
+      {
+        "case": "u-1024",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#requesting-a-version/python-version-files/0"
+      }
+    ]
+  },
   "min_coverage": 0.5,
-  "schema_version": "mycelium/eval-carry/v1"
+  "schema_version": "mycelium/eval-carry/v2"
 }

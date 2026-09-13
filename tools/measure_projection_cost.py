@@ -47,6 +47,15 @@ against 0.387 on its source, from a page boundary that fell mid-section and left
 the sentence answering the query in the chunk before (ADR-0102). It is a reading
 aid and not a verdict — the largest *gain* in this table is also a split passage.
 
+**And a case is marked when its twin chunk answers somebody else's question too.**
+`shared` is how many distinct judged units landed on the chunk this case is judged
+on (roadmap 5.33). A headingless PDF is one page-sized block where the Markdown
+had sections, so four cases can end up judged on the same chunk: a retriever that
+returns it has answered all four, where on the source each had its own passage to
+find. That is what a large *positive* gap usually is — the twin being easier
+because the projection lost a distinction — and it is the counterpart of `whole`,
+which is what to check on a large negative (ADR-0104).
+
 What this cannot tell you: whether the *difference* generalises. Twenty-five
 cases across three formats is a handful per format, and the mapping rule is not
 neutral — `build_ingested_cases.py` picks the twin chunk with the most word
@@ -118,6 +127,30 @@ def row(label: str, before: MetricSummary, after: MetricSummary, count: int) -> 
     return f"{label:<14} {count:>3}   " + "   ".join(cells)
 
 
+def shared_chunks() -> dict[str, int]:
+    """Per source anchor, how many judged units share the twin chunk it landed on.
+
+    Read from the committed receipt's `collapsed` block rather than recomputed,
+    for the reason :func:`split_passages` is: this table and `eval/carry.json`
+    must not be able to disagree. A receipt written before roadmap 5.33 has no
+    such block and yields nothing, so the marks vanish rather than being invented.
+
+    It is the first thing to check on a large *positive* gap, the way `whole` is
+    on a large negative: a twin chunk that four judged units landed on answers all
+    four, where their source passages had to be found separately (ADR-0104).
+    """
+    receipt = INGESTED_CORPUS / "eval" / CARRY_RECEIPT
+    if not receipt.is_file():
+        return {}
+    collapsed = json.loads(receipt.read_text(encoding="utf-8")).get("collapsed", {})
+    shared: dict[str, int] = {}
+    for landed in collapsed.values():
+        units = len({item["source"] for item in landed})
+        for item in landed:
+            shared[item["source"]] = max(shared.get(item["source"], 0), units)
+    return shared
+
+
 def split_passages() -> dict[str, float]:
     """Per source anchor, the `whole` the carry recorded — below 1.0 only.
 
@@ -168,18 +201,39 @@ def _report_per_case(
         )
         for case in markdown
     }
+    shared = shared_chunks()
+    sharing = {
+        case.case_id: max(
+            (shared[relevant.anchor] for relevant in case.relevant if relevant.anchor in shared),
+            default=0,
+        )
+        for case in markdown
+    }
     print("\nper case, widest gap first (nDCG@10):")
-    print(f"  {'case':<9} {'format':<6} {'md':>6} {'ing':>6} {'delta':>7}  {'whole':>6}")
+    print(
+        f"  {'case':<9} {'format':<6} {'md':>6} {'ing':>6} {'delta':>7}  {'whole':>6} {'shared':>6}"
+    )
     for case_id, before, after in rows:
         fmt = attribution.get(case_id) or "mixed"
         share = lowest.get(case_id, 1.0)
         mark = f"  {share:6.3f}" if share < 1.0 else f"  {'':>6}"
-        print(f"  {case_id:<9} {fmt:<6} {before:6.3f} {after:6.3f} {after - before:+7.3f}{mark}")
+        units = sharing.get(case_id, 0)
+        with_others = f" {units:>6}" if units > 1 else f" {'':>6}"
+        print(
+            f"  {case_id:<9} {fmt:<6} {before:6.3f} {after:6.3f} "
+            f"{after - before:+7.3f}{mark}{with_others}"
+        )
     marked = [case_id for case_id, *_ in rows if lowest.get(case_id, 1.0) < 1.0]
     if marked:
         print(
             f"  `whole` < 1.0 on {len(marked)} case(s): part of what they are judged on is in a "
             "neighbouring twin chunk that nothing credits"
+        )
+    collapsed = [case_id for case_id, *_ in rows if sharing.get(case_id, 0) > 1]
+    if collapsed:
+        print(
+            f"  `shared` > 1 on {len(collapsed)} case(s): the twin chunk they are judged on also "
+            "holds another judged unit, so it answers both where the source needed two passages"
         )
     above = [case_id for case_id, before, after in rows if after > before + 1e-9]
     if above:

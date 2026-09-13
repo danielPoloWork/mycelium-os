@@ -1,8 +1,8 @@
 {
   "corpora": {
     "ours": {
-      "chunks_digest": "sha256:854f5f7054166904a3a07a4a856fa870e3662791ab5c55da197c356388dadb9f",
-      "content_digest": "sha256:5cbb54cd65edd4eaa54a833c726d11d5bd6d4772508d173359e9727568bdce27",
+      "chunks_digest": "sha256:daf3cf760e8fc0382a3c012d9086791afe4ffa04252ba23be782969ed3881920",
+      "content_digest": "sha256:5dd0e594d77e01f3aa82b05cd9fcd5bdb388617b1d7b234080e46b5c76788fec",
       "dated": false
     },
     "uv": {
@@ -29,13 +29,13 @@
     "ours/dev": {
       "cases": 16,
       "cases_digest": "sha256:c39aa93ef694f6a9b63dfeb51deb7024993a6c38346808dfff6e1839077ddd64",
-      "detail": "+19.1% overall (needs +5%)",
-      "hybrid_ndcg_at_10": 0.592297,
+      "detail": "+19.4% overall (needs +5%)",
+      "hybrid_ndcg_at_10": 0.593422,
       "lexical_ndcg_at_10": 0.497152,
       "per_slice": {
         "conceptual": {
           "cases": 5,
-          "hybrid": 0.668316,
+          "hybrid": 0.671916,
           "lexical": 0.595544
         },
         "exact": {
@@ -70,14 +70,14 @@
     "ours/release": {
       "cases": 17,
       "cases_digest": "sha256:5d5cb038211bac12ea7f23ee90195442877f166bb6203db8cc5be44edef88d09",
-      "detail": "+21.6% overall (needs +5%)",
+      "detail": "+22.0% overall (needs +5%)",
       "hybrid_ndcg_at_10": 0.635279,
-      "lexical_ndcg_at_10": 0.52237,
+      "lexical_ndcg_at_10": 0.520567,
       "per_slice": {
         "conceptual": {
           "cases": 4,
           "hybrid": 0.673536,
-          "lexical": 0.569157
+          "lexical": 0.561495
         },
         "exact": {
           "cases": 4,
@@ -138,7 +138,7 @@
     },
     "uv-ingested/release": {
       "cases": 23,
-      "cases_digest": "sha256:44a9cbde7e34f22bfa7b4444f06241da1923da0d230e7330bac0089b0fc8ef0f",
+      "cases_digest": "sha256:19bbfcc7224a2e5f4fe4d66be8b0f4160c200845c7ed13d65f40f66a4626b193",
       "detail": "+1.0% overall (needs +5%); regressions past -2%: conceptual -10.2% (u-1016 0.6295->0.3622), relationship -11.2% (u-1022 0.8847->0.4257), symbol -7.9% (u-1019 0.3962->0.1310)",
       "hybrid_ndcg_at_10": 0.625109,
       "lexical_ndcg_at_10": 0.618671,
