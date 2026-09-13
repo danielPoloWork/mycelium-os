@@ -12,6 +12,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The session-journal index is generated, not hand-written** (roadmap 5.32,
+  [ADR-0103](docs/adr/0103-generate-the-journal-index-because-every-row-already-lives-in-the-file.md)).
+  `docs/journal/README.md` had fallen 24 checkpoints behind `docs/journal/2026/**` because the
+  index was a copied row and nothing read the two against each other. Every checkpoint's own
+  first line already states the row its index wants, so `tools/update_journal_index.py` now
+  renders the whole `## Index` section from the tree, newest first, and
+  `tools/consistency_lint.py` gains a tenth check — `journal-index` — holding the committed
+  file to what a fresh run would produce. A same-date tie, which nothing on disk can order,
+  breaks by filename descending; a checkpoint the generator cannot read is refused rather than
+  silently dropped.
 - **The carry receipt records whether a judged passage landed whole** (roadmap 5.31,
   [ADR-0102](docs/adr/0102-record-whether-the-passage-landed-whole-and-read-a-large-negative-with-it.md)). `eval/carry.json` gains `whole` per
   anchor — the share of the passage's word *occurrences* the chosen twin chunk holds — beside

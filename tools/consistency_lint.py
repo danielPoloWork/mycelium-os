@@ -28,7 +28,10 @@ contract (the "congruence checks"):
   8. roadmap-numbering — every ROADMAP item number is unique and sits under the milestone
      it names, because "never renumber" is only affordable while nothing collides;
   9. threat-boundaries — every threat-model boundary id is unique, and every STRIDE row
-     cites one that exists.
+     cites one that exists;
+  10. journal-index    — docs/journal/README.md matches what
+      tools/update_journal_index.py would generate from the checkpoints on disk
+      (roadmap 5.32).
 
 Each check is independent; all run, then the report lists every failure. The checks are
 designed to PASS on a freshly-generated repository (empty catalogues, no releases yet).
@@ -671,6 +674,36 @@ def check_amendments() -> None:
                     )
 
 
+def check_journal_index() -> None:
+    """The journal index is generated, not hand-written (roadmap 5.32).
+
+    Hand-copying a row into `docs/journal/README.md` was the drift this check
+    replaces: every checkpoint's own first line already states the row its
+    index wants, so a lint that only checked *presence* (the `adr-index`
+    shape) would still let the text drift from what the file itself says.
+    Delegating to `tools/update_journal_index.py --check` means the generator
+    and the check can never disagree about what "current" means — one
+    implementation, two callers, the same rule ADR-0059 states elsewhere.
+    """
+    name = "journal-index"
+    if not exists("docs/journal"):
+        return  # the journal is optional until the first checkpoint exists
+    script_rel = "tools/update_journal_index.py"
+    if not exists(script_rel):
+        fail(name, f"{script_rel} is missing")
+        return
+    result = subprocess.run(
+        [sys.executable, os.path.join(ROOT, script_rel), "--check"],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+        check=False,
+    )
+    if result.returncode != 0:
+        detail = result.stdout.strip() or result.stderr.strip() or "generator refused"
+        fail(name, f"docs/journal/README.md is stale — {detail}")
+
+
 def check_posture() -> None:
     name = "posture"
     agents = read("AGENTS.md") if exists("AGENTS.md") else ""
@@ -703,6 +736,7 @@ CHECKS: Final[tuple[Callable[[], None], ...]] = (
     check_bugs,
     check_i18n_freshness,
     check_posture,
+    check_journal_index,
 )
 
 

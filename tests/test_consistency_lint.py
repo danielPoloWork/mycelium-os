@@ -344,3 +344,34 @@ def test_a_supersession_is_not_read_as_an_amendment(amendments: RunAdrs) -> None
 
 def test_the_amendment_check_is_registered() -> None:
     assert lint.check_amendments in lint.CHECKS
+
+
+# ---------------------------------------------------------------------------
+# journal-index (roadmap 5.32): the committed index matches its generator
+# ---------------------------------------------------------------------------
+
+
+def test_the_journal_index_check_is_registered() -> None:
+    assert lint.check_journal_index in lint.CHECKS
+
+
+def test_the_committed_journal_index_passes() -> None:
+    """The live file, not a fixture: `tools/update_journal_index.py --check` is
+    the whole implementation, exercised in depth in `tests/test_journal_index.py`."""
+    lint.failures.clear()
+    try:
+        lint.check_journal_index()
+        assert lint.failures == []
+    finally:
+        lint.failures.clear()
+
+
+def test_a_missing_generator_script_fails_by_name(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(lint, "exists", lambda rel: rel == "docs/journal")
+    lint.failures.clear()
+    try:
+        lint.check_journal_index()
+        (message,) = [msg for _, msg in lint.failures]
+    finally:
+        lint.failures.clear()
+    assert "tools/update_journal_index.py is missing" in message
