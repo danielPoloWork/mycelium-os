@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The ingested corpus's generator refuses to render DOCX/HTML with a pandoc too old to
+  trust, before writing a byte** (roadmap 5.34,
+  [ADR-0105](docs/adr/0105-pandoc-gets-a-floor-not-a-pin-because-nothing-it-writes-can-be-checked.md)).
+  Unlike a typst PDF, which stamps its own version into every file it writes, pandoc's docx
+  writer emits a hard-coded `Microsoft Word 12.0.0` and its html5 writer (without
+  `--standalone`) emits a bare fragment — checked directly, no committed source carries a
+  pandoc identifier anywhere. So there is nothing in the artifacts a later pandoc's output
+  could be checked against, only a floor `tools/build_ingested_corpus.py` can assert before
+  rendering: `require_pandoc()`, mirroring `require_typst()`, refuses below pandoc 3 (the
+  version `--sandbox` requires), reusing the same constant the `pandoc` ingest parser already
+  enforces (`mycelium.ingest.parsers.pandoc.MIN_MAJOR`, now public). No new field is added to
+  `provenance.json` — a fact nothing can verify would be a guess wearing a guarantee's shape.
 - **A judged set may no longer name the same anchor twice, and the carry stopped doing it**
   (roadmap 5.33,
   [ADR-0104](docs/adr/0104-merge-what-the-projection-could-not-tell-apart-and-record-that-it-could-not.md)).
