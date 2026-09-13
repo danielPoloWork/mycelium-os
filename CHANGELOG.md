@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **A judged case can no longer name one anchor twice, on any path** (roadmap 5.37,
+  [ADR-0108](docs/adr/0108-put-the-repeated-anchor-rule-on-the-record-not-on-the-corpus-lint.md)). The harness scores a case as `{anchor: grade}`, so a repeated
+  anchor is one judged unit at whichever grade was written last — not two. Roadmap 5.33 caught
+  that with a lint, but the lint lives in `validate_judged_set`, which only the three case
+  *generators* call: a set handed straight to `mycelium eval --set` was still scored silently
+  against the last grade. The rule now sits on the `EvalCase` record itself, beside the
+  answerability one it resembles, so no construction path can route around it — the
+  generators, `load_cases`, the CLI and any SDK consumer are all covered. Through the loader
+  the refusal names the file, the line, the case, the anchor and both grades. The duplicated
+  lint is removed rather than left unreachable, leaving `validate_judged_set` with the three
+  checks that genuinely need the corpus. No judged set, baseline, verdict or golden moves.
+
 - **Emphasis stays out of KIR, and the disagreement it was blamed for is somewhere else**
   (roadmap 5.36, [ADR-0107](docs/adr/0107-refuse-to-model-emphasis-and-name-the-lane-the-disagreement-is-in.md)). Nothing in the compiler changes. `KirNode` models no
   bold, italic or strikethrough, and the question of whether it should was settled by putting

@@ -971,7 +971,17 @@ class RelevantAnchor(Record):
 
 
 class EvalCase(Record):
-    """One judged query (spec 03 §10)."""
+    """One judged query (spec 03 §10).
+
+    ``relevant`` is a tuple in the wire format and a **mapping** in meaning: the
+    harness scores a case as ``{anchor: grade}``, and every metric here reads
+    that mapping. So a case that names one anchor twice is not two judged units
+    at two grades — it is one unit at whichever grade happened to be written
+    last, which is a property of file order rather than of the judgement. The
+    validator below refuses it for the same reason the answerability one exists:
+    a record must not be able to claim something the system cannot represent
+    (roadmap 5.37, ADR-0108).
+    """
 
     schema_version: Literal["mycelium/eval-case/v0"] = "mycelium/eval-case/v0"
     case_id: NonEmptyStr
@@ -991,6 +1001,30 @@ class EvalCase(Record):
         if not self.answerable and self.relevant:
             msg = f"{self.case_id}: an unanswerable case must have no relevant anchors"
             raise ValueError(msg)
+        return self
+
+    @model_validator(mode="after")
+    def _each_anchor_is_judged_once(self) -> Self:
+        """A judged anchor may be named once, because a grade is a fact about it.
+
+        Enforced here rather than in the judged-set lint it used to live in
+        (roadmap 5.33), because that lint runs only when a *generator* writes a
+        set — so `mycelium eval --set` on a hand-written one scored the last
+        grade silently, which is the whole defect restated one surface further
+        out (roadmap 5.37). A record cannot be built this way now, on any path.
+        """
+        seen: dict[str, int] = {}
+        for relevant in self.relevant:
+            first = seen.get(relevant.anchor)
+            if first is not None:
+                msg = (
+                    f"{self.case_id}: judged anchor {relevant.anchor} is named twice "
+                    f"(grades {first} and {relevant.grade}) - the harness keys judgements "
+                    "by anchor, so this would score as one anchor at the grade written "
+                    "last. Name it once, at the grade that is true of it"
+                )
+                raise ValueError(msg)
+            seen[relevant.anchor] = relevant.grade
         return self
 
 

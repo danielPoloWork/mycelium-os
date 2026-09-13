@@ -63,16 +63,16 @@ def validate_judged_set(
 ) -> tuple[list[str], list[str]]:
     """Check a judged set against the corpus it judges: ``(errors, warnings)``.
 
-    Four lints, and each of them exists because this project shipped the mistake
-    it catches (ADR-0021, ADR-0027):
-
-    **A case may not name the same anchor twice.** ``_evaluate_case`` builds
-    ``{relevant.anchor: relevant.grade}``, so a repeated anchor is not two judged
-    units — it is one, at whichever grade happened to be written last. A set that
-    names one twice is therefore claiming something the harness cannot represent,
-    and the grade it ends up scoring against is an accident of file order. Both
-    carried cases that hit this scored against the *lower* of their two grades for
-    four milestones, on both retrievers, silently (roadmap 5.33).
+    Three lints, and each of them exists because this project shipped the mistake
+    it catches (ADR-0021, ADR-0027). What they have in common is the reason they
+    live here rather than on the record: **every one of them is a question about
+    the corpus**, and needs the store to answer it. A rule that needs only the
+    case belongs where no code path can route around it — which is where the
+    repeated-anchor rule went at roadmap 5.37, onto
+    :class:`~mycelium.sdk.types.EvalCase` itself. It was the fourth lint here
+    from 5.33 until then, and the move is not a relaxation: this function is
+    called by the three *generators*, so the version of the rule that lived here
+    never saw a set handed straight to `mycelium eval` (ADR-0108).
 
     **A judged anchor must exist.** A case citing an anchor the corpus does not
     contain is broken, and headings move. A *section* judgment (ADR-0029) resolves
@@ -104,18 +104,6 @@ def validate_judged_set(
     errors: list[str] = []
     warnings: list[str] = []
     for case in cases:
-        seen: dict[str, int] = {}
-        for relevant in case.relevant:
-            if relevant.anchor in seen:
-                errors.append(
-                    f"{case.case_id}: judged anchor {relevant.anchor} is named twice "
-                    f"(grades {seen[relevant.anchor]} and {relevant.grade}) - the harness "
-                    "keys judgements by anchor, so this scores as one anchor at the grade "
-                    "written last. Name it once, at the grade that is true of it"
-                )
-            else:
-                seen[relevant.anchor] = relevant.grade
-
         for relevant in case.relevant:
             if relevant.anchor.endswith(SECTION_MARKER):
                 # A section judgment resolves when the corpus holds a section by

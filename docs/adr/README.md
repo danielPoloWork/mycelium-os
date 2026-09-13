@@ -139,3 +139,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0105](0105-pandoc-gets-a-floor-not-a-pin-because-nothing-it-writes-can-be-checked.md) | pandoc gets a floor, not a pin, because nothing it writes can be checked | Accepted |
 | [0106](0106-escape-what-commonmark-will-see-and-keep-the-repairs-that-worked.md) | Escape what CommonMark will see, and keep the repairs that worked | Accepted |
 | [0107](0107-refuse-to-model-emphasis-and-name-the-lane-the-disagreement-is-in.md) | Refuse to model emphasis, and name the lane the disagreement is actually in | Accepted |
+| [0108](0108-put-the-repeated-anchor-rule-on-the-record-not-on-the-corpus-lint.md) | Put the repeated-anchor rule on the record, where no path can route around it | Accepted |
