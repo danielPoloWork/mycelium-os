@@ -225,49 +225,86 @@ def test_every_judged_anchor_exists_in_the_corpus(corpus: Path) -> None:
     assert missing == []
 
 
-def test_a_case_naming_one_anchor_twice_is_refused(corpus: Path) -> None:
-    """The fourth lint (roadmap 5.33, ADR-0104).
+def test_a_case_naming_one_anchor_twice_cannot_be_built() -> None:
+    """The rule the record now carries (roadmap 5.37, ADR-0108).
 
-    `_evaluate_case` keys judgements by anchor, so a repeated anchor is one
-    judged unit at whichever grade was written last — not two. Two carried cases
-    said it for four milestones and scored against the *lower* of their two
-    grades, on both retrievers, with nothing on either side reporting it.
+    The harness scores `{anchor: grade}`, so a repeated anchor is one judged unit
+    at whichever grade was written last — not two. It was a lint on the
+    judged-set validator from 5.33, which only the *generators* call; a record
+    that cannot be built this way covers every path instead, including the
+    `mycelium eval --set` one that was still silent.
     """
-    from mycelium.eval.cases import validate_judged_set
+    with pytest.raises(ValueError) as caught:
+        EvalCase(
+            case_id="q-dup",
+            query="whatever this corpus is about",
+            slices=(EvalSlice.FACT,),
+            relevant=(
+                RelevantAnchor(anchor="docs/a.md#section/0", grade=3),
+                RelevantAnchor(anchor="docs/a.md#section/0", grade=2),
+            ),
+        )
+    message = str(caught.value)
+    assert "named twice" in message
+    # Both grades and the anchor, because the fix depends on which grade is true.
+    assert "grades 3 and 2" in message
+    assert "docs/a.md#section/0" in message
 
-    real = load_cases(CASES)[0].relevant[0].anchor
-    doubled = EvalCase(
-        case_id="q-dup",
+
+def test_a_case_naming_two_different_anchors_is_built_normally() -> None:
+    """The rule must not fire on the ordinary shape it sits next to."""
+    case = EvalCase(
+        case_id="q-pair",
         query="whatever this corpus is about",
         slices=(EvalSlice.FACT,),
         relevant=(
-            RelevantAnchor(anchor=real, grade=3),
-            RelevantAnchor(anchor=real, grade=2),
+            RelevantAnchor(anchor="docs/a.md#section/0", grade=3),
+            RelevantAnchor(anchor="docs/b.md#section/0", grade=2),
         ),
     )
-    with SqliteStore.open(corpus, read_only=True) as store:
-        errors, _ = validate_judged_set([doubled], store)
-
-    named = [error for error in errors if "named twice" in error]
-    assert len(named) == 1
-    # Both grades, because the fix depends on which one is true of the anchor.
-    assert "grades 3 and 2" in named[0]
-    assert real in named[0]
+    assert len(case.relevant) == 2
 
 
-def test_a_case_naming_two_different_anchors_is_not_refused(corpus: Path) -> None:
-    """The lint must not fire on the ordinary shape it sits next to."""
-    from mycelium.eval.cases import validate_judged_set
+def test_loading_a_set_that_repeats_an_anchor_names_the_line(tmp_path: Path) -> None:
+    """The surface 5.33's lint could not reach: a set read straight off disk.
 
-    source = load_cases(CASES)
-    pair = next(case for case in source if len(case.relevant) > 1)
-    with SqliteStore.open(corpus, read_only=True) as store:
-        errors, _ = validate_judged_set([pair], store)
-    assert [error for error in errors if "named twice" in error] == []
+    `mycelium eval --set <path>` takes any judged file, and until now one with a
+    repeated anchor scored the last grade and said nothing. The refusal has to
+    locate it, so the message carries the file, the line, the case and both
+    grades — everything needed to fix it without opening the harness.
+    """
+    path = tmp_path / "release.jsonl"
+    case = {
+        "schema_version": "mycelium/eval-case/v0",
+        "case_id": "u-1001",
+        "query": "defining an index",
+        "slices": ["fact"],
+        "answerable": True,
+        "relevant": [
+            {"anchor": "docs/concepts/indexes.md#defining-an-index/0", "grade": 3},
+            {"anchor": "docs/concepts/indexes.md#defining-an-index/0", "grade": 2},
+        ],
+    }
+    path.write_text(json.dumps(case) + "\n", encoding="utf-8", newline="\n")
+
+    with pytest.raises(ValueError) as caught:
+        load_cases(path)
+
+    message = str(caught.value)
+    assert f"{path}:1:" in message
+    assert "u-1001" in message
+    assert "named twice" in message
+    assert "grades 3 and 2" in message
 
 
 def test_the_committed_sets_name_no_anchor_twice() -> None:
-    """Every judged set this repository ships, including the derived ones."""
+    """Every judged set this repository ships, including the derived ones.
+
+    Since 5.37 the load *is* the assertion — a set that repeated an anchor could
+    not be parsed into records at all — so this reads as "they all load". Kept
+    explicit anyway: it is the statement that the committed corpus satisfies the
+    rule, and it is what would fail if the rule were ever weakened.
+    """
     sets = [
         CASES,
         RELEASE,
