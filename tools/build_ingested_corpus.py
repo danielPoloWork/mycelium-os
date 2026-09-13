@@ -52,6 +52,25 @@ Images become their alt text first, uniformly for all three formats: the vendore
 corpus dropped the image files, so a reference to one is a dangling path that
 typst refuses and the other two writers silently keep.
 
+**pandoc has no version to pin, and no fact to check it against later** (roadmap
+5.34). It is an OS-level binary (D-013: not part of the runtime closure), so
+there is no dependency group to declare it in the way `render` declares typst.
+And unlike a typst PDF — which stamps `Creator: Typst <version>` into every file
+it writes — pandoc's docx writer emits a hardcoded `Application: Microsoft Word
+12.0.0` regardless of which pandoc ran, and its html5 writer (without
+`--standalone`, which this generator does not pass) emits a bare fragment with
+no `<head>` at all. Checked directly: every committed `sources/*.docx` and
+`*.html` carries no pandoc identifier anywhere in the file. So there is nothing
+in the committed artifacts a later pandoc's output could be compared against,
+the way `tests/test_eval_ingested_corpus.py` compares a PDF's `Creator` string
+against the declared typst pin — the only thing this generator *can* still do is
+refuse to render with a pandoc too old to be trusted, before the first byte is
+written (`require_pandoc`, mirroring `require_typst`). CI's own pandoc **is**
+pinned, at `.github/actions/setup-pandoc`'s default (`3.11`) — found on the way,
+and it already predates this item; it is what CI's ingest-parser tests run
+against, not what rendered the DOCX and HTML committed here, which nothing
+records.
+
 **The reader is `gfm`, and which dialect reads this corpus is load-bearing**
 (roadmap 5.24, ADR-0095). The corpus is mkdocs-material Markdown, whose fenced
 blocks carry attributes — ```` ```toml title="pyproject.toml" hl_lines="4" ````.
@@ -110,6 +129,7 @@ from mycelium.ingest import (  # noqa: E402
     ingest_source,
     write_projection,
 )
+from mycelium.ingest.parsers.pandoc import MIN_MAJOR as PANDOC_MIN_MAJOR  # noqa: E402
 from mycelium.sdk.identity import new_ulid  # noqa: E402
 
 SOURCE_CORPUS = ROOT / "eval" / "corpora" / "uv-docs"
@@ -382,6 +402,52 @@ def require_typst(pending_pdfs: int) -> str:
     return importlib.metadata.version("typst")
 
 
+def require_pandoc(pending: int) -> str:
+    """pandoc's reported version, or exit naming what to install.
+
+    The counterpart of `require_typst`, and deliberately weaker: a typst PDF
+    stamps its own version into the bytes it produces, so `require_typst`'s
+    check can be exact and after-the-fact (`tests/test_eval_ingested_corpus.py`
+    reads it back). pandoc's DOCX and HTML writers leave no such trace — checked
+    directly against every committed source — so this can only refuse *before*
+    rendering, on the one floor this project has actually measured:
+    `--sandbox`, which `_pandoc` always passes, did not exist before pandoc 3
+    (:data:`mycelium.ingest.parsers.pandoc.MIN_MAJOR`). An older pandoc would
+    fail on that flag anyway, mid-render, with a raw subprocess error; this
+    turns it into the same clear, pre-flight message `require_typst` gives
+    (roadmap 5.34).
+
+    CI's own pandoc is pinned already, at `.github/actions/setup-pandoc`'s
+    default — a fact this function does not repeat, because a floor and a pin
+    are different claims: CI's pin is what its ingest-parser tests run against,
+    not a guarantee about whatever rendered the files already committed here.
+    """
+    if not pending:
+        return ""
+    resolved = shutil.which("pandoc")
+    if resolved is None:
+        msg = (
+            f"{pending} DOCX/HTML document(s) to render and pandoc is not on PATH.\n"
+            "It is an OS-level binary, not a Python dependency (D-013): install pandoc "
+            f"{PANDOC_MIN_MAJOR}.x or newer (https://pandoc.org/installing.html)."
+        )
+        raise SystemExit(msg)
+    completed = subprocess.run(  # fixed argument vector, no shell
+        [resolved, "--version"], capture_output=True, text=True, check=False
+    )
+    words = completed.stdout.split()
+    reported = words[1] if len(words) > 1 else ""
+    major = reported.split(".")[0]
+    if completed.returncode != 0 or not major.isdigit() or int(major) < PANDOC_MIN_MAJOR:
+        msg = (
+            f"{pending} DOCX/HTML document(s) to render and {resolved} reports "
+            f"{reported or 'nothing usable'}; this generator needs pandoc "
+            f"{PANDOC_MIN_MAJOR}.x or newer (https://pandoc.org/installing.html)."
+        )
+        raise SystemExit(msg)
+    return reported
+
+
 def render_sources(sources: Path) -> list[str]:
     """Render what the plan asks for and disk does not already have.
 
@@ -403,6 +469,15 @@ def render_sources(sources: Path) -> list[str]:
         # typst writes `Creator: Typst <version>` into each one — so this is the
         # operator's copy of a fact the artifact already records (ADR-0098).
         print(f"rendering {sum(1 for _, f in pending if f == 'pdf')} PDF(s) with typst {version}")
+
+    pandoc_version = require_pandoc(sum(1 for _, fmt in pending if fmt != "pdf"))
+    if pandoc_version:
+        # No artifact will carry this back (roadmap 5.34), so it is printed
+        # rather than merely checked — the operator's only copy of the fact.
+        print(
+            f"rendering {sum(1 for _, f in pending if f != 'pdf')} DOCX/HTML document(s) "
+            f"with pandoc {pandoc_version}"
+        )
 
     written: list[str] = []
     for relative, fmt in plan:

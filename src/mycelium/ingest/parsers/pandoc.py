@@ -39,7 +39,7 @@ from mycelium.sdk.identity import digest_bytes
 from mycelium.sdk.protocols import Blob, PluginMeta
 from mycelium.sdk.types import KirDocument, NodeKind, OpaqueDisposition, Ulid
 
-__all__ = ["DEFAULT_EXECUTABLE", "PARSER_ID", "READERS", "PandocParser", "plugin"]
+__all__ = ["DEFAULT_EXECUTABLE", "MIN_MAJOR", "PARSER_ID", "READERS", "PandocParser", "plugin"]
 
 PARSER_ID: Final = "pandoc"
 
@@ -63,9 +63,14 @@ untested claim."""
 _MAX_DEPTH: Final = 256
 """How deeply the block walk will descend, matching `safety.Limits.max_depth`."""
 
-_MIN_MAJOR: Final = 3
+MIN_MAJOR: Final = 3
 """``--sandbox`` arrived in pandoc 3. Refusing 2.x is refusing to run an untrusted
-document through an unfenced converter."""
+document through an unfenced converter.
+
+Public because it is the one fact about pandoc this project has actually
+measured, and `tools/build_ingested_corpus.py` needs the same floor for its own
+pandoc invocation — one constant, not two that could drift apart (roadmap 5.34).
+"""
 
 _INLINE_MARKUP: Final = frozenset(
     {"Emph", "Strong", "Underline", "Strikeout", "Superscript", "Subscript", "SmallCaps"}
@@ -482,7 +487,7 @@ def _probe(executable: str) -> str:
     if resolved is None:
         msg = (
             f"the {PARSER_ID!r} parser needs the pandoc binary on PATH; install pandoc "
-            f"{_MIN_MAJOR}.x (https://pandoc.org/installing.html) or drop {PARSER_ID!r} "
+            f"{MIN_MAJOR}.x (https://pandoc.org/installing.html) or drop {PARSER_ID!r} "
             "from [ingest] parsers"
         )
         raise PluginUnavailableError(msg)
@@ -500,9 +505,9 @@ def _probe(executable: str) -> str:
     words = completed.stdout.decode("utf-8", errors="replace").split()
     reported = words[1] if len(words) > 1 else "unknown"
     major = reported.split(".")[0]
-    if not major.isdigit() or int(major) < _MIN_MAJOR:
+    if not major.isdigit() or int(major) < MIN_MAJOR:
         msg = (
-            f"the {PARSER_ID!r} parser needs pandoc {_MIN_MAJOR}.x or newer for --sandbox; "
+            f"the {PARSER_ID!r} parser needs pandoc {MIN_MAJOR}.x or newer for --sandbox; "
             f"{resolved} reports {reported}"
         )
         raise PluginUnavailableError(msg)

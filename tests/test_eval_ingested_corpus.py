@@ -25,6 +25,7 @@ import sys
 import tomllib
 from collections import Counter
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -32,7 +33,7 @@ from mycelium.eval.cases import load_cases
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
 
-from build_ingested_corpus import require_typst  # noqa: E402
+from build_ingested_corpus import require_pandoc, require_typst  # noqa: E402
 
 CORPUS = Path(__file__).parent.parent / "eval" / "corpora" / "uv-docs-ingested"
 TWIN = Path(__file__).parent.parent / "eval" / "corpora" / "uv-docs"
@@ -353,3 +354,67 @@ def test_a_pending_pdf_without_the_renderer_names_the_command_that_installs_it(
 def test_nothing_is_required_when_no_pdf_is_pending() -> None:
     """A render that has only DOCX and HTML to write needs no typesetter."""
     assert require_typst(0) == ""
+
+
+# ---------------------------------------------------------------------------
+# pandoc: a floor, not a pin - checked directly, not asserted (roadmap 5.34)
+# ---------------------------------------------------------------------------
+
+
+def test_no_committed_source_carries_a_pandoc_identifier() -> None:
+    """The premise `require_pandoc` is built on: there is nothing to check later.
+
+    A typst PDF stamps `Creator: Typst <version>` into itself; pandoc's docx
+    writer stamps a hard-coded `Microsoft Word 12.0.0` regardless of which
+    pandoc ran, and its html5 writer (without `--standalone`) emits a bare
+    fragment with no `<head>` at all. Read directly from every committed
+    source so the claim in the generator's docstring is a fact, not folklore.
+    """
+    sources = sorted((CORPUS / "sources").rglob("*.docx")) + sorted(
+        (CORPUS / "sources").rglob("*.html")
+    )
+    assert sources, "the ingested corpus should hold rendered DOCX and HTML"
+    for path in sources:
+        text = path.read_bytes()
+        assert b"pandoc" not in text.lower(), f"{path.name} names pandoc; update the docstring"
+
+
+def test_a_pending_render_without_pandoc_names_the_command_that_installs_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """It refuses before writing, the same shape `require_typst` does."""
+    import build_ingested_corpus
+
+    monkeypatch.setattr(build_ingested_corpus.shutil, "which", lambda name: None)  # noqa: ARG005
+    with pytest.raises(SystemExit) as caught:
+        require_pandoc(7)
+    message = str(caught.value)
+    assert "pandoc.org/installing.html" in message
+    assert "7 DOCX/HTML document(s)" in message
+    assert "D-013" in message
+
+
+def test_a_pandoc_below_the_floor_is_refused_by_its_own_reported_version(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import build_ingested_corpus
+
+    monkeypatch.setattr(
+        build_ingested_corpus.shutil,
+        "which",
+        lambda name: "/usr/bin/pandoc",  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        build_ingested_corpus.subprocess,
+        "run",
+        lambda *a, **k: SimpleNamespace(returncode=0, stdout="pandoc 2.9.2.1"),  # noqa: ARG005
+    )
+    with pytest.raises(SystemExit) as caught:
+        require_pandoc(2)
+    assert "reports 2.9.2.1" in str(caught.value)
+    assert "3.x or newer" in str(caught.value)
+
+
+def test_nothing_is_required_when_only_pdfs_are_pending() -> None:
+    """A render with no DOCX or HTML to write needs no pandoc."""
+    assert require_pandoc(0) == ""
