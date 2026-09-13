@@ -176,6 +176,93 @@ def test_a_carried_case_keeps_the_query_and_the_grade_it_was_given(name: str) ->
         assert carried <= given, f"{case.case_id}: grades changed in the carry"
 
 
+# ---------------------------------------------------------------------------
+# Collapsed anchors: several judged units, one twin chunk (roadmap 5.33)
+# ---------------------------------------------------------------------------
+
+
+def test_merging_takes_the_highest_grade_that_landed_on_the_chunk() -> None:
+    """The rule, on its own, without a corpus (ADR-0104)."""
+    from build_ingested_cases import Landing, merge_landings
+
+    anchors, collapsed = merge_landings(
+        [
+            Landing(twin="t.md#/0", source="s.md#section/", case_id="u-1", grade=3),
+            Landing(twin="t.md#/0", source="s.md#/0", case_id="u-1", grade=2),
+            Landing(twin="t.md#/1", source="s.md#other/0", case_id="u-1", grade=1),
+        ]
+    )
+    assert [(item.anchor, item.grade) for item in anchors] == [("t.md#/0", 3), ("t.md#/1", 1)]
+    assert collapsed == ["t.md#/0"]
+
+
+def test_one_source_anchor_reaching_one_chunk_is_not_a_collapse() -> None:
+    """Two cases judging the same passage is ordinary, and true of the source too."""
+    from build_ingested_cases import Landing, merge_landings
+
+    anchors, collapsed = merge_landings(
+        [Landing(twin="t.md#/0", source="s.md#a/0", case_id="u-1", grade=3)]
+    )
+    assert [(item.anchor, item.grade) for item in anchors] == [("t.md#/0", 3)]
+    assert collapsed == []
+
+
+@pytest.fixture(scope="module")
+def receipt() -> dict[str, object]:
+    payload = (CORPUS / "eval" / "carry.json").read_text(encoding="utf-8")
+    parsed: dict[str, object] = json.loads(payload)
+    return parsed
+
+
+def test_the_receipt_records_every_chunk_several_judged_units_landed_on(
+    receipt: dict[str, object],
+) -> None:
+    """The `collapsed` block agrees with the anchor map it sits beside.
+
+    Derived from the same run, so the two can only disagree if one was edited by
+    hand — which is the failure `--check` exists to catch and this makes visible
+    in a unit test rather than a four-minute regeneration.
+    """
+    anchors = receipt["anchors"]
+    collapsed = receipt["collapsed"]
+    assert isinstance(anchors, dict) and isinstance(collapsed, dict)
+
+    by_twin: dict[str, set[str]] = {}
+    for source, row in anchors.items():
+        by_twin.setdefault(row["twin"], set()).add(source)
+
+    expected = {twin for twin, sources in by_twin.items() if len(sources) > 1}
+    assert set(collapsed) == expected
+
+    for twin, landed in collapsed.items():
+        assert {item["source"] for item in landed} == by_twin[twin]
+
+
+def test_a_collapsed_case_keeps_the_highest_grade_its_units_carried(
+    receipt: dict[str, object],
+) -> None:
+    """What the twin's set says about a merged chunk matches what reached it."""
+    collapsed = receipt["collapsed"]
+    assert isinstance(collapsed, dict)
+
+    carried = {
+        case.case_id: {item.anchor: item.grade for item in case.relevant}
+        for name in ("dev.jsonl", "release.jsonl")
+        for case in load_cases(CORPUS / "eval" / name)
+    }
+    checked = 0
+    for twin, landed in collapsed.items():
+        by_case: dict[str, list[int]] = {}
+        for item in landed:
+            by_case.setdefault(item["case"], []).append(item["grade"])
+        for case_id, grades in by_case.items():
+            if len(grades) < 2:
+                continue  # collapsed across cases, not within one: nothing merged
+            assert carried[case_id][twin] == max(grades)
+            checked += 1
+    assert checked, "no within-case collapse in the committed sets - update this test"
+
+
 def test_a_projected_document_carries_no_pinned_identity() -> None:
     """`mycelium build` pins `mycelium_id`; the projector does not write one.
 

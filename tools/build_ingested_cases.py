@@ -33,6 +33,35 @@ fixed and lets the *retrieval* be the only thing that varies.
 5. The winner's **`whole`** is recorded beside its coverage: the share of the
    passage's word *occurrences* it can account for. Coverage answers "are the
    passage's words here"; `whole` answers "is the passage here".
+6. Several judged units can land on **one** twin chunk, because a headingless PDF
+   is one page-sized block where the Markdown had sections. Within a case they
+   are merged into a single anchor at the highest grade that reached it; across
+   cases nothing is merged, because nothing can be. Either way the chunk and
+   every unit that reached it are recorded under `collapsed` in the receipt.
+
+## What a collapsed anchor means, and why no case is dropped for it
+
+A twin chunk that several *distinct* judged units land on is a distinction the
+projection destroyed. Four cases — `u-1005`, `u-1006`, `u-1019`, `u-1024` — judge
+`python-versions-pdf-*.md#/0` as their grade-3 answer where their sources named
+four different passages of `python-versions.md`; a retriever that returns that one
+block has answered all four, and on the Markdown it would have had to find four.
+
+That is not a defect to repair. It is the measurement: a corpus that cannot
+represent a distinction is exactly what this twin exists to detect, and dropping
+the cases would delete the finding rather than report it (roadmap 5.33). What it
+*does* mean is that such a case's twin score is not comparable to its source's —
+it is the largest reason a twin case outscores the document it was projected from
+(ADR-0097) — so `tools/measure_projection_cost.py` marks every case whose judged
+unit shares its chunk, and the receipt names the chunk and the units.
+
+The one shape that **is** a defect is the same case landing two units on one
+chunk, because the carried file then names an anchor twice and `run_evaluation`
+builds `{anchor: grade}` — the duplicate disappeared into whichever grade came
+last, which was the lower one. `u-1001` and `u-1003` both did this for four
+milestones and nothing on either side said so. They are merged now, at the highest
+grade, which is a claim about the chunk and not about the score: with one judged
+anchor left, the grade cancels out of every metric the harness computes.
 
 ## Why `whole` is recorded, and what coverage cannot see
 
@@ -92,6 +121,7 @@ import re
 import sys
 from collections import Counter
 from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -164,6 +194,54 @@ def judged_text(store: SqliteStore, anchor: str) -> str:
     )
 
 
+@dataclass(frozen=True, slots=True)
+class Landing:
+    """One judged unit, where it came from and where it landed (roadmap 5.33)."""
+
+    twin: str
+    source: str
+    case_id: str
+    grade: int
+
+
+def merge_landings(landings: Sequence[Landing]) -> tuple[tuple[RelevantAnchor, ...], list[str]]:
+    """One judged anchor per twin chunk, at the highest grade that landed on it.
+
+    A headingless PDF is one page-sized chunk where the Markdown had sections, so
+    two judged units of the *same case* can land on it — `u-1001` and `u-1003`
+    each judge `indexes.md#defining-an-index/` at 3 and the document preamble at
+    2, and both carry onto `indexes-pdf-*.md#/0` (roadmap 5.33).
+
+    Merging is not a choice about scoring, because there is none to make: for a
+    case left holding a single judged anchor the grade **cancels** in every
+    metric the harness computes — nDCG divides by an ideal built from the same
+    gain, recall counts anchors, and reciprocal rank reads only a position. The
+    choice is about what the file *says*, and the highest grade is what is true
+    of the merged chunk: it contains the passage that was graded highest, and
+    calling it a 2 would understate what a retriever returning it actually found.
+
+    Writing the anchor twice instead — which is what this tool did until 5.33 —
+    says something `run_evaluation` cannot represent: it builds `{anchor: grade}`
+    and the duplicate disappears into whichever grade happened to come last,
+    which was the *lower* one. Nothing reported it, on either side.
+
+    Returns the merged anchors in the case's own order, and the twin anchors that
+    received more than one judged unit.
+    """
+    by_twin: dict[str, list[Landing]] = {}
+    for landing in landings:
+        by_twin.setdefault(landing.twin, []).append(landing)
+
+    anchors = tuple(
+        RelevantAnchor(anchor=twin, grade=max(item.grade for item in landed))
+        for twin, landed in by_twin.items()
+    )
+    collapsed = [
+        twin for twin, landed in by_twin.items() if len({item.source for item in landed}) > 1
+    ]
+    return anchors, collapsed
+
+
 def encode_cases(cases: Sequence[EvalCase]) -> str:
     """The bytes `write_cases` would write, without writing them.
 
@@ -182,7 +260,9 @@ CARRY_RECEIPT = "carry.json"
 """Where each mapped anchor's coverage is recorded, beside the sets it explains."""
 
 
-def encode_receipt(mapped: Sequence[tuple[str, str, float, float]]) -> str:
+def encode_receipt(
+    mapped: Sequence[tuple[str, str, float, float]], landings: Sequence[Landing]
+) -> str:
     """The carry as committed evidence: source anchor → twin anchor, and two numbers.
 
     Sorted and rounded so two runs of the same inputs produce the same bytes, and
@@ -194,13 +274,35 @@ def encode_receipt(mapped: Sequence[tuple[str, str, float, float]]) -> str:
     passage's words are here, `whole` says the passage is. A split passage moved
     neither number enough to notice, and the case that exposed it took a session
     to explain from a receipt that could have said so (ADR-0102).
+
+    `collapsed` joined both at roadmap 5.33, and it is the same argument a third
+    time. A twin chunk that several *distinct* judged units land on is a passage
+    the projection can no longer tell apart — four cases judge
+    `python-versions-pdf-*.md#/0` as their grade-3 answer where their sources
+    named four different passages — and that is not a defect to repair but the
+    measurement this twin exists to take. It is recorded per twin anchor with
+    every judged unit that reached it, so "two units of one case" (which merges,
+    :func:`merge_landings`) and "one unit each from four cases" (which does not)
+    are the same fact read two ways rather than two bookkeeping systems.
     """
+    by_twin: dict[str, list[Landing]] = {}
+    for landing in landings:
+        by_twin.setdefault(landing.twin, []).append(landing)
+
     document = {
-        "schema_version": "mycelium/eval-carry/v1",
+        "schema_version": "mycelium/eval-carry/v2",
         "min_coverage": MIN_COVERAGE,
         "anchors": {
             source: {"twin": twin, "coverage": round(score, 4), "whole": round(share, 4)}
             for source, twin, score, share in sorted(mapped)
+        },
+        "collapsed": {
+            twin: [
+                {"case": item.case_id, "grade": item.grade, "source": item.source}
+                for item in sorted(landed, key=lambda item: (item.case_id, item.source))
+            ]
+            for twin, landed in sorted(by_twin.items())
+            if len({item.source for item in landed}) > 1
         },
     }
     return json.dumps(document, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
@@ -226,6 +328,8 @@ def main() -> int:  # noqa: C901 - a report is a sequence of stated steps
     dropped_anchors: list[str] = []
     dropped_cases: list[str] = []
     mapped: list[tuple[str, str, float, float]] = []
+    landings: list[Landing] = []
+    collapsed: list[str] = []
 
     with (
         SqliteStore.open(MARKDOWN_CORPUS, read_only=True) as source_store,
@@ -235,7 +339,7 @@ def main() -> int:  # noqa: C901 - a report is a sequence of stated steps
         for name in ("dev", "release"):
             carried: list[EvalCase] = []
             for case in load_cases(MARKDOWN_CORPUS / "eval" / f"{name}.jsonl"):
-                anchors: list[RelevantAnchor] = []
+                landed: list[Landing] = []
                 for relevant in case.relevant:
                     doc_path = relevant.anchor.partition("#")[0]
                     entry = manifest.get(doc_path)
@@ -256,12 +360,25 @@ def main() -> int:  # noqa: C901 - a report is a sequence of stated steps
                         )
                         continue
                     mapped.append((relevant.anchor, best, score, share))
-                    anchors.append(RelevantAnchor(anchor=best, grade=relevant.grade))
+                    landed.append(
+                        Landing(
+                            twin=best,
+                            source=relevant.anchor,
+                            case_id=case.case_id,
+                            grade=relevant.grade,
+                        )
+                    )
 
-                if case.answerable and not anchors:
+                if case.answerable and not landed:
                     dropped_cases.append(case.case_id)
                     continue
-                carried.append(case.model_copy(update={"relevant": tuple(anchors)}))
+                landings.extend(landed)
+                # Several judged units of one case can land on one twin chunk, and
+                # a set naming an anchor twice is a shape the harness cannot
+                # represent (roadmap 5.33).
+                anchors, merged = merge_landings(landed)
+                collapsed.extend(f"{case.case_id}: {twin}" for twin in merged)
+                carried.append(case.model_copy(update={"relevant": anchors}))
             written[name] = tuple(carried)
 
         errors, warnings = validate_judged_set(written["dev"] + written["release"], twin_store)
@@ -276,6 +393,11 @@ def main() -> int:  # noqa: C901 - a report is a sequence of stated steps
         print(f"  dropped anchor  {line}")
     for case_id in dropped_cases:
         print(f"  dropped case    {case_id} — no anchor survived")
+    for line in collapsed:
+        # Printed as what it is: the projection lost a distinction the judgement
+        # was written to rely on. The case is kept, because a corpus that cannot
+        # represent a distinction is what this twin exists to measure (5.33).
+        print(f"  merged anchors  {line} — two judged units, one twin chunk")
     for warning in warnings:
         print(f"  warning: {warning}")
     if errors:
@@ -285,10 +407,11 @@ def main() -> int:  # noqa: C901 - a report is a sequence of stated steps
         return 1
 
     destination = INGESTED_CORPUS / "eval"
-    receipt = encode_receipt(mapped)
+    receipt = encode_receipt(mapped, landings)
     summary = (
         f"carried {len(written['dev'])} dev and {len(written['release'])} release cases; "
-        f"{len(mapped)} anchors mapped, {len(dropped_anchors)} dropped"
+        f"{len(mapped)} anchors mapped, {len(dropped_anchors)} dropped, "
+        f"{len(collapsed)} merged onto a shared chunk"
     )
 
     if check_only:

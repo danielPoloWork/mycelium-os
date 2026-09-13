@@ -60,7 +60,8 @@ Regenerate either corpus's sets with:
 writing; it runs in CI, because a derived artifact whose generator no longer reproduces it is
 a defect rather than a cue to regenerate ([BUG-0018](../docs/bugs/2026/09/BUG-0018-carried-ingested-cases-do-not-reproduce.md)).
 `eval/corpora/uv-docs-ingested/eval/carry.json` is that carry's receipt: every mapped anchor's
-twin and its coverage, committed so drift reads as a diff of numbers.
+twin and its coverage, committed so drift reads as a diff of numbers, plus the `collapsed`
+block naming each twin chunk that several distinct judged units landed on (roadmap 5.33).
 
 ```bash
 python tools/build_eval_cases.py           # this repository's documentation
@@ -442,6 +443,21 @@ retrievers rank far higher and no judgement names
 The same boundary rule gains `u-1003` in the same document by merging two sections, so this
 is a number to read a case with and not a predictor: the largest *gain* in the table is a
 split passage too.
+
+**And read the `shared` column with the positives — it closes the question above.** A
+headingless PDF is one page-sized block where the Markdown had sections, so several judged
+passages can land on the *same* twin chunk: `shared` counts how many, and all three
+above-source cases have it while nothing else in the table does (roadmap 5.33). The starkest
+is `python-versions-pdf-*.md#/0`, which four cases judge as their grade-3 answer where their
+sources named three different passages — a retriever returning that one block has answered
+all four. So the twin being easier there is not a retrieval finding but a distinction the
+projection destroyed, which is the thing this corpus exists to detect, and the cases are kept
+and marked rather than dropped. It is a reading aid like `whole`, not a predictor: seven cases
+share a chunk and three gained, because the other four were already at the ceiling or the
+floor on both sides. Within a *single* case the same collapse used to name one anchor twice —
+`u-1001` and `u-1003` both did, and the harness keys judgements by anchor, so each scored
+against the lower of its two grades until they were merged at the highest
+([ADR-0104](../docs/adr/0104-merge-what-the-projection-could-not-tell-apart-and-record-that-it-could-not.md)).
 
 Reported, never gated: with three to eight cases per format there is no threshold anyone
 could defend ([ADR-0039](../docs/adr/0039-measure-what-projection-costs.md)).

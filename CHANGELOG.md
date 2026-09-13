@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **A judged set may no longer name the same anchor twice, and the carry stopped doing it**
+  (roadmap 5.33,
+  [ADR-0104](docs/adr/0104-merge-what-the-projection-could-not-tell-apart-and-record-that-it-could-not.md)).
+  `validate_judged_set` gains a fourth lint, an error: the harness keys judgements by anchor,
+  so a repeated anchor is one judged unit at whichever grade was written last, not two. Two
+  carried cases had said it since the ingested twin existed and scored against the *lower* of
+  their two grades on both retrievers. Where a headingless PDF collapses several judged
+  passages onto one twin chunk, `tools/build_ingested_cases.py` now merges them within a case
+  at the highest grade that landed — a claim about the chunk, not about the score, since the
+  grade cancels out of every metric once a case holds a single anchor. Across cases nothing is
+  merged and nothing is dropped: `eval/carry.json` (receipt `v2`) records each shared chunk
+  and every unit that reached it, and `tools/measure_projection_cost.py` gains a `shared`
+  column beside `whole`. It explains the whole above-source population — all three cases that
+  outscore the Markdown they were projected from are collapsed ones. The uv-ingested release
+  baseline is re-blessed on both arms with **no score changed**.
 - **The session-journal index is generated, not hand-written** (roadmap 5.32,
   [ADR-0103](docs/adr/0103-generate-the-journal-index-because-every-row-already-lives-in-the-file.md)).
   `docs/journal/README.md` had fallen 24 checkpoints behind `docs/journal/2026/**` because the
