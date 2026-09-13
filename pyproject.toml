@@ -74,7 +74,7 @@ synthesis = ["anthropic>=1.2"]
 # release that survives `uv run pytest -m determinism` plus a build of
 # eval/corpora/uv-docs-ingested.
 symbols = [
-    "tree-sitter>=0.25,<0.26",
+    "tree-sitter>=0.25,<0.27",
     "tree-sitter-c>=0.23",
     "tree-sitter-cpp>=0.23",
     "tree-sitter-go>=0.23",
@@ -145,7 +145,7 @@ dev = [
     # every grammar on every platform, and gate G6's golden is blessed with them
     # installed - the gate refuses to run without them rather than compare a
     # degraded snapshot against it (roadmap 5.1).
-    "tree-sitter>=0.25,<0.26",
+    "tree-sitter>=0.25,<0.27",
     "tree-sitter-c>=0.23",
     "tree-sitter-cpp>=0.23",
     "tree-sitter-go>=0.23",
