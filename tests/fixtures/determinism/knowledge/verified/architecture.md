@@ -33,3 +33,20 @@ collide with. See the [specification](https://example.invalid/spec) for the rule
 - Stages are pure functions of their declared inputs.
 - Build keys are digests over those inputs.
 - A rebuild with unchanged inputs produces unchanged outputs.
+
+## Rendered Notes
+
+<div align="center">
+<img alt="The stage DAG, drawn." src="https://example.invalid/dag.png" width="720">
+</div>
+
+<p align="center">
+  <i>The compiler's stages, in the order a build runs them.</i>
+</p>
+
+<!-- TODO: redraw this once the `extract` stage joins the diagram. -->
+
+A caption written in raw HTML is <b>markup</b> rather than prose, so the index keeps its
+words and drops its tags. A placeholder such as `<snapshot-id>` is prose, and so is a
+comparison like 0 < n and n > 1; neither is a tag, and both stay. A tag the text quotes,
+`<p align="center">`, stays for the same reason — it is what the sentence is about.

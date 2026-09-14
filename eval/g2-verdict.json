@@ -1,13 +1,13 @@
 {
   "corpora": {
     "ours": {
-      "chunks_digest": "sha256:930fe75e2a28907fdaa76de36f63fb6e3d20ef4273be2adaba6a01009d96b0f5",
-      "content_digest": "sha256:c0aaab4546792f6c42b2a4458425320be2955b3c377c87fffbad75e1f8e0e6a9",
+      "chunks_digest": "sha256:fafe77d16d1c80617a0f8ff91b5a6a992fca3c9649329464557fe25ea32140df",
+      "content_digest": "sha256:c899f209bd0081931573c132e2d468162adb83e7aa35a328976ca2d99b59a790",
       "dated": false
     },
     "uv": {
-      "chunks_digest": "sha256:3083b97f9d6983bba978df8cb09b48fc872666379faa7808b9be1ed6f7bf6282",
-      "content_digest": "sha256:44895398cedfc30a39759a8dfd9ab59ec2df26e6d251e8e619a6bc3ea4af2b06",
+      "chunks_digest": "sha256:bf148653f17a5de52f574dc06b201d686d88cc47c3ee1172402a22a7574799be",
+      "content_digest": "sha256:38ecfb6ea931a3916a8a5fab01c02bf51cceaea3f08d031cde54c0d899d83526",
       "dated": true
     },
     "uv-ingested": {
@@ -22,7 +22,7 @@
   ],
   "decision": "lexical",
   "model_id": "bge-small-en-v1.5",
-  "recorded_at": "2026-09-13",
+  "recorded_at": "2026-09-14",
   "retrieval_identity": "sha256:d022dcdd31aa6d9fdb861bd54b56dd134d982ab0bcc3ec9b055f087ce508a150",
   "schema_version": "mycelium/g2-verdict/v0",
   "sets": {
@@ -70,14 +70,14 @@
     "ours/release": {
       "cases": 17,
       "cases_digest": "sha256:5d5cb038211bac12ea7f23ee90195442877f166bb6203db8cc5be44edef88d09",
-      "detail": "+17.9% overall (needs +5%)",
+      "detail": "+17.7% overall (needs +5%)",
       "hybrid_ndcg_at_10": 0.613569,
-      "lexical_ndcg_at_10": 0.520567,
+      "lexical_ndcg_at_10": 0.521235,
       "per_slice": {
         "conceptual": {
           "cases": 4,
           "hybrid": 0.673536,
-          "lexical": 0.561495
+          "lexical": 0.564336
         },
         "exact": {
           "cases": 4,
@@ -92,7 +92,7 @@
         "relationship": {
           "cases": 4,
           "hybrid": 0.386582,
-          "lexical": 0.32776
+          "lexical": 0.330601
         }
       },
       "regressions": [],

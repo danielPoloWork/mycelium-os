@@ -10,6 +10,22 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Fixed
+
+- **Raw HTML markup no longer reaches the index as prose** (roadmap 5.40,
+  [ADR-0110](docs/adr/0110-drop-the-markup-and-keep-the-words-on-evidence-a-placeholder-cannot-forge.md)). A document that wraps a caption in `<p align="center">` was
+  indexed with its markup, so `p`, `align`, `center`, `img`, `alt`, `src`, `href` and a CDN
+  URL became terms of that chunk and its BM25 length counted them; an HTML comment was
+  indexed whole, letting a search return words that are invisible on the rendered page.
+  The markup is now deleted and the words kept — still without parsing any of it, and with
+  the parser's HTML option still off. Prose that merely *looks* like a tag is untouched:
+  a placeholder (`<package_name>`), a comparison (`0 < n and n > 1`), a version range and
+  any tag written as inline code all stay, because markup is recognised only by evidence a
+  placeholder cannot produce — a closing tag, a `name=value` attribute, a matching close in
+  the same block, or a comment's delimiters. This closes the one document whose authored
+  and ingested lanes described it differently. `PARSE_STAGE_VERSION` 2 → 3: the first build
+  after upgrading re-parses every document holding a tag or a comment.
+
 ### Changed
 
 - **The projection-cost table's `whole` mark now names the grade of the anchor it is on**

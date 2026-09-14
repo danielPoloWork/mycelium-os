@@ -141,3 +141,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0107](0107-refuse-to-model-emphasis-and-name-the-lane-the-disagreement-is-in.md) | Refuse to model emphasis, and name the lane the disagreement is actually in | Accepted |
 | [0108](0108-put-the-repeated-anchor-rule-on-the-record-not-on-the-corpus-lint.md) | Put the repeated-anchor rule on the record, where no path can route around it | Accepted |
 | [0109](0109-print-the-grade-beside-the-share-because-a-split-anchor-is-only-half-the-reading.md) | Print the grade beside the share, because a split anchor is only half the reading | Accepted |
+| [0110](0110-drop-the-markup-and-keep-the-words-on-evidence-a-placeholder-cannot-forge.md) | Drop the markup and keep the words, on evidence a placeholder cannot forge | Accepted |

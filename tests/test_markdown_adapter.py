@@ -149,10 +149,18 @@ def test_unknown_vault_syntax_is_tolerated(source: str) -> None:
 
 
 def test_raw_html_is_data_not_markup() -> None:
-    """D-017: authored content is untrusted; HTML is never interpreted."""
+    """D-017: authored content is untrusted; HTML is never interpreted.
+
+    Since roadmap 5.40 the tags are *deleted* rather than indexed (ADR-0110) —
+    which is a step further from interpreting them, not a step toward it. The
+    parser option stays off, nothing here is executed, and what is left is the
+    element's own words: this adapter models no element semantics, so a script
+    body is words like any other. Telling them apart would need the parse D-017
+    refuses.
+    """
     doc = parse_markdown("<script>alert(1)</script>\n")
     assert [node.kind for node in doc.kir.nodes] == [NodeKind.PARAGRAPH]
-    assert doc.kir.nodes[0].text == "<script>alert(1)</script>"
+    assert doc.kir.nodes[0].text == "alert(1)"
     assert profile_markdown_it().options["html"] is False
 
 
@@ -316,22 +324,122 @@ def test_emphasis_is_flattened_into_the_text_and_nowhere_else() -> None:
     assert node.spans == ()
 
 
-@pytest.mark.parametrize(
-    "source",
-    [
-        "A ~~struck~~ word.",
-        "A <u>lined</u> word.",
-        "A <em>soft</em> word.",
-        "Water is H<sub>2</sub>O.",
-    ],
-)
-def test_markup_outside_the_profile_stays_in_the_text_verbatim(source: str) -> None:
-    """GFM strikethrough and inline HTML are not Profile v1 (spec 03 §3.1: the
-    profile is CommonMark *plus GFM tables*), so they are prose and stay prose.
+def test_strikethrough_stays_in_the_text_verbatim() -> None:
+    """GFM strikethrough is not Profile v1 (spec 03 §3.1: CommonMark *plus GFM
+    tables*), so it is prose and stays prose.
 
     Pinned rather than left to the parser's defaults because it is the premise of
-    a refusal: these are exactly the constructs the ingestion lane resolves into
-    plain text, so enabling one here without re-reading ADR-0107 would close a
-    divergence on one side of the corpus and not the other.
+    a refusal: the ingestion lane resolves this construct into plain text, so
+    enabling the rule here without re-reading ADR-0107 would close a divergence on
+    one side of the corpus and not the other. It occurs in none of the three
+    corpora, which is why ADR-0107 declined to widen a frozen contract for it —
+    and why roadmap 5.40 left it alone while closing the HTML half.
     """
-    assert only(f"{source}\n", NodeKind.PARAGRAPH).text == source
+    assert only("A ~~struck~~ word.\n", NodeKind.PARAGRAPH).text == "A ~~struck~~ word."
+
+
+# ---------------------------------------------------------------------------
+# Raw HTML: the markup goes, the words stay (roadmap 5.40, ADR-0110)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("source", "expected", "why"),
+    [
+        ("A <u>lined</u> word.", "A lined word.", "a matched pair is markup"),
+        ("A <em>soft</em> word.", "A soft word.", "so is one the profile has an accent for"),
+        ("<b>bold *and* italic</b> text", "bold and italic text", "a pair spanning emphasis"),
+        (
+            '<img alt="A bar chart." src="https://x/y.png"> after',
+            "after",
+            "a void tag with attributes, unpaired and unclosed",
+        ),
+        ('<p align="center">caption</p>', "caption", "an attribute-carrying wrapper"),
+        ("<!-- prettier-ignore --> kept", "kept", "a comment, whole"),
+        ("<!-- see `uv add` later --> kept", "kept", "a comment swallows the code it quotes"),
+        ("Pass <package_name> to it.", "Pass <package_name> to it.", "a bare placeholder"),
+        ("<link once released>", "<link once released>", "bare words are not attributes"),
+        ("<b> <strong> <i>", "<b> <strong> <i>", "unpaired bare tags are an inventory"),
+        ("if x < y and a > b", "if x < y and a > b", "a comparison"),
+        ("foo <2, and foo >1", "foo <2, and foo >1", "a version range"),
+        ("An unterminated <!-- comment", "An unterminated <!-- comment", "half a comment is words"),
+    ],
+)
+def test_raw_html_markup_is_dropped_and_prose_that_looks_like_it_is_not(
+    source: str, expected: str, why: str
+) -> None:
+    """The rule, case by case (ADR-0110).
+
+    `<word>` is both how HTML opens an element and how documentation writes a
+    placeholder, and the names collide — `<code>`, `<pre>`, `<script>`, `<path>`,
+    `<link>` and `<i>` are all both — so a tag-name list cannot separate them.
+    What separates them is syntax a lone placeholder cannot produce: a closing
+    tag, a `name=value` attribute, a matching close in the same block, or a
+    comment's delimiters. Everything else is somebody's words and stays, because
+    leaving markup in costs a few noise terms and deleting a placeholder costs the
+    name of the thing the sentence is about.
+    """
+    assert only(f"{source}\n", NodeKind.PARAGRAPH).text == expected, why
+
+
+def test_a_quoted_tag_is_what_the_sentence_is_about_and_survives() -> None:
+    """Inline code is never reached by the tag rules (ADR-0110, ADR-0094).
+
+    A documentation corpus explains HTML by quoting it — this repository's roadmap
+    writes ``` `<p align="center">` ``` five times, and ADR-0107's own table names
+    eleven tags in a code span. Deleting those would be deleting the subject.
+    """
+    node = only('Write `<p align="center">` around it, and `</p>` after.\n', NodeKind.PARAGRAPH)
+    assert node.text == 'Write <p align="center"> around it, and </p> after.'
+    assert node.spans == ('<p align="center">', "</p>")
+
+
+def test_a_block_that_was_only_markup_leaves_no_node_behind() -> None:
+    """Every CommonMark paragraph has content, so a blank one was markup alone.
+
+    Keeping an empty node would put blank lines into the chunk its content used to
+    justify, which is a different way of indexing the wrapper.
+    """
+    doc = parse_markdown(
+        '# Doc\n\n<div align="center">\n<img alt="A chart." src="https://x/y.png">\n</div>\n\n'
+        "<!-- TODO: redraw -->\n\nReal prose.\n"
+    )
+    assert [(node.kind, node.text) for node in doc.kir.nodes] == [
+        (NodeKind.HEADING, "Doc"),
+        (NodeKind.PARAGRAPH, "Real prose."),
+    ]
+
+
+def test_a_paragraph_holding_only_a_reference_is_not_mistaken_for_markup() -> None:
+    """The emptiness test asks for references too: an image with no alt text has
+    no `text` and is still a node the graph is built from (spec 03 §6)."""
+    doc = parse_markdown("# Doc\n\n![](assets/diagram.png)\n")
+    assert [node.kind for node in doc.kir.nodes] == [
+        NodeKind.HEADING,
+        NodeKind.PARAGRAPH,
+        NodeKind.IMAGE,
+    ]
+
+
+def test_the_wrapper_takes_its_layout_whitespace_with_it() -> None:
+    """A caption is written on its own line inside the tag that positions it, so
+    the newline belongs to the markup and goes with it — otherwise the block opens
+    with a blank line the rendered page does not have."""
+    source = (
+        '<p align="center">\n  <i>Installing Trio\'s dependencies with a warm cache.</i>\n</p>\n'
+    )
+    assert only(source, NodeKind.PARAGRAPH).text == (
+        "Installing Trio's dependencies with a warm cache."
+    )
+
+
+def test_sub_and_sup_are_the_stated_limit() -> None:
+    """The one construct this change leaves diverging, and it is docling's doing.
+
+    Stripping gives `H2O`, which is what a browser renders and one FTS token; the
+    twin's renderer inserts spaces and gives `H 2 O`, which is three. So these two
+    tags disagree in *tokenisation* rather than in markup — a smaller disagreement
+    than before and a different one. There are none in any of the three corpora,
+    which `tests/test_eval_ingested_corpus.py` asserts rather than remembers.
+    """
+    assert only("Water is H<sub>2</sub>O.\n", NodeKind.PARAGRAPH).text == "Water is H2O."
