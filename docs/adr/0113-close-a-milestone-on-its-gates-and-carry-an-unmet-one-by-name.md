@@ -78,6 +78,19 @@ is not dropped: 6.8 owns it and has measured that the per-slice conditions need 
 **Every milestone heading carries the version it shipped or will ship.** M6 keeps v1.0.0,
 because there the phase name and the release agree.
 
+> **Corrected by the maintainer, 2026-09-14, before the v0.5.0 cut.** The second sentence does
+> not survive the rule the first one applies. AGENTS.md §11 increments `MINOR` with each
+> completed milestone pre-1.0, and that is exactly how M1–M5 were relabelled here — so M6 ships
+> **v0.6.0** and 1.0 lands at **M7**, which is now labelled v1.0.0. "The phase name and the
+> release agree" was the spec's *Phase 4* name reasserting itself in the one place I had not
+> checked it against the cadence, which is the same mistake this ADR was written to fix, made
+> once more inside the fix. The roadmap and the README carry the corrected labels.
+>
+> One thing this leaves open, and it is not settled here: M6's exit gates still include
+> *"1.0 compatibility promise published"* while M6 now ships v0.6.0. Whether that promise
+> publishes at M6 or at M7 belongs with 6.1, the contract freeze, which is where it has to be
+> answered anyway.
+
 **`packaging.md` is corrected to describe what exists**, with the intended registry step named as
 roadmap 6.11 instead of written as fact. Making the README's install lines true belongs to that
 item, not to this one.

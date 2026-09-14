@@ -910,8 +910,8 @@ anchor space — instead of by diffing two runs and hoping nothing else changed.
 | 3 | v0.3.0 — The compiler (spec Phase 1) | ✅ done |
 | 4 | v0.4.0 — Ingestion (spec Phase 2) | ✅ done |
 | 5 | v0.5.0 — Structure (spec Phase 3) | 🚧 in progress |
-| 6 | v1.0.0 — Stable (spec Phase 4) | ⏳ planned |
-| 7 | v2.x — Team & platform (spec Phase 5; separate RFC cycle) | ⏳ planned |
+| 6 | v0.6.0 — Stable (spec Phase 4) | ⏳ planned |
+| 7 | v1.0.0 — Team & platform (spec Phase 5; separate RFC cycle) | ⏳ planned |
 
 The numbered plan, with what each item delivered, is [`ROADMAP.md`](ROADMAP.md).
 
