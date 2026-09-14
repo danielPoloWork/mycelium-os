@@ -231,6 +231,42 @@ jobs:
       - run: uv run ruff format --check src tests tools contrib && uv run ruff check src tests tools contrib && uv run mypy --strict src tools contrib/chats/src
 
   # ---------------------------------------------------------------------------
+  # What a publish would upload (roadmap 6.11, ADR-0116). A published version is
+  # immutable and a package name is claimed by its first upload, so every property of
+  # the artifact that can be checked is checked here rather than discovered by a user:
+  # the sdist carries only what it declares, the wheel carries the package and its PEP
+  # 561 marker, `twine check --strict` renders the metadata the way an index will, and
+  # the wheel installs into a clean environment and answers a query with a citation.
+  # A job of its own so it is legible by name in the checks list, for the same reason
+  # the determinism gate below is.
+  # ---------------------------------------------------------------------------
+  distribution:
+    name: distribution / publishable?
+    needs: bootstrap
+    # A documentation-only change cannot move the artifact. The one thing it *can*
+    # move is the long description, which is `README.md` — and for `text/markdown`
+    # `twine check` validates little more than that the file decodes, so the gap is
+    # named rather than paid for on every docs PR (ADR-0116).
+    if: needs.bootstrap.outputs.ready == 'true' && needs.bootstrap.outputs.mode != 'docs'
+    # One platform, unlike the build job above, and that is a decision rather than a
+    # saving. What this job checks is the *packaging*: the wheel is `py3-none-any`, the
+    # sdist is a tar of the same bytes everywhere, and `twine check` reads metadata. The
+    # cross-platform question — does the installed program work on Windows — is the one
+    # the build matrix already answers by running the whole suite on three operating
+    # systems. Running this four times would re-ask a platform-independent question.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with: { python-version: '3.12' }
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --all-extras --dev
+      # `tests/test_verify_ladder.py` fails if this line and tools/verify.py's plan
+      # disagree — one implementation, two callers (ADR-0059).
+      - run: uv run python tools/check_distribution.py
+
+  # ---------------------------------------------------------------------------
   # Gate G6 — byte-identical rebuild (spec 04 §7, D-008). The determinism tests also
   # run inside the build matrix on all three operating systems, which is where
   # cross-platform reproducibility is actually proven; this job exists so the gate

@@ -5,37 +5,99 @@ because the project is distributed via a package registry (`capabilities.packagi
 
 ## Artifact
 
-- **What ships:** the package produced by `Hatch (PEP 517/518, pyproject.toml)` (and its contents — runtime only,
-  no tests/benches).
+Two archives, and each is an **allowlist** rather than whatever the build happened to sweep
+up (roadmap 6.11, [ADR-0116](../adr/0116-publish-under-a-name-already-decided-and-let-the-artifact-be-a-defined-thing.md)):
+
+| | contents | why |
+|---|---|---|
+| **wheel** `mycelium_os-X.Y.Z-py3-none-any.whl` | `mycelium/` and its `dist-info` — 106 entries, runtime only, with the PEP 561 `py.typed` marker | what a consumer installs |
+| **sdist** `mycelium_os-X.Y.Z.tar.gz` | `src/mycelium/`, `pyproject.toml`, `README.md`, `LICENSE`, `CHANGELOG.md` — about 1.5 MB | what builds the wheel, and what states its terms |
+
 - **Consumers import it via:** `from mycelium.sdk.types import KirDocument`.
-- **Metadata:** name, version (from `__about__.py`), license `Apache-2.0`, and the
-  links a registry expects (repo, docs, changelog).
+- **Metadata:** name, version (from `__about__.py`), license `Apache-2.0` as a PEP 639 SPDX
+  expression, keywords, classifiers, and the links a registry expects — homepage, docs,
+  changelog, source, issues.
+- **`tests/` is deliberately not in the sdist.** The suite reads `eval/corpora`,
+  `tests/fixtures`, a pandoc binary, nine tree-sitter grammars and, for two tests, a 133 MB
+  model; shipping tests that cannot run is worse than not shipping them. They are one
+  `git clone` away and the metadata links the repository.
+
+**Why an allowlist.** Until 6.11 the sdist was declared by one exclusion (`contrib`), which
+made it *the working directory minus whatever the root `.gitignore` named*. The archive built
+at v0.5.0 carried 14.5 MB across thirty top-level entries: a 1,248-file Hypothesis cache
+(ignored by a nested `.gitignore` the backend does not read), the vendored delivery factory,
+2.7 MB of judged corpora — and, the finding that decided it, **untracked working files**.
+Two of those are defects rather than bloat: a published version is immutable, so an artifact
+whose contents depend on the builder's tree cannot be reproduced, and an in-progress document
+that reaches an index cannot be recalled.
+
+`python tools/check_distribution.py` is what holds this: it builds both archives, asserts the
+sdist carries only what it declares, asserts the wheel carries the package and its marker,
+runs `twine check --strict`, then installs the wheel into a clean environment and walks it
+from `mycelium init` to a cited answer. It runs in CI at `code` mode and again inside the
+publish workflow, because an index cannot un-publish.
 
 ## Registry
 
-- **Where:** the package registry (Dependabot ecosystem: `pip`).
-- **Auth:** publishing credentials live in CI secrets, never in the repo.
+- **Where:** [PyPI](https://pypi.org), under the name **`mycelium-os`** — decided by the owner
+  at D-024 (2026-07-31) and re-verified free on 2026-09-14. The import package stays
+  `mycelium`; the console script stays `mycelium`.
+- **`mycelium` as a distribution name is taken** — one release, `0.4.9`, a luigi workflow
+  library last uploaded 2019-10-08. D-024 records a PEP 541 transfer request as the route to
+  it, and that request is not this item's business: if it is ever granted, the distribution
+  moves and `mycelium-os` stays as a transitional alias.
+- **Auth: there is no credential.** Publishing uses **PyPI Trusted Publishing** (OpenID
+  Connect): the workflow asks GitHub for a short-lived token scoped to this repository, this
+  workflow file and the named environment, and the index verifies it. No API token exists in
+  repository secrets to leak, rotate or misplace — which is what threat-model B2 asks of
+  anything holding publish authority.
 
 ## Publish flow
 
-Publishing is tied to the release ([`release.md`](release.md)) and is a **human-gated** step,
-like the GitHub Release:
+Publishing is tied to the release ([`release.md`](release.md)) and is the **human checkpoint**,
+like the GitHub Release itself:
 
 1. The release PR is merged and the annotated tag is pushed (`vX.Y.Z`).
-2. CI builds the wheel and the sdist on the tag, refuses the build if the artifact version does
-   not equal the tag, and attaches both to a **draft** GitHub Release.
-3. A human reviews and presses **Publish**. That release, with its two artifacts, is where the
-   package can be fetched from today.
+2. `release.yml` fires on the tag, builds both archives, refuses the build if the artifact
+   version does not equal the tag, and attaches them to a **draft** GitHub Release.
+3. A human reviews and presses **Publish** on the GitHub Release.
+4. A human runs the **`publish` workflow** by hand, naming the tag and the index.
 
-> **No registry step exists yet, and steps 1-3 are the whole flow.** This section used to say
-> that a human approves a publish step and *"CI pushes to the registry"*; there is no such step
-> in `.github/workflows/`, and there never has been. The README's `pip install mycelium-os[…]`
-> lines describe the same intended future. Making them true — which index, under which name,
-> with which credential — is roadmap **6.11**, and it is the precondition for the Phase-3
-> dogfooding gate, since nothing can dogfood what nothing can install (5.43).
+**Step 4 cannot happen by itself, and that is structural.** `publish.yml` fires on
+`workflow_dispatch` and nothing else, so pushing a tag can never publish as a side effect; its
+index input defaults to **TestPyPI**; and its job runs inside a GitHub Environment, where
+required reviewers make the approval something GitHub enforces rather than something a
+document asks for. The job re-derives the tag-equals-version invariant rather than trusting
+the drafting run, runs the distribution check, and only then uploads.
 
-Once a registry is in the flow, the rule that comes with it: a published version is immutable,
-and a mistake is fixed forward with a new version, never by overwriting.
+The rule that comes with a registry: **a published version is immutable.** A mistake is fixed
+forward with a new version, never by overwriting, and a name is claimed by its first upload.
+
+## Turning the publish on
+
+Three things remain, and all three are the maintainer's — no workflow can do them, and this
+repository deliberately holds no credential that would let one try.
+
+1. **Rehearse on TestPyPI.** Add a *pending publisher* at
+   <https://test.pypi.org/manage/account/publishing/> for project `mycelium-os`, owner
+   `danielPoloWork`, repository `mycelium-os`, workflow `publish.yml`, environment `testpypi`.
+   Then run the `publish` workflow with the default index. TestPyPI is throwaway: it proves
+   the OIDC handshake, the metadata and the upload without committing the name anywhere that
+   matters.
+2. **Create the `pypi` environment** in Settings → Environments, with yourself as a required
+   reviewer. Without it the environment gate is a label; with it, a run waits.
+3. **Add the PyPI pending publisher** at <https://pypi.org/manage/account/publishing/>, same
+   fields with environment `pypi`, and run the workflow with `index: pypi`. That upload claims
+   the name.
+
+**On sequencing.** Roadmap 6.11 was filed saying not to reserve a name before 6.5's trademark
+search lands. D-024 had already decided the name, and the exposure it is worried about is
+already carried: `mycelium://` citation URIs and the `mycelium_*` MCP tool names are inside
+the five stable contracts, whose identity rules are append-only *for good*
+([ADR-0114](../adr/0114-freeze-the-five-contracts-as-goldens-and-publish-the-promise-before-the-tag-that-binds-it.md)).
+A trademark outcome that forced a rename would break those whether or not PyPI holds the name.
+So the publish does not wait on 6.5 — but it is still the owner's call to make, which is why
+the last step above is a step and not a workflow trigger. See ADR-0116.
 
 ## A second distribution: modules
 

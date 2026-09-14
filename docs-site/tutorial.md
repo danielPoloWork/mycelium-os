@@ -7,9 +7,14 @@ account, no API key, no network call.
 
 ## 1. Install
 
+The package is not on PyPI yet — the publish pipeline is built and the first upload is the
+maintainer's to make (roadmap 6.11). Until then, install from the tag:
+
 ```bash
-pip install mycelium-os
+pip install "mycelium-os @ git+https://github.com/danielPoloWork/mycelium-os@v0.5.0"
 ```
+
+Once the first release is published, that is `pip install mycelium-os`.
 
 Confirm it landed:
 

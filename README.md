@@ -35,6 +35,23 @@ chat product (D-001). v1 targets repo-scale, local-first, single-tenant corpora 
 The design of record is [RFC-0001](docs/rfc/0001-mycelium-os-v1.md); the specification is
 [`docs/specs/01_spec_mycelium.md`](docs/specs/01_spec_mycelium.md).
 
+## Install
+
+The package is **not on PyPI yet** — the publish pipeline is built and the first upload is
+the maintainer's to make (roadmap [6.11](ROADMAP.md), [ADR-0116](docs/adr/0116-publish-under-a-name-already-decided-and-let-the-artifact-be-a-defined-thing.md)).
+Until then it installs from the tag, which is the same artifact CI builds:
+
+```bash
+pip install "mycelium-os @ git+https://github.com/danielPoloWork/mycelium-os@v0.5.0"
+mycelium --version
+```
+
+Every extra named below — `embeddings`, `symbols`, `ingest`, `synthesis`, `watch` — goes
+inside the brackets the same way:
+`pip install "mycelium-os[embeddings] @ git+https://github.com/danielPoloWork/mycelium-os@v0.5.0"`.
+Once the first release is published this collapses to `pip install mycelium-os[embeddings]`,
+which is how the rest of this page writes it.
+
 ## Try it
 
 ```bash

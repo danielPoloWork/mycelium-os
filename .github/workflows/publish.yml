@@ -1,0 +1,119 @@
+name: publish
+
+# Publish a tagged release of mycelium-os to a package index (roadmap 6.11, ADR-0116).
+#
+# Deliberately a workflow of its own, and deliberately `workflow_dispatch` ONLY.
+# `release.yml` fires on a tag push and drafts the GitHub Release; this one cannot fire
+# on anything. That is the safety property, and it is structural rather than procedural:
+# a published version is immutable and a name is claimed by its first upload, so pushing
+# a tag must not be able to publish as a side effect. Someone chooses to run this, names
+# the tag, and names the index.
+#
+# The credential is **not a credential**. PyPI Trusted Publishing (OIDC) mints a
+# short-lived token for this repository, this workflow file and this environment, so there
+# is no API token in repository secrets to leak, rotate or misplace — which is what
+# threat-model B2 asks of anything holding `contents: write`-class authority. The
+# maintainer configures the publisher once on the index side; nothing here holds a secret.
+#
+# Before the first real upload, see docs/workflow/packaging.md § "Turning the publish on":
+# the index-side setup is a maintainer action that no workflow can perform, and TestPyPI
+# is the rehearsal that costs nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish, e.g. v0.6.0 — must already exist and be released"
+        required: true
+        type: string
+      index:
+        description: "Where to publish. Rehearse on TestPyPI before claiming the name on PyPI."
+        required: true
+        default: testpypi
+        type: choice
+        options: [testpypi, pypi]
+
+permissions:
+  contents: read
+
+# Never cancel an in-flight publish: a half-finished upload is worse than a queued one,
+# and the version it was uploading cannot be re-used.
+concurrency:
+  group: publish-${{ inputs.index }}-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish ${{ inputs.tag }} to ${{ inputs.index }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # The human checkpoint, in the one place GitHub enforces it. Add required reviewers to
+    # the `pypi` environment (Settings → Environments) and a run waits for an approval it
+    # cannot grant itself. The environment is also what the Trusted Publisher is scoped to
+    # on the index side, so a publisher configured for `pypi` cannot be used by a run that
+    # asked for `testpypi`.
+    environment:
+      name: ${{ inputs.index }}
+      url: ${{ inputs.index == 'pypi' && 'https://pypi.org/p/mycelium-os' || 'https://test.pypi.org/p/mycelium-os' }}
+    permissions:
+      # The whole credential story. `id-token: write` lets the runner ask GitHub for an
+      # OIDC token that the index verifies; nothing else is needed and nothing else is
+      # granted. In particular this job cannot write to the repository.
+      id-token: write
+      contents: read
+    steps:
+      - name: Check out the tagged tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          # BUG-0001: no matrix here — pin the interpreter literally.
+          python-version: '3.12'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+      - name: Sync dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Refuse a tag that is not a release
+        shell: bash
+        # The same invariant release.yml checks, checked again here because this workflow
+        # can be pointed at any ref by hand. A publish is the one act that cannot be
+        # undone, so it re-derives rather than trusts that the drafting run got it right.
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          case "$RELEASE_TAG" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::$RELEASE_TAG is not a vMAJOR.MINOR.PATCH release tag"; exit 1 ;;
+          esac
+          expected="${RELEASE_TAG#v}"
+          declared="$(uv run python -c 'from mycelium.__about__ import __version__; print(__version__)')"
+          if [ "$declared" != "$expected" ]; then
+            echo "::error::tag says $expected, the tagged tree declares $declared"
+            exit 1
+          fi
+          echo "tag and tree agree on $declared"
+
+      - name: Check the distribution is what it says it is
+        # Builds both artifacts, asserts the sdist carries only what it declares, asserts
+        # the wheel carries the package and its PEP 561 marker, runs `twine check
+        # --strict`, then installs the wheel into a clean environment and walks it from
+        # `mycelium init` to a cited answer. An index cannot un-publish, so this is the
+        # last moment the artifact can be refused (ADR-0116).
+        run: uv run python tools/check_distribution.py --keep
+
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
+        with:
+          packages-dir: build/distribution-check/dist
+          # TestPyPI is a different index and needs to be named; PyPI is the action's own
+          # default, so the empty string leaves it alone.
+          repository-url: ${{ inputs.index == 'testpypi' && 'https://test.pypi.org/legacy/' || '' }}
+          # The artifacts this job just built and checked are the artifacts it uploads;
+          # re-building inside the action would publish something nothing verified.
+          attestations: true
+          print-hash: true

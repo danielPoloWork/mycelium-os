@@ -48,6 +48,14 @@ pre-1.0 milestone-driven.
 9. **Publish** the GitHub Release — *the maintainer* (the deliberate human checkpoint).
 10. **CI builds & attaches artifacts** on the tag push — the wheel and sdist are uploaded
     to the draft, and the build is refused if the artifact version does not equal the tag.
+11. **Publish to the index** — *the maintainer*, by running the **`publish` workflow** by hand
+    with the tag and the index (roadmap 6.11). It fires on `workflow_dispatch` and nothing
+    else, so no tag push can trigger it; it defaults to **TestPyPI**; and it runs inside a
+    GitHub Environment where required reviewers gate the run. Before it uploads it re-checks
+    that the tag equals the declared version and runs `tools/check_distribution.py`, because
+    a published version is immutable. The index-side setup is in
+    [`packaging.md`](packaging.md) § *Turning the publish on*; until that is done, step 11 has
+    nothing to publish to and the release stops at step 10.
 
 If a tag was pushed before a fix to this workflow (or the drafting step failed after the
 build), re-run it from the default branch rather than moving the tag:
@@ -65,7 +73,10 @@ would replay the workflow file *as it existed at that tag* (BUG-0006).
 | Create & push the annotated tag, then the **draft** release (CI drafts it on tag-push) | Agent |
 | Publish the GitHub Release (click **Publish**) | **Human** |
 | Build & attach artifacts | CI |
+| Run the `publish` workflow, and approve its environment | **Human** |
 
 
-Agents never publish releases, never amend or delete published tags, and only delete-and-
-repush an *unpublished* tag whose release run visibly failed.
+Agents never publish releases, never amend or delete published tags, never run the `publish`
+workflow, and only delete-and-repush an *unpublished* tag whose release run visibly failed.
+An upload to an index is the one act in this process that cannot be undone: a version is
+immutable and a name is claimed by its first upload.

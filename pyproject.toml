@@ -10,6 +10,44 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12"
 authors = [{ name = "Daniel Polo" }]
+# What a registry shows about this package, and what a search there matches on
+# (roadmap 6.11). Absent until the publish flow was built, which meant the index
+# page would have carried no audience, no Python versions and no topic at all —
+# invisible to exactly the reader the dogfooding gate needs to reach (6.12).
+#
+# No `License ::` classifier: `license = "Apache-2.0"` above is a PEP 639 SPDX
+# expression, and the metadata carries it as `License-Expression`. PEP 639
+# deprecates the classifier form, so declaring both would state one fact twice
+# and in the older spelling.
+keywords = [
+    "agents",
+    "citations",
+    "knowledge-graph",
+    "knowledge-management",
+    "llm",
+    "markdown",
+    "mcp",
+    "rag",
+    "retrieval",
+    "search",
+]
+classifiers = [
+    # Pre-1.0 and milestone-driven: the five stable contracts are pinned and the
+    # compatibility promise is published, but it binds at v1.0.0 (ADR-0114), so
+    # this is not yet "5 - Production/Stable".
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development :: Documentation",
+    "Topic :: Text Processing :: Indexing",
+    "Typing :: Typed",
+]
 # Runtime closure, kept deliberately small and offline (D-013/D-017):
 #   pydantic       — the record contracts, pinned by the spec (ADR-0004); >=2.11 for
 #                    the `serialize_by_alias` model config.
@@ -90,8 +128,20 @@ symbols = [
 mycelium = "mycelium.cli:main"
 
 [project.urls]
+# The links a registry expects, which `docs/workflow/packaging.md` has promised
+# since M1 and the metadata did not carry: a reader on the index page could reach
+# the repository and the issue tracker, and not the documentation or the
+# changelog (roadmap 6.11).
 Homepage = "https://github.com/danielPoloWork/mycelium-os"
+Documentation = "https://github.com/danielPoloWork/mycelium-os/tree/main/docs-site"
+Changelog = "https://github.com/danielPoloWork/mycelium-os/blob/main/CHANGELOG.md"
+Source = "https://github.com/danielPoloWork/mycelium-os"
 Issues = "https://github.com/danielPoloWork/mycelium-os/issues"
+# `Documentation` points at the site's *sources* rather than at `mkdocs.yml`'s
+# `site_url`, because nothing hosts the built site yet: 6.2 builds and checks it,
+# and no workflow deploys it. It moves to the Pages URL in the change that starts
+# publishing it, and not before — a dead documentation link on an index page is
+# the same defect as the install line this item was filed to fix.
 
 # BUG-0003 (ROADMAP.md 1.3): the group is now complete (hatch, pytest, pytest-benchmark,
 # ruff, mypy) and uv.lock ships alongside it — this is what flips CI's bootstrap probe to
@@ -124,6 +174,11 @@ dev = [
     "mcp>=2.1",
     "anyio>=4",
     "jsonschema>=4",
+    # Validates that the built distributions are *publishable* before anything is
+    # published: `twine check --strict` renders the long description the way the
+    # index will and fails on metadata an index would reject (roadmap 6.11). Run
+    # by `tools/check_distribution.py`, in CI and in the publish workflow.
+    "twine>=5.0",
     # The docs site (roadmap 6.2, ADR-0115): mkdocs-material renders it, and the two
     # generator plugins build the API reference and its nav from `mycelium.sdk`'s own
     # docstrings rather than a hand-maintained page — single source of truth, and the
@@ -190,9 +245,41 @@ path = "src/mycelium/__about__.py"
 packages = ["src/mycelium"]
 
 [tool.hatch.build.targets.sdist]
-# `contrib/` holds a second distribution with its own pyproject; shipping its
-# sources inside this one's sdist would put two packages in one archive.
-exclude = ["contrib"]
+# An ALLOWLIST, and it replaced a one-line denylist for a reason worth keeping
+# (roadmap 6.11, ADR-0116). `exclude = ["contrib"]` meant the sdist was "the
+# working directory, minus contrib, minus whatever the root .gitignore names" —
+# so the archive built at v0.5.0 carried 14.5 MB across 30 top-level entries,
+# including:
+#
+#   - `.hypothesis/` — 1,248 files of a machine-local example database, ignored
+#     by its own nested `.gitignore`, which hatchling does not read;
+#   - `docs/analysis/` and `.claudeignore` — untracked working files that are not
+#     gitignored, so whatever a maintainer had in progress shipped with the
+#     release;
+#   - `.eados-core/`, `.claude/`, `orchestrator/` — the delivery factory;
+#   - `eval/` — 2.7 MB of judged corpora, including documentation this project
+#     did not write.
+#
+# Two of those are defects rather than bloat: a published version is immutable, so
+# an artifact whose contents depend on the builder's working tree cannot be
+# reproduced, and an in-progress document that reaches a registry cannot be
+# recalled. A denylist cannot fix that, because it has to predict what will be
+# lying around; an allowlist states what a source distribution *is*.
+#
+# What it is: the package, the files needed to build it, and the ones that state
+# its terms. `tests/` is deliberately absent — the suite reads `eval/corpora`,
+# `tests/fixtures`, a pandoc binary, nine tree-sitter grammars and (for two
+# tests) a 133 MB model, so shipping tests that cannot run is worse than not
+# shipping them. They are one `git clone` away, and the metadata links the
+# repository. Revisit if a downstream packager ever needs to build from the sdist
+# and verify it.
+include = [
+    "/src/mycelium",
+    "/pyproject.toml",
+    "/README.md",
+    "/LICENSE",
+    "/CHANGELOG.md",
+]
 
 [tool.pytest.ini_options]
 addopts = "-p no:cacheprovider"
