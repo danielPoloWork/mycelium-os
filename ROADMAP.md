@@ -16,7 +16,7 @@ nothing fills it.
 
 - **Versioning start:** pre-1.0 milestone-driven.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-09-14 — closing a milestone on its gates](docs/journal/2026/09/2026-09-14-closing-a-milestone-on-its-gates.md).
+  [2026-09-14 — the first scheduled re-bless](docs/journal/2026/09/2026-09-14-the-first-scheduled-re-bless.md).
 - **Traceability:** every item names the RFC it implements (RFC-0001 for the whole v1
   design of record — [`docs/rfc/0001-mycelium-os-v1.md`](docs/rfc/0001-mycelium-os-v1.md));
   milestone goals are the spec phases' exit gates (`.draft-specs/06`). Sizes are T-shirt
@@ -212,7 +212,7 @@ Restated from `.draft-specs/06` §Phase 3 at 5.43, because this line had drifted
 
 ---
 
-## Milestone 6 — v1.0.0 — Stable (spec Phase 4)
+## Milestone 6 — v0.6.0 — Stable (spec Phase 4)
 
 All gates G1–G7 green on the frozen release set; ≥ 3 recurring external contributors and ≥ 5 community plugins; zero critical security findings open; 1.0 compatibility promise published
 
@@ -231,7 +231,7 @@ All gates G1–G7 green on the frozen release set; ≥ 3 recurring external cont
 
 ---
 
-## Milestone 7 — v2.x — Team & platform (spec Phase 5; separate RFC cycle)
+## Milestone 7 — v1.0.0 — Team & platform (spec Phase 5; separate RFC cycle)
 
 Each item enters only through its deferred-decision trigger (spec 06 §3) and its own RFC; gpt-specs is the reference blueprint on top of unchanged v1 contracts
 
