@@ -12,6 +12,35 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **A publish pipeline, and the checks that make an upload safe to make** (roadmap 6.11,
+  ADR-0116). `publish.yml` uploads a tagged release to PyPI or TestPyPI over **Trusted
+  Publishing** — an OIDC token minted per run, so no API token exists in repository secrets.
+  It fires on `workflow_dispatch` and nothing else, defaults to TestPyPI, and runs inside a
+  GitHub Environment, so no tag push can publish as a side effect. `docs/workflow/packaging.md`
+  § *Turning the publish on* lists the three index-side actions that remain, all of them the
+  maintainer's; until then nothing is published.
+- **`tools/check_distribution.py`**, run at `code` mode and in CI's new `distribution` job:
+  it builds both archives, asserts the sdist carries only what it declares, runs
+  `twine check --strict`, and installs the wheel into a clean environment to walk it from
+  `mycelium init` to a cited answer. Nothing had ever opened or installed a built artifact.
+- **The package describes itself to an index**: keywords, classifiers (whose Python versions
+  a test compares against the CI matrix), and the `Documentation`, `Changelog` and `Source`
+  URLs `docs/workflow/packaging.md` has promised since M1.
+
+### Fixed
+
+- **The source distribution no longer ships the working directory.** It was declared by one
+  exclusion, which meant the archive built at v0.5.0 carried 14.5 MB across thirty top-level
+  entries — a 1,248-file machine-local Hypothesis cache, the vendored delivery factory, 2.7 MB
+  of judged corpora, and **untracked working files that happened to be in the builder's tree**.
+  A published version is immutable, so an artifact whose contents depend on who built it is not
+  reproducible and an in-progress document that reaches an index cannot be recalled. The sdist
+  is now an allowlist — the package, what builds it, and what states its terms — 1.5 MB across
+  six entries (roadmap 6.11, ADR-0116).
+- **The install instructions say what is true.** The README had none at all, and the tutorial's
+  `pip install mycelium-os` could not work; both now give the tag install, verified in a clean
+  environment, and say in one line what it becomes once the first release is published.
+
 - **The docs site** (roadmap 6.2, ADR-0115): a built, `--strict`-checked mkdocs-material
   site under `docs-site/` — a tutorial (install to a cited MCP answer inside spec NFR-4's
   ten-minute budget), four task-oriented how-to guides, the plugin-author guide, and a

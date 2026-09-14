@@ -11,7 +11,7 @@ The declarative parsers (docling's DOCX/HTML/LaTeX/PDF backends, plus PDFium) ar
 optional, because the authored lane needs none of them:
 
 ```bash
-pip install "mycelium-os[ingest]"
+pip install "mycelium-os[ingest] @ git+https://github.com/danielPoloWork/mycelium-os@v0.5.0"
 ```
 
 A DOCX or HTML source needs nothing further. A PDF is read structurally by these

@@ -261,6 +261,14 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
         # ([BUG-0026], roadmap 5.30). 10 s on this machine.
         ("judged cases", [python, "tools/build_uv_docs_cases.py", "--check"]),
         ("carried cases", [python, "tools/build_ingested_cases.py", "--check"]),
+        # What a publish would upload, checked before there is anything to un-publish
+        # (roadmap 6.11, ADR-0116). It builds both artifacts, asserts the sdist carries
+        # only what it declares, runs `twine check --strict`, and installs the wheel into
+        # a clean environment to walk it from `mycelium init` to a cited answer. 64 s on
+        # this machine — the same price as the ingested corpus above, and for the same
+        # reason: a published version is immutable, so the last cheap moment to find a
+        # broken artifact is before the tag, not after the upload.
+        ("distribution", [python, "tools/check_distribution.py"]),
     ]
     if mode == "code":
         return steps

@@ -355,6 +355,11 @@ The project follows **Semantic Versioning 2.0.0**. Tags are annotated, `vMAJOR.M
   (`__version__ = 'X.Y.Z'` in `__about__.py`), rolls the changelog, drafts release
   notes, and (post-merge, if delegated) creates and pushes the annotated tag; the maintainer
   opens and merges the release PR and publishes the release.
+- **Publishing to a package index is the maintainer's, always.** `publish.yml` fires on
+  `workflow_dispatch` and nothing else, so no tag push can reach it, and agents never run it.
+  An upload is the one act in this process that cannot be undone — a version is immutable and
+  a name is claimed by its first upload. See [`docs/workflow/packaging.md`](docs/workflow/packaging.md)
+  (roadmap 6.11, ADR-0116).
 
 
 ## 12. Interaction Contract
