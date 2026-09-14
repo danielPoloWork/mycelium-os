@@ -16,7 +16,7 @@ nothing fills it.
 
 - **Versioning start:** pre-1.0 milestone-driven.
 - **Session journal:** see [`docs/journal/`](docs/journal/). Latest checkpoint:
-  [2026-09-14 — the first scheduled re-bless](docs/journal/2026/09/2026-09-14-the-first-scheduled-re-bless.md).
+  [2026-09-14 — cutting v0.5.0](docs/journal/2026/09/2026-09-14-cutting-v0-5-0.md).
 - **Traceability:** every item names the RFC it implements (RFC-0001 for the whole v1
   design of record — [`docs/rfc/0001-mycelium-os-v1.md`](docs/rfc/0001-mycelium-os-v1.md));
   milestone goals are the spec phases' exit gates (`.draft-specs/06`). Sizes are T-shirt
