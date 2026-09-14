@@ -12,6 +12,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **A judged anchor is no longer carried onto a chunk that does not hold the passage**
+  (roadmap 5.41, [ADR-0111](docs/adr/0111-a-floor-can-reject-what-a-preference-must-not-choose.md)). The ingested twin's judgements are derived by
+  mapping each judged passage onto the chunk that best covers its vocabulary. Where a
+  projection *shatters* a passage — uv's feature list becomes one heading per item — every
+  fragment shares the list's scaffolding, so coverage stayed respectable while no fragment
+  held the passage, and one anchor landed on a chunk that never mentions the command its
+  query names. The carry now also floors `whole`, the share of the passage's word
+  occurrences the winner accounts for, and drops the anchor when no candidate is the
+  passage. One anchor is affected; only the twin's dev set moves, and its release set and
+  both baselines are untouched.
+
 - **Raw HTML markup no longer reaches the index as prose** (roadmap 5.40,
   [ADR-0110](docs/adr/0110-drop-the-markup-and-keep-the-words-on-evidence-a-placeholder-cannot-forge.md)). A document that wraps a caption in `<p align="center">` was
   indexed with its markup, so `p`, `align`, `center`, `img`, `alt`, `src`, `href` and a CDN

@@ -32,7 +32,9 @@ fixed and lets the *retrieval* be the only thing that varies.
    answer is not in the corpus is not a hard case, it is a broken one.
 5. The winner's **`whole`** is recorded beside its coverage: the share of the
    passage's word *occurrences* it can account for. Coverage answers "are the
-   passage's words here"; `whole` answers "is the passage here".
+   passage's words here"; `whole` answers "is the passage here". Below
+   `MIN_WHOLE` the anchor is dropped too — not because a better candidate
+   exists, but because none of them is the passage (roadmap 5.41).
 6. Several judged units can land on **one** twin chunk, because a headingless PDF
    is one page-sized block where the Markdown had sections. Within a case they
    are merged into a single anchor at the highest grade that reached it; across
@@ -75,13 +77,49 @@ chunks — and `whole` is **0.8955**, because a PDF page boundary fell mid-secti
 and left the opening in the chunk before. The case scores 0.000 on the twin and
 0.387 on its source, and for a session nobody could say why from the receipt.
 
-Recorded rather than acted on. `whole` does **not** choose the anchor and there
-is no floor on it: which chunk best holds a passage is a question about the
-projection, and re-deciding it by a second metric is how a carry starts being
-fitted. Measured over the current receipt, 43 of 54 anchors land whole; the two
-largest negatives in `tools/measure_projection_cost.py`'s per-case block are the
-two lowest `whole` values among scored cases, and the largest *gain* is also a
-split passage — so this is a number to read a case with, never a predictor.
+`whole` still does **not** choose the anchor, and that refusal is the point of
+ADR-0102: which of two plausible chunks best holds a passage is a question about
+the projection, and re-deciding it by a second metric is how a carry starts being
+fitted. What roadmap 5.41 added is the other half, which choosing and rejecting do
+not share — **a floor**. Refusing to claim a passage is present when *no* candidate
+holds it is not a preference between candidates; it is the same statement
+`MIN_COVERAGE` already makes, on the metric that can see a split.
+
+It had to be added because coverage cannot see one. `u-0017` (query `uv venv`)
+grades uv's feature list at 1; the HTML lane turns that list into a heading per
+item, so the 201-token passage is shattered across five chunks and **none holds
+more than a third of it**. Coverage is over distinct tokens and a feature list's
+vocabulary is nearly uniform across its items, so the winner was decided by
+scaffolding: `uv pip compile: …` at 0.5269, against the chunk that actually holds
+`uv venv: Create a new virtual environment.` at 0.4731. The floor sat *between*
+them and kept the one that never mentions the command.
+
+The distribution is what makes a floor defensible rather than tuned. Over the 63
+mapped anchors, `u-0017`'s 0.3383 is the **lowest**, and the next is 0.5088 — a
+gap of 0.17, the widest at the bottom of the range. Every value from 0.35 to 0.50
+drops exactly that one anchor and nothing else, so the constant sits in the middle
+of a basin rather than on a cliff.
+
+Three sibling anchors of the same document — `u-0006`, `u-0018` and `u-1007`, all
+grading a feature list — were **already** dropped by `MIN_COVERAGE` at 0.39-0.42,
+for the same underlying reason. After 5.41 all four are dropped, which is the
+consistency the floor buys: one projection shape, one outcome.
+
+What was refused, and why the query is not consulted: the most direct repair is to
+keep the candidate that contains the query's own terms, and it is the one thing
+this tool must not do. A carry that reads the query stops being a projection
+measurement and starts handing the twin a chunk that lexically matches what is
+about to be searched for — which is ADR-0027's trap with the evidence removed.
+Preferring the same heading slug was measured too and is worse: on `u-0003`,
+`u-0020` and `u-1019` the same-slug candidate scores 0.19, 0.39 and 0.21 against
+winners of 0.75, 0.91 and 0.62, because the projection re-heads a document and the
+slug that survives is a stub.
+
+Measured over the current receipt, 43 of 53 anchors land whole and the lowest is
+0.5088; the two largest
+negatives in `tools/measure_projection_cost.py`'s per-case block are the two
+lowest `whole` values among scored cases, and the largest *gain* is also a split
+passage — so this is a number to read a case with, never a predictor.
 
 ## Why both builds are clean, and why that is the whole defect
 
@@ -107,10 +145,10 @@ Every dropped anchor is printed, and every *mapped* one is written to
 `eval/carry.json` beside the sets — the receipt. Printing alone was not enough:
 the coverage of a surviving anchor is what moves first when something drifts, and
 a number nobody commits cannot show up in a diff. The closest mapped anchor sits
-at **0.5269** against the 0.50 floor, which is a cliff a reviewer should be able
-to see rather than discover; the anchors that fall *through* it are printed as
-drops and are not in the receipt at all, which is why the three at 0.39–0.42 do
-not appear there.
+at **0.6207** against the 0.50 floor, and the closest on `whole` at **0.5088**
+against 0.40 — room a reviewer should be able to see rather than discover. The
+anchors that fall *through* either floor are printed as drops and are not in the
+receipt at all, which is why the four from uv's feature list do not appear there.
 
 A silent drop would quietly make the ingested corpus easier than its twin, which
 is the one way this comparison could lie.
@@ -146,6 +184,21 @@ MIN_COVERAGE = 0.5
 Not a tuned constant — a floor below which "the same passage" stops being a
 defensible claim. Every mapping's actual coverage is printed, so a reviewer can
 see how far above it the real ones sit rather than trusting the number.
+"""
+
+MIN_WHOLE = 0.4
+"""Two fifths of the passage's word *occurrences* have to be in the winner.
+
+The companion floor, and the one that catches a **split** passage, which coverage
+is nearly blind to: a shattered section leaves every fragment sharing the whole
+section's vocabulary, so coverage stays respectable while no fragment holds the
+passage. Above this floor the carry claims "the passage is here"; below it the
+honest claim is that it is not anywhere, and the anchor is dropped and reported.
+
+Sited in a basin, not on a cliff: the lowest `whole` among the 63 mapped anchors
+is 0.3383 and the next is 0.5088, so anything in [0.35, 0.50] drops the same
+single anchor (roadmap 5.41). It does not *choose* between candidates — that is
+still refused (ADR-0102).
 """
 
 _TOKEN = re.compile(r"[A-Za-z0-9_]+")
@@ -283,6 +336,7 @@ def encode_receipt(
     document = {
         "schema_version": "mycelium/eval-carry/v2",
         "min_coverage": MIN_COVERAGE,
+        "min_whole": MIN_WHOLE,
         "anchors": {
             source: {"twin": twin, "coverage": round(score, 4), "whole": round(share, 4)}
             for source, twin, score, share in sorted(mapped)
@@ -348,6 +402,17 @@ def main() -> int:  # noqa: C901 - a report is a sequence of stated steps
                     if best is None or score < MIN_COVERAGE:
                         dropped_anchors.append(
                             f"{case.case_id}: {relevant.anchor} — best coverage {score:.2f}"
+                        )
+                        continue
+                    if share < MIN_WHOLE:
+                        # Not "a better candidate exists" — none of them is the
+                        # passage. Coverage cannot see a split, so it ranked the
+                        # fragments of a shattered section by their shared
+                        # scaffolding (roadmap 5.41).
+                        dropped_anchors.append(
+                            f"{case.case_id}: {relevant.anchor} — coverage {score:.2f} but "
+                            f"whole {share:.2f}: the passage is split, and {best} "
+                            "holds too little of it to be it"
                         )
                         continue
                     mapped.append((relevant.anchor, best, score, share))
