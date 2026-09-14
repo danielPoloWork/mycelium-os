@@ -82,6 +82,7 @@ tracked; every untracked directory is a cache or a copy that one command regener
 ├── CONTRIBUTING.md, SECURITY.md, CODE_OF_CONDUCT.md, LICENSE
 ├── pyproject.toml, uv.lock         # the package and its pinned toolchain: `uv sync --all-extras --dev`
 ├── mycelium.toml                   # this repo compiles its own docs; says which Markdown is knowledge
+├── mkdocs.yml                      # the docs site (roadmap 6.2, ADR-0115): builds docs-site/ into site/
 ├── orchestrator/project.yaml       # the EADOS manifest (delivery_state)
 ├── src/mycelium/                   # production sources — flat src-layout, one directory per component (§5)
 ├── contrib/chats/                  # the first *module* (D-025): a distribution of its own, in a uv
@@ -89,8 +90,12 @@ tracked; every untracked directory is a cache or a copy that one command regener
 ├── tests/                          # test sources; tests/bench/ holds the pytest-benchmark suites
 ├── eval/                           # judged case sets, blessed baselines, the vendored second corpus and the
 │                                   #   G6 golden — tracked, so every gate runs from a clone (ADR-0013/0021/0027)
-├── tools/                          # verify.py (the gate ladder, ADR-0055), consistency_lint.py, and the
-│                                   #   generators and measurers the evaluation work runs by hand
+├── tools/                          # verify.py (the gate ladder, ADR-0055), consistency_lint.py, the
+│                                   #   generators and measurers the evaluation work runs by hand, and
+│                                   #   cookiecutter-mycelium-plugin/ (roadmap 6.2, ADR-0115)
+├── docs-site/                      # the docs site's source (roadmap 6.2): tutorial, how-tos, the
+│                                   #   plugin-author guide — new content, distinct from docs/ below,
+│                                   #   which it links out to rather than duplicates (ADR-0115)
 ├── docs/
 │   ├── adr/                        # Architecture Decision Records
 │   ├── rfc/                        # the design of record (RFC-0001)
@@ -101,6 +106,7 @@ tracked; every untracked directory is a cache or a copy that one command regener
 │   ├── bugs/                       # in-repo bug ledger
 │   ├── security/                   # the threat model, beside the root SECURITY.md policy
 │   ├── changelog/, releases/       # per-version changelogs and release notes (§11)
+│   ├── compatibility.md            # the 1.0 promise: what stays stable and how it changes (ADR-0114)
 │   └── benchmarks/, development/, assets/, i18n/
 ├── .draft-specs/                   # the specification the RFC and the ADRs cite by section — tracked
 ├── .eados-core/                    # the vendored EADOS bundle — tracked here by owner decision (PR #1,

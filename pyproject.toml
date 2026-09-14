@@ -124,6 +124,17 @@ dev = [
     "mcp>=2.1",
     "anyio>=4",
     "jsonschema>=4",
+    # The docs site (roadmap 6.2, ADR-0115): mkdocs-material renders it, and the two
+    # generator plugins build the API reference and its nav from `mycelium.sdk`'s own
+    # docstrings rather than a hand-maintained page — single source of truth, and the
+    # quality-bar row "API docs build without warnings" (AGENTS.md §10) needs the build
+    # on every platform CI runs.
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.27",
+    # Renders the plugin cookiecutter (roadmap 6.2) in `tests/test_plugin_cookiecutter.py`,
+    # and rendered output is checked with this repo's own ruff/mypy — a template that
+    # cannot produce a clean plugin is not a template worth shipping.
+    "cookiecutter>=2.6",
     # The embeddings extra is a dev dependency too, so CI type-checks and
     # exercises the vector path on every platform. Tests that need the *model*
     # files skip themselves when those are absent — CI does not download 133 MB.
@@ -198,6 +209,11 @@ markers = [
 line-length = 100
 target-version = "py312"
 src = ["src", "tests"]
+# `force-exclude` makes `extend-exclude` bind even when `tools` is passed as an
+# explicit path (as `tools/verify.py` and CI both do) — without it ruff only
+# honours excludes while discovering files itself (roadmap 6.2).
+force-exclude = true
+extend-exclude = ["tools/cookiecutter-mycelium-plugin"]
 
 [tool.ruff.format]
 # Black-compatible (AGENTS.md §10); default quote/indent style already matches.
@@ -229,6 +245,14 @@ select = [
 strict = true
 python_version = "3.12"
 files = ["src", "contrib/chats/src"]
+# The plugin cookiecutter (roadmap 6.2) renders real, checked Python — Jinja
+# substitutions live only inside string literals and TOML values, never in
+# identifier or control-flow position — but its own `{{ cookiecutter.* }}`
+# placeholder directory names are not a package mypy can import, so the
+# template tree itself is excluded here the same way ruff excludes it above.
+# What the template *produces* is checked by rendering it, in
+# `tests/test_plugin_cookiecutter.py`.
+exclude = ["^tools/cookiecutter-mycelium-plugin/"]
 
 # Optional dependencies loaded behind a runtime guard, none of which ship stubs. Their
 # surface is narrow and checked by tests instead.

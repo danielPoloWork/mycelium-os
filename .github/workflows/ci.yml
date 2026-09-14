@@ -175,6 +175,34 @@ jobs:
         run: python tools/consistency_lint.py
 
   # ---------------------------------------------------------------------------
+  # The docs site (roadmap 6.2, ADR-0115): mkdocs-material, built --strict so a
+  # broken link or an unresolved `mkdocstrings` reference fails rather than
+  # shipping quietly (AGENTS.md §10's "API docs build without warnings" row).
+  # Runs at every mode, unlike `lint`/`build`/`determinism` below, which skip a
+  # documentation-only change: a docs-only edit is exactly the case this job
+  # exists to catch, and `mkdocstrings` renders `mycelium.sdk`'s own docstrings,
+  # so a code change that breaks one belongs here too. The cost this carries for
+  # a pure-docs PR — a full `uv sync` it would otherwise not pay — is accepted
+  # rather than measured away, matching `consistency`'s own unconditional run;
+  # revisit if it is ever priced and found not to be worth it (ADR-0055's
+  # standing rule).
+  # ---------------------------------------------------------------------------
+  docs:
+    name: docs / mkdocs build --strict
+    runs-on: ubuntu-24.04
+    needs: bootstrap
+    if: needs.bootstrap.outputs.ready == 'true'
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --all-extras --dev
+      - run: uv run mkdocs build --strict
+
+  # ---------------------------------------------------------------------------
   # Language-specific quality jobs (format, lint, sanitizers, …) from the profile.
   # ---------------------------------------------------------------------------
   lint:

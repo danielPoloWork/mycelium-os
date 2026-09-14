@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "{{ cookiecutter.project_slug }}"
+version = "{{ cookiecutter.version }}"
+description = "{{ cookiecutter.description }}"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = "{{ cookiecutter.python_requires }}"
+authors = [{ name = "{{ cookiecutter.author_name }}", email = "{{ cookiecutter.author_email }}" }]
+# mycelium-os is not on a registry yet (roadmap 6.11) — until it is, point this
+# at a path or VCS dependency to develop against a checkout, e.g.:
+#   dependencies = ["mycelium-os @ file:///path/to/mycelium-os"]
+dependencies = [
+    "mycelium-os",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "mypy>=1.13", "ruff>=0.7"]
+
+# One identifier, everywhere (spec 05 §4.4 rule 4): the entry-point name below,
+# the distribution name above, and `mycelium {{ cookiecutter.plugin_id }} …` once
+# it is a module — mechanical from `plugin_id`, never chosen independently.
+{%- if cookiecutter.plugin_kind == "module" %}
+[project.entry-points."mycelium.modules"]
+{%- else %}
+[project.entry-points."mycelium.plugins"]
+{%- endif %}
+{{ cookiecutter.plugin_id }} = "{{ cookiecutter.package_name }}:Plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{{ cookiecutter.package_name }}"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+files = ["src"]

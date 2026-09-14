@@ -88,3 +88,7 @@ htmlcov/
 # (ADR-0027). The rooted rule above does not reach a nested store.
 eval/corpora/*/.mycelium/
 eval/corpora/*/export/
+
+# The docs site's build output (roadmap 6.2): `mkdocs build` writes here.
+# `docs-site/` is the source and is tracked; `/site/` is compiled from it.
+/site/
