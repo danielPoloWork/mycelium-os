@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The compatibility suite for the five stable contracts** (roadmap 6.1, ADR-0114).
+  `tests/test_contracts.py` holds the identity rules, the KIR schema, the snapshot manifest
+  schema, the MCP tool contracts and the plugin protocols to committed goldens of their
+  *shape* under `tests/fixtures/contracts/` — every schema keyword that constrains, no
+  description — and loads the manifest and KIR document a v0.5.0 build wrote with today's
+  readers. `python tools/update_contract_goldens.py` re-blesses a golden, as part of the RFC
+  and the migration note a contract change now requires. The promise the goldens back —
+  what is stable, from which version, and how a change to it is made — is published as
+  [`docs/compatibility.md`](docs/compatibility.md); it binds at the v1.0.0 tag.
+- **Every MCP tool declares an `outputSchema`** in `tools/list`, beside the `inputSchema` it
+  always had (MCP 2025-06-18 and later; older clients ignore the key), so the shape an
+  agent depends on is a declared contract rather than a habit of four handlers. The fields
+  an error result may carry are declared per code (`mycelium.mcp.errors.ERROR_FIELDS`), and
+  a code cannot carry one it does not declare.
+
 ### Changed
 
 ### Deprecated

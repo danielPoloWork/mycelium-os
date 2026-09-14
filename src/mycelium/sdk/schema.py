@@ -15,7 +15,9 @@ two exports of the same contracts are byte-identical on every platform.
 import json
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, get_args
+
+from pydantic import StringConstraints
 
 from mycelium.sdk.types import (
     Chunk,
@@ -37,6 +39,7 @@ __all__ = [
     "JSON_SCHEMA_DIALECT",
     "RECORD_MODELS",
     "SNAPSHOT_ARTIFACT_CLASSES",
+    "constraint_pattern",
     "dump_json_schema",
     "export_json_schemas",
     "record_json_schema",
@@ -73,6 +76,21 @@ exists (roadmap 5.4); evaluation records never do — an eval run is not a
 snapshot artifact, and neither is a custody record or a fidelity report, which
 outlive every snapshot that ever referenced them (ADR-0033, ADR-0034).
 """
+
+
+def constraint_pattern(alias: Any) -> str:
+    """The regex a constrained string alias in :mod:`mycelium.sdk.types` enforces.
+
+    ``Ulid``, ``Sha256Digest``, ``Anchor`` and ``JudgedAnchor`` are `type` aliases
+    over ``Annotated[str, StringConstraints(pattern=...)]``; the pattern is the
+    identity grammar itself, and the MCP output schemas and the compatibility
+    suite both need it as a string rather than restating it (roadmap 6.1).
+    """
+    for meta in get_args(alias.__value__):
+        if isinstance(meta, StringConstraints) and meta.pattern:
+            return meta.pattern if isinstance(meta.pattern, str) else meta.pattern.pattern
+    msg = f"{alias!r} is not a pattern-constrained string alias"
+    raise TypeError(msg)
 
 
 def record_schema_version(model: type[Record]) -> str:

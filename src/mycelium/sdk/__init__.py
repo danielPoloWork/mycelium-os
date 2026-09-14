@@ -8,7 +8,12 @@ The SDK is the contributor-facing contract surface (RFC-0001 "API contract"):
 - :mod:`mycelium.sdk.schema` — JSON Schema 2020-12 export of those contracts.
 - :mod:`mycelium.sdk.identity` — canonical hashing, ULIDs, anchors, citation URIs
   (spec 03 §§1-2): the constructors that produce the shapes ``types`` validates.
+- :mod:`mycelium.sdk.protocols` — the plugin contracts (``Connector``, ``Parser``,
+  ``Synthesizer``, ``Module``) and the API generation a plugin declares (D-012/D-023).
 
-The typed plugin Protocols (``Parser``, ``Chunker``, ``Embedder``, ``Extractor``,
-``Synthesizer``, ``Reranker``) land with the pipeline milestones (D-012/D-023).
+Three of the five stable contracts live here — the identity rules, the KIR and
+manifest schemas, the plugin protocols (architecture §10) — and each is held to a
+committed golden of its shape by `tests/test_contracts.py`. What is promised, from
+which version, and how a change is made is `docs/compatibility.md` (roadmap 6.1,
+ADR-0114).
 """

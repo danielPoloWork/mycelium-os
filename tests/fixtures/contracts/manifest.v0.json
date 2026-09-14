@@ -1,0 +1,214 @@
+{
+  "artifact_classes": [
+    "document",
+    "chunk",
+    "kir",
+    "symbol",
+    "edge"
+  ],
+  "artifact_versions": {
+    "chunk": "mycelium/chunk/v0",
+    "document": "mycelium/document/v0",
+    "edge": "mycelium/edge/v0",
+    "kir": "mycelium/kir/v0",
+    "symbol": "mycelium/symbol/v0"
+  },
+  "authority": "spec 03 §7 — snapshot manifest schema",
+  "contract": "manifest",
+  "schema": {
+    "$defs": {
+      "EmbeddingInfo": {
+        "additionalProperties": false,
+        "properties": {
+          "deterministic": {
+            "type": "boolean"
+          },
+          "dim": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "model_id": {
+            "$ref": "#/$defs/NonEmptyStr"
+          },
+          "provider": {
+            "$ref": "#/$defs/NonEmptyStr"
+          }
+        },
+        "required": [
+          "model_id",
+          "dim",
+          "deterministic",
+          "provider"
+        ],
+        "type": "object"
+      },
+      "NonEmptyStr": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "Sha256Digest": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "SnapshotCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "chunks": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "documents": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "edges": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "entities": {
+            "default": 0,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "quarantined": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "symbols": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "vectors": {
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "documents",
+          "chunks",
+          "symbols",
+          "edges",
+          "vectors",
+          "quarantined"
+        ],
+        "type": "object"
+      },
+      "Toolchain": {
+        "additionalProperties": false,
+        "properties": {
+          "mycelium": {
+            "$ref": "#/$defs/NonEmptyStr"
+          },
+          "python": {
+            "$ref": "#/$defs/NonEmptyStr"
+          }
+        },
+        "required": [
+          "mycelium",
+          "python"
+        ],
+        "type": "object"
+      },
+      "Ulid": {
+        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+        "type": "string"
+      },
+      "UtcDatetime": {
+        "format": "date-time",
+        "type": "string"
+      }
+    },
+    "$id": "mycelium/manifest/v0",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "artifact_digests": {
+        "additionalProperties": {
+          "$ref": "#/$defs/Sha256Digest"
+        },
+        "type": "object"
+      },
+      "config_digest": {
+        "$ref": "#/$defs/Sha256Digest"
+      },
+      "counts": {
+        "$ref": "#/$defs/SnapshotCounts"
+      },
+      "created_at": {
+        "$ref": "#/$defs/UtcDatetime"
+      },
+      "degraded": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "embedding": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/EmbeddingInfo"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "parent_id": {
+        "anyOf": [
+          {
+            "$ref": "#/$defs/Ulid"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "default": null
+      },
+      "schema_version": {
+        "const": "mycelium/manifest/v0",
+        "default": "mycelium/manifest/v0",
+        "type": "string"
+      },
+      "schema_versions": {
+        "additionalProperties": {
+          "$ref": "#/$defs/NonEmptyStr"
+        },
+        "type": "object"
+      },
+      "snapshot_id": {
+        "$ref": "#/$defs/Ulid"
+      },
+      "timings_ms": {
+        "additionalProperties": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": "object"
+      },
+      "toolchain": {
+        "$ref": "#/$defs/Toolchain"
+      },
+      "warnings": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    },
+    "required": [
+      "snapshot_id",
+      "created_at",
+      "config_digest",
+      "toolchain",
+      "schema_versions",
+      "counts",
+      "artifact_digests",
+      "timings_ms"
+    ],
+    "type": "object"
+  },
+  "version": "v0"
+}

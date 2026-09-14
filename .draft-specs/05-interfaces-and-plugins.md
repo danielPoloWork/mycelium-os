@@ -278,3 +278,15 @@ and `chats` (document 08 — archive, resume, and port chatbot conversations).
   release-candidate revision (adopted from `gpt-specs` FR-API-005).
 - Snapshots: a newer Mycelium OS refusing an older snapshot must say so and offer `mycelium build`
   (rebuild-as-migration, D-016) — never reinterpret silently.
+
+**Amended at roadmap 6.1 (ADR-0114).** The compatibility tests the second bullet asked for from
+Phase 1 exist from Milestone 6: `tests/test_contracts.py` holds each of the five contracts to a
+committed golden of its shape — the schema keywords that constrain, never the descriptions — and
+`python tools/update_contract_goldens.py` re-blesses one only as part of the RFC (document 06 §4),
+the CHANGELOG migration note and, for an incompatible change, the version-token bump the change
+requires. The four tools declare an `outputSchema` beside the `inputSchema` §3 always had, so
+the output an agent depends on is pinned with the input, and the error result's fields are
+declared per code. The 1.0 promise is published in `docs/compatibility.md` and **binds at the
+v1.0.0 tag**, which Milestone 7 cuts; the first bullet's pre-1.0 clause governs until then. Two
+things the §4.1 sketch lists stay outside the freeze on the evidence rather than by omission:
+`Embedder`, which no entry point can supply, and the three Protocols that were never built.

@@ -568,6 +568,10 @@ async def test_the_official_mcp_client_can_drive_this_server(repo: Path) -> None
             "mycelium_neighbors",
             "mycelium_explain",
         }
+        # Roadmap 6.1: every tool declares its output schema, and this client validates
+        # each `structuredContent` below against it - so the conformance test now covers
+        # the shape of what comes back, not only the names of what is offered.
+        assert all(tool.output_schema for tool in listed.tools)
 
         found = await session.call_tool("mycelium_search", {"query": "exponential backoff"})
         assert found.is_error is False

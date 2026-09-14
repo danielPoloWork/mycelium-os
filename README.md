@@ -834,7 +834,9 @@ different one.
 
 Milestone 4's ingestion lane is unchanged underneath it, and the evaluation still spans three
 corpora, two of them documentation this project did not write, with a frozen dev/release split
-gating CI. The five stable contracts freeze at 1.0.
+gating CI. The five stable contracts are pinned: each has a golden of its shape and a test that
+fails when it moves, and what is promised — from which version, and how a change to it is made —
+is written down in [`docs/compatibility.md`](docs/compatibility.md).
 
 Three candidate retrieval legs were built and ablated this milestone, and **two of them ship
 switched off** — graph expansion because it lost, hybrid because it cannot clear gate G2's bar on
@@ -938,6 +940,7 @@ analysis, property tests, documented design decisions, SemVer releases.
 | [`docs/rfc/`](docs/rfc/) | Design of record, reviewed and approved before code. |
 | [`docs/patterns/`](docs/patterns/) | Design patterns adopted, rejected, or considered. |
 | [`docs/workflow/`](docs/workflow/) | Git, documentation, release, and maintenance conventions. |
+| [`docs/compatibility.md`](docs/compatibility.md) | What stays stable, from which version, and how a change to it is made. |
 | [`docs/journal/`](docs/journal/) | Dated session checkpoints — how the work actually went. |
 | [`CHANGELOG.md`](CHANGELOG.md) | User-visible changes per release. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability. |

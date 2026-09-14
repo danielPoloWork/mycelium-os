@@ -339,6 +339,12 @@ The project follows **Semantic Versioning 2.0.0**. Tags are annotated, `vMAJOR.M
   `PATCH` for fixes. The maintenance protocol is [`docs/workflow/maintenance.md`](docs/workflow/maintenance.md).
 - **`CHANGELOG.md`** — Keep a Changelog 1.1.0 format; every user-visible change adds a line
   to `[Unreleased]` in the same PR.
+- **Stable contracts** — the five spec 02 §10 names (identity rules, KIR, snapshot manifest,
+  MCP tools, plugin protocols) are pinned by `tests/test_contracts.py` against goldens under
+  `tests/fixtures/contracts/`. A change to one needs an RFC, a `CHANGELOG.md` migration note
+  and a re-bless (`python tools/update_contract_goldens.py`) in the same PR; an incompatible
+  one bumps the contract's version token first. The promise and its terms:
+  [`docs/compatibility.md`](docs/compatibility.md) (roadmap 6.1, ADR-0114).
 - **Agent-vs-human boundary** mirrors §6.1: the agent bumps the version constant
   (`__version__ = 'X.Y.Z'` in `__about__.py`), rolls the changelog, drafts release
   notes, and (post-merge, if delegated) creates and pushes the annotated tag; the maintainer

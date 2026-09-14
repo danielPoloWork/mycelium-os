@@ -119,8 +119,9 @@ would freeze a module-facing API against a sample of one, which is the same
 refusal the `Module` protocol makes two paragraphs above for pipeline stages,
 lifecycle hooks and MCP tools: the first real second consumer is what tells you
 which half of a one-consumer API was accidental. The trigger is stated rather
-than implied — a second module, or the 1.0 freeze review (roadmap 6.1),
-whichever comes first (roadmap 5.14, ADR-0086).
+than implied — a second module, or the v1.0.0 tag, whichever comes first. The
+freeze review at roadmap 6.1 found the same single consumer 5.14 had and re-armed
+the trigger to the tag that binds the promise (roadmap 5.14, ADR-0086, ADR-0114).
 
 **Adding an entry is the reviewable event.** It means a module needed something
 the core did not offer as module-facing, which is either an API gap to fix or a

@@ -1,0 +1,275 @@
+{
+  "api_version": 0,
+  "authority": "spec 05 §4 — plugin protocols",
+  "contract": "plugin-api",
+  "entry_point_groups": {
+    "modules": "mycelium.modules",
+    "plugins": "mycelium.plugins"
+  },
+  "exports": {
+    "mycelium.sdk.identity": [
+      "AnchorParts",
+      "CITATION_SCHEME",
+      "CitationUri",
+      "DIGEST_LENGTH",
+      "EMPTY_SLUG",
+      "IdentityError",
+      "MIN_DIGEST_LENGTH",
+      "ULID_ALPHABET",
+      "UlidFactory",
+      "anchor",
+      "canonical_json",
+      "citation_uri",
+      "decode_ulid",
+      "derived_ulid",
+      "digest_bytes",
+      "digest_json",
+      "digest_text",
+      "doc_ref",
+      "edge_id",
+      "encode_ulid",
+      "entity_ref",
+      "heading_slug",
+      "is_derived_ulid",
+      "new_ulid",
+      "normalize_text",
+      "parse_anchor",
+      "parse_citation_uri",
+      "symbol_id",
+      "ulid_timestamp"
+    ],
+    "mycelium.sdk.protocols": [
+      "Blob",
+      "Connector",
+      "EvidenceDocument",
+      "MYCELIUM_API_VERSION",
+      "Module",
+      "Parser",
+      "PluginMeta",
+      "Synthesis",
+      "SynthesisContext",
+      "Synthesizer"
+    ],
+    "mycelium.sdk.types": [
+      "Anchor",
+      "CaseResult",
+      "Chunk",
+      "ChunkKind",
+      "CustodyKind",
+      "CustodyRecord",
+      "Document",
+      "DocumentStats",
+      "Edge",
+      "EdgeProvenance",
+      "EdgeStatus",
+      "EdgeType",
+      "EmbeddingInfo",
+      "Entity",
+      "EvalCase",
+      "EvalRunManifest",
+      "EvalSlice",
+      "FidelityReport",
+      "GateResult",
+      "JudgedAnchor",
+      "KirDocument",
+      "KirNode",
+      "MetricSummary",
+      "NodeKind",
+      "OpaqueDisposition",
+      "Provenance",
+      "ProvenanceOrigin",
+      "QuarantineRecord",
+      "QuarantineStage",
+      "Record",
+      "RelevantAnchor",
+      "Sha256Digest",
+      "SnapshotCounts",
+      "SnapshotManifest",
+      "SourceTrust",
+      "SrcLocator",
+      "Symbol",
+      "SynthesisRecord",
+      "Synthesizer",
+      "Toolchain",
+      "TrustClass",
+      "Ulid",
+      "UtcDatetime",
+      "Verification",
+      "VerificationStatus"
+    ]
+  },
+  "protocols": {
+    "Connector": {
+      "attributes": {
+        "meta": "PluginMeta",
+        "schemes": "tuple[str, ...]"
+      },
+      "methods": {
+        "acquire": {
+          "parameters": [
+            {
+              "annotation": "str",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "name": "source"
+            }
+          ],
+          "returns": "Blob"
+        }
+      }
+    },
+    "Module": {
+      "attributes": {
+        "meta": "PluginMeta"
+      },
+      "methods": {
+        "commands": {
+          "parameters": [],
+          "returns": "typer.Typer"
+        }
+      }
+    },
+    "Parser": {
+      "attributes": {
+        "media_types": "tuple[str, ...]",
+        "meta": "PluginMeta"
+      },
+      "methods": {
+        "parse": {
+          "parameters": [
+            {
+              "annotation": "Blob",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "name": "blob"
+            },
+            {
+              "annotation": "Ulid",
+              "kind": "KEYWORD_ONLY",
+              "name": "doc_id"
+            }
+          ],
+          "returns": "KirDocument"
+        }
+      }
+    },
+    "Synthesizer": {
+      "attributes": {
+        "meta": "PluginMeta"
+      },
+      "methods": {
+        "synthesize": {
+          "parameters": [
+            {
+              "annotation": "SynthesisContext",
+              "kind": "POSITIONAL_OR_KEYWORD",
+              "name": "context"
+            }
+          ],
+          "returns": "Synthesis"
+        }
+      }
+    }
+  },
+  "transports": {
+    "Blob": {
+      "data": {
+        "type": "bytes"
+      },
+      "digest": {
+        "type": "Sha256Digest"
+      },
+      "media_type": {
+        "type": "str"
+      },
+      "source_uri": {
+        "type": "str"
+      },
+      "warnings": {
+        "default": "()",
+        "type": "tuple[str, ...]"
+      }
+    },
+    "EvidenceDocument": {
+      "cite_sections_only": {
+        "default": "False",
+        "type": "bool"
+      },
+      "headings": {
+        "type": "tuple[str, ...]"
+      },
+      "kir": {
+        "type": "KirDocument"
+      },
+      "path": {
+        "type": "PurePosixPath"
+      },
+      "source_trust": {
+        "default": "None",
+        "type": "SourceTrust | None"
+      },
+      "source_uri": {
+        "type": "str"
+      },
+      "title": {
+        "type": "str"
+      }
+    },
+    "PluginMeta": {
+      "api_max": {
+        "default": "1",
+        "type": "int"
+      },
+      "api_min": {
+        "default": "0",
+        "type": "int"
+      },
+      "description": {
+        "type": "str"
+      },
+      "deterministic": {
+        "default": "True",
+        "type": "bool"
+      },
+      "id": {
+        "type": "str"
+      },
+      "version": {
+        "type": "str"
+      }
+    },
+    "Synthesis": {
+      "attempts": {
+        "default": "1",
+        "type": "int"
+      },
+      "markdown": {
+        "type": "str"
+      },
+      "model": {
+        "type": "str"
+      },
+      "parameters": {
+        "default": "<factory>",
+        "type": "dict[str, JsonValue]"
+      },
+      "prompt_digest": {
+        "type": "Sha256Digest"
+      },
+      "provider": {
+        "type": "str"
+      }
+    },
+    "SynthesisContext": {
+      "evidence": {
+        "type": "tuple[EvidenceDocument, ...]"
+      },
+      "instructions": {
+        "default": "''",
+        "type": "str"
+      },
+      "topic": {
+        "type": "str"
+      }
+    }
+  },
+  "version": "v0"
+}
