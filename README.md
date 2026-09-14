@@ -905,12 +905,12 @@ anchor space — instead of by diffing two runs and hoping nothing else changed.
 
 | # | Title | Status |
 |---|---|---|
-| 1 | Project bootstrap & CI | ✅ done |
-| 2 | Walking skeleton (spec Phase 0) | ✅ done |
-| 3 | v0.1 — The compiler (spec Phase 1) | ✅ done |
-| 4 | v0.2 — Ingestion (spec Phase 2) | ✅ done |
-| 5 | v0.3 — Structure (spec Phase 3) | 🚧 in progress |
-| 6 | v1.0 — Stable (spec Phase 4) | ⏳ planned |
+| 1 | v0.1.0 — Project bootstrap & CI | ✅ done |
+| 2 | v0.2.0 — Walking skeleton (spec Phase 0) | ✅ done |
+| 3 | v0.3.0 — The compiler (spec Phase 1) | ✅ done |
+| 4 | v0.4.0 — Ingestion (spec Phase 2) | ✅ done |
+| 5 | v0.5.0 — Structure (spec Phase 3) | 🚧 in progress |
+| 6 | v1.0.0 — Stable (spec Phase 4) | ⏳ planned |
 | 7 | v2.x — Team & platform (spec Phase 5; separate RFC cycle) | ⏳ planned |
 
 The numbered plan, with what each item delivered, is [`ROADMAP.md`](ROADMAP.md).

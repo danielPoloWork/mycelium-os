@@ -144,3 +144,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0110](0110-drop-the-markup-and-keep-the-words-on-evidence-a-placeholder-cannot-forge.md) | Drop the markup and keep the words, on evidence a placeholder cannot forge | Accepted |
 | [0111](0111-a-floor-can-reject-what-a-preference-must-not-choose.md) | A floor can reject what a preference must not choose | Accepted |
 | [0112](0112-date-the-baseline-to-a-release-because-the-drift-is-the-incumbents.md) | Date the baseline to a release, because the drift it records is the incumbent's | Accepted |
+| [0113](0113-close-a-milestone-on-its-gates-and-carry-an-unmet-one-by-name.md) | Close a milestone on its gates, and carry an unmet one by name | Accepted |

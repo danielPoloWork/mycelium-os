@@ -12,6 +12,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **The milestone table's version labels said what no release shipped** (roadmap 5.43,
+  [ADR-0113](docs/adr/0113-close-a-milestone-on-its-gates-and-carry-an-unmet-one-by-name.md)).
+  The labels followed the specification's *phase* numbering while releases counted every
+  milestone, so Milestone 3 shipped v0.3.0 under the label `v0.1` and Milestone 4 shipped
+  v0.4.0 under `v0.2`. Each heading in the README and the roadmap now carries the version it
+  shipped or will ship. `docs/workflow/packaging.md` is corrected in the same pass: it
+  described a publish step that pushes to a package registry, and no such step exists in CI.
+
 - **`tools/measure_slice_decay.py` can measure the incumbent** (roadmap 5.42,
   [ADR-0112](docs/adr/0112-date-the-baseline-to-a-release-because-the-drift-is-the-incumbents.md)). The tool exists to answer *did the retriever get worse, or did the
   corpus get bigger*, and it scored only our own arm — so it was blind to the incumbent,

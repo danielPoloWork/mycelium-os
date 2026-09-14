@@ -22,10 +22,20 @@ Publishing is tied to the release ([`release.md`](release.md)) and is a **human-
 like the GitHub Release:
 
 1. The release PR is merged and the annotated tag is pushed (`vX.Y.Z`).
-2. CI builds the artifact on the tag and verifies it (contents, metadata, version match).
-3. A human approves the publish step; CI pushes to the registry.
-4. The published version is immutable — a mistake is fixed forward with a new version, never by
-   overwriting.
+2. CI builds the wheel and the sdist on the tag, refuses the build if the artifact version does
+   not equal the tag, and attaches both to a **draft** GitHub Release.
+3. A human reviews and presses **Publish**. That release, with its two artifacts, is where the
+   package can be fetched from today.
+
+> **No registry step exists yet, and steps 1-3 are the whole flow.** This section used to say
+> that a human approves a publish step and *"CI pushes to the registry"*; there is no such step
+> in `.github/workflows/`, and there never has been. The README's `pip install mycelium-os[…]`
+> lines describe the same intended future. Making them true — which index, under which name,
+> with which credential — is roadmap **6.11**, and it is the precondition for the Phase-3
+> dogfooding gate, since nothing can dogfood what nothing can install (5.43).
+
+Once a registry is in the flow, the rule that comes with it: a published version is immutable,
+and a mistake is fixed forward with a new version, never by overwriting.
 
 ## A second distribution: modules
 
