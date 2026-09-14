@@ -12,6 +12,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **`tools/measure_slice_decay.py` can measure the incumbent** (roadmap 5.42,
+  [ADR-0112](docs/adr/0112-date-the-baseline-to-a-release-because-the-drift-is-the-incumbents.md)). The tool exists to answer *did the retriever get worse, or did the
+  corpus get bigger*, and it scored only our own arm — so it was blind to the incumbent,
+  which dilutes about four times faster as a corpus grows and therefore dominates the
+  reported delta. `--retriever` selects the arm, and both now run through the same
+  `build_retriever` the evaluation harness uses. The numbers it printed before were not
+  wrong; the agreement is now structural rather than coincidental.
+
 - **A judged anchor is no longer carried onto a chunk that does not hold the passage**
   (roadmap 5.41, [ADR-0111](docs/adr/0111-a-floor-can-reject-what-a-preference-must-not-choose.md)). The ingested twin's judgements are derived by
   mapping each judged passage onto the chunk that best covers its vocabulary. Where a
