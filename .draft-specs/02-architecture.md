@@ -256,6 +256,14 @@ things v1 is not allowed to change casually (SemVer-major otherwise):
 Everything else — SQLite, file layout, in-process execution — is an implementation
 detail, deliberately replaceable, and documented as such.
 
+**Pinned at roadmap 6.1 (ADR-0114).** Each of the five is projected to a golden of its
+*shape* — every schema keyword that constrains, no description — under
+`tests/fixtures/contracts/`, and `tests/test_contracts.py` compares the two on every run: a
+change to a contract is announced or it fails CI. The promise those goldens back — what is
+stable, from which version, and how a change to it is made — is `docs/compatibility.md`. It is
+published with Milestone 6 and **binds at the v1.0.0 tag**; until then document 05 §5's pre-1.0
+rule applies.
+
 ## 11. Failure modes
 
 | Failure | Behavior |

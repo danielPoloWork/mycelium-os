@@ -1,0 +1,478 @@
+{
+  "authority": "spec 03 §4 — KIR schema",
+  "contract": "kir",
+  "kind_fields": {
+    "callout": {
+      "optional": [
+        "variant",
+        "title"
+      ],
+      "required": []
+    },
+    "code_block": {
+      "optional": [
+        "lang"
+      ],
+      "required": []
+    },
+    "document": {
+      "optional": [],
+      "required": []
+    },
+    "embed": {
+      "optional": [
+        "target"
+      ],
+      "required": []
+    },
+    "equation": {
+      "optional": [],
+      "required": []
+    },
+    "footnote": {
+      "optional": [],
+      "required": []
+    },
+    "heading": {
+      "optional": [],
+      "required": [
+        "level"
+      ]
+    },
+    "image": {
+      "optional": [
+        "title",
+        "target"
+      ],
+      "required": []
+    },
+    "link": {
+      "optional": [
+        "title",
+        "target"
+      ],
+      "required": []
+    },
+    "list": {
+      "optional": [
+        "variant"
+      ],
+      "required": []
+    },
+    "list_item": {
+      "optional": [],
+      "required": []
+    },
+    "opaque": {
+      "optional": [
+        "variant",
+        "media_type",
+        "blob",
+        "note"
+      ],
+      "required": []
+    },
+    "paragraph": {
+      "optional": [],
+      "required": []
+    },
+    "quote": {
+      "optional": [],
+      "required": []
+    },
+    "section": {
+      "optional": [],
+      "required": []
+    },
+    "table": {
+      "optional": [],
+      "required": []
+    },
+    "table_cell": {
+      "optional": [],
+      "required": []
+    },
+    "table_row": {
+      "optional": [
+        "variant"
+      ],
+      "required": []
+    },
+    "tag_ref": {
+      "optional": [],
+      "required": []
+    },
+    "wikilink": {
+      "optional": [
+        "target"
+      ],
+      "required": []
+    }
+  },
+  "node_kinds": [
+    "document",
+    "section",
+    "heading",
+    "paragraph",
+    "list",
+    "list_item",
+    "table",
+    "table_row",
+    "table_cell",
+    "code_block",
+    "equation",
+    "image",
+    "link",
+    "wikilink",
+    "embed",
+    "callout",
+    "tag_ref",
+    "footnote",
+    "quote",
+    "opaque"
+  ],
+  "opaque_dispositions": [
+    "degraded",
+    "lost"
+  ],
+  "schema": {
+    "$defs": {
+      "KirNode": {
+        "additionalProperties": false,
+        "properties": {
+          "blob": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/Sha256Digest"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "id": {
+            "$ref": "#/$defs/NonEmptyStr"
+          },
+          "kind": {
+            "$ref": "#/$defs/NodeKind"
+          },
+          "lang": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "level": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "media_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "ord": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "spans": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "src": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/SrcLocator"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "variant": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "ord"
+        ],
+        "type": "object"
+      },
+      "NodeKind": {
+        "enum": [
+          "document",
+          "section",
+          "heading",
+          "paragraph",
+          "list",
+          "list_item",
+          "table",
+          "table_row",
+          "table_cell",
+          "code_block",
+          "equation",
+          "image",
+          "link",
+          "wikilink",
+          "embed",
+          "callout",
+          "tag_ref",
+          "footnote",
+          "quote",
+          "opaque"
+        ],
+        "type": "string"
+      },
+      "NonEmptyStr": {
+        "minLength": 1,
+        "type": "string"
+      },
+      "Sha256Digest": {
+        "pattern": "^sha256:[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "SrcLocator": {
+        "additionalProperties": false,
+        "properties": {
+          "bbox": {
+            "anyOf": [
+              {
+                "maxItems": 4,
+                "minItems": 4,
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "byte_range": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "cell_range": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "lines": {
+            "anyOf": [
+              {
+                "maxItems": 2,
+                "minItems": 2,
+                "prefixItems": [
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  {
+                    "minimum": 0,
+                    "type": "integer"
+                  }
+                ],
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "page": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "timecode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        },
+        "type": "object"
+      },
+      "Ulid": {
+        "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
+        "type": "string"
+      }
+    },
+    "$id": "mycelium/kir/v0",
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "additionalProperties": false,
+    "properties": {
+      "doc_id": {
+        "$ref": "#/$defs/Ulid"
+      },
+      "nodes": {
+        "items": {
+          "$ref": "#/$defs/KirNode"
+        },
+        "type": "array"
+      },
+      "schema_version": {
+        "const": "mycelium/kir/v0",
+        "default": "mycelium/kir/v0",
+        "type": "string"
+      },
+      "source_digest": {
+        "$ref": "#/$defs/Sha256Digest"
+      },
+      "warnings": {
+        "default": [],
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      }
+    },
+    "required": [
+      "doc_id",
+      "source_digest",
+      "nodes"
+    ],
+    "type": "object"
+  },
+  "version": "v0"
+}

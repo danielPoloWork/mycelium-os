@@ -52,3 +52,10 @@ eval/corpora/uv-docs-ingested/provenance.json text eol=lf
 # re-measurement and hides the one line that actually moved - so it is pinned for
 # the same reason the determinism golden is.
 eval/g2-verdict.json text eol=lf
+
+# The compatibility goldens (roadmap 6.1). Each asserts its own bytes are LF-only
+# with a trailing newline (`test_the_goldens_are_stored_reviewably`), for the same
+# reason the determinism golden is pinned above - missed here first, and caught by
+# CI on Windows rather than by the rule that should have covered it on sight.
+tests/fixtures/contracts/*.json text eol=lf
+tests/fixtures/contracts/history/**/*.json text eol=lf

@@ -1,0 +1,698 @@
+{
+  "authority": "spec 03 §2 — identity rules",
+  "constants": {
+    "CITATION_SCHEME": "mycelium://",
+    "DIGEST_LENGTH": 12,
+    "EMPTY_SLUG": "section",
+    "MIN_DIGEST_LENGTH": 8,
+    "ULID_ALPHABET": "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+  },
+  "contract": "identity",
+  "conventions": [
+    "bytes arguments and outputs are written as {\"hex\": ...}",
+    "a vector that raises records the exception type under \"raises\"",
+    "datetimes are RFC 3339 UTC"
+  ],
+  "patterns": {
+    "Anchor": "^[^#]+#[^#]*/(?:0|[1-9][0-9]*)$",
+    "JudgedAnchor": "^[^#]+#[^#]*(?:/(?:0|[1-9][0-9]*)|/)$",
+    "Sha256Digest": "^sha256:[0-9a-f]{64}$",
+    "Ulid": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+  },
+  "vectors": [
+    {
+      "args": [
+        "﻿alpha  \r\nbeta\t\r\n\r\n"
+      ],
+      "function": "normalize_text",
+      "output": "alpha\nbeta"
+    },
+    {
+      "args": [
+        "é"
+      ],
+      "function": "normalize_text",
+      "output": "é"
+    },
+    {
+      "args": [
+        "\n\nlead\n"
+      ],
+      "function": "normalize_text",
+      "output": "\n\nlead"
+    },
+    {
+      "args": [
+        "hello\r\n"
+      ],
+      "function": "digest_text",
+      "output": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+    },
+    {
+      "args": [
+        "hello\n"
+      ],
+      "function": "digest_text",
+      "output": "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+    },
+    {
+      "args": [
+        "café"
+      ],
+      "function": "digest_text",
+      "output": "sha256:850f7dc43910ff890f8879c0ed26fe697c93a067ad93a7d50f466a7028a9bf4e"
+    },
+    {
+      "args": [
+        "café"
+      ],
+      "function": "digest_text",
+      "output": "sha256:850f7dc43910ff890f8879c0ed26fe697c93a067ad93a7d50f466a7028a9bf4e"
+    },
+    {
+      "args": [
+        {
+          "hex": ""
+        }
+      ],
+      "function": "digest_bytes",
+      "output": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "args": [
+        {
+          "hex": "0d0a6162630d0a"
+        }
+      ],
+      "function": "digest_bytes",
+      "output": "sha256:107f355e61d49ddeae55cc1615b472a7dd2c3211897bd592fbeeee56e7fc629a"
+    },
+    {
+      "args": [
+        {
+          "a": [
+            1,
+            2.0,
+            "x"
+          ],
+          "b": 1
+        }
+      ],
+      "function": "digest_json",
+      "output": "sha256:5fbcb0cbd76d0aaffdbcaf3e5ae214c24a3e28bda8fb01e146d3cf7bdd51e3d3"
+    },
+    {
+      "args": [
+        {
+          "a": [
+            1,
+            2,
+            "x"
+          ],
+          "b": 1.0
+        }
+      ],
+      "function": "digest_json",
+      "output": "sha256:5fbcb0cbd76d0aaffdbcaf3e5ae214c24a3e28bda8fb01e146d3cf7bdd51e3d3"
+    },
+    {
+      "args": [
+        {
+          "a": {
+            "f": 3.0,
+            "n": null,
+            "t": true,
+            "é": 2.5
+          },
+          "z": 1
+        }
+      ],
+      "function": "canonical_json",
+      "output": "{\"a\":{\"f\":3,\"n\":null,\"t\":true,\"é\":2.5},\"z\":1}"
+    },
+    {
+      "args": [
+        {
+          "float": "inf"
+        }
+      ],
+      "function": "canonical_json",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        0,
+        {
+          "hex": "00000000000000000000"
+        }
+      ],
+      "function": "encode_ulid",
+      "output": "00000000000000000000000000"
+    },
+    {
+      "args": [
+        281474976710655,
+        {
+          "hex": "ffffffffffffffffffff"
+        }
+      ],
+      "function": "encode_ulid",
+      "output": "7ZZZZZZZZZZZZZZZZZZZZZZZZZ"
+    },
+    {
+      "args": [
+        1690000000000,
+        {
+          "hex": "00010203040506070809"
+        }
+      ],
+      "function": "encode_ulid",
+      "output": "01H5XXK100000G40R40M30E209"
+    },
+    {
+      "args": [
+        281474976710656,
+        {
+          "hex": "00000000000000000000"
+        }
+      ],
+      "function": "encode_ulid",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"
+      ],
+      "function": "decode_ulid",
+      "output": [
+        1720113716376,
+        {
+          "hex": "376771bc1b4e90b150f5"
+        }
+      ]
+    },
+    {
+      "args": [
+        "7ZZZZZZZZZZZZZZZZZZZZZZZZZ"
+      ],
+      "function": "decode_ulid",
+      "output": [
+        281474976710655,
+        {
+          "hex": "ffffffffffffffffffff"
+        }
+      ]
+    },
+    {
+      "args": [
+        "8ZZZZZZZZZZZZZZZZZZZZZZZZZ"
+      ],
+      "function": "decode_ulid",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "01J1ZC8Q4R6XKQ3F0V9T8B2M7I"
+      ],
+      "function": "decode_ulid",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"
+      ],
+      "function": "ulid_timestamp",
+      "output": "2024-07-04T17:21:56.376000Z"
+    },
+    {
+      "args": [
+        "knowledge/architecture.md"
+      ],
+      "function": "derived_ulid",
+      "output": "0000000000FF1H2KXKN39Z50MN"
+    },
+    {
+      "args": [
+        "docs/Ünicode.md"
+      ],
+      "function": "derived_ulid",
+      "output": "0000000000YDAN8QVYC2GSWJ08"
+    },
+    {
+      "args": [
+        "docs/Ünicode.md"
+      ],
+      "function": "derived_ulid",
+      "output": "0000000000YDAN8QVYC2GSWJ08"
+    },
+    {
+      "args": [
+        "0000000000FF1H2KXKN39Z50MN"
+      ],
+      "function": "is_derived_ulid",
+      "output": true
+    },
+    {
+      "args": [
+        "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"
+      ],
+      "function": "is_derived_ulid",
+      "output": false
+    },
+    {
+      "args": [
+        "not a ulid"
+      ],
+      "function": "is_derived_ulid",
+      "output": false
+    },
+    {
+      "args": [
+        "Event Bus"
+      ],
+      "function": "heading_slug",
+      "output": "event-bus"
+    },
+    {
+      "args": [
+        "  Retry Policy — v2!  "
+      ],
+      "function": "heading_slug",
+      "output": "retry-policy-v2"
+    },
+    {
+      "args": [
+        "設計"
+      ],
+      "function": "heading_slug",
+      "output": "設計"
+    },
+    {
+      "args": [
+        "ﬁle names"
+      ],
+      "function": "heading_slug",
+      "output": "file-names"
+    },
+    {
+      "args": [
+        "---"
+      ],
+      "function": "heading_slug",
+      "output": "section"
+    },
+    {
+      "args": [
+        "C++ & C#"
+      ],
+      "function": "heading_slug",
+      "output": "c-c"
+    },
+    {
+      "args": [
+        "2024"
+      ],
+      "function": "heading_slug",
+      "output": "2024"
+    },
+    {
+      "args": [
+        "architecture.md",
+        [
+          "event-bus"
+        ],
+        2
+      ],
+      "function": "anchor",
+      "output": "architecture.md#event-bus/2"
+    },
+    {
+      "args": [
+        "docs/a.md",
+        [
+          "setup",
+          "install"
+        ],
+        0
+      ],
+      "function": "anchor",
+      "output": "docs/a.md#setup/install/0"
+    },
+    {
+      "args": [
+        "readme.md",
+        [],
+        3
+      ],
+      "function": "anchor",
+      "output": "readme.md#/3"
+    },
+    {
+      "args": [
+        "a#b.md",
+        [],
+        0
+      ],
+      "function": "anchor",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "a.md",
+        [
+          "x/y"
+        ],
+        0
+      ],
+      "function": "anchor",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "a.md",
+        [],
+        -1
+      ],
+      "function": "anchor",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "architecture.md#event-bus/2"
+      ],
+      "function": "parse_anchor",
+      "output": {
+        "doc_path": "architecture.md",
+        "heading_slugs": [
+          "event-bus"
+        ],
+        "ordinal": 2
+      }
+    },
+    {
+      "args": [
+        "docs/a.md#2024/0"
+      ],
+      "function": "parse_anchor",
+      "output": {
+        "doc_path": "docs/a.md",
+        "heading_slugs": [
+          "2024"
+        ],
+        "ordinal": 0
+      }
+    },
+    {
+      "args": [
+        "readme.md#/3"
+      ],
+      "function": "parse_anchor",
+      "output": {
+        "doc_path": "readme.md",
+        "heading_slugs": [],
+        "ordinal": 3
+      }
+    },
+    {
+      "args": [
+        "a.md#x/01"
+      ],
+      "function": "parse_anchor",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "nohash"
+      ],
+      "function": "parse_anchor",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "01J1ZC8Q4R6XKQ3F0V9T8B2M7N",
+        [
+          "event-bus"
+        ],
+        2
+      ],
+      "function": "citation_uri",
+      "output": "mycelium://01J1ZC8Q4R6XKQ3F0V9T8B2M7N#event-bus/2"
+    },
+    {
+      "args": [
+        "01J1ZC8Q4R6XKQ3F0V9T8B2M7N",
+        [
+          "retries"
+        ],
+        0
+      ],
+      "function": "citation_uri",
+      "kwargs": {
+        "lines": [
+          88,
+          141
+        ]
+      },
+      "output": "mycelium://01J1ZC8Q4R6XKQ3F0V9T8B2M7N#retries/0?lines=88-141"
+    },
+    {
+      "args": [
+        "01J1ZC8Q4R6XKQ3F0V9T8B2M7N",
+        [
+          "a",
+          "b"
+        ],
+        1
+      ],
+      "function": "citation_uri",
+      "kwargs": {
+        "digest": "sha256:6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a",
+        "lines": [
+          3,
+          9
+        ]
+      },
+      "output": "mycelium://01J1ZC8Q4R6XKQ3F0V9T8B2M7N#a/b/1?lines=3-9&digest=6f2a6f2a6f2a"
+    },
+    {
+      "args": [
+        "01J1ZC8Q4R6XKQ3F0V9T8B2M7N",
+        [],
+        0
+      ],
+      "function": "citation_uri",
+      "kwargs": {
+        "digest": "6F2A6F2A6F2A6F2A"
+      },
+      "output": "mycelium://01J1ZC8Q4R6XKQ3F0V9T8B2M7N#/0?digest=6f2a6f2a6f2a"
+    },
+    {
+      "args": [
+        "01J1ZC8Q4R6XKQ3F0V9T8B2M7N",
+        [],
+        0
+      ],
+      "function": "citation_uri",
+      "kwargs": {
+        "digest": "abc"
+      },
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "not-a-ulid",
+        [],
+        0
+      ],
+      "function": "citation_uri",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "01J1ZC8Q4R6XKQ3F0V9T8B2M7N",
+        [],
+        0
+      ],
+      "function": "citation_uri",
+      "kwargs": {
+        "lines": [
+          9,
+          1
+        ]
+      },
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "mycelium://01J1ZC8Q4R6XKQ3F0V9T8B2M7N#event-bus/2"
+      ],
+      "function": "parse_citation_uri",
+      "output": {
+        "digest": null,
+        "doc_id": "01J1ZC8Q4R6XKQ3F0V9T8B2M7N",
+        "heading_slugs": [
+          "event-bus"
+        ],
+        "lines": null,
+        "ordinal": 2
+      }
+    },
+    {
+      "args": [
+        "mycelium://01J1ZC8Q4R6XKQ3F0V9T8B2M7N#retries/0?lines=88-141"
+      ],
+      "function": "parse_citation_uri",
+      "output": {
+        "digest": null,
+        "doc_id": "01J1ZC8Q4R6XKQ3F0V9T8B2M7N",
+        "heading_slugs": [
+          "retries"
+        ],
+        "lines": [
+          88,
+          141
+        ],
+        "ordinal": 0
+      }
+    },
+    {
+      "args": [
+        "mycelium://01J1ZC8Q4R6XKQ3F0V9T8B2M7N#a/b/1?lines=3-9&digest=6f2a6f2a6f2a"
+      ],
+      "function": "parse_citation_uri",
+      "output": {
+        "digest": "6f2a6f2a6f2a",
+        "doc_id": "01J1ZC8Q4R6XKQ3F0V9T8B2M7N",
+        "heading_slugs": [
+          "a",
+          "b"
+        ],
+        "lines": [
+          3,
+          9
+        ],
+        "ordinal": 1
+      }
+    },
+    {
+      "args": [
+        "mycelium://01J1ZC8Q4R6XKQ3F0V9T8B2M7N#x/1?future=yes&lines=1-2"
+      ],
+      "function": "parse_citation_uri",
+      "output": {
+        "digest": null,
+        "doc_id": "01J1ZC8Q4R6XKQ3F0V9T8B2M7N",
+        "heading_slugs": [
+          "x"
+        ],
+        "lines": [
+          1,
+          2
+        ],
+        "ordinal": 1
+      }
+    },
+    {
+      "args": [
+        "mycelium://01J1ZC8Q4R6XKQ3F0V9T8B2M7N#x/1?digest=zz"
+      ],
+      "function": "parse_citation_uri",
+      "output": {
+        "digest": null,
+        "doc_id": "01J1ZC8Q4R6XKQ3F0V9T8B2M7N",
+        "heading_slugs": [
+          "x"
+        ],
+        "lines": null,
+        "ordinal": 1
+      }
+    },
+    {
+      "args": [
+        "mycelium://01J1ZC8Q4R6XKQ3F0V9T8B2M7N#x/1?digest=sha256:6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a"
+      ],
+      "function": "parse_citation_uri",
+      "output": {
+        "digest": "6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a",
+        "doc_id": "01J1ZC8Q4R6XKQ3F0V9T8B2M7N",
+        "heading_slugs": [
+          "x"
+        ],
+        "lines": null,
+        "ordinal": 1
+      }
+    },
+    {
+      "args": [
+        "mycelium://01J1ZC8Q4R6XKQ3F0V9T8B2M7N#x/1?lines=9-1"
+      ],
+      "function": "parse_citation_uri",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "mycelium://nope#x/1"
+      ],
+      "function": "parse_citation_uri",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "https://01J1ZC8Q4R6XKQ3F0V9T8B2M7N#x/1"
+      ],
+      "function": "parse_citation_uri",
+      "raises": "IdentityError"
+    },
+    {
+      "args": [
+        "knowledge/a.md"
+      ],
+      "function": "doc_ref",
+      "output": "doc:knowledge/a.md"
+    },
+    {
+      "args": [
+        "Python",
+        "RetryPolicy.delay"
+      ],
+      "function": "symbol_id",
+      "output": "sym:python:RetryPolicy.delay"
+    },
+    {
+      "args": [
+        "cli",
+        "uv tool install"
+      ],
+      "function": "symbol_id",
+      "output": "sym:cli:uv tool install"
+    },
+    {
+      "args": [
+        "event-bus"
+      ],
+      "function": "entity_ref",
+      "output": "ent:event-bus"
+    },
+    {
+      "args": [
+        "doc:a.md",
+        "doc:b.md",
+        "links_to",
+        "sha256:6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a"
+      ],
+      "function": "edge_id",
+      "output": "sha256:c1d6aad7e803da2850c10c7531ac20fd15c910fd21fb3c4ab1f84b2a22b96bff"
+    },
+    {
+      "args": [
+        "doc:b.md",
+        "doc:a.md",
+        "links_to",
+        "sha256:6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a6f2a"
+      ],
+      "function": "edge_id",
+      "output": "sha256:fcb892def99a8ae671dd378c91ac9c5350afa42d190950802f37bcf6fe32ad40"
+    }
+  ],
+  "version": null
+}

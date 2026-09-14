@@ -1,0 +1,1120 @@
+{
+  "doc_id": "01KDVDNA020000000000000002",
+  "nodes": [
+    {
+      "blob": null,
+      "id": "n1",
+      "kind": "heading",
+      "lang": null,
+      "level": 1,
+      "media_type": null,
+      "note": null,
+      "ord": 0,
+      "parent": null,
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          12,
+          12
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "Retry Policy",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n2",
+      "kind": "paragraph",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 1,
+      "parent": "n1",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          14,
+          15
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "Failed deliveries retry with exponential backoff. The ceiling is five attempts, after\nwhich the message is quarantined rather than dropped silently.",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n3",
+      "kind": "callout",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 2,
+      "parent": "n1",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          17,
+          18
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": null,
+      "title": "Quarantine is not deletion",
+      "variant": "warning"
+    },
+    {
+      "blob": null,
+      "id": "n4",
+      "kind": "paragraph",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 3,
+      "parent": "n3",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          17,
+          18
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "A quarantined message keeps its provenance and can be replayed once the cause is fixed.",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n5",
+      "kind": "callout",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 4,
+      "parent": "n1",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          20,
+          24
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": null,
+      "title": "Replay is manual",
+      "variant": "note"
+    },
+    {
+      "blob": null,
+      "id": "n6",
+      "kind": "paragraph",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 5,
+      "parent": "n5",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          20,
+          22
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "Nothing replays a quarantined message on its own; an operator decides when the cause\nis fixed.",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n7",
+      "kind": "paragraph",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 6,
+      "parent": "n5",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          24,
+          24
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "The second paragraph exists so this callout has an internal boundary to split at.",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n8",
+      "kind": "heading",
+      "lang": null,
+      "level": 2,
+      "media_type": null,
+      "note": null,
+      "ord": 7,
+      "parent": "n1",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          26,
+          26
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "Schedule",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n9",
+      "kind": "table",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 8,
+      "parent": "n8",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          28,
+          34
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": null,
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n10",
+      "kind": "table_row",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 9,
+      "parent": "n9",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          28,
+          28
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": null,
+      "title": null,
+      "variant": "header"
+    },
+    {
+      "blob": null,
+      "id": "n11",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 10,
+      "parent": "n10",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          28,
+          28
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "Attempt",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n12",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 11,
+      "parent": "n10",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          28,
+          28
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "Delay",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n13",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 12,
+      "parent": "n10",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          28,
+          28
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "Cumulative",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n14",
+      "kind": "table_row",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 13,
+      "parent": "n9",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          30,
+          30
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": null,
+      "title": null,
+      "variant": "body"
+    },
+    {
+      "blob": null,
+      "id": "n15",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 14,
+      "parent": "n14",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          30,
+          30
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "1",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n16",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 15,
+      "parent": "n14",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          30,
+          30
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "1s",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n17",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 16,
+      "parent": "n14",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          30,
+          30
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "1s",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n18",
+      "kind": "table_row",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 17,
+      "parent": "n9",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          31,
+          31
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": null,
+      "title": null,
+      "variant": "body"
+    },
+    {
+      "blob": null,
+      "id": "n19",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 18,
+      "parent": "n18",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          31,
+          31
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "2",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n20",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 19,
+      "parent": "n18",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          31,
+          31
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "2s",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n21",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 20,
+      "parent": "n18",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          31,
+          31
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "3s",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n22",
+      "kind": "table_row",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 21,
+      "parent": "n9",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          32,
+          32
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": null,
+      "title": null,
+      "variant": "body"
+    },
+    {
+      "blob": null,
+      "id": "n23",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 22,
+      "parent": "n22",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          32,
+          32
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "3",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n24",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 23,
+      "parent": "n22",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          32,
+          32
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "4s",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n25",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 24,
+      "parent": "n22",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          32,
+          32
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "7s",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n26",
+      "kind": "table_row",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 25,
+      "parent": "n9",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          33,
+          33
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": null,
+      "title": null,
+      "variant": "body"
+    },
+    {
+      "blob": null,
+      "id": "n27",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 26,
+      "parent": "n26",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          33,
+          33
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "4",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n28",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 27,
+      "parent": "n26",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          33,
+          33
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "8s",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n29",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 28,
+      "parent": "n26",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          33,
+          33
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "15s",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n30",
+      "kind": "table_row",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 29,
+      "parent": "n9",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          34,
+          34
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": null,
+      "title": null,
+      "variant": "body"
+    },
+    {
+      "blob": null,
+      "id": "n31",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 30,
+      "parent": "n30",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          34,
+          34
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "5",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n32",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 31,
+      "parent": "n30",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          34,
+          34
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "16s",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n33",
+      "kind": "table_cell",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 32,
+      "parent": "n30",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          34,
+          34
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "31s",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n34",
+      "kind": "heading",
+      "lang": null,
+      "level": 2,
+      "media_type": null,
+      "note": null,
+      "ord": 33,
+      "parent": "n1",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          36,
+          36
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "Configuration",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n35",
+      "kind": "code_block",
+      "lang": "python",
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 34,
+      "parent": "n34",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          38,
+          44
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "retry_policy = RetryPolicy(\n    attempts=5,\n    base_delay_s=1.0,\n    multiplier=2.0,\n)",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n36",
+      "kind": "paragraph",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 35,
+      "parent": "n34",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          46,
+          47
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "The values above are defaults; a connector may lower the ceiling but never raise it past\nthe build's own budget. See architecture for where this sits in the pipeline.",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n37",
+      "kind": "embed",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 36,
+      "parent": "n36",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          46,
+          47
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": "architecture",
+      "text": "architecture",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n38",
+      "kind": "heading",
+      "lang": null,
+      "level": 2,
+      "media_type": null,
+      "note": null,
+      "ord": 37,
+      "parent": "n1",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          49,
+          49
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "Worked example",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n39",
+      "kind": "code_block",
+      "lang": "python",
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 38,
+      "parent": "n38",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          51,
+          54
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "policy = build_policy(attempts=5)\nassert policy.delay(4) == 16.0",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n40",
+      "kind": "heading",
+      "lang": null,
+      "level": 2,
+      "media_type": null,
+      "note": null,
+      "ord": 39,
+      "parent": "n1",
+      "spans": [],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          56,
+          56
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "The RetryPolicy",
+      "title": null,
+      "variant": null
+    },
+    {
+      "blob": null,
+      "id": "n41",
+      "kind": "paragraph",
+      "lang": null,
+      "level": null,
+      "media_type": null,
+      "note": null,
+      "ord": 40,
+      "parent": "n40",
+      "spans": [
+        "RetryPolicy",
+        "The pyproject.toml",
+        "pylock.toml format",
+        "api.md"
+      ],
+      "src": {
+        "bbox": null,
+        "byte_range": null,
+        "cell_range": null,
+        "lines": [
+          58,
+          62
+        ],
+        "page": null,
+        "timecode": null
+      },
+      "target": null,
+      "text": "RetryPolicy is the class the schedule above configures, documented here a second time\nunder a heading that is the name and one framing word. A reference page writes its\nsections this way — The pyproject.toml, pylock.toml format — and the extract stage\nreads them, so this document and api.md both name the term and the record carries both\n(roadmap 5.19).",
+      "title": null,
+      "variant": null
+    }
+  ],
+  "schema_version": "mycelium/kir/v0",
+  "source_digest": "sha256:49dc8b4b881fec0d508d64a46856ac0f8ad74a40a969be0d098572c30c6bf9c5",
+  "warnings": []
+}

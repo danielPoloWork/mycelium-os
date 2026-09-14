@@ -2,9 +2,11 @@
 # Copyright (c) 2026 Daniel Polo
 """The MCP server — the second and last public surface of v1 (D-011).
 
-- :mod:`mycelium.mcp.tools` — `mycelium_search` and `mycelium_fetch` (spec 05 §3).
+- :mod:`mycelium.mcp.tools` — the four tools of spec 05 §3, each with its input schema.
+- :mod:`mycelium.mcp.schemas` — their output schemas, served as ``outputSchema`` and
+  pinned with the inputs by the compatibility suite (roadmap 6.1).
 - :mod:`mycelium.mcp.server` — the stdio JSON-RPC transport.
-- :mod:`mycelium.mcp.errors` — the closed error taxonomy.
+- :mod:`mycelium.mcp.errors` — the closed error taxonomy, and the fields each code carries.
 
 Read-only by construction: v1 exposes no mutating tool, and every response says
 in words that its content is data rather than instructions (D-017).
