@@ -200,11 +200,6 @@
       "twin": "knowledge/evidence/features-html-dba4b609.md#uv-python-pin-pin-the-current-project-to-use-a-specific-python-version/0",
       "whole": 0.5088
     },
-    "docs/getting-started/features.md#the-pip-interface/0": {
-      "coverage": 0.5269,
-      "twin": "knowledge/evidence/features-html-dba4b609.md#uv-pip-compile-compile-requirements-into-a-lockfile/0",
-      "whole": 0.3383
-    },
     "docs/guides/package.md#building-your-package/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/package-pdf-f3f8365d.md#/0",
@@ -335,5 +330,6 @@
     ]
   },
   "min_coverage": 0.5,
+  "min_whole": 0.4,
   "schema_version": "mycelium/eval-carry/v2"
 }

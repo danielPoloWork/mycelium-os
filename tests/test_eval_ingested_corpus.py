@@ -208,6 +208,112 @@ def test_one_source_anchor_reaching_one_chunk_is_not_a_collapse() -> None:
     assert collapsed == []
 
 
+# ---------------------------------------------------------------------------
+# The `whole` floor: a split passage is not in any of its fragments (5.41)
+# ---------------------------------------------------------------------------
+
+
+def test_coverage_cannot_see_a_split_and_whole_can() -> None:
+    """Why the second floor exists, as arithmetic rather than as a corpus (ADR-0111).
+
+    A judged passage that lists five commands is shattered by the projection into
+    one chunk per command. Every fragment carries the list's shared scaffolding, so
+    coverage over *distinct* tokens stays respectable for all of them and is decided
+    by which fragment happens to repeat more of it — while `whole`, which counts
+    occurrences, sees at once that no fragment holds the passage.
+    """
+    from build_ingested_cases import MIN_WHOLE, coverage, tokens, whole
+
+    passage = tokens(
+        "uv venv: Create a new virtual environment. "
+        "uv pip install: Install packages into the current environment. "
+        "uv pip show: Show details about an installed package. "
+        "uv pip freeze: List installed packages and their versions. "
+        "uv pip list: List installed packages. "
+        "uv pip uninstall: Uninstall packages. "
+        "uv pip compile: Compile requirements into a lockfile. "
+        "uv pip sync: Sync an environment with a lockfile."
+    )
+    answers = tokens("uv venv: Create a new virtual environment.")
+    scaffolding = tokens(
+        "uv pip compile: Compile requirements into a lockfile. "
+        "uv pip sync: Sync an environment with a lockfile."
+    )
+
+    # The fragment that does NOT answer wins on coverage, because it repeats more
+    # of the list's shared words — not because it holds more of the passage.
+    assert coverage(passage, scaffolding) > coverage(passage, answers)
+    # `whole` says what coverage cannot: neither fragment is the passage. A floor
+    # can act on that; a preference between the two cannot (ADR-0102, ADR-0111).
+    assert whole(passage, scaffolding) < MIN_WHOLE
+    assert whole(passage, answers) < MIN_WHOLE
+
+
+def test_the_floor_sits_in_a_basin_rather_than_on_a_cliff() -> None:
+    """The constant is a decision, and the receipt is the evidence for it.
+
+    `MIN_WHOLE` is defensible because the distribution has a gap where it sits, not
+    because 0.4 is a nice number: every mapped anchor is either well above it or was
+    the one anchor it was added to drop. Asserted against the committed receipt so a
+    re-vendored corpus that closes the gap fails here rather than silently making the
+    constant load-bearing.
+    """
+    from build_ingested_cases import MIN_WHOLE
+
+    payload = json.loads((CORPUS / "eval" / "carry.json").read_text(encoding="utf-8"))
+    shares = sorted(float(entry["whole"]) for entry in payload["anchors"].values())
+    assert shares, "the receipt records no anchors"
+    assert shares[0] > MIN_WHOLE, "a carried anchor now sits below the floor"
+    # The nearest survivor is not within a hair of the floor, so the value could
+    # move either way without changing what is carried.
+    assert shares[0] - MIN_WHOLE > 0.05, (
+        f"the closest carried anchor is {shares[0]:.4f} against a floor of {MIN_WHOLE}; "
+        "the constant has become a cliff, so re-read ADR-0111 before adjusting it"
+    )
+    assert payload["min_whole"] == MIN_WHOLE
+
+
+def test_the_shattered_feature_list_anchors_do_not_reach_the_twin() -> None:
+    """One projection shape, and what the two floors make of it (ADR-0111).
+
+    uv's feature list becomes a heading per item in the HTML lane, so a judged
+    anchor naming a whole feature section is shattered. Four such anchors cannot be
+    carried — three fall through `MIN_COVERAGE`, and `u-0017` through `MIN_WHOLE`
+    after landing on a chunk that never mentions the command its query names.
+
+    The fifth is the control, and it is why the floor is not indiscriminate:
+    `u-1019` grades the *python-versions* section at 1 and coverage lands it on the
+    item that reads `uv python pin: …`, holding half the passage — the answer
+    survived the shattering in one piece, and the carry keeps it.
+    """
+    payload = json.loads((CORPUS / "eval" / "carry.json").read_text(encoding="utf-8"))
+    mapped = payload["anchors"]
+    for source in (
+        "docs/getting-started/features.md#the-pip-interface/0",
+        "docs/getting-started/features.md#tools/0",
+        "docs/getting-started/features.md#projects/0",
+    ):
+        assert source not in mapped, f"{source} is carried again; no twin chunk holds it"
+    survivor = mapped["docs/getting-started/features.md#python-versions/0"]
+    assert "uv-python-pin" in survivor["twin"]
+    assert survivor["whole"] > payload["min_whole"]
+
+
+def test_the_case_that_lost_an_anchor_kept_the_one_that_answers() -> None:
+    """Dropping is not deleting the case (ADR-0111).
+
+    `u-0017` graded two passages: the section that *documents* `uv venv` at 3, and
+    the feature list that *mentions* it at 1 (ADR-0062's rule). The mention could not
+    be carried; the documentation could, and it is what the case is really about.
+    """
+    case = next(
+        item for item in load_cases(CORPUS / "eval" / "dev.jsonl") if item.case_id == "u-0017"
+    )
+    assert [(item.anchor, item.grade) for item in case.relevant] == [
+        ("knowledge/evidence/environments-html-8c414191.md#creating-a-virtual-environment/0", 3)
+    ]
+
+
 @pytest.fixture(scope="module")
 def receipt() -> dict[str, object]:
     payload = (CORPUS / "eval" / "carry.json").read_text(encoding="utf-8")
