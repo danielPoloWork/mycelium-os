@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.1 — freeze the five stable contracts and build the
   compatibility suite. The first item of Milestone 6.
-- **PR:** `feat/freeze-five-contracts`, following #144 (the v0.5.0 cut, merged as `a7676a5`).
+- **PR:** #146 (`feat/freeze-five-contracts`). Follows #144, the v0.5.0 cut, merged as `a7676a5`.
 - **Milestone 6:** opened. 6.1 delivered; 6.2–6.12 open.
 - **Decision it records:** [ADR-0114](../../../adr/0114-freeze-the-five-contracts-as-goldens-and-publish-the-promise-before-the-tag-that-binds-it.md).
 
