@@ -12,6 +12,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The docs site** (roadmap 6.2, ADR-0115): a built, `--strict`-checked mkdocs-material
+  site under `docs-site/` — a tutorial (install to a cited MCP answer inside spec NFR-4's
+  ten-minute budget), four task-oriented how-to guides, the plugin-author guide, and a
+  generated API reference over `mycelium.sdk` from its own docstrings. Canonical content
+  (the spec, the ADRs, the pattern catalogue, `docs/compatibility.md`) is linked to, not
+  duplicated. Build it locally with `uv run mkdocs serve`.
+- **The plugin cookiecutter** (`tools/cookiecutter-mycelium-plugin`, roadmap 6.2): generates
+  a complete, installable `Connector`, `Parser` or `Module` plugin — entry point wired to
+  the right group, a minimal-but-correct implementation, a conformance test, a rendered
+  Apache-2.0 `LICENSE` — after checking the plugin id against spec 05 §4.4's naming rule.
+  Every kind is checked by rendering it and running this repository's own `ruff`,
+  `ruff format --check`, `mypy --strict` and pytest against the output
+  (`tests/test_plugin_cookiecutter.py`). `Synthesizer` is deliberately not offered: there
+  is no entry-point resolution path to a third-party synthesizer today, stated in the
+  plugin-author guide rather than left for a reader to discover the hard way.
 - **The compatibility suite for the five stable contracts** (roadmap 6.1, ADR-0114).
   `tests/test_contracts.py` holds the identity rules, the KIR schema, the snapshot manifest
   schema, the MCP tool contracts and the plugin protocols to committed goldens of their

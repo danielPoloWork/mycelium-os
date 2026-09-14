@@ -69,9 +69,37 @@ Two rules make this safe rather than decorative:
 Which pages are tracked, why the rest are not, and the step-by-step procedure:
 [`docs/i18n/README.md`](../i18n/README.md).
 
-## API documentation
+## API documentation and the docs site
 
-Public symbols are documented with `mkdocs-material (or Sphinx for API-heavy libs)`-compatible comments. The API-docs build
-must be warning-free (quality bar, `AGENTS.md` §10). Narrative documentation lives in
-Markdown under `docs/`; the split between generated API docs and hand-written narrative is
-recorded in an ADR if non-obvious.
+Public symbols are documented with `mkdocs-material`-compatible (Google-style)
+docstrings. `mkdocstrings` renders `mycelium.sdk`'s docstrings into
+[`docs-site/reference/sdk.md`](../../docs-site/reference/sdk.md) — the only generated
+page — so a new public class or function there needs a docstring, not a second hand-
+written entry anywhere. The rest of `docs-site/` (the tutorial, the how-to guides, the
+plugin-author guide) is hand-written and updated the same way any other doc is: in the
+same PR as the change it describes.
+
+Preview the site locally:
+
+```bash
+uv run mkdocs serve
+```
+
+Build it the way CI does, before it ever gets there:
+
+```bash
+uv run mkdocs build --strict
+```
+
+`--strict` turns a broken internal link or an unresolved `mkdocstrings` reference into a
+build failure rather than a silent gap — the quality bar's "API docs build without
+warnings" row (`AGENTS.md` §10). `tools/verify.py` runs this at every mode, including
+`docs` (roadmap 6.2, ADR-0115).
+
+**Canonical content is linked to, not duplicated.** `docs-site/project.md` points at the
+specification, the ADRs, the pattern catalogue and `docs/compatibility.md` on GitHub
+rather than embedding them — the reasoning that keeps `docs/` and `docs-site/` from
+drifting apart is in ADR-0115, and it is the same reasoning that excludes
+`docs/changelog` and `docs/releases` from this repository's own corpus (ADR-0072), read
+in the opposite direction: the docs site's own pages are *not* a restatement of
+anything, which is why they are written rather than linked.

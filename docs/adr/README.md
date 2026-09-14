@@ -146,3 +146,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0112](0112-date-the-baseline-to-a-release-because-the-drift-is-the-incumbents.md) | Date the baseline to a release, because the drift it records is the incumbent's | Accepted |
 | [0113](0113-close-a-milestone-on-its-gates-and-carry-an-unmet-one-by-name.md) | Close a milestone on its gates, and carry an unmet one by name | Accepted |
 | [0114](0114-freeze-the-five-contracts-as-goldens-and-publish-the-promise-before-the-tag-that-binds-it.md) | Freeze the five contracts as goldens, and publish the promise before the tag that binds it | Accepted |
+| [0115](0115-render-the-plugin-cookiecutter-to-check-it-and-link-out-instead-of-duplicating.md) | Render the plugin cookiecutter to check it, and link the docs site out to canonical content instead of duplicating it | Accepted |

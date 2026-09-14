@@ -51,7 +51,7 @@ The rungs, and what each adds:
 
 | mode | adds |
 |---|---|
-| `docs` | the congruence lint |
+| `docs` | the congruence lint, the docs-site build |
 | `code` | format, lint, types, the suite, the two ingestion reproductions |
 | `retrieval` | the frozen-set rule, the corpora built and gated, G2, the two ablations |
 | `full` | the benchmarks, alone rather than beside four hundred other tests |
@@ -232,6 +232,13 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
     python = sys.executable
     steps: list[tuple[str, list[str]]] = [
         ("congruence", [python, "tools/consistency_lint.py"]),
+        # The docs site (roadmap 6.2, ADR-0115), at the cheapest tier so every mode
+        # runs it: `mkdocstrings` renders `mycelium.sdk`'s own docstrings, so a code
+        # change that breaks one is exactly the kind of thing `code` mode should
+        # catch too, not only a change under `docs-site/`. `--strict` fails the
+        # build on a broken link or an unresolved reference rather than shipping
+        # quietly (AGENTS.md §10's "API docs build without warnings" row).
+        ("docs site", [python, "-m", "mkdocs", "build", "--strict"]),
     ]
     if mode == "docs":
         return steps

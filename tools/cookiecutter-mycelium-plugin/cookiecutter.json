@@ -1,0 +1,14 @@
+{
+  "plugin_kind": ["parser", "connector", "module"],
+  "project_name": "My Mycelium Plugin",
+  "plugin_id": "my-plugin",
+  "description": "One line, operator-facing — what it does, never how (D-026).",
+  "author_name": "Your Name",
+  "author_email": "you@example.com",
+  "version": "0.1.0",
+  "python_requires": ">=3.12",
+  "mycelium_api_min": "0",
+  "mycelium_api_max": "1",
+  "project_slug": "mycelium-{{ cookiecutter.plugin_id }}",
+  "package_name": "mycelium_{{ cookiecutter.plugin_id.replace('-', '_') }}"
+}
