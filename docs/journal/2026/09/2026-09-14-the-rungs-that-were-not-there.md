@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.6, the contribution ladder — good-first-issues, CODEOWNERS,
   release automation, signed artifacts + SBOM.
-- **PR:** `feat/contribution-ladder`. Follows #148 (6.11, the publish pipeline).
+- **PR:** #152 (`feat/contribution-ladder`). Follows #148 (6.11, the publish pipeline).
 - **Reserved issues filed:** #149, #150, #151 — the first three rungs of the ladder, all
   unassigned and held for a first-time contributor.
 - **Milestone 6:** 6.1, 6.2, 6.11 and now 6.6 delivered. Open: 6.3, 6.4, 6.5, 6.7–6.10,
