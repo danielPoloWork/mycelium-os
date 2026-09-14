@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/Status-v0.4.0-blue)
+![Status](https://img.shields.io/badge/Status-v0.5.0-blue)
 [![CI](https://github.com/danielPoloWork/mycelium-os/actions/workflows/ci.yml/badge.svg)](https://github.com/danielPoloWork/mycelium-os/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/danielPoloWork/mycelium-os?include_prereleases)](https://github.com/danielPoloWork/mycelium-os/releases)
 [![License](https://img.shields.io/github/license/danielPoloWork/mycelium-os)](LICENSE)
@@ -822,15 +822,25 @@ setup.
 
 ## Status
 
-Pre-1.0 and milestone-driven. **Milestone 4 is complete**: the compiler now ingests the
-documents you were given as well as the ones you wrote — PDF, DOCX, HTML and everything
-pandoc reads — keeping the original bytes in custody, accounting for every element as
-represented, opaque, dropped by policy or failed, and projecting a Markdown document it then
-compiles like any other. Hostile sources quarantine instead of stopping a build, secrets are
-found at ingestion, and a synthesis lane authors candidate documents that cite the evidence
-layer or are not written at all. The evaluation spans three corpora, two of them
-documentation this project did not write, with a frozen dev/release split gating CI. The five
-stable contracts freeze at 1.0.
+Pre-1.0 and milestone-driven. **Milestone 5 is complete**: what the compiler produces now has
+*structure*. A symbol table says where a thing is defined and which sections document it, built
+from each language's own tree-sitter tags query and from the definition syntax documentation
+actually uses. Wikilinks and cross-references compile to a typed edge vocabulary that
+`mycelium_neighbors` traverses in both directions. The first contrib module, `chats`, ships on
+the public extension points and passes all six of its acceptance gates. And a citation whose
+passage has moved now says so: every `mycelium://` URI carries the lines it was minted against,
+so a refactored heading returns the passage *with* a stale marker instead of silently returning a
+different one.
+
+Milestone 4's ingestion lane is unchanged underneath it, and the evaluation still spans three
+corpora, two of them documentation this project did not write, with a frozen dev/release split
+gating CI. The five stable contracts freeze at 1.0.
+
+Three candidate retrieval legs were built and ablated this milestone, and **two of them ship
+switched off** — graph expansion because it lost, hybrid because it cannot clear gate G2's bar on
+sets this small. The symbol leg lost three times, earned it at the fourth and ships on. Each of
+those is a measurement in an ADR rather than a preference, which is the part of this project
+worth copying.
 
 For two milestones the honest part of that paragraph was what was missing from it: on the
 second corpus a plain `grep` loop ranked better than we did. **It no longer does.** Measured
@@ -839,8 +849,8 @@ on the release sets — the ones nobody develops against — the product now lea
 | release set | Mycelium OS | the `grep` loop |
 |---|---:|---:|
 | `uv`'s documentation (the corpus this was filed about) | **0.614** | 0.532 |
-| the same documents, ingested from DOCX/HTML/PDF | **0.619** | 0.575 |
-| this repository | **0.523** | 0.284 |
+| the same documents, ingested from DOCX/HTML/PDF | **0.614** | 0.575 |
+| this repository | **0.521** | 0.263 |
 
 The second row has narrowed twice, and both times the reason was worth more than the number.
 At roadmap 5.22 it went from +0.151 to +0.045: a projector defect was flattening whole sections
@@ -909,7 +919,7 @@ anchor space — instead of by diffing two runs and hoping nothing else changed.
 | 2 | v0.2.0 — Walking skeleton (spec Phase 0) | ✅ done |
 | 3 | v0.3.0 — The compiler (spec Phase 1) | ✅ done |
 | 4 | v0.4.0 — Ingestion (spec Phase 2) | ✅ done |
-| 5 | v0.5.0 — Structure (spec Phase 3) | 🚧 in progress |
+| 5 | v0.5.0 — Structure (spec Phase 3) | ✅ done |
 | 6 | v0.6.0 — Stable (spec Phase 4) | ⏳ planned |
 | 7 | v1.0.0 — Team & platform (spec Phase 5; separate RFC cycle) | ⏳ planned |
 
