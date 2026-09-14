@@ -47,6 +47,15 @@ against 0.387 on its source, from a page boundary that fell mid-section and left
 the sentence answering the query in the chunk before (ADR-0102). It is a reading
 aid and not a verdict — the largest *gain* in this table is also a split passage.
 
+**The share carries the grade of the anchor it is on (`0.509@1`), and it has to.**
+The mark is the *minimum* across a case's anchors, so on a case whose anchors are
+graded differently it names the worst split and not necessarily the one that moved
+the score. `u-1019` is the worked example and the reason this column now prints a
+grade: its 0.509 is the lowest share of any scored case and sits on a grade-1
+anchor that ranks **first on both corpora** — it cost nothing — while the whole of
+its −0.314 is the grade-3 anchor at 0.836 falling from rank 2 to rank 10. Read the
+grade before concluding anything from the share (roadmap 5.39, ADR-0109).
+
 **And a case is marked when its twin chunk answers somebody else's question too.**
 `shared` is how many distinct judged units landed on the chunk this case is judged
 on (roadmap 5.33). A headingless PDF is one page-sized block where the Markdown
@@ -194,10 +203,21 @@ def _report_per_case(
         key=lambda item: (-abs(item[2] - item[1]), item[0]),
     )
     split = split_passages()
+    # The share *and the grade of the anchor it is on*, because the two together
+    # are the reading and either alone is not. A split on a grade-1 anchor that
+    # ranks first on both corpora moves nothing — `u-1019` is the worked example,
+    # and its 0.509 is the lowest share in the table while the anchor that
+    # actually cost it 0.314 is the grade-3 one at 0.836 (roadmap 5.39,
+    # ADR-0109). Still the minimum, so the worst split is the one shown; the
+    # grade is what tells a reader whether to keep looking.
     lowest = {
         case.case_id: min(
-            (split[relevant.anchor] for relevant in case.relevant if relevant.anchor in split),
-            default=1.0,
+            (
+                (split[relevant.anchor], relevant.grade)
+                for relevant in case.relevant
+                if relevant.anchor in split
+            ),
+            default=(1.0, 0),
         )
         for case in markdown
     }
@@ -211,23 +231,27 @@ def _report_per_case(
     }
     print("\nper case, widest gap first (nDCG@10):")
     print(
-        f"  {'case':<9} {'format':<6} {'md':>6} {'ing':>6} {'delta':>7}  {'whole':>6} {'shared':>6}"
+        f"  {'case':<9} {'format':<6} {'md':>6} {'ing':>6} {'delta':>7}  {'whole':>9} {'shared':>6}"
     )
     for case_id, before, after in rows:
         fmt = attribution.get(case_id) or "mixed"
-        share = lowest.get(case_id, 1.0)
-        mark = f"  {share:6.3f}" if share < 1.0 else f"  {'':>6}"
+        share, grade = lowest.get(case_id, (1.0, 0))
+        mark = f"  {share:6.3f}@{grade}" if share < 1.0 else f"  {'':>9}"
         units = sharing.get(case_id, 0)
         with_others = f" {units:>6}" if units > 1 else f" {'':>6}"
         print(
             f"  {case_id:<9} {fmt:<6} {before:6.3f} {after:6.3f} "
             f"{after - before:+7.3f}{mark}{with_others}"
         )
-    marked = [case_id for case_id, *_ in rows if lowest.get(case_id, 1.0) < 1.0]
+    marked = [case_id for case_id, *_ in rows if lowest.get(case_id, (1.0, 0))[0] < 1.0]
     if marked:
         print(
             f"  `whole` < 1.0 on {len(marked)} case(s): part of what they are judged on is in a "
             "neighbouring twin chunk that nothing credits"
+        )
+        print(
+            "  `@n` is the grade of the anchor the share is on, and it is half the reading: a "
+            "split on a low-graded anchor that ranks anyway costs nothing (roadmap 5.39)"
         )
     collapsed = [case_id for case_id, *_ in rows if sharing.get(case_id, 0) > 1]
     if collapsed:

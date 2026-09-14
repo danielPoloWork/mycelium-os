@@ -12,6 +12,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The projection-cost table's `whole` mark now names the grade of the anchor it is on**
+  (roadmap 5.39,
+  [ADR-0109](docs/adr/0109-print-the-grade-beside-the-share-because-a-split-anchor-is-only-half-the-reading.md)).
+  The mark is the minimum share across a case's judged anchors, so where their grades differ it was
+  naming the worst split rather than the one that moved the score. `u-1019` is the worked example
+  and the reason: its 0.509 is the lowest share of any scored case and sits on a grade-**1** anchor
+  that ranks **first on both corpora** and scores 1.0000 alone on each — it cost nothing, while the
+  whole of that case's −0.314 is its grade-3 anchor at an unremarkable 0.836 falling from rank 2 to
+  rank 10. The column prints `0.509@1` and `0.895@3` now, which changes what the table says at a
+  glance: the two largest negatives are no longer *the two lowest shares*, and ADR-0102's clause
+  saying they were is narrowed in place. Reporting only — the numbers are identical, and no corpus,
+  judged set, baseline, verdict or golden moves.
+
 - **A judged case can no longer name one anchor twice, on any path** (roadmap 5.37,
   [ADR-0108](docs/adr/0108-put-the-repeated-anchor-rule-on-the-record-not-on-the-corpus-lint.md)). The harness scores a case as `{anchor: grade}`, so a repeated
   anchor is one judged unit at whichever grade was written last — not two. Roadmap 5.33 caught
