@@ -11,10 +11,54 @@ scale as more contributors join.
   rules, quality bar). It governs human and AI contributors alike.
 - Check [`ROADMAP.md`](ROADMAP.md) for the current milestone and open items, and
   [`docs/bugs/`](docs/bugs/) for known issues, before opening new work.
-- For anything non-trivial, open an issue first to agree on scope before writing code —
-  this project accepts external contributions only through the deferred-decision triggers
-  and RFC process described in the spec (`docs/specs/01_spec_mycelium.md`); wholesale
-  unsolicited features are unlikely to be merged pre-1.0.
+- For anything non-trivial, open an issue first to agree on scope before writing code.
+- **What is open and what is not is written down** — see *The ladder* below. Pre-1.0 the
+  core is planned through `ROADMAP.md` and an unsolicited feature inside it is unlikely to
+  be merged; bug reports, documentation fixes, reserved issues and **plugins** are the four
+  places outside work is wanted, and the last of those needs no core change at all.
+
+## The ladder
+
+Five rungs, lowest first. Each is a real way in, and the list is deliberately specific
+because "contributions welcome" is not information (roadmap 6.6, ADR-0117).
+
+**1. Use it and say what broke.** The most valuable thing anyone outside this repository
+can do right now. Open a
+[bug report](https://github.com/danielPoloWork/mycelium-os/issues/new?template=bug_report.yml)
+with a minimal
+reproduction; a maintainer reproduces and root-causes it before a `docs/bugs/` record
+exists, so the reproduction is the contribution. No code required, and nothing here has
+been installed by a stranger yet — which means the first person to try it will find
+something.
+
+**2. Fix the documentation you were reading when it was wrong.** The tutorial, the how-to
+guides and the plugin-author guide under `docs-site/` were written by the people who built
+the thing, which is the worst possible position from which to judge whether they work. A PR
+that corrects a step that did not run is merged on sight. `docs`-only changes run a
+narrower gate (`python tools/verify.py` derives it), so the loop is fast.
+
+**3. Take an issue labelled [`good first issue`](https://github.com/danielPoloWork/mycelium-os/labels/good%20first%20issue).**
+These are **reserved**: `AGENTS.md` §6.1 forbids the agent pipeline from taking one, so it
+is still there when you arrive. That rule exists because this repository closed 43 roadmap
+items in five days during Milestone 5 — without the reservation the label would be an
+invitation withdrawn before anyone could accept it. Say on the issue that you are taking it;
+nobody else will.
+
+**4. Write a plugin.** The contribution that needs no permission and no core change, and
+the one the architecture exists for. A `Connector`, a `Parser`, a `Synthesizer` or a whole
+`Module` is its own distribution, resolved through an entry point, held to the plugin API
+generation it declares. Start from the cookiecutter and the guide in
+[`docs-site/plugin-author-guide.md`](docs-site/plugin-author-guide.md); the contracts it
+builds on are frozen and the terms are in [`docs/compatibility.md`](docs/compatibility.md).
+A plugin that proves useful can be adopted into `contrib/` (spec 05 §4.3).
+
+**5. Change the core.** Open an issue first. Substantial features become a `ROADMAP.md`
+item and usually an ADR before any code, and a change to one of the **five stable
+contracts** — identity, KIR, snapshot manifest, MCP tools, plugin protocols — needs an RFC
+under `docs/rfc/` (spec 06 §4). This rung is narrow on purpose and the ones below it are not.
+
+Whichever rung you are on: the quality bar in `AGENTS.md` §10 applies to the change, not to
+the contributor. A first PR that misses a gate gets told which one.
 
 ## Developer Certificate of Origin (DCO)
 

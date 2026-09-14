@@ -47,12 +47,25 @@ WORKFLOW = Path(__file__).parent.parent / ".github" / "workflows" / "ci.yml"
 _MODE_EQUALS = re.compile(r"outputs\.mode\s*==\s*'([a-z]+)'")
 _MODE_NOT_EQUALS = re.compile(r"outputs\.mode\s*!=\s*'([a-z]+)'")
 
-EXCLUDED_TOOLS = frozenset({"tools/verify.py"})
-"""`verify.py` is the thing being compared, not a gate it runs.
+EXCLUDED_TOOLS = frozenset({"tools/verify.py", "tools/build_sbom.py"})
+"""Tools in the workflow that are deliberately not gates on a change.
 
-CI's `bootstrap` job invokes it to *derive the mode* — the one call that cannot
-appear in its own plan without recursion. Every other tool in the workflow is a
-gate and must appear."""
+`verify.py` is the thing being compared, not a gate it runs. CI's `bootstrap` job
+invokes it to *derive the mode* — the one call that cannot appear in its own plan
+without recursion.
+
+`build_sbom.py` **produces a release artifact** rather than judging a diff, and the
+exception is argued rather than inherited (roadmap 6.6, ADR-0117). Two reasons, and
+the second is the one that decides it: the only change that can make the SBOM wrong
+is a change to `[project.dependencies]`, which `check_distribution.py` already
+catches by installing the wheel; and the generator lives in a dependency group kept
+out of `dev` on a measurement — 18 packages no matrix cell should carry for a tool
+that runs once per release. A contributor's local gate must not require a group the
+project deliberately does not install. CI runs it on every push, which is what keeps
+it exercised; roadmap 4.40's finding was that a CI-only tool goes unnoticed, and a
+tool named here with its reason is not unnoticed.
+
+Every other tool in the workflow is a gate and must appear in the local plan."""
 
 
 @pytest.fixture(scope="module")

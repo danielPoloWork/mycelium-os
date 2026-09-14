@@ -42,6 +42,20 @@ def publish() -> dict[str, Any]:
     return loaded
 
 
+@pytest.fixture(scope="module")
+def release() -> dict[str, Any]:
+    loaded = yaml.safe_load((WORKFLOWS / "release.yml").read_text(encoding="utf-8"))
+    assert isinstance(loaded, dict)
+    return loaded
+
+
+@pytest.fixture(scope="module")
+def labels() -> list[dict[str, Any]]:
+    loaded = yaml.safe_load((ROOT / ".github" / "labels.yml").read_text(encoding="utf-8"))
+    assert isinstance(loaded, list)
+    return loaded
+
+
 def triggers(workflow: dict[str, Any]) -> set[str]:
     """The events a workflow fires on.
 
@@ -208,3 +222,155 @@ def test_the_publish_job_checks_the_distribution_before_uploading(publish: dict[
     assert "tools/check_distribution.py" in commands
     names = [str(step.get("name", "")) for step in steps]
     assert names.index("Check the distribution is what it says it is") < names.index("Publish")
+
+
+# ---------------------------------------------------------------------------
+# What a consumer can verify about a release (roadmap 6.6, ADR-0117)
+# ---------------------------------------------------------------------------
+
+
+def release_steps(release: dict[str, Any]) -> list[dict[str, Any]]:
+    steps = release["jobs"]["draft-release"]["steps"]
+    assert isinstance(steps, list)
+    return steps
+
+
+def test_the_release_attests_what_it_built(release: dict[str, Any]) -> None:
+    """Spec 06 §4's "signed artifacts", made structural.
+
+    Two attestations, because they answer different questions: provenance says these
+    bytes came from this workflow at this commit, and the SBOM attestation binds the
+    dependency list to the wheel's digest so a friendlier SBOM cannot be swapped in.
+    """
+    uses = [str(step.get("uses", "")) for step in release_steps(release)]
+    assert any(action.startswith("actions/attest-build-provenance@") for action in uses)
+    assert any(action.startswith("actions/attest-sbom@") for action in uses)
+
+
+def test_the_release_can_sign_and_still_holds_no_key(release: dict[str, Any]) -> None:
+    """Sigstore's keyless flow: an OIDC identity minted per run, nothing stored.
+
+    `id-token` and `attestations` are what signing needs; a signing key in repository
+    secrets would be a thing to leak, rotate and misplace, and threat boundary B2
+    would have to cover it (the same property publishing has, ADR-0116).
+    """
+    assert release["permissions"] == {
+        "contents": "write",
+        "id-token": "write",
+        "attestations": "write",
+    }
+    text = (WORKFLOWS / "release.yml").read_text(encoding="utf-8")
+    for forbidden in ("private-key", "GPG_", "COSIGN_", "SIGNING_KEY"):
+        assert forbidden not in text, f"release.yml mentions {forbidden}"
+
+
+def test_every_release_action_is_pinned_to_a_commit(release: dict[str, Any]) -> None:
+    """Threat boundary B2, applied to the two actions that now hold `attestations:
+    write`: third-party code runs with this job's signing identity, so the version
+    that runs is the version that was reviewed."""
+    for action in [str(step.get("uses", "")) for step in release_steps(release)]:
+        if not action or action.startswith("actions/checkout") or "/" not in action:
+            continue
+        if action.startswith(("actions/setup-", "astral-sh/")):
+            continue  # tag-pinned by the factory's own decision (threat model B2)
+        _, _, reference = action.partition("@")
+        assert len(reference) == 40 and all(c in "0123456789abcdef" for c in reference), (
+            f"{action} is not pinned to a full commit SHA"
+        )
+
+
+def test_the_release_builds_the_sbom_from_the_wheel_it_ships(release: dict[str, Any]) -> None:
+    """The SBOM, the provenance and the upload must describe the same bytes.
+
+    `--wheel` is what makes that true: without it the generator builds its own wheel,
+    and the SBOM would describe a second set of bytes however identical they ought to
+    be. `--extras all` because a consumer who enables an extra is entitled to the
+    same answer as one who does not.
+    """
+    commands = " ".join(str(step.get("run", "")) for step in release_steps(release))
+    assert "tools/build_sbom.py" in commands
+    assert "--wheel" in commands and "--extras all" in commands
+
+
+def test_the_release_attaches_the_sbom_beside_the_archives(release: dict[str, Any]) -> None:
+    """An attestation lives in GitHub's store and needs a CLI to read. Someone deciding
+    whether to install this should be able to read the dependency list without one."""
+    draft = next(
+        step
+        for step in release_steps(release)
+        if str(step.get("uses", "")).startswith("softprops/action-gh-release@")
+    )
+    files = str(draft["with"]["files"])
+    assert "dist/*" in files
+    assert ".cdx.json" in files
+
+
+def test_the_sbom_generator_is_not_a_dependency_of_this_project(
+    pyproject: dict[str, Any],
+) -> None:
+    """The generator runs in an environment of its own and is declared in none of ours.
+
+    This began as a `sbom` dependency group, on the reasoning that 18 marginal packages
+    for a once-per-release tool were worth keeping out of `dev` but fine to declare.
+    Syncing that group **changed what the compiler produces**: `cyclonedx-bom` pulls
+    `chardet`, `bs4.dammit` binds to it whenever it is importable, and five HTML
+    documents in the vendored ingested corpus projected differently —
+    `tools/build_ingested_corpus.py --check` is what caught it.
+
+    So the rule is stronger than "not in `dev`": a tool that is not part of this
+    product must not be resolvable alongside it at all, because what is importable is
+    an input to the compiler whether or not anything imports it on purpose (ADR-0117).
+    """
+    project = pyproject["project"]
+    declared = [
+        *project["dependencies"],
+        *(entry for extra in project["optional-dependencies"].values() for entry in extra),
+        *(entry for group in pyproject["dependency-groups"].values() for entry in group),
+    ]
+    assert not [entry for entry in declared if "cyclonedx" in entry]
+    assert "sbom" not in pyproject["dependency-groups"]
+    # And no workflow installs it. Read from the parsed `run:` steps rather than from
+    # the file's text: both workflows carry a comment saying why the sync is absent,
+    # and a check that cannot tell an instruction from an explanation of its absence
+    # would forbid documenting the decision.
+    for name in ("ci.yml", "release.yml"):
+        workflow = yaml.safe_load((WORKFLOWS / name).read_text(encoding="utf-8"))
+        for job, definition in workflow["jobs"].items():
+            for step in definition.get("steps", []):
+                assert "--group sbom" not in str(step.get("run", "")), (
+                    f"{name}'s {job!r} job installs the generator into the project"
+                )
+
+
+# ---------------------------------------------------------------------------
+# The contribution ladder's rungs (roadmap 6.6)
+# ---------------------------------------------------------------------------
+
+
+def test_the_ladder_labels_are_declared_where_the_manifest_is(labels: list[dict[str, Any]]) -> None:
+    """Both existed on GitHub as stock labels and neither was declared here, so the
+    manifest that calls itself canonical was not. `tools/check_repo_settings.py` is
+    what compares the two; this pins that they are declared at all."""
+    declared = {str(item["name"]) for item in labels}
+    assert {"good first issue", "help wanted"} <= declared
+    reserved = next(item for item in labels if item["name"] == "good first issue")
+    assert "Reserved" in str(reserved["description"])
+
+
+def test_the_reservation_rule_binds_the_agent_contract() -> None:
+    """The label is a promise, and AGENTS.md is where a promise to a contributor
+    becomes a rule an agent is held to. Without it the invitation is withdrawn before
+    anyone can accept it — 43 items closed in five days at Milestone 5."""
+    contract = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    assert "good first issue" in contract
+    assert "does not take" in contract or "will not take" in contract
+
+
+def test_codeowners_names_the_paths_that_carry_a_contract() -> None:
+    """One maintainer owns everything, so these lines resolve to the same person and
+    are not thereby redundant: CODEOWNERS is where a reviewer finds out which paths
+    carry a compatibility event rather than an implementation detail."""
+    owners = (ROOT / ".github" / "CODEOWNERS").read_text(encoding="utf-8")
+    for path in ("/src/mycelium/sdk/", "/tests/fixtures/contracts/", "/docs/compatibility.md"):
+        assert path in owners, f"CODEOWNERS does not name {path}"
+    assert "/.github/workflows/" in owners

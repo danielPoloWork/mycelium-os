@@ -21,8 +21,16 @@ on:
         required: true
         type: string
 
+# `contents: write` drafts the release. The other two are what make the artifacts
+# verifiable (roadmap 6.6, ADR-0117): `id-token: write` lets the runner ask GitHub for
+# the OIDC token Sigstore signs with, and `attestations: write` lets it store the
+# result. There is still no key and no secret anywhere — the same property publishing
+# has (ADR-0116), for the same reason: a signing key in repository secrets is a thing
+# to leak, rotate and misplace, and threat boundary B2 would have to cover it.
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 # Serialize per-tag, but NEVER cancel an in-flight release — a half-run publish is worse
 # than a queued one.
@@ -71,6 +79,9 @@ jobs:
         run: |
           expected="${RELEASE_TAG#v}"
           echo "tag says: $expected"
+          # Exported because the SBOM step below names the file by version, and deriving
+          # the same string twice in two places is how the two come to disagree.
+          echo "EXPECTED_VERSION=$expected" >> "$GITHUB_ENV"
           ls -1 dist/
           for artifact in dist/*; do
             case "$(basename "$artifact")" in
@@ -82,12 +93,58 @@ jobs:
             esac
           done
 
+      - name: Build the SBOM of the wheel this release ships
+        shell: bash
+        # The generator runs in an environment of its own (`uv tool run`) and is never
+        # installed into this project's, because installing it changed what the compiler
+        # produces: it pulls `chardet`, BeautifulSoup binds to it when importable, and
+        # five HTML projections in the ingested corpus moved (ADR-0117).
+        #
+        # `--wheel` points it at the artifact built above rather than letting it build
+        # its own: the SBOM, the provenance and the upload have to be statements about
+        # the same bytes, and a second build is a second set of bytes however identical
+        # it ought to be. `--extras all` because a consumer who enables an extra is
+        # entitled to the same answer as one who does not; the default install is what
+        # CI builds on every push.
+        run: |
+          uv run python tools/build_sbom.py \
+            --extras all \
+            --wheel "$(ls dist/*.whl)" \
+            --out sbom
+
+      - name: Attest the build provenance of the artifacts
+        # SLSA provenance, signed through Sigstore with a short-lived OIDC identity and
+        # recorded in GitHub's attestation store: it says these exact bytes were built by
+        # this workflow, from this repository, at this commit. A consumer checks it with
+        #
+        #     gh attestation verify <file> --repo danielPoloWork/mycelium-os
+        #
+        # which is the sentence docs/workflow/packaging.md now carries — an attestation
+        # nobody is told how to check is decoration.
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+
+      - name: Attest the SBOM against the wheel
+        # Distinct from the provenance above and worth both: provenance says where the
+        # artifact came from, this says what is inside it, and binds the SBOM to the
+        # wheel's digest so an SBOM cannot be swapped for a friendlier one.
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: dist/*.whl
+          sbom-path: sbom/mycelium_os-${{ env.EXPECTED_VERSION }}.all-extras.cdx.json
+
       - name: Draft the release with its artifacts (a human publishes it)
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
           draft: true
           generate_release_notes: true
-          files: dist/*
+          # The SBOM is attached beside the archives rather than left in the attestation
+          # store alone: a reader deciding whether to install this should be able to read
+          # the dependency list without a CLI and without an account.
+          files: |
+            dist/*
+            sbom/*.cdx.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

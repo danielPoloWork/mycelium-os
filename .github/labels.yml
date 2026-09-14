@@ -31,3 +31,23 @@
 - name: security
   color: "b60205"
   description: "Security fix or advisory"
+
+# The two contribution-ladder labels (roadmap 6.6, ADR-0117). They are not PR type
+# labels — they go on *issues*, and they exist because an invitation nobody can act
+# on is not an invitation.
+#
+# Both existed on GitHub as stock labels and neither was declared here, which is the
+# small version of the finding this item was built on: a manifest that calls itself
+# canonical while the live repository carries labels it never heard of is not
+# canonical. Declared now, with the descriptions this project means rather than the
+# ones GitHub ships.
+- name: good first issue
+  color: "7057ff"
+  # The description is the promise, and AGENTS.md §6.1 is where it binds: an item
+  # carrying this label is **reserved**, and the agent pipeline does not take it.
+  # Without that rule the label is a trap — this repository closed 43 items in five
+  # days at M5, so anything a newcomer took a week to reach would already be merged.
+  description: "Reserved for a first-time contributor — the agent pipeline will not take it"
+- name: help wanted
+  color: "008672"
+  description: "Open for anyone to pick up; the maintainer is not working on it"

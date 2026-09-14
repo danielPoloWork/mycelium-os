@@ -148,3 +148,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0114](0114-freeze-the-five-contracts-as-goldens-and-publish-the-promise-before-the-tag-that-binds-it.md) | Freeze the five contracts as goldens, and publish the promise before the tag that binds it | Accepted |
 | [0115](0115-render-the-plugin-cookiecutter-to-check-it-and-link-out-instead-of-duplicating.md) | Render the plugin cookiecutter to check it, and link the docs site out to canonical content instead of duplicating it | Accepted |
 | [0116](0116-publish-under-a-name-already-decided-and-let-the-artifact-be-a-defined-thing.md) | Publish under a name already decided, and let the artifact be a defined thing | Accepted |
+| [0117](0117-sign-and-inventory-the-artifact-and-reserve-the-rung-a-newcomer-stands-on.md) | Sign and inventory the artifact, and reserve the rung a newcomer stands on | Accepted |

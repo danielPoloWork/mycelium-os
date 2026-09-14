@@ -15,6 +15,25 @@ REPO=mycelium-os
 BRANCH=main
 ```
 
+## 0. Which of these is actually installed?
+
+```bash
+python tools/check_repo_settings.py
+```
+
+Asks GitHub and prints one line per step below, with the command to install the ones that
+are absent. **It reports and never changes anything** — every step here is a repository
+setting under the owner's account, the same boundary `publish.yml` draws around the index
+side.
+
+This tool exists because the document you are reading was, for five milestones, a list of
+things somebody did once with nothing saying which (roadmap 6.6, ADR-0117). When it was
+first run, on 2026-09-14, **three of the six steps had never been installed**: `main` had no
+branch protection and no ruleset, private vulnerability reporting was off while `SECURITY.md`
+pointed reporters at it, and two labels carried colours the manifest did not declare. The
+same failure had already happened once to §2 — `fix`, `refactor` and `security` were missing
+until 2026-09-11, found when `gh pr create --label fix` failed.
+
 ## 1. Merge strategy — squash only, PR title/body as the commit
 
 ```bash
@@ -69,6 +88,12 @@ JSON
 Add the build matrix contexts (e.g. `build / ubuntu-24.04 / …`) to `contexts` once you have
 seen their exact names in the first CI run.
 
+> **Not installed as of 2026-09-14.** `main` accepts a direct push, so AGENTS.md §6.1's
+> *"agents never push directly to `main`"* is a rule an agent keeps rather than one the
+> server enforces — and it has been broken once already, at roadmap 3.7, where a session's
+> work landed on `main` and had to be undone with an authorised force-push. This is the one
+> step here whose absence has already cost something.
+
 ## 4. Discussions, Pages, and the security policy
 
 ```bash
@@ -81,8 +106,27 @@ gh api -X POST repos/$OWNER/$REPO/pages \
   || echo "Pages already configured or needs the web UI once."
 ```
 
-Private vulnerability reporting (the SECURITY.md target) is enabled in the web UI:
-**Settings → Code security → Private vulnerability reporting → Enable**.
+```bash
+# Private vulnerability reporting — the channel SECURITY.md and the issue chooser both
+# send a reporter to. There is an API for it; the web UI equivalent is
+# Settings → Code security → Private vulnerability reporting → Enable.
+gh api -X PUT repos/$OWNER/$REPO/private-vulnerability-reporting
+
+# Free on a public repository, and the control that stops a contributor — or an agent —
+# pushing a credential in the first place.
+gh api -X PATCH repos/$OWNER/$REPO \
+  -F 'security_and_analysis[secret_scanning][status]=enabled' \
+  -F 'security_and_analysis[secret_scanning_push_protection][status]=enabled'
+
+# Branches accumulate otherwise; every PR here is squash-merged from a short-lived branch.
+gh api -X PATCH repos/$OWNER/$REPO -F delete_branch_on_merge=true
+```
+
+> **Not installed as of 2026-09-14.** Private vulnerability reporting was **off**, and it is
+> a defect rather than a gap: with it off, an outside reporter following `SECURITY.md`
+> reaches an advisory form they cannot submit, and their remaining option is the public
+> issue tracker — which is exactly what a disclosure policy exists to prevent. Secret
+> scanning and push protection were off too.
 
 ## 5. Roadmap milestones — seed every `MN — name`
 

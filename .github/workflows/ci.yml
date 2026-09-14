@@ -265,6 +265,17 @@ jobs:
       # `tests/test_verify_ladder.py` fails if this line and tools/verify.py's plan
       # disagree — one implementation, two callers (ADR-0059).
       - run: uv run python tools/check_distribution.py
+      # The default install, which is the cheap one; a release builds the same SBOM
+      # over every extra. Here rather than only in `release.yml` so the generator runs
+      # on every push instead of for the first time at a release — the gap roadmap
+      # 6.11 named in its own pipeline (roadmap 6.6, ADR-0117).
+      #
+      # No `uv sync --group sbom`, and that is load-bearing: the generator runs in an
+      # environment of its own because installing it *here* changed what the compiler
+      # produces. It pulls `chardet`, BeautifulSoup binds to it when it is importable,
+      # and five HTML projections moved. It is not a gate on the diff either, which is
+      # why `test_verify_ladder.py`'s exclusion list names it with its reason.
+      - run: uv run python tools/build_sbom.py
 
   # ---------------------------------------------------------------------------
   # Gate G6 — byte-identical rebuild (spec 04 §7, D-008). The determinism tests also

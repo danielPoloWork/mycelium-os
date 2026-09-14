@@ -12,6 +12,31 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Every release is now signed and inventoried** (roadmap 6.6, ADR-0117). `release.yml`
+  attests the build provenance of the wheel and the sdist through Sigstore, builds a
+  CycloneDX 1.6 SBOM of everything the wheel can install, and attests that SBOM against the
+  wheel's digest. There is no signing key: an identity is minted per run, the same property
+  Trusted Publishing gives the upload. A consumer checks a download with
+  `gh attestation verify <file> --repo danielPoloWork/mycelium-os`, and
+  [`docs/workflow/packaging.md`](docs/workflow/packaging.md) carries the command.
+- **`tools/build_sbom.py`** builds that SBOM from the wheel installed into an *empty*
+  environment, and refuses to emit one that describes anything else — a development tool in
+  the output, or a root component that cannot name its own release, fails the run. The
+  generator itself runs in an environment of its own and is declared in none of this
+  project's dependencies: installing it changed what the compiler produces, because it pulls
+  `chardet` and BeautifulSoup binds to that whenever it is importable.
+- **`tools/check_repo_settings.py`** reports which of `docs/workflow/github-setup.md`'s
+  one-time steps are actually installed on GitHub. It reports and never changes anything.
+  Three had never been run: `main` has no branch protection, private vulnerability reporting
+  is off while `SECURITY.md` points reporters at it, and two labels carry colours the
+  manifest does not declare.
+- **A contribution ladder with rungs that are real** (ADR-0117). `CONTRIBUTING.md` names five
+  ways in, lowest first, and says which are open pre-1.0 — writing a plugin needs no core
+  change and no permission. An issue labelled `good first issue` is **reserved**: AGENTS.md
+  §6.1 forbids the agent pipeline from taking one, which is what makes the label true in a
+  repository that closed 43 items in five days. `.github/labels.yml` declares both ladder
+  labels, and `CODEOWNERS` now names the paths that carry a frozen contract.
+
 - **A publish pipeline, and the checks that make an upload safe to make** (roadmap 6.11,
   ADR-0116). `publish.yml` uploads a tagged release to PyPI or TestPyPI over **Trusted
   Publishing** — an OIDC token minted per run, so no API token exists in repository secrets.
