@@ -421,22 +421,33 @@ def test_nothing_is_required_when_only_pdfs_are_pending() -> None:
 
 
 # ---------------------------------------------------------------------------
-# The premise of the emphasis refusal (roadmap 5.36, ADR-0107)
+# What the two lanes still read differently (roadmap 5.36/5.40, ADR-0107/0110)
 # ---------------------------------------------------------------------------
 
-# Markup that the twin's reader consumes as *formatting* and the authored
-# profile leaves as literal characters. Each was checked end to end — source
-# Markdown through `gfm` to HTML, HTML through docling to KIR — against the same
-# text parsed by the profile, and each came back different (ADR-0107).
+# Markup the twin's reader consumes as *formatting* while the authored profile
+# does not, leaving the two corpora describing one document differently with
+# neither lane reporting damage.
 #
-# The strikethrough is GFM's; the eleven tags are raw HTML, which the profile
-# does not interpret at all (D-017) and pandoc passes through to a real element
-# docling then reads as formatting and drops.
+# ADR-0107 measured twelve such constructs. Roadmap 5.40 closed ten of them from
+# the authored side — raw HTML markup is now dropped from indexed prose rather
+# than indexed as it (ADR-0110) — so `<b> <strong> <i> <em> <u> <s> <del> <ins>
+# <mark>` and their attributes agree. Two are left, for reasons that are not the
+# same:
+#
+# `~~x~~`  GFM strikethrough, which Profile v1 does not include (spec 03 §3.1)
+#          and pandoc's `gfm` reader does, so the twin drops the tildes and the
+#          profile keeps them. Deliberate: ADR-0107 declined to widen a frozen
+#          contract for a construct with zero occurrences.
+# `<sub>`  Stripping gives `H2O`, one FTS token and what a browser renders; the
+# `<sup>`  twin's renderer inserts spaces and gives `H 2 O`, which is three. The
+#          markup agrees and the tokenisation does not, which is a smaller
+#          disagreement than 5.40 found and a different one (ADR-0110).
+#
+# Both have zero occurrences, and that is the premise both decisions rest on, so
+# it is asserted rather than remembered.
 DIVERGENT_MARKUP = {
     "GFM strikethrough": re.compile(r"~~(?!\s)[^~\n]+(?<!\s)~~"),
-    "inline HTML emphasis": re.compile(
-        r"<(?:b|strong|i|em|u|s|del|ins|mark|sub|sup)\b[^>]*>", re.IGNORECASE
-    ),
+    "sub/sup tokenisation": re.compile(r"<(?:sub|sup)\b[^>]*>", re.IGNORECASE),
 }
 
 _FENCE = re.compile(r"^(```|~~~).*?^\1", re.MULTILINE | re.DOTALL)
@@ -448,17 +459,18 @@ def prose_of(text: str) -> str:
 
     Code is excluded because it does not diverge: a span reaches the twin as a
     `<code>` element whose text docling returns verbatim, so `` `<b>` `` says the
-    same thing on both sides. Only markup the *prose* carries can disagree.
+    same thing on both sides — and since 5.40 the authored profile leaves a quoted
+    tag alone for the same reason (ADR-0110). Only markup the *prose* carries can
+    disagree.
     """
     return _CODE_SPAN.sub("", _FENCE.sub(lambda m: "\n" * m.group(0).count("\n"), text))
 
 
-# The sites that already diverge, each named and owned. `docs/index.md` wraps its
-# hero caption in a raw HTML block, which the profile keeps as literal text and
-# docling resolves into prose — measured at 5.36, and filed as roadmap 5.40 because
-# closing it moves chunk text. Nothing else in either corpus diverges, and the
-# assertion below is what keeps that true.
-KNOWN_DIVERGENT = {("uv-docs", "docs/index.md")}
+# Empty, and that is the claim: after roadmap 5.40 no document in either corpus
+# carries a construct whose two lanes disagree. `docs/index.md` used to be the one
+# entry here — its hero caption is a raw HTML block the profile kept verbatim and
+# docling resolved into prose — and the agreement test below is what replaced it.
+KNOWN_DIVERGENT: set[tuple[str, str]] = set()
 
 
 CORPORA_BY_NAME = {"uv-docs": TWIN, "uv-docs-ingested": CORPUS}
@@ -466,13 +478,12 @@ CORPORA_BY_NAME = {"uv-docs": TWIN, "uv-docs-ingested": CORPUS}
 
 @pytest.mark.parametrize("name", sorted(CORPORA_BY_NAME))
 def test_only_the_known_documents_carry_markup_the_lanes_read_differently(name: str) -> None:
-    """The premise of the refusal at roadmap 5.36 (ADR-0107), pinned.
+    """The premise two decisions rest on (ADR-0107's refusal, ADR-0110's limit).
 
-    KIR models no emphasis, deliberately, and ADR-0107 refused to change that —
-    on the evidence that the disagreement is *not* a vocabulary problem and that
-    its whole extent is one unjudged document. Both halves of that argument decay
-    silently if a re-vendored corpus brings more, so the extent is asserted rather
-    than remembered: a new site means re-reading the decision, not editing this set.
+    Both arguments are about *extent*: strikethrough was left unimplemented because
+    no corpus contains it, and `<sub>`/`<sup>` are an accepted tokenisation
+    difference for the same reason. A re-vendored corpus can retire either premise
+    silently, so a new site means re-reading the decision, not editing this set.
     """
     corpus = CORPORA_BY_NAME[name]
     found = {
@@ -486,27 +497,41 @@ def test_only_the_known_documents_carry_markup_the_lanes_read_differently(name: 
         "the set of documents whose markup the authored profile and the ingestion lane "
         "read differently has changed, so the twin and its source now disagree about a "
         "document neither lane thinks it damaged. Re-open roadmap 5.36 rather than "
-        f"editing KNOWN_DIVERGENT: ADR-0107's refusal rests on this extent. Found {found}, "
-        f"expected {expected}"
+        f"editing KNOWN_DIVERGENT: ADR-0107 and ADR-0110 both rest on this extent. "
+        f"Found {found}, expected {expected}"
     )
 
 
-def test_no_known_divergent_document_is_judged_by_any_case() -> None:
-    """Why 5.40 is filed rather than done: the divergence moves no measured number.
+def test_the_lanes_agree_on_the_caption_they_used_to_disagree_about() -> None:
+    """The site ADR-0107 measured, compiled through both lanes and compared (5.40).
 
-    Read from :data:`KNOWN_DIVERGENT` rather than naming the document again, so
-    the two halves of the premise cannot drift apart. The moment a case grades a
-    chunk of one of these, the argument for deferring stops holding — and the
-    honest order is to fix the corpus before judging it, not after.
+    The source wraps its hero caption in `<p align="center">` with an `<i>` inside;
+    the twin's HTML lane hands the same caption to docling. Before 5.40 the first
+    indexed `p`, `align`, `center`, `i`, `a` and `href` as terms of that chunk and
+    the second indexed the sentence. Asserted end to end rather than as a unit rule,
+    because that is the claim the item was filed to make good — and the sentence is
+    named here so a re-vendor that changes the caption fails loudly.
     """
-    judged = {
-        relevant["anchor"].split("#")[0]
-        for name in ("dev", "release")
-        for line in (TWIN / "eval" / f"{name}.jsonl").read_text(encoding="utf-8").splitlines()
-        for relevant in json.loads(line).get("relevant", [])
-    }
-    diverging = {document for corpus, document in KNOWN_DIVERGENT if corpus == "uv-docs"}
-    assert not (judged & diverging), (
-        "a judged case now grades a document whose two lanes disagree, so roadmap 5.40 "
-        "is no longer free to wait: the divergence is inside a measured number"
+    from mycelium.markdown import parse_markdown
+
+    def texts(path: Path) -> list[str]:
+        document = parse_markdown(path.read_text(encoding="utf-8"))
+        return [node.text for node in document.kir.nodes if node.text]
+
+    source = texts(TWIN / "docs" / "index.md")
+    twin = texts(CORPUS / "knowledge" / "evidence" / "index-html-b0ba5cdf.md")
+
+    assert "Installing Trio's dependencies with a warm cache." in source
+    # One character apart, and it is docling's: it spaces the possessive. FTS5's
+    # `unicode61` splits `Trio's` into `trio` and `s` either way, so the two lanes
+    # now reach the index as the same terms — which is the whole claim.
+    assert "Installing Trio 's dependencies with a warm cache." in twin
+
+    markup = re.compile(r"</?(?:p|i|a|img|div)\b[^>]*>")
+    assert not [text for text in source if markup.search(text)], (
+        "raw HTML markup is back in the indexed prose of the document 5.40 was filed "
+        "against; ADR-0110's rule no longer reaches it"
+    )
+    assert not [text for text in source if "github.com/astral-sh/uv/assets" in text], (
+        "the hero images' CDN URLs are terms of a chunk again"
     )

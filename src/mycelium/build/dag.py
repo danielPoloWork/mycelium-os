@@ -72,10 +72,13 @@ __all__ = [
     "encode_parse_artifact",
 ]
 
-PARSE_STAGE_VERSION: Final = 2
+PARSE_STAGE_VERSION: Final = 3
 """Bump when the Markdown → KIR mapping changes output for unchanged input.
 
-2 at roadmap 5.23: KIR nodes carry their inline code spans (ADR-0094)."""
+2 at roadmap 5.23: KIR nodes carry their inline code spans (ADR-0094).
+3 at roadmap 5.40: raw HTML markup is dropped from node text instead of being
+indexed as prose (ADR-0110), so every document holding a tag or a comment
+re-parses on the first build after the upgrade."""
 
 CHUNK_STAGE_VERSION: Final = 2
 """Bump when packing, anchoring, or token counting changes output for unchanged input."""

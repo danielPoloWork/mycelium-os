@@ -62,6 +62,7 @@ running in CI."""
 TUNING_PATHS = (
     "src/mycelium/retrieval.py",
     "src/mycelium/chunking.py",
+    "src/mycelium/markdown/",
     "src/mycelium/config.py",
     "src/mycelium/graph.py",
     "src/mycelium/symbols/",
@@ -84,6 +85,15 @@ holds the ranking today.
 earlier: with `[retrieval] symbol_lookup` on, what the extractor decides a
 document defines is what a query can be answered with, so the package is a
 candidate generator and not only a compiler stage.
+
+`markdown/` joined at roadmap 5.40, and its absence was a hole rather than a
+judgement call. `chunking.py` was here from the start because it decides where a
+chunk *ends*; `markdown/` decides what is *in* one, which is the same question
+asked one stage earlier — every term BM25 counts and every token its length
+normalisation divides by comes from this package. Dropping raw HTML markup from
+indexed prose moved text in eleven documents across two corpora and derived
+`code`, so the gates the change most needed were the ones it would not have run
+(ADR-0110). The list is not about which file holds the ranking today.
 
 `graph.py` joined at roadmap 5.3, when the edges it derives stopped being a
 read-only tool surface and became a candidate generator: with

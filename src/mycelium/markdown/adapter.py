@@ -29,8 +29,12 @@ Shape rules, all consequences of "thin and ordered":
 - ``src.lines`` carries an inclusive, 1-based line span in the *source file*,
   frontmatter included, so citations point where an editor puts the cursor.
 
-Raw HTML is neither executed nor interpreted: the profile disables it, so it
-survives as literal text (D-017 — authored content is data, never instructions).
+Raw HTML is neither executed nor interpreted: the profile disables it, so a tag
+reaches this module inside a text token. Since 5.40 the *markup* is deleted from
+what KIR stores and the words are kept, which is what the rendered page shows and
+what the ingested twin indexes — still without parsing any of it
+(:mod:`mycelium.markdown.markup`, ADR-0110; D-017 — authored content is data,
+never instructions).
 """
 
 from dataclasses import dataclass, field
@@ -39,6 +43,7 @@ from typing import Final
 from markdown_it.tree import SyntaxTreeNode
 
 from mycelium.markdown.frontmatter import Frontmatter, parse_frontmatter
+from mycelium.markdown.markup import Part, strip_markup
 from mycelium.markdown.profile import match_callout, profile_markdown_it
 from mycelium.sdk.identity import digest_text, new_ulid, normalize_text
 from mycelium.sdk.types import KirDocument, KirNode, NodeKind, SrcLocator
@@ -105,23 +110,37 @@ class _Builder:
         return SrcLocator(lines=(start + self.line_offset + 1, end + self.line_offset))
 
 
-def _flatten(node: SyntaxTreeNode) -> str:
-    """Render an inline subtree as the plain text KIR stores.
+def _parts(node: SyntaxTreeNode) -> list[Part]:
+    """Render an inline subtree as the parts KIR's text is assembled from.
 
     Emphasis and inline-code markup is dropped (KIR has no node for it), links and
     wikilinks contribute their display text, and tags keep their ``#``.
+
+    Each part carries whether it is *literal*: inline code, because a corpus
+    explaining HTML quotes it and `spans` records it verbatim (ADR-0094), and a
+    wikilink, embed or tag's own content, because the graph is keyed on the same
+    string and the two must not drift apart. Prose — including an image's alt
+    text, which is a description and not a target — is not literal, and raw-HTML
+    stripping rewrites it (ADR-0110).
     """
-    if node.type in {"text", "code_inline"}:
-        return node.content
+    if node.type == "text":
+        return [(node.content, False)]
+    if node.type == "code_inline":
+        return [(node.content, True)]
     if node.type in {"softbreak", "hardbreak"}:
-        return "\n"
+        return [("\n", False)]
     if node.type == "tag_ref":
-        return f"#{node.content}"
+        return [(f"#{node.content}", True)]
     if node.type in {"wikilink", "embed"}:
-        return node.content
+        return [(node.content, True)]
     if node.type == "image":
-        return str(node.attrs.get("alt", "")) or node.content
-    return "".join(_flatten(child) for child in node.children)
+        return [(str(node.attrs.get("alt", "")) or node.content, False)]
+    return [part for child in node.children for part in _parts(child)]
+
+
+def _flatten(node: SyntaxTreeNode) -> str:
+    """The plain text KIR stores for an inline subtree, markup removed."""
+    return strip_markup(_parts(node))
 
 
 def _inline_children(node: SyntaxTreeNode) -> list[SyntaxTreeNode]:
@@ -151,7 +170,11 @@ def _emit_inlines(
             fields["text"] = _flatten(child)
         elif kind is NodeKind.IMAGE:
             fields["target"] = str(child.attrs.get("src", ""))
-            fields["text"] = str(child.attrs.get("alt", "")) or _flatten(child)
+            # Through `_flatten`, so the alt text on the node and the copy of it
+            # inside the block's own text are the same string — markup removed
+            # from both or from neither (ADR-0110). `_parts` keeps the fallback
+            # to the image's content when there is no alt at all.
+            fields["text"] = _flatten(child)
         elif kind is NodeKind.TAG_REF:
             fields["text"] = child.content
         else:  # wikilink, embed
@@ -165,8 +188,15 @@ def _emit_inlines(
 
 
 def _block_text(node: SyntaxTreeNode) -> str:
-    """Flattened text of a block's own inline content."""
-    return "".join(_flatten(child) for child in node.children if child.type == "inline")
+    """Flattened text of a block's own inline content, raw HTML markup removed.
+
+    The parts of every inline child are collected before stripping, so an element
+    opened and closed across the block is recognised as the pair it is — the
+    block, not the token, is the scope pairing is resolved in (ADR-0110).
+    """
+    return strip_markup(
+        part for child in node.children if child.type == "inline" for part in _parts(child)
+    )
 
 
 def _spans(node: SyntaxTreeNode) -> list[str]:
@@ -229,11 +259,21 @@ def _convert(  # noqa: C901 - one branch per token type reads better than a disp
         return
 
     if kind == "paragraph":
+        text = _block_text(node)
+        references = [
+            child for child in node.children if child.type == "inline" and _inline_children(child)
+        ]
+        if not text.strip() and not references:
+            # Every CommonMark paragraph has content, so a blank one here was
+            # markup and nothing else — the `<p align="center">` wrapper around a
+            # caption, or a comment on its own line. Keeping an empty node would
+            # put blank lines into the chunk its content used to justify (5.40).
+            return
         node_id = builder.add(
             NodeKind.PARAGRAPH,
             parent=_current_parent(parent, headings),
             node=node,
-            text=_block_text(node),
+            text=text,
             spans=_block_spans(node),
         )
         for child in node.children:

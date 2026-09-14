@@ -1,7 +1,7 @@
 {
   "artifact_digests": {
-    "chunks": "sha256:d1b00ebdb76fdd5a2cb1202742c3893dd948b7a720a66e5572c970928689870e",
-    "documents": "sha256:e9d2e8edb50fdbbbb8a1c4354d8e2b92102c910ad16d6739ba83406f5dca135c",
+    "chunks": "sha256:fb8c39e7a0c8d1ab1f8818d73005af0dcd09c66d2f6804a18245d2c0711fb1f6",
+    "documents": "sha256:fc6a5f837c9d0d073a562f25c6455194b16db2677ceb05759ab3b228220fb740",
     "edges": "sha256:8fa9be81da2875f751cbeec17646bd6485a104aa5cffbca61b1cb26a2c006ad7",
     "entities": "sha256:8d775164de12dff80bd40111e148e81ea53f423d2d899fc724b0258aeff9f467",
     "symbols": "sha256:ba330df78022a49312a2f08e95b998f1db1f6abfc6ba86a4e4c61441e15ebefd"
@@ -167,7 +167,7 @@
       "kind": "prose",
       "lines": [
         25,
-        35
+        36
       ],
       "tokens": 71
     },
@@ -199,6 +199,20 @@
         23
       ],
       "tokens": 32
+    },
+    {
+      "anchor": "knowledge/verified/architecture.md#rendered-notes/0",
+      "chunk_digest": "sha256:95fde0bb8e67a5f446f00a9e5e0287f5558b414b450feb4797b2add40268e05f",
+      "heading_path": [
+        "Architecture",
+        "Rendered Notes"
+      ],
+      "kind": "prose",
+      "lines": [
+        37,
+        52
+      ],
+      "tokens": 101
     },
     {
       "anchor": "knowledge/verified/build-keys.md#/0",
@@ -435,7 +449,7 @@
   ],
   "config_digest": "sha256:f4f73569967cb35ee856e561925badb6371dbdee17bc0495aad2e94ff3f9beca",
   "counts": {
-    "chunks": 31,
+    "chunks": 32,
     "documents": 8,
     "edges": 28,
     "entities": 8,
@@ -500,14 +514,14 @@
       "verification_status": "verified"
     },
     {
-      "content_digest": "sha256:058b6c56322ea58e8feb930fb6d2871462cef445f5c795dcbe36b48cbb1c39c6",
+      "content_digest": "sha256:f6674f588fb44f9d97d98fddb6d8b14fbb3d5810124668718a2a92b2bc918fb6",
       "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/verified/architecture.md",
       "stats": {
-        "chunks": 4,
-        "headings": 4,
+        "chunks": 5,
+        "headings": 5,
         "links_out": 3,
-        "tokens": 181
+        "tokens": 282
       },
       "tags": [
         "architecture",

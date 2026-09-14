@@ -28,7 +28,7 @@ import verify  # noqa: E402 - the tool is not an installed package
     [
         (["README.md", "docs/adr/0001-x.md"], "docs"),
         (["docs/assets/brand/logo.png"], "docs"),
-        (["src/mycelium/markdown/adapter.py"], "code"),
+        (["src/mycelium/cli/app.py"], "code"),
         (["tests/test_store.py"], "code"),
         (["tools/measure_ranking.py"], "code"),
         (["pyproject.toml"], "code"),
@@ -40,6 +40,12 @@ import verify  # noqa: E402 - the tool is not an installed package
         # it ran no gate at all — PR #81, where CI reported `eval / gates G1-G6`
         # as *skipping* (roadmap 4.35, ADR-0059).
         (["src/mycelium/eval/harness.py"], "retrieval"),
+        # `markdown/` decides what text a chunk contains, which is the question
+        # `chunking.py` answers one stage later, so it is as much a tuning path as
+        # the packer. It derived `code` until roadmap 5.40, where dropping raw HTML
+        # markup from indexed prose moved text in eleven documents across two
+        # corpora and would have run none of the retrieval gates (ADR-0110).
+        (["src/mycelium/markdown/adapter.py"], "retrieval"),
         (["eval/release.jsonl"], "retrieval"),
         (["eval/baselines/release.json"], "retrieval"),
         # A vendored corpus used to be wider than `retrieval`, because only `full`
