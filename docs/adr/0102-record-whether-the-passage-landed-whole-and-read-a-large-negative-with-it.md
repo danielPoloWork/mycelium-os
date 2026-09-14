@@ -128,6 +128,15 @@ case zero"* from a session's work into a column.
 - **43 of 54 anchors land whole; 11 do not**, and the eleven are now visible. Among scored
   release cases the two largest negatives are the two lowest shares — `u-1004` at 0.895 and
   `u-1019` at 0.509 — which is what makes the number worth recording.
+
+  > **Narrowed at roadmap 5.39 ([ADR-0109](0109-print-the-grade-beside-the-share-because-a-split-anchor-is-only-half-the-reading.md)).**
+  > The correlation holds numerically and is a coincidence on one of its two cases. `u-1019`'s
+  > 0.509 sits on a grade-**1** anchor that ranks *first on both corpora* and scores 1.0000
+  > alone on each: it cost nothing. The whole of that case's −0.314 is its grade-3 anchor, at
+  > an unremarkable 0.836, falling from rank 2 to rank 10. The mark is a minimum across a
+  > case's anchors, so where their grades differ it names the worst split rather than the one
+  > that moved the score — which is why it now prints the grade beside the share (`0.509@1`).
+  > `u-1004`'s 0.895 *is* on its grade-3 anchor, and that half of the sentence stands.
 - **And it is a reading aid, not a predictor, which the data itself insists on.** The largest
   *gain* in the table, `u-1006` at +0.569, is also a split passage (0.911). Split passages
   average −0.030 against +0.017 for whole ones, on six cases and seventeen: suggestive, and
