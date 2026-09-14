@@ -15,6 +15,22 @@ pre-1.0 milestone-driven.
 
 ## Cutting a release (the steps)
 
+0. **Re-bless `ours/release`, as its own PR, before anything below** (ADR-0112). Our own
+   corpus grows with every merge, so the baseline G3 *reports* against goes stale between
+   releases and its delta starts reading as a regression when what it records is the incumbent
+   diluting — measured at 5.42: over one bless interval our score moved −0.0029 and grep's
+   −0.0376. Dating it to a release is what keeps that delta meaningful. Two runs, because
+   `write_baseline` writes only the arm it was given:
+
+   ```bash
+   mycelium eval . --set eval/release.jsonl --bless
+   mycelium eval . --set eval/release.jsonl --retriever grep --bless
+   ```
+
+   Carry the per-slice diff in the PR body, and never let this ride with a change under
+   `TUNING_PATHS` — a bless beside a retrieval change is the one conjunction that can fit the
+   retriever to the set (ADR-0056). To attribute a move rather than merely report it, use
+   `python tools/measure_slice_decay.py <ref> [--retriever grep]`.
 1. **Bump the version constant** (__version__ = 'X.Y.Z') in `__about__.py`; update any
    version-check test.
 2. **Roll the changelog** — move the `[Unreleased]` entries into a new per-version file
@@ -43,6 +59,7 @@ would replay the workflow file *as it existed at that tag* (BUG-0006).
 
 | Action | Who |
 |---|---|
+| Re-bless `ours/release` (its own PR, both arms) | Agent |
 | Bump version, roll changelog, draft notes | Agent |
 | Open / merge the release PR | **Human** |
 | Create & push the annotated tag, then the **draft** release (CI drafts it on tag-push) | Agent |

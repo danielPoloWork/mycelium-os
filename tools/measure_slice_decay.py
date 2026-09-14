@@ -3,8 +3,9 @@
 # Copyright (c) 2026 Daniel Polo
 """Did the retriever get worse, or did the corpus get bigger? (ADR-0044)
 
-    python tools/measure_slice_decay.py <git-ref> [--set release] [corpus-root]
+    python tools/measure_slice_decay.py <git-ref> [--set release] [--retriever grep] [corpus-root]
     python tools/measure_slice_decay.py 9adad70 --set release
+    python tools/measure_slice_decay.py 69a433a --retriever grep
 
 Gate G3 refuses to enforce across a corpus change, by design and correctly
 ([BUG-0014]): on a self-hosting corpus every PR moves the numbers, and a gate
@@ -23,6 +24,24 @@ Heavy on purpose — two full builds — so it is a tool a human runs while aski
 question, not a gate. What it prints is per-slice deltas and, for the slices that
 moved, the per-case ranks behind them, because a two-case slice's mean says
 nothing on its own (ADR-0044).
+
+**`--retriever` arrived at roadmap 5.42, and its absence had hidden the larger
+half of the answer.** This scored one arm, through a direct `store.search_chunks`
+call — so it could say what corpus growth did to *us* and had nothing to say about
+the **incumbent**, which is the arm that moves most. Measured across the growth
+between one bless and the next, 157 documents to 173: our own release score fell
+0.5238 → 0.5209 while grep's fell **0.2842 → 0.2466**, so the report a stale
+baseline produces reads as our regression when what it records is the incumbent
+diluting four times faster and our lead *widening*, +0.2396 → +0.2744 (ADR-0112).
+A tool built to answer "corpus or code?" could not see that.
+
+Both arms now go through :func:`~mycelium.eval.retrievers.build_retriever`, which
+is what `mycelium eval` uses. That is what makes `--retriever` possible at all;
+it is **not** a correction, and saying so matters. The direct call it replaced
+already agreed with the harness to four decimals on every slice — in the shipped
+lexical profile the `mycelium` arm *is* a store search — so nothing printed here
+was ever wrong. What changes is that the agreement is now structural instead of
+coincidental, and cannot quietly lapse the next time the retriever moves.
 """
 
 import shutil
@@ -38,7 +57,7 @@ from mycelium.build import build  # noqa: E402
 from mycelium.config import load_config  # noqa: E402
 from mycelium.eval.cases import load_cases  # noqa: E402
 from mycelium.eval.metrics import credit_judgments, ndcg_at_k, section_of  # noqa: E402
-from mycelium.eval.retrievers import terms_of  # noqa: E402
+from mycelium.eval.retrievers import build_retriever  # noqa: E402
 from mycelium.store import SqliteStore  # noqa: E402
 
 DEPTH, K = 50, 10
@@ -59,19 +78,23 @@ def _discard(into: Path) -> None:
 
 
 def _score(
-    root: Path, set_name: str
+    root: Path, set_name: str, retriever_name: str = "mycelium"
 ) -> tuple[dict[str, float], dict[str, tuple[float, int | None]]]:
-    """Per-slice nDCG@10, and per case (nDCG@10, rank of the first judged hit)."""
+    """Per-slice nDCG@10, and per case (nDCG@10, rank of the first judged hit).
+
+    Through the same `build_retriever` the evaluation harness uses, so a number
+    printed here is the number `mycelium eval` prints for that arm — by
+    construction now, rather than by the coincidence that the shipped profile made
+    the old direct store call give the same answer (roadmap 5.42).
+    """
     cases = [c for c in load_cases(root / "eval" / f"{set_name}.jsonl") if c.answerable]
     per_slice: dict[str, list[float]] = {}
     per_case: dict[str, tuple[float, int | None]] = {}
     with SqliteStore.open(root, read_only=True) as store:
+        retriever = build_retriever(retriever_name, store)
         for case in cases:
             judged = {relevant.anchor: relevant.grade for relevant in case.relevant}
-            ranked = [
-                hit.chunk.anchor
-                for hit in store.search_chunks(" ".join(terms_of(case.query)), limit=200)
-            ]
+            ranked = retriever.search(case.query, limit=DEPTH)
             value = ndcg_at_k(credit_judgments(ranked[:DEPTH], judged), judged, K)
             where = next(
                 (
@@ -96,6 +119,7 @@ def _corpus_size(root: Path) -> str:
 def main() -> int:
     argv = sys.argv[1:]
     set_name = "release"
+    retriever_name = "mycelium"
     positional: list[str] = []
     index = 0
     while index < len(argv):
@@ -104,8 +128,14 @@ def main() -> int:
             set_name = argv[index + 1].removesuffix(".jsonl")
             index += 2
             continue
+        if token == "--retriever" and index + 1 < len(argv):
+            retriever_name = argv[index + 1]
+            index += 2
+            continue
         if token.startswith("--set="):
             set_name = token.split("=", 1)[1].removesuffix(".jsonl")
+        elif token.startswith("--retriever="):
+            retriever_name = token.split("=", 1)[1]
         elif not token.startswith("--"):
             positional.append(token)
         index += 1
@@ -141,8 +171,8 @@ def main() -> int:
         print(f"\nbefore  {ref}: {_corpus_size(before)}")
         print(f"after   {here.name or here}: {_corpus_size(here)}")
 
-        old_slices, old_cases = _score(before, set_name)
-        new_slices, new_cases = _score(here, set_name)
+        old_slices, old_cases = _score(before, set_name, retriever_name)
+        new_slices, new_cases = _score(here, set_name, retriever_name)
 
         print(f"\n{set_name}.jsonl, per slice — same judgments, same code, corpus varied\n")
         print(f"  {'slice':<16}{'before':>9}{'after':>9}{'delta':>10}")

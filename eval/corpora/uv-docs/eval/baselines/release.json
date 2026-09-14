@@ -1,10 +1,10 @@
 {
   "grep": {
-    "blessed_from_snapshot": "01M2CY7NABJJAJFGR2VF6EW7B3",
+    "blessed_from_snapshot": "01M2FQ9MGQ68XRCZ5PF7WCA7YK",
     "cases": 25,
     "cases_digest": "sha256:2acf5f1d91e62e95149bf386269aa108a7ffbcdca9711bded50da18f8c646131",
-    "content_digest": "sha256:44895398cedfc30a39759a8dfd9ab59ec2df26e6d251e8e619a6bc3ea4af2b06",
-    "corpus_digest": "sha256:3083b97f9d6983bba978df8cb09b48fc872666379faa7808b9be1ed6f7bf6282",
+    "content_digest": "sha256:38ecfb6ea931a3916a8a5fab01c02bf51cceaea3f08d031cde54c0d899d83526",
+    "corpus_digest": "sha256:bf148653f17a5de52f574dc06b201d686d88cc47c3ee1172402a22a7574799be",
     "overall_ndcg_at_10": 0.532054,
     "per_case": {
       "conceptual": {
@@ -60,11 +60,11 @@
     }
   },
   "mycelium": {
-    "blessed_from_snapshot": "01M2CY7NABJJAJFGR2VF6EW7B3",
+    "blessed_from_snapshot": "01M2FQ9MGQ68XRCZ5PF7WCA7YK",
     "cases": 25,
     "cases_digest": "sha256:2acf5f1d91e62e95149bf386269aa108a7ffbcdca9711bded50da18f8c646131",
-    "content_digest": "sha256:44895398cedfc30a39759a8dfd9ab59ec2df26e6d251e8e619a6bc3ea4af2b06",
-    "corpus_digest": "sha256:3083b97f9d6983bba978df8cb09b48fc872666379faa7808b9be1ed6f7bf6282",
+    "content_digest": "sha256:38ecfb6ea931a3916a8a5fab01c02bf51cceaea3f08d031cde54c0d899d83526",
+    "corpus_digest": "sha256:bf148653f17a5de52f574dc06b201d686d88cc47c3ee1172402a22a7574799be",
     "overall_ndcg_at_10": 0.613833,
     "per_case": {
       "conceptual": {
