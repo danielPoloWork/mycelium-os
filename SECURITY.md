@@ -17,6 +17,17 @@ security fixes. After `1.0.0`, the supported window is defined in
 [GitHub private vulnerability reporting](https://docs.github.com/code-security/security-advisories)
 on this repository (**Security** tab → *Report a vulnerability*), to `danielPoloWork`.
 
+> **Interim, as of 2026-09-15.** That form is **not yet enabled on this repository**, so a
+> reporter who is not a collaborator cannot submit it. Enabling it is a repository setting
+> and is pending with the maintainer (risk register
+> [F3](docs/security/audit-2026-08-29-bootstrap.md), re-rated `medium` at roadmap 6.16).
+>
+> Until it is on, and **without describing the problem anywhere public**: open an issue whose
+> entire content is *"I have a security report and need a private channel"*, or contact
+> `danielPoloWork` through the address on their GitHub profile. Do not put the vulnerability,
+> a reproduction, or an affected version in that issue — the request for a channel is all it
+> should contain. This paragraph disappears the day the setting is enabled.
+
 Please include:
 
 - the affected version(s) and platform/toolchain;

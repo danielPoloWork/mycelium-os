@@ -31,6 +31,22 @@ pre-1.0 milestone-driven.
    `TUNING_PATHS` — a bless beside a retrieval change is the one conjunction that can fit the
    retriever to the set (ADR-0056). To attribute a move rather than merely report it, use
    `python tools/measure_slice_decay.py <ref> [--retriever grep]`.
+0b. **Check the repository's own settings and the register's deferrals** (roadmap 6.16,
+   [ADR-0118](../adr/0118-make-a-deferral-name-the-condition-that-ends-it.md)):
+
+   ```bash
+   python tools/check_repo_settings.py
+   ```
+
+   It reports which of [`github-setup.md`](github-setup.md)'s one-time steps are installed and
+   whether any accepted risk now rests on a premise that has become void. It **changes
+   nothing** — every remedy is a repository setting under the owner's account.
+
+   Here rather than in CI because reading these settings unattended would need a long-lived
+   token, and a release is the one moment a maintainer with their own `gh` is already in the
+   loop. A non-zero exit does not block the cut on its own: read it, act or record why not,
+   and carry the verdict in the release PR body.
+
 1. **Bump the version constant** (__version__ = 'X.Y.Z') in `__about__.py`; update any
    version-check test.
 2. **Roll the changelog** — move the `[Unreleased]` entries into a new per-version file
@@ -68,6 +84,8 @@ would replay the workflow file *as it existed at that tag* (BUG-0006).
 | Action | Who |
 |---|---|
 | Re-bless `ours/release` (its own PR, both arms) | Agent |
+| Run `check_repo_settings.py` and carry its verdict into the release PR | Agent |
+| Install any setting it reports absent | **Human** (repository settings) |
 | Bump version, roll changelog, draft notes | Agent |
 | Open / merge the release PR | **Human** |
 | Create & push the annotated tag, then the **draft** release (CI drafts it on tag-push) | Agent |

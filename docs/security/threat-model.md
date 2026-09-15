@@ -7,7 +7,12 @@
 > [`audit-2026-08-29-bootstrap.md`](audit-2026-08-29-bootstrap.md)). Boundaries marked
 > *(design)* come from the accepted design (RFC-0001 / spec docs 02 §8, 04 §6) and gain
 > their mechanical controls at the named milestone — they are modeled now so the controls
-> are built in, not bolted on. **Last revised 2026-09-08** (roadmap 4.29, PR #83): CI now
+> are built in, not bolted on. **Last revised 2026-09-15** (roadmap 6.16): B1's assumption line
+> said *"repo currently private (no external contributors yet)"* and both clauses were false —
+> the repository is public and was forked by an outside account on 2026-09-14. Two accepted
+> risks rested on that premise (register F2, F3) and neither was revisited when it became void,
+> so §3 now requires a deferral to name its ending condition in code. The revision before,
+> 2026-09-08 (roadmap 4.29, PR #83): CI now
 > uploads a build artifact on a red run — the hypothesis example database — so B1 gains a row
 > for what an artifact may carry. The revision before, 2026-09-07 (roadmap 4.35, PR #82): B13's
 > control was mitigated against a *declared* narrowing and blind to an *implemented* one —
@@ -28,7 +33,7 @@
 
 | Boundary | Untrusted inputs crossing it | Assumptions |
 |---|---|---|
-| **B1 — GitHub PR/CI edge** (today): external contributions execute workflows | PR diffs (workflow-adjacent files, `tools/consistency_lint.py` runs on PR code) | `pull_request` event only (never `pull_request_target`); default `GITHUB_TOKEN` is read-only in ci.yml (`permissions: contents: read`); no repository secrets exist for CI to leak; repo currently private (no external contributors yet) |
+| **B1 — GitHub PR/CI edge** (today): external contributions execute workflows | PR diffs (workflow-adjacent files, `tools/consistency_lint.py` runs on PR code) | `pull_request` event only (never `pull_request_target`); default `GITHUB_TOKEN` is read-only in ci.yml (`permissions: contents: read`); no repository secrets exist for CI to leak. **Corrected 2026-09-15 (roadmap 6.16): this row read "repo currently private (no external contributors yet)" and both clauses are false.** The repository is public and was forked by an outside account (`Voyagerroc-Lab`) on 2026-09-14. The controls above still hold and are the right ones for a public repository — `pull_request` never `pull_request_target`, a read-only token, no secrets — but the *comfort* this line offered is gone, and two accepted risks rested on it (register F2, F3). AGENTS.md §7 requires this file to move with a trust boundary; going public was such a change and was not recorded until it was surveyed |
 | **B2 — GitHub Actions supply chain** (today): third-party actions run with repo access | Action code resolved at run time | Template-native actions SHA-pinned with version labels; profile-injected actions (setup-python, setup-uv) tag-pinned **by decision** (factory ADR-0009 §3) and Dependabot-managed weekly; release.yml has `contents: write` but fires only on `v*.*.*` tag push — tags are owner-pushed |
 | **B3 — Vendored EADOS factory** (today): `.eados-core/` tooling executes locally and (lint only) in CI | The bundle's own code; future `/eados upgrade` diffs | Vendored tracked by owner decision (PR #1); updates arrive as reviewable diffs, never silent; only `tools/consistency_lint.py` (generated, in-repo) runs in CI |
 | **B4 — Ingested source content** *(live)*: PDFs/DOCX/HTML/wikis enter the compiler | File bytes, embedded instructions, hostile structures (zip-bombs, parser exploits) | D-017: **all** source content untrusted, including the user's own; parsers wrapped behind KIR with quarantine-not-abort (`ParseError` is per document, `ConnectorError` refuses custody); acquisition is confined to declared roots, resolves before it checks so no symlink escapes, and reads under a byte ceiling; an extension the project does not ingest is refused by name; a fidelity report accounts for every element and the loss budget refuses a projection that lost too much (4.3); a refusal at any stage is quarantined with the custody digest of the bytes that caused it, and content is scanned for credentials before the compiled form is stored (4.6). **Every control this boundary was modelled with is now live** |
@@ -49,7 +54,7 @@
 
 | Category | Threat considered | Boundary / component | Mitigation / control | Status |
 |---|---|---|---|---|
-| Spoofing — is the caller who it claims? | A PR author impersonating a maintainer to merge | B1 | Only the owner merges (contract §6); GitHub authn; branch protection pending public/Pro — interim control is collaborator roles + policy (register F2) | ✅ mitigated / F2 tracks residual |
+| Spoofing — is the caller who it claims? | A PR author impersonating a maintainer to merge | B1 | Only the owner merges (contract §6); GitHub authn; branch protection **still absent, and no longer deferrable**: the plan constraint that justified waiting ended when the repository went public (register F2, re-assessed 2026-09-15). The interim control is collaborator roles plus policy, and policy is what failed once already at roadmap 3.7 | ⚠️ partially mitigated — F2 is an expired deferral, owner action pending |
 | Spoofing | A forged `v*.*.*` tag triggering a release draft | B2 | Tag push requires write access (owner); workflow only **drafts** — a human publishes | ✅ mitigated |
 | Spoofing | An MCP client is not authenticated in v1 | B6 (design) | n/a by design at v1 scale: stdio transport, local single-user (D-002); authn arrives with the Phase-5 server profile via its own RFC | ▢ n/a (reason recorded) |
 | Tampering — can data/code be altered? | A malicious action version altering the repo or release artifacts | B2 | SHA pins for template actions; tag-pinned profile actions are Dependabot-managed (ADR-0009 §3 — decided trade-off); `contents: write` confined to the tag-triggered release job | ✅ mitigated / decided residual |
@@ -103,3 +108,28 @@ same record shape the audit phase emits. A confirmed, reproducible defect additi
 
 Current register: [`audit-2026-08-29-bootstrap.md`](audit-2026-08-29-bootstrap.md) —
 findings F1–F5 (one confirmed defect → [BUG-0001](../bugs/2026/08/BUG-0001-release-workflow-matrix-context.md)).
+
+### A deferral names the condition that ends it (roadmap 6.16, [ADR-0118](../adr/0118-make-a-deferral-name-the-condition-that-ends-it.md))
+
+A finding may be accepted *for now*, on a stated condition. Two were, on 2026-08-29, and both
+conditions came true without anyone noticing for seventeen days — because a register is a
+document nobody re-reads, and the roadmap item that carried one of the triggers in its own
+text was ticked and closed. F3's recorded impact said exposure was *nil* **because** the
+repository was private; that premise had been void for weeks.
+
+So the rule is now: **a deferral whose condition cannot be written as code has no expiry, and
+is not granted.** `tools/check_repo_settings.py`'s `DEFERRALS` holds the register's open
+deferrals with their conditions executable, and separates the two halves by what they cost to
+ask — evaluating the condition reads only the repository object, which any token can fetch,
+while verifying the remedy needs administrative rights and reports *unverifiable* rather than
+a green it did not earn.
+
+```bash
+python tools/check_repo_settings.py                  # both halves, as a maintainer
+python tools/check_repo_settings.py --triggers-only   # conditions only, no admin, no secret
+```
+
+The full check runs in the release procedure ([`release.md`](../workflow/release.md)), where a
+maintainer is already authenticated. It is deliberately **not** a scheduled workflow: reading
+these settings unattended would need a long-lived token, which is the one thing the
+supply-chain design has removed everywhere else (ADR-0116, ADR-0117).

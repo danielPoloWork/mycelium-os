@@ -30,6 +30,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   Three had never been run: `main` has no branch protection, private vulnerability reporting
   is off while `SECURITY.md` points reporters at it, and two labels carry colours the
   manifest does not declare.
+- **The same tool now watches the risk register's deferrals** (roadmap 6.16, ADR-0118). A
+  finding accepted *for now, revisit when X* must state X in a form a machine can evaluate;
+  one that cannot is not granted. `--triggers-only` evaluates the conditions with no
+  administrative rights and no secret, and a remedy that cannot be read is reported as
+  unverifiable rather than as installed. It runs at `release.md` step 0b rather than in CI,
+  because reading these settings unattended would need a long-lived token.
 - **A contribution ladder with rungs that are real** (ADR-0117). `CONTRIBUTING.md` names five
   ways in, lowest first, and says which are open pre-1.0 — writing a plugin needs no core
   change and no permission. An issue labelled `good first issue` is **reserved**: AGENTS.md
@@ -105,6 +111,21 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 ### Fixed
 
 ### Security
+
+- **The private disclosure channel `SECURITY.md` points at is not enabled**, and the risk
+  register finding that covers it is re-rated **low → medium** (roadmap 6.16, ADR-0118).
+  Register F3 accepted it in August on the premise that *"there are no external reporters
+  (private repo), so exposure is nil"*; the repository has been public for weeks and was
+  forked by an outside account on 2026-09-14, so a reporter who follows the policy now finds
+  a form they cannot submit. Enabling it is a repository setting under the owner's account;
+  `SECURITY.md` carries an interim route until it is on, and it is **not** "open an issue
+  describing the problem".
+- **Branch protection on `main` is still absent** and its deferral has expired (register F2).
+  The plan constraint that justified waiting ended when the repository went public, so
+  AGENTS.md's rule against pushing to `main` is kept by agents rather than enforced by GitHub.
+- **Threat model B1 corrected**: its assumption line read *"repo currently private (no
+  external contributors yet)"* and both clauses were false. The controls it lists still hold
+  and are the right ones for a public repository.
 
 ## Released versions
 

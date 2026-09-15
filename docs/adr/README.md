@@ -149,3 +149,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0115](0115-render-the-plugin-cookiecutter-to-check-it-and-link-out-instead-of-duplicating.md) | Render the plugin cookiecutter to check it, and link the docs site out to canonical content instead of duplicating it | Accepted |
 | [0116](0116-publish-under-a-name-already-decided-and-let-the-artifact-be-a-defined-thing.md) | Publish under a name already decided, and let the artifact be a defined thing | Accepted |
 | [0117](0117-sign-and-inventory-the-artifact-and-reserve-the-rung-a-newcomer-stands-on.md) | Sign and inventory the artifact, and reserve the rung a newcomer stands on | Accepted |
+| [0118](0118-make-a-deferral-name-the-condition-that-ends-it.md) | Make a deferral name the condition that ends it, in code | Accepted |
