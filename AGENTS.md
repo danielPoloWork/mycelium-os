@@ -181,6 +181,15 @@ standalone PR, branched from the `main` commit current when the work starts.
 After pushing the branch and drafting the PR, the agent **stops and waits for the maintainer
 to merge it** before starting the next item. No stacked PRs (the repository squash-merges).
 
+**Reserved work: an agent does not take an issue labelled `good first issue`.** The label
+means the work is held open for a first-time human contributor, and the rule is what makes
+the label true rather than decorative. This repository's delivery model is the reason it has
+to be written down: Milestone 5 closed 43 items in five days, so anything a newcomer took a
+week to reach would already be merged, and an invitation that is always withdrawn before it
+can be accepted is worse than no invitation. If such an item is genuinely blocking, say so
+and ask — do not quietly take it. `help wanted` carries no such reservation (roadmap 6.6,
+ADR-0117).
+
 **Model & effort per item (advisory).** A `ROADMAP.md` item may carry a route —
 `route: <tier> / <effort>` in the `os/routing` vocabulary (tiers, not model names; the dated
 catalog in the ROADMAP's routing legend maps tiers to current names, as of

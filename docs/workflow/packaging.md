@@ -130,8 +130,87 @@ Both are held to the same gates: `ruff`, `mypy --strict` and the test suite read
 too (`tools/verify.py`'s `CHECKED_PATHS` and `TYPED_PATHS`), because a core change that
 breaks a module must fail the *core's* own suite.
 
-## Versioning & provenance
+## Provenance: what a release ships beside the archives
+
+Spec 06 §4 asks for **signed artifacts + SBOM from 1.0**. Both are built now rather than at
+the tag that needs them, for the reason 6.11 built the publish pipeline before the first
+upload: a release that cannot be verified cannot be verified *retroactively*, so every
+release between here and 1.0 would otherwise ship without it (roadmap 6.6, ADR-0117).
+
+`release.yml` attaches three things to the draft, and none of them involves a signing key:
+
+| | what it says | how it is made |
+|---|---|---|
+| **build provenance** | these exact bytes were built by this workflow, from this repository, at this commit | `actions/attest-build-provenance` — SLSA provenance signed through Sigstore with a short-lived OIDC identity |
+| **SBOM** `mycelium_os-X.Y.Z.all-extras.cdx.json` | what is inside: every package the wheel can pull, at its version, with its licence | `tools/build_sbom.py`, CycloneDX 1.6 JSON |
+| **SBOM attestation** | *this* SBOM belongs to *that* wheel | `actions/attest-sbom`, bound to the wheel's digest |
+
+**There is no signing key, and that is the design.** A key in repository secrets is a thing
+to leak, rotate and misplace, and threat boundary B2 would have to cover it. Sigstore's
+keyless flow mints an identity per run instead — the same property Trusted Publishing gives
+the upload (ADR-0116), applied to the artifacts.
+
+### Verifying what you downloaded
+
+An attestation nobody is told how to check is decoration, so:
+
+```bash
+gh attestation verify mycelium_os-0.6.0-py3-none-any.whl --repo danielPoloWork/mycelium-os
+```
+
+It passes only if those bytes were built by this repository's release workflow. It works on
+a wheel fetched from PyPI just as well as on one downloaded from the GitHub Release, and it
+needs no account and no trust in this document. The PyPI upload additionally carries PEP 740
+attestations, which `publish.yml` requests with `attestations: true`.
+
+### The SBOM, and what it can and cannot claim
+
+```bash
+python tools/build_sbom.py                # the default install: 14 components
+python tools/build_sbom.py --extras all   # every extra: 85 components
+```
+
+No install step, and that is the interesting part. **The generator runs in an environment of
+its own** (`uv tool run`) and is declared in none of this project's dependencies, extras or
+groups — see *The generator is not a dependency* below.
+
+It installs the wheel into an **empty** environment and describes that. Pointing a generator
+at this repository's own `.venv` is the obvious move and produces a confident, wrong answer:
+`uv sync --all-extras --dev` installs 162 distributions, of which four are the runtime
+closure, and the SBOM would tell a consumer they are running pytest, ruff and hatch. The
+tool fails if a development tool appears in its output, which is that property asserted
+rather than assumed.
+
+### The generator is not a dependency, and that is not tidiness
+
+This shipped first as a `sbom` dependency group — kept out of `dev` so no matrix cell paid
+for its 18 marginal packages, but declared, locked and installed on demand. Syncing that
+group **changed what the compiler produces.**
+
+`cyclonedx-bom` pulls `chardet`. BeautifulSoup binds `bs4.dammit.chardet_module` to it
+whenever it is importable and uses it to guess the encoding of a document it is given. The
+HTML lane goes through that path, so five documents in the vendored ingested corpus projected
+differently — caught by `python tools/build_ingested_corpus.py --check`, which compares the
+committed corpus against a fresh ingestion, and confirmed by uninstalling the one package and
+watching the check go green.
+
+The rule that follows is stronger than "keep heavy tools out of `dev`":
+
+> **A tool that is not part of this product must not be resolvable alongside it.** What is
+> importable is an input to the compiler, whether or not anything imports it on purpose.
+
+`tests/test_packaging.py` holds it — the generator may not appear in `dependencies`, any
+extra, or any dependency group, and no workflow may install it. The cost of the isolation is
+that the generator's version is resolved at run time inside a bounded range rather than
+pinned by `uv.lock`, and the first run on a machine fetches it; acceptable because the output
+is a release artifact validated against the CycloneDX schema, not a golden whose bytes a gate
+compares.
+
+What it cannot claim: an SBOM describes **one resolution**, taken when the artifact was
+built. `pydantic>=2.11` admits many versions and a consumer installing next month gets a
+different one. That is what the format is for and the limit of what it says.
+
+## Versioning
 
 - The published version **equals** the tag and the version constant (the consistency lint's
   `version-lockstep` enforces this).
-- Prefer a reproducible build and attach provenance/SBOM where the ecosystem supports it.
