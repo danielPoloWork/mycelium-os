@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.16, which did not exist when the session opened. It came out
   of the maintainer asking whether 6.6's three absent settings deserved corrective items.
-- **PR:** `feat/watch-expired-deferrals`. Follows #152 (6.6), merged 2026-09-15T04:59Z.
+- **PR:** #153 (`feat/watch-expired-deferrals`). Follows #152 (6.6), merged 2026-09-15T04:59Z.
 - **Milestone 6:** 6.1, 6.2, 6.6, 6.11 and now 6.16 delivered. Open: 6.3, 6.4, 6.5, 6.7–6.10,
   6.12, 6.13, 6.14, 6.15.
 - **Decision it records:**
