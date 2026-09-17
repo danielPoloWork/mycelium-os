@@ -62,7 +62,7 @@ before 0.6.0: pin `--provider pasted`, which does not parse the file as JSON.
 
 ## References
 
-- Fixing PR: the roadmap 6.3 pull request (`feat/security-review-pass`)
+- Fixing PR: #154 (roadmap 6.3, `feat/security-review-pass`)
 - `CHANGELOG` entry: `[Unreleased]` → *Security*
 - Related: ADR-0119; `docs/security/audit-2026-09-17-review-pass.md` finding F9;
   BUG-0029 (the same exception class escaping the other lane)

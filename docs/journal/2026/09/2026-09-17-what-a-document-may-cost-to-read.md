@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.3 — the security review pass, the threat-model-derived test
   suite and the injection corpus.
-- **PR:** `feat/security-review-pass`, following #153 (merged as `916974b`).
+- **PR:** #154 (`feat/security-review-pass`). Follows #153, merged as `916974b`.
 - **Milestone 6:** 6.1, 6.2, 6.6, 6.11, 6.16 delivered before this session; 6.3 delivered
   here; 6.17 filed.
 - **Records it produces:** [ADR-0119](../../../adr/0119-derive-the-suite-from-the-threat-model-and-bound-what-a-document-may-cost-to-read.md),

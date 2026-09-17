@@ -73,7 +73,7 @@ none short of removing the file.
 
 ## References
 
-- Fixing PR: the roadmap 6.3 pull request (`feat/security-review-pass`)
+- Fixing PR: #154 (roadmap 6.3, `feat/security-review-pass`)
 - `CHANGELOG` entry: `[Unreleased]` → *Security*
 - Related: ADR-0119; `docs/security/audit-2026-09-17-review-pass.md` finding F7;
   ADR-0037 (the scan's design)

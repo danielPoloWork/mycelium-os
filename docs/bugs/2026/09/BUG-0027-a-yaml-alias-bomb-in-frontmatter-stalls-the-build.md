@@ -80,7 +80,7 @@ be found by bisecting the tree.
 
 ## References
 
-- Fixing PR: the roadmap 6.3 pull request (`feat/security-review-pass`)
+- Fixing PR: #154 (roadmap 6.3, `feat/security-review-pass`)
 - `CHANGELOG` entry: `[Unreleased]` → *Security*
 - Related: ADR-0119; `docs/security/audit-2026-09-17-review-pass.md` finding F6;
   ADR-0033 (the ingest lane's own cost bounds, which the authored lane now shares)
