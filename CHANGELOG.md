@@ -167,6 +167,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **Gate G3 enforces a slice only when the slice can carry the bar, and says what it needs
+  when it cannot** (roadmap 6.8, ADR-0123). The count is derived from the blessed baseline —
+  `n >= q / (0.02 * m)`, with `q` the median non-zero per-case score — rather than compared
+  against the constant of four guessed at roadmap 3.7. Two findings came with it: the
+  requirement is **50 to 97 cases a slice, median 67**, roughly double what roadmap 6.8
+  budgeted, because the bar has to survive a case leaving the top ten rather than the median
+  loss observed; and every slice cleared the old constant, so G3 had been reporting *"6 of 6
+  slice(s) enforced"* while no row could tell a regression from one case moving. The honest
+  consequence: **G3 now enforces nothing on any set**, because no set was ever large enough
+  and the constant was hiding it. The gate arms itself per slice as the judged sets grow, and
+  `tools/measure_slice_power.py` prints the shortfall. No committed number moves.
+
 - **The agent-task suite's success rate is now over *scorable* tasks** (roadmap 6.4,
   ADR-0120). A required anchor the snapshot does not hold is reported as `unresolved` and
   excluded from the rate rather than scored as a retrieval miss, because neither strategy can

@@ -49,6 +49,7 @@ retrievers; it does not assert that nDCG must exceed some invented threshold.
 """
 
 import json
+import math
 import platform
 import time
 from collections.abc import Mapping, Sequence
@@ -97,6 +98,7 @@ __all__ = [
     "G2_SLICE_FLOOR",
     "G3_REPORTED_SLICES",
     "MIN_ENFORCEABLE_SLICE_CASES",
+    "enforceable_at",
     "EVAL_DIRNAME",
     "QUERY_BUDGET_P95_MS",
     "CorpusFingerprint",
@@ -141,7 +143,7 @@ BASELINES_DIRNAME: Final = "baselines"
 """Committed per-slice scores a release is measured against (gate G3)."""
 
 MIN_ENFORCEABLE_SLICE_CASES: Final = 4
-"""Below this many judged cases, gate G3 reports a slice instead of failing on it.
+"""The floor G3 falls back to when a baseline cannot say more (ADR-0052, ADR-0123).
 
 A slice's score is a mean, and a mean over one case is that case wearing a
 slice's name: the smallest move it can make is the case's whole range, against a
@@ -149,13 +151,48 @@ threshold of 2 %. So the row cannot be tripped by anything *except* a single
 case, and is tripped by every single case — including ones moving for reasons
 that have nothing to do with retrieval (ADR-0044 measured exactly that).
 
-Four is not a statistical threshold, and at fourteen-to-twenty-four cases per set
-no honest one exists: even at seven cases a single answer falling out of the top
-ten moves the mean by an order of magnitude more than 2 %. It is the point at
-which the row stops being one case relabelled, and the number is stated here so a
-reader can disagree with it in one place. What turns G3 into a regression gate
-rather than a single-case alarm is set size — spec 04 §7.6's ≥ 1 000 cases at
-1.0 — not a constant chosen at this milestone (ADR-0052)."""
+Four was never a statistical threshold and this docstring always said so: *"what
+turns G3 into a regression gate rather than a single-case alarm is set size, not
+a constant chosen at this milestone."* Roadmap 6.8 computes the set size instead
+of guessing it — see :func:`enforceable_at`, which derives from the blessed
+numbers the count at which a slice's bar stops being a single-case alarm. This
+constant survives as the fallback for a baseline that records no per-case scores,
+where the derivation has nothing to read."""
+
+
+def enforceable_at(blessed_mean: float, blessed_scores: Sequence[float]) -> int:
+    """How many cases this slice needs before its −2 % bar means more than one case.
+
+    The arithmetic roadmap 6.8 rests on, computed rather than remembered. A slice
+    of `n` cases at blessed mean `m` trips when its total gain falls by more than
+    ``0.02 · n · m``. The smallest real thing that happens to a case is that it
+    stops being answered, which costs the slice that case's whole score. So the
+    bar requires more than one case exactly when
+
+        ``n ≥ q / (0.02 · m)``
+
+    where `q` is what a typical answered case is worth — the median of the blessed
+    non-zero per-case scores. Below that count, one case falling out of the top
+    ten trips the row on its own, and G3 is a single-case alarm wearing a gate's
+    name.
+
+    **Read from the blessed baseline, never from the run being judged**, and the
+    reason is that the alternative is gameable in the one direction that matters:
+    a regression lowers both `m` and `q`, so a run scored against its own numbers
+    could raise its requirement above `n` and disarm the row exactly as it fails.
+    The baseline is frozen, so the requirement is a property of the state the gate
+    compares against.
+
+    Zero-valued cases are excluded from `q` deliberately. A case blessed at 0.0000
+    has nothing to lose, so counting it would report the slice as cheaper to trip
+    than it is (ADR-0123).
+    """
+    answered = sorted(score for score in blessed_scores if score > 0.0)
+    if not answered or blessed_mean <= 0.0:
+        return MIN_ENFORCEABLE_SLICE_CASES
+    typical = answered[len(answered) // 2]
+    return math.ceil(typical / (0.02 * blessed_mean))
+
 
 G3_REPORTED_SLICES: Final = frozenset({EvalSlice.UNANSWERABLE.value})
 """Slices G3 reports and never enforces, whatever their case count.
@@ -501,14 +538,25 @@ def case_set_digest(cases: Sequence[EvalCase]) -> Sha256Digest:
     )
 
 
-def _unarmed_because(name: str, blessed: float, cases: int) -> str | None:
-    """Why G3 cannot enforce this row, or ``None`` when it can (ADR-0052).
+def _unarmed_because(
+    name: str,
+    blessed: float,
+    cases: int,
+    blessed_scores: Sequence[float] = (),
+) -> str | None:
+    """Why G3 cannot enforce this row, or ``None`` when it can (ADR-0052, ADR-0123).
 
     Three reasons, in the order they stop being about the numbers and start being
     about the slice. A slice G3 must never gate; a slice whose frozen score
     leaves nothing to lose; a slice too thin for its mean to be more than one
     case. Each is reported by name rather than quietly counted as a pass — a gate
     that says "6 slices compared" while four of them cannot fail is decoration.
+
+    The third reason used to compare against a constant of four, guessed at
+    roadmap 3.7 and admitted as a guess in its own docstring. It is now the count
+    :func:`enforceable_at` derives from this slice's blessed numbers, so the row
+    says what it needs rather than what somebody once picked — and arms itself the
+    moment the set reaches it (roadmap 6.8).
     """
     if name in G3_REPORTED_SLICES:
         return "reported by design: 0.0000 is its correct score, and G4 gates it"
@@ -516,8 +564,12 @@ def _unarmed_because(name: str, blessed: float, cases: int) -> str | None:
         # `_relative` returns 0.0 or 1.0 against a zero baseline, so the -2 %
         # threshold is unreachable. Saying so beats letting the row look watched.
         return "blessed at 0.0000: a relative threshold cannot fail it"
-    if cases < MIN_ENFORCEABLE_SLICE_CASES:
-        return f"{cases} case(s), below the {MIN_ENFORCEABLE_SLICE_CASES} G3 enforces on"
+    required = enforceable_at(blessed, blessed_scores)
+    if cases < required:
+        return (
+            f"{cases} case(s) against the {required} this slice needs for its bar to "
+            "mean more than one case"
+        )
     return None
 
 
@@ -638,7 +690,17 @@ def _gate_g3(
         if not isinstance(before, int | float):
             continue
         compared += 1
-        reason = _unarmed_because(name, float(before), summary.cases)
+        # The blessed per-case scores are what says how many cases this row
+        # needs (roadmap 6.8): a slice whose typical answered case is worth
+        # 0.8 against a mean of 0.45 cannot be gated at seven cases, however
+        # the mean moved.
+        blessed_row = per_case.get(name) if isinstance(per_case, dict) else None
+        blessed_scores = (
+            tuple(float(v) for v in blessed_row.values() if isinstance(v, int | float))
+            if isinstance(blessed_row, dict)
+            else ()
+        )
+        reason = _unarmed_because(name, float(before), summary.cases, blessed_scores)
         delta = _relative(summary.ndcg_at_10, float(before))
         if delta >= -0.02 and reason is None:
             continue

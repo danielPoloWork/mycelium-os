@@ -1313,6 +1313,74 @@ def test_g3_reports_a_slice_too_thin_to_carry_a_gate() -> None:
     assert "1 of 1 slice(s) enforced" in thick.detail
 
 
+def test_enforceable_at_derives_the_count_a_slice_needs() -> None:
+    """The arithmetic roadmap 6.8 rests on, computed rather than remembered.
+
+    A slice trips when its total gain falls by more than `0.02 * n * m`, and the
+    smallest real thing that happens to a case is that it stops being answered,
+    costing its whole score. So the bar needs more than one case at
+    `n >= q / (0.02 * m)` (ADR-0123).
+    """
+    from mycelium.eval.harness import enforceable_at
+
+    # q = 0.8, m = 0.5 -> 0.8 / 0.01 = 80.
+    assert enforceable_at(0.5, [0.8, 0.8, 0.8]) == 80
+    # Halve what a typical case is worth and the slice needs half as many.
+    assert enforceable_at(0.5, [0.4, 0.4, 0.4]) == 40
+    # A slice whose cases are all worth its mean needs 1 / 0.02 = 50, whatever
+    # the mean is. The ratio is what decides, not the level.
+    assert enforceable_at(0.4, [0.4]) == 50
+    assert enforceable_at(0.9, [0.9]) == 50
+
+
+def test_enforceable_at_ignores_cases_blessed_at_zero() -> None:
+    """A case blessed at 0.0000 has nothing to lose, so counting it would report
+    the slice as cheaper to trip than it is."""
+    from mycelium.eval.harness import enforceable_at
+
+    assert enforceable_at(0.5, [1.0, 0.0, 0.0, 0.0]) == enforceable_at(0.5, [1.0])
+
+
+def test_enforceable_at_falls_back_when_the_baseline_records_no_cases() -> None:
+    """An older baseline carries per-slice means and no per-case scores. The
+    derivation has nothing to read, so the guessed floor survives for exactly
+    that case rather than the gate inventing a requirement."""
+    from mycelium.eval.harness import enforceable_at
+
+    assert enforceable_at(0.5, []) == MIN_ENFORCEABLE_SLICE_CASES
+    assert enforceable_at(0.0, [0.4]) == MIN_ENFORCEABLE_SLICE_CASES
+
+
+def test_g3_reports_a_slice_its_own_numbers_cannot_gate() -> None:
+    """The change roadmap 6.8 makes to the gate, end to end.
+
+    Four cases each worth 1.000 against a mean of 0.75 is a row where one case
+    falling out moves the mean by 25 % — twelve times the bar it is judged
+    against. It is a single-case alarm wearing a gate's name, and the gate now
+    says so with the count that would fix it (ADR-0123).
+    """
+    from mycelium.eval.harness import _gate_g3
+
+    here = CorpusFingerprint(content="sha256:docs", chunks="sha256:cuts")
+    baseline = {
+        "per_slice": {"fact": 0.75},
+        "per_case": {"fact": {"f-1": 1.0, "f-2": 1.0, "f-3": 1.0, "f-4": 0.0}},
+        "content_digest": here.content,
+        "corpus_digest": here.chunks,
+        "cases_digest": JUDGEMENTS,
+    }
+
+    result = _gate_g3({"fact": thin_summary(0.20, cases=4)}, baseline, here, JUDGEMENTS)
+    assert result.passed, "a slice too thin for its own bar must report, not fail"
+    assert "0 of 1 slice(s) enforced" in result.detail
+    assert "67" in result.detail, "the row says how many cases it needs"
+
+    # The same drop, over a set that has actually reached the count.
+    armed = _gate_g3({"fact": thin_summary(0.20, cases=67)}, baseline, here, JUDGEMENTS)
+    assert not armed.passed
+    assert "1 of 1 slice(s) enforced" in armed.detail
+
+
 def test_g3_never_enforces_unanswerable_however_many_cases_it_has() -> None:
     """`unanswerable` scores 0.0000 by construction and is gated by G4.
 
@@ -1376,15 +1444,35 @@ def test_g3_names_the_cases_behind_a_slice_that_moved() -> None:
         "per_case": {"fact": {"r-1": 0.80, "r-2": 0.80, "r-3": 0.80, "r-4": 0.80}},
     }
     cases = [result("r-1", 0.8), result("r-2", 0.8), result("r-3", 0.8), result("r-4", 0.0)]
-    verdict = _gate_g3(
+
+    # Four cases each worth 0.8000 against a mean of 0.8000 is a row that needs
+    # fifty before its bar means more than one case, so the gate *reports* it
+    # (roadmap 6.8, ADR-0123). Attribution is what this test is about, and it is
+    # unchanged by that: the reported line still names whose move it was.
+    reported = _gate_g3(
         {"fact": thin_summary(0.60, cases=4)},
         baseline,
         here,
         JUDGEMENTS,
         {"fact": cases},
     )
+    assert reported.passed
+    assert "against the 50 this slice needs" in reported.detail
+    assert "r-4 0.8000->0.0000" in reported.detail
+    assert "r-1 0.8000->0.8000" in reported.detail
+
+    # The same move, on a slice that has reached the count. Here the gate fails,
+    # and it still names the case — a failing row without attribution is the
+    # complaint ADR-0044 recorded.
+    verdict = _gate_g3(
+        {"fact": thin_summary(0.60, cases=50)},
+        baseline,
+        here,
+        JUDGEMENTS,
+        {"fact": cases},
+    )
     assert not verdict.passed
-    # The case that moved is named, with where it moved from.
+    assert "1 of 1 slice(s) enforced" in verdict.detail
     assert "r-4 0.8000->0.0000" in verdict.detail
     assert "r-1 0.8000->0.8000" in verdict.detail
 

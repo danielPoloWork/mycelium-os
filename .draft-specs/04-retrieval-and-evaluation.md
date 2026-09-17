@@ -184,7 +184,7 @@ one in a document with no headings at all are spelled identically.
 |---|---|
 | G1 Citations | Citation coverage = 1.00, every release, no exceptions |
 | G2 Earn hybrid | Hybrid ≥ +5 % nDCG@10 vs BM25-only overall AND no slice worse than −2 % — otherwise the shipped default config is lexical-only and the README says so |
-| G3 No regression | No release may regress any protected slice > 2 % vs the previous release on the frozen set |
+| G3 No regression | No release may regress any protected slice > 2 % vs the previous release on the frozen set — enforced on a slice that holds enough cases for that bar to mean more than one case, reported with the count it needs when it does not (roadmap 6.8, ADR-0123) |
 | G4 Abstention | False-answer rate on `unanswerable` ≤ 5 % (v1), tightening at 1.0 |
 | G5 Performance | Budgets in §1 and document 01 §8, measured on the reference profile |
 | G6 Determinism | Byte-identical rebuild check (compiler gate, runs with eval in CI) |
@@ -193,6 +193,17 @@ one in a document with no headings at all are spelled identically.
 Absolute quality targets (e.g. `gpt-specs`' Recall@50 ≥ 0.90, nDCG@10 ≥ 0.75) become
 **GA-phase goals** once corpora are large enough for the numbers to mean something (G-5
 in document 00); pre-GA, relative discipline is what is enforceable and honest.
+
+**How large is now computed, per slice (roadmap 6.8, ADR-0123).** A slice of `n` cases at
+blessed mean `m` trips its −2 % bar when its total gain falls by more than `0.02 · n · m`, and
+the ordinary way a case fails is that it leaves the top ten, costing the slice its whole
+score. So the bar means more than one case exactly when `n ≥ q / (0.02 · m)`, with `q` the
+median blessed non-zero per-case score. Across the three committed baselines that is **50 to
+97 cases a slice** against the four to seven they hold — roughly double this section's earlier
+estimate, because that one budgeted for the median loss observed rather than the loss a single
+case can inflict. `enforceable_at` computes it from the baseline, G3 reports the rows that do
+not meet it, and `tools/measure_slice_power.py` prints the shortfall. §7.6's corpus plan is
+what closes it.
 
 ### 7.4 The grep baseline (D-010)
 
