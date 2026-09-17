@@ -290,6 +290,7 @@ markers = [
     "pandoc: needs the pandoc binary on PATH; skipped when it is not installed",
     "llm: calls a real LLM provider; skipped unless a credential is configured",
     "inventory: the M4 exit gate — zero silent element loss on the ingestion corpus",
+    "boundary(id): the threat-model trust boundary this test holds — `pytest -m boundary` is the threat-model-derived suite (roadmap 6.3)",
 ]
 
 [tool.ruff]

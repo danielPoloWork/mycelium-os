@@ -3,6 +3,8 @@
 """The entailment judge (roadmap 4.5): the sample is deterministic, the verdict is
 fail-closed, and a judge that cannot be understood never raises the score."""
 
+import pytest
+
 from fakes import ScriptedProvider
 from mycelium.sdk.types import KirNode, NodeKind
 from mycelium.verification.entailment import (
@@ -11,6 +13,9 @@ from mycelium.verification.entailment import (
     LlmEntailmentJudge,
     sample_claims,
 )
+
+pytestmark = [pytest.mark.boundary("B5"), pytest.mark.boundary("B10")]
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
 
 DIGEST = "sha256:" + "ab" * 32
 OTHER = "sha256:" + "cd" * 32

@@ -69,7 +69,7 @@ class GenericJsonReader:
         """
         try:
             json.loads(text)
-        except ValueError:
+        except (ValueError, RecursionError):
             return False
         return True
 
@@ -93,7 +93,7 @@ class GenericJsonReader:
 
         try:
             document = json.loads(text)
-        except ValueError as error:
+        except (ValueError, RecursionError) as error:
             msg = f"not JSON: {error}"
             raise ReaderError(msg) from error
 

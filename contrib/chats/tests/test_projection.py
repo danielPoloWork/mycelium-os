@@ -22,6 +22,8 @@ delivered (roadmap 5.13).
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from mycelium.chunking import ChunkingPolicy, chunk_document
 from mycelium.markdown import parse_frontmatter, parse_markdown
 from mycelium.sdk.identity import heading_slug
@@ -30,6 +32,9 @@ from mycelium_chats.paths import archive_path, projection_path
 from mycelium_chats.projection import collection_of, message_heading, project_transcript
 from mycelium_chats.record import Conversation, Fragment, Message, Transcript
 from mycelium_chats.settings import ChatsSettings
+
+pytestmark = pytest.mark.boundary("B15")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
 
 IMPORTED = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 CONV = "01ARZ3NDEKTSV4RRFFQ69G5FAV"

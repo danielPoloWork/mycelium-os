@@ -235,7 +235,7 @@ def _load(text: str) -> dict[str, object]:
         stripped = "\n".join(body).strip()
     try:
         payload = json.loads(stripped)
-    except ValueError as error:
+    except (ValueError, RecursionError) as error:
         msg = f"the reply is not JSON ({error}); return one JSON object and nothing else"
         raise SegmentationError(msg) from error
     if not isinstance(payload, dict):

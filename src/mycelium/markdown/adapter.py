@@ -37,9 +37,11 @@ what the ingested twin indexes — still without parsing any of it
 never instructions).
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Final
 
+from markdown_it.token import Token
 from markdown_it.tree import SyntaxTreeNode
 
 from mycelium.markdown.frontmatter import Frontmatter, parse_frontmatter
@@ -48,7 +50,7 @@ from mycelium.markdown.profile import match_callout, profile_markdown_it
 from mycelium.sdk.identity import digest_text, new_ulid, normalize_text
 from mycelium.sdk.types import KirDocument, KirNode, NodeKind, SrcLocator
 
-__all__ = ["MarkdownDocument", "MarkdownError", "parse_markdown"]
+__all__ = ["MAX_NESTING", "MarkdownDocument", "MarkdownError", "parse_markdown"]
 
 _HEADING_LEVELS: Final = {f"h{level}": level for level in range(1, 7)}
 _INLINE_KINDS: Final = {
@@ -58,6 +60,38 @@ _INLINE_KINDS: Final = {
     "embed": NodeKind.EMBED,
     "tag_ref": NodeKind.TAG_REF,
 }
+
+MAX_NESTING: Final = 100
+"""How deep a document's token tree may nest before the adapter refuses it (roadmap 6.3).
+
+markdown-it already stops nesting *structure* at this depth (its own `maxNesting`),
+but emphasis is paired after the fact and is not counted: forty kilobytes of
+asterisks nest ten thousand `em` levels, and building the syntax tree from them
+recursed past the interpreter's limit — a `RecursionError` the build quarantined
+by luck of a catch-all and `mycelium ingest` did not catch at all (BUG-0029).
+One hundred is the parser's own number, and the deepest document in the three
+corpora this project compiles nests six. A document over it is refused as a
+:class:`MarkdownError`, which both lanes quarantine by name.
+"""
+
+
+def _deepest_nesting(tokens: Sequence[Token]) -> int:
+    """The deepest open-tag depth in a token stream, inline children included.
+
+    Linear: one pass over the blocks and one over each inline token's children,
+    which is exactly the walk :class:`SyntaxTreeNode` would recurse through.
+    """
+    depth = 0
+    deepest = 0
+    for token in tokens:
+        depth += token.nesting
+        deepest = max(deepest, depth)
+        if token.children:
+            inner = depth
+            for child in token.children:
+                inner += child.nesting
+                deepest = max(deepest, inner)
+    return deepest
 
 
 class MarkdownError(ValueError):
@@ -424,7 +458,21 @@ def parse_markdown(text: str, *, doc_id: str | None = None) -> MarkdownDocument:
         raise MarkdownError(msg)
     resolved = doc_id or pinned or new_ulid()
 
-    tree = SyntaxTreeNode(profile_markdown_it().parse(parsed.body))
+    tokens = profile_markdown_it().parse(parsed.body)
+    depth = _deepest_nesting(tokens)
+    if depth > MAX_NESTING:
+        msg = (
+            f"document nests {depth} levels deep, above the {MAX_NESTING}-level ceiling; "
+            "no authored document nests like this, and reading one that does is unbounded"
+        )
+        raise MarkdownError(msg)
+    try:
+        tree = SyntaxTreeNode(tokens)
+    except RecursionError as error:
+        # The ceiling above is the control; this is the guard behind it, so a
+        # shape it does not model is still a typed, per-document refusal.
+        msg = "document nests deeper than the syntax tree can be built"
+        raise MarkdownError(msg) from error
     builder = _Builder(line_offset=parsed.body_line_offset)
     _walk(builder, list(tree.children), None, [])
 

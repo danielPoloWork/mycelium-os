@@ -42,6 +42,9 @@ from mycelium_chats.distil import (
 from mycelium_chats.projection import message_heading
 from mycelium_chats.settings import ChatsSettings
 
+pytestmark = pytest.mark.boundary("B10")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 FIXTURE = "claude-export.json"
 CONFIGURED = """[project]
 name = "fixture"

@@ -24,6 +24,9 @@ from mycelium.synthesis.wiki import (
     system_prompt,
 )
 
+pytestmark = pytest.mark.boundary("B5")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 EVIDENCE_TEXT = """\
 # Retry Policy
 

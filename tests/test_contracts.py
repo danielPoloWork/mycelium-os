@@ -48,6 +48,9 @@ from mycelium.mcp.tools import (
 from mycelium.sdk.identity import parse_citation_uri
 from mycelium.sdk.types import KirDocument, SnapshotManifest
 
+pytestmark = pytest.mark.boundary("B6")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 GOLDENS = Path(__file__).parent / "fixtures" / "contracts"
 HISTORY = GOLDENS / "history"
 

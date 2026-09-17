@@ -93,6 +93,11 @@ class PastedTextReader:
             json.loads(text)
         except ValueError:
             return True
+        except RecursionError:
+            # Brackets nested past the interpreter's limit are JSON-shaped and not
+            # a conversation; refusing them as a paste keeps the untyped failure
+            # out of the import (roadmap 6.3, BUG-0030).
+            return False
         return False
 
     def read(self, text: str, context: ImportContext) -> ReadResult:

@@ -31,6 +31,14 @@ chunks, and the index all carry the placeholder. The verbatim bytes survive in
 exactly one artifact — the tier-1 original under `.mycelium/cas/originals/`,
 which is gitignored and is the thing a citation is checked against (ADR-0033).
 One copy, in the one place custody requires, and nowhere else (ADR-0037).
+
+**Every rule is linear in the text, and the one that was not is why this is
+stated** (roadmap 6.3). The scan runs on every ingested document and every
+imported conversation, before anything is stored, so its cost is part of what a
+hostile file can spend. The PEM rule used to be one regex from header to footer
+with a lazy body; a header with no footer made it scan to the end of the text,
+and twenty thousand headers made it scan twenty thousand times (BUG-0028). A
+block rule now matches its opener and extends forward once (:attr:`Rule.closer`).
 """
 
 import re
@@ -61,6 +69,20 @@ class Rule:
 
     description: str
     pattern: re.Pattern[str]
+    """What opens a match. For a plain rule this is the whole match."""
+
+    closer: re.Pattern[str] | None = None
+    """For a block rule, the line that closes what `pattern` opened.
+
+    A PEM key is an armour header, base64 lines, and an armour footer, and the
+    obvious regex — header, then lazily anything, then footer — is quadratic the
+    moment a footer is missing: every header scans to the end of the text, and
+    twenty thousand headers in 640 KB did not finish in a minute (BUG-0028). So a
+    block rule matches the *opener* and :func:`scan_text` extends the span line by
+    line, stopping at the first closer or the first line that could not be inside
+    the block — once, forward, never back. A key whose footer is missing still
+    flags, body and all; a header quoted alone in prose does not, because that is
+    documentation of a key and this repository's own ledger contains one."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,16 +95,27 @@ class Finding:
     end: int
 
 
-def _rule(rule_id: str, description: str, pattern: str, flags: int = 0) -> Rule:
-    return Rule(id=rule_id, description=description, pattern=re.compile(pattern, flags))
+def _rule(
+    rule_id: str, description: str, pattern: str, flags: int = 0, *, closer: str | None = None
+) -> Rule:
+    return Rule(
+        id=rule_id,
+        description=description,
+        pattern=re.compile(pattern, flags),
+        closer=None if closer is None else re.compile(closer),
+    )
+
+
+_PEM_BODY_LINE: Final = re.compile(r"^(?:[A-Za-z0-9+/=]*|[A-Za-z-]+: .*)$")
+"""A line that may sit inside a PEM block: base64 or blank, or a `Proc-Type:`-style header."""
 
 
 RULES: Final[tuple[Rule, ...]] = (
     _rule(
         "private-key-block",
         "a PEM private key",
-        r"-----BEGIN (?:RSA |DSA |EC |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----"
-        r"[\s\S]*?-----END (?:RSA |DSA |EC |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----",
+        r"-----BEGIN (?:RSA |DSA |EC |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----",
+        closer=r"-----END (?:RSA |DSA |EC |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----",
     ),
     _rule("aws-access-key-id", "an AWS access key id", r"\b(?:AKIA|ASIA|ABIA|ACCA)[0-9A-Z]{16}\b"),
     _rule(
@@ -133,12 +166,69 @@ def redaction_for(rule_id: str) -> str:
     return f"[redacted: {rule_id}]"
 
 
+def _extend_block(text: str, opener_end: int, closer: re.Pattern[str]) -> int | None:
+    """Where the block an opener started ends, or ``None`` when it opened nothing.
+
+    Walks forward from the end of the opener one line at a time and stops at the
+    first closer (included) or the first line that could not be inside the block
+    (excluded). Nothing is re-read, so a text is scanned once however many
+    openers it holds: the property BUG-0028 is about.
+
+    ``None`` when no closer follows and no non-blank body line does either: an
+    armour header quoted alone in prose is documentation of a key, not a key —
+    this repository's own bug ledger quotes one, and the doctrine is precision.
+    """
+    position = text.find("\n", opener_end)
+    if position == -1 or text[opener_end:position].strip("\r"):
+        # Nothing follows on its own line, or the opener shares its line with
+        # other text: it opened nothing.
+        return None
+    position += 1
+    end: int | None = None
+    length = len(text)
+    while position < length:
+        newline = text.find("\n", position)
+        line_end = length if newline == -1 else newline
+        line = text[position:line_end].rstrip("\r")
+        closing = closer.match(line)
+        if closing is not None and closing.end() == len(line):
+            return line_end
+        if _PEM_BODY_LINE.match(line) is None:
+            return end
+        if line.strip():
+            end = line_end
+        position = line_end + 1
+    return end
+
+
+def _spans(rule: Rule, text: str) -> Iterable[tuple[int, int]]:
+    """Every span `rule` claims in `text`, in document order."""
+    if rule.closer is None:
+        for match in rule.pattern.finditer(text):
+            yield match.start(), match.end()
+        return
+    reach = 0
+    for match in rule.pattern.finditer(text):
+        if match.start() < reach:
+            continue  # an opener inside a block another opener already claimed
+        end = _extend_block(text, match.end(), rule.closer)
+        if end is None:
+            continue
+        reach = end
+        yield match.start(), end
+
+
 def scan_text(text: str, *, node_id: str | None = None) -> list[Finding]:
-    """Every rule match in `text`, in document order then rule order."""
+    """Every rule match in `text`, in document order then rule order.
+
+    Linear in the text for every rule, block rules included (:attr:`Rule.closer`):
+    the scan runs on every ingested document and every imported conversation, so
+    a shape that made it superlinear was a way to stall the build with one file.
+    """
     findings = [
-        Finding(rule_id=rule.id, node_id=node_id, start=match.start(), end=match.end())
+        Finding(rule_id=rule.id, node_id=node_id, start=start, end=end)
         for rule in RULES
-        for match in rule.pattern.finditer(text)
+        for start, end in _spans(rule, text)
     ]
     findings.sort(key=lambda finding: (finding.start, finding.end, finding.rule_id))
     return findings

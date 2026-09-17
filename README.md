@@ -671,6 +671,19 @@ still look at it. The committed suite that proves this lives in
 can read rather than shipped as opaque binaries
 ([ADR-0033](docs/adr/0033-keep-the-original-and-bound-the-hostile.md)).
 
+The same bounds now hold for **authored** Markdown, because D-017 draws no line between a
+PDF somebody sent you and a file in your own vault, and the 6.3 security review found the
+authored lane had none: nine lines of YAML aliases in frontmatter held a build past ninety
+seconds, forty kilobytes of asterisks crashed `mycelium ingest`, and a document of any size
+was read whole before anything asked how big it was. Each is refused by name now, in
+milliseconds, and each refusal is held by a test at the size that used to break it. The
+review also left an **injection corpus** behind — twenty-three documents under
+[`tests/fixtures/injection/`](tests/fixtures/injection), one attack class each, from an
+instruction in a heading to a forged `mycelium_search` symbol — and a suite that asserts every
+payload comes back verbatim, labelled, and inside a typed field, never anywhere else. The
+threat model names the tests that hold each of its boundaries, and `uv run pytest -m boundary`
+runs them ([ADR-0119](docs/adr/0119-derive-the-suite-from-the-threat-model-and-bound-what-a-document-may-cost-to-read.md)).
+
 ### A refused file is written down, and a credential is not written out
 
 Two things ingestion does with a document that should not simply pass through, and both are
@@ -960,6 +973,7 @@ analysis, property tests, documented design decisions, SemVer releases.
 | [`docs/patterns/`](docs/patterns/) | Design patterns adopted, rejected, or considered. |
 | [`docs/workflow/`](docs/workflow/) | Git, documentation, release, and maintenance conventions. |
 | [`docs/compatibility.md`](docs/compatibility.md) | What stays stable, from which version, and how a change to it is made. |
+| [`docs/security/`](docs/security/) | The threat model, the tests that hold each of its boundaries, and the registers of what each review found. |
 | [`docs/journal/`](docs/journal/) | Dated session checkpoints — how the work actually went. |
 | [`CHANGELOG.md`](CHANGELOG.md) | User-visible changes per release. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability. |

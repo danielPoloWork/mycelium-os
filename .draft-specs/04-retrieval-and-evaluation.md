@@ -129,6 +129,17 @@ flag until it earns the default (F-8 discipline).
   responsibility; Mycelium OS's MCP tool descriptions state this explicitly (adopted from
   `gpt-specs` TM-02 residual-risk note).
 
+**Amended at roadmap 6.3 (ADR-0119).** The corpus the second bullet asks for exists as a
+**fixture** corpus rather than a part of the eval corpus — `tests/fixtures/injection/`,
+twenty-three documents, one attack class each, declared in `attacks.json` — and the property
+is asserted by `tests/test_injection.py` rather than by the harness. The deviation is
+deliberate: nDCG, recall and MRR rank chunks and cannot say *returned verbatim inside a typed
+field*, and an attack document inside the documentation corpus moves every judged number for
+no gain. The judged `injection` slice keeps its one case, which checks that the doctrine is
+findable. The residual this section names — what the client does — is joined by one the corpus
+declares: text a renderer would hide is indexed as the words it is (ADR-0110) and reaches the
+agent verbatim, with the notice.
+
 ## 7. Evaluation harness (`mycelium eval`)
 
 ### 7.1 Assets

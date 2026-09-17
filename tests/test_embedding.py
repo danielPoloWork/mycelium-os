@@ -38,6 +38,9 @@ from mycelium.embedding.models import CACHE_ENV_VAR, cache_root
 from mycelium.retrieval import search
 from mycelium.store import SqliteStore
 
+pytestmark = pytest.mark.boundary("B8")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 CORPUS = {
     "knowledge/bus.md": "# Event Bus\n\nThe bus routes messages between agents.\n",
     "knowledge/retries.md": "# Retries\n\nFailed deliveries retry with exponential backoff.\n",

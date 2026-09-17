@@ -17,6 +17,9 @@ from mycelium.sdk.types import (
     OpaqueDisposition,
 )
 
+pytestmark = pytest.mark.boundary("B4")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 DOC_ID = "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"
 DIGEST = digest_bytes(b"source")
 KIR_DIGEST = digest_bytes(b"kir")

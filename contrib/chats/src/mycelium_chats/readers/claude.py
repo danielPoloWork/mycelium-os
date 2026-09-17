@@ -57,7 +57,7 @@ class ClaudeReader:
         """A JSON array whose first object has `chat_messages` and a `uuid`."""
         try:
             parsed = json.loads(text)
-        except ValueError:
+        except (ValueError, RecursionError):
             return False
         items = parsed if isinstance(parsed, list) else [parsed]
         first = next((item for item in items if isinstance(item, dict)), None)
@@ -66,7 +66,7 @@ class ClaudeReader:
     def read(self, text: str, context: ImportContext) -> ReadResult:
         try:
             parsed = json.loads(text)
-        except ValueError as error:
+        except (ValueError, RecursionError) as error:
             msg = f"not JSON: {error}"
             raise ReaderError(msg) from error
         items = parsed if isinstance(parsed, list) else [parsed]

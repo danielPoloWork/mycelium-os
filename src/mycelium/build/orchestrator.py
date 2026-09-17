@@ -92,6 +92,7 @@ from mycelium.graph import (
     merge_edges,
     resolve_graph,
 )
+from mycelium.ingest.connectors.file import DEFAULT_MAX_BYTES
 from mycelium.ingest.custody import Custody
 from mycelium.ingest.errors import CustodyError
 from mycelium.markdown import Frontmatter, MarkdownDocument, parse_markdown
@@ -821,6 +822,18 @@ def build(
         return result
 
 
+MAX_SOURCE_BYTES: Final = DEFAULT_MAX_BYTES
+"""The largest authored document the compiler will read (roadmap 6.3).
+
+The same ceiling the file connector applies to an ingested source, because the
+two lanes meet in one parser and the authored lane had no ceiling at all: a
+document of any size was read whole into memory before anything asked how big
+it was. Above it the document is quarantined by name, like every other file the
+build cannot read, and the build carries on (D-017 — the user's own documents
+are untrusted content too).
+"""
+
+
 def _plan(
     root: Path,
     sources: list[Path],
@@ -851,6 +864,13 @@ def _plan(
         doc_path = relative.as_posix()
         entry = _Entry(path=path, doc_path=doc_path, outcome=_Outcome.PENDING)
         try:
+            stat = path.stat()
+            if stat.st_size > MAX_SOURCE_BYTES:
+                msg = (
+                    f"{stat.st_size} bytes, above the {MAX_SOURCE_BYTES}-byte ceiling an "
+                    "authored document shares with an ingested one"
+                )
+                raise ValueError(msg)
             # Bytes + explicit decode preserves the file's own line endings
             # (pinning must not silently convert a CRLF file, and Path.read_text
             # would) and is the cheapest read Python offers — this loop runs for

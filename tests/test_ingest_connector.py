@@ -13,6 +13,9 @@ from mycelium.ingest.errors import ConnectorError, SourceTooLargeError
 from mycelium.ingest.media import MARKDOWN, PDF
 from mycelium.sdk.identity import digest_bytes
 
+pytestmark = pytest.mark.boundary("B4")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 
 @pytest.fixture
 def tree(tmp_path: Path) -> Path:

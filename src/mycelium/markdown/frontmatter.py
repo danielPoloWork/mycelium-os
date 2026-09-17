@@ -52,6 +52,7 @@ from mycelium.sdk.types import ProvenanceOrigin, Sha256Digest, SourceTrust, Ulid
 __all__ = [
     "DELIMITER",
     "FIELD_OWNERS",
+    "MAX_FRONTMATTER_BYTES",
     "Frontmatter",
     "FrontmatterError",
     "FrontmatterResult",
@@ -66,6 +67,44 @@ _UNWRAPPED: Final = 1 << 30
 """A line width PyYAML will never reach, so no emitted value is ever folded."""
 _CONTINUATION: Final = re.compile(r"^(?:\s|-\s)")
 """A line that belongs to the value above it: indented, or a sequence item."""
+
+MAX_FRONTMATTER_BYTES: Final = 64 * 1024
+"""The largest frontmatter block a document may carry (roadmap 6.3).
+
+Frontmatter is a handful of properties, and 64 KiB is two orders of magnitude
+above the largest block in any corpus this project has compiled. The ceiling is
+not about real documents: it bounds what a hostile one can make the parser do,
+because a YAML block is parsed in full before a single field is read, and a
+document's cost to *read* must be bounded before its cost to *store* is
+(the same rule the ingest lane applies to bytes and markup depth, ADR-0033)."""
+
+
+class _FrontmatterLoader(yaml.SafeLoader):
+    """`SafeLoader`, with YAML aliases refused.
+
+    An alias makes one node appear in many places without repeating its text, so
+    nine lines can describe a structure with 387 million leaves: PyYAML builds it
+    in milliseconds as shared references, and everything downstream that *walks*
+    it — pydantic's validation of `properties`, the canonical JSON a digest is
+    taken over — walks the expansion and does not come back (roadmap 6.3, the
+    frontmatter half of BUG-0027). The profile has no use for aliases — a
+    property is a scalar or a short list — so refusing them costs no document
+    anything and closes the only way a small block can be an unbounded one.
+    """
+
+    def compose_node(self, parent: yaml.Node | None, index: int) -> yaml.Node | None:
+        if self.check_event(yaml.AliasEvent):
+            # types-PyYAML leaves the parser's event methods untyped.
+            event = self.peek_event()  # type: ignore[no-untyped-call]
+            anchor = getattr(event, "anchor", "?")
+            line = event.start_mark.line + 1
+            msg = (
+                f"YAML aliases are not allowed in frontmatter (*{anchor} at line {line}); "
+                "write the value out instead"
+            )
+            raise yaml.YAMLError(msg)
+        return super().compose_node(parent, index)
+
 
 _MAPPING_KEY: Final = re.compile(r"(?:'[^']+'|\"[^\"]+\"|[A-Za-z_][A-Za-z0-9_.-]*)\s*:(\s|$)")
 """What a frontmatter block's first line looks like: a YAML key, quoted or not.
@@ -382,6 +421,25 @@ def _as_digest(value: object, warnings: list[str]) -> str | None:
     return None
 
 
+def _load_block(block: str) -> object:
+    """Parse a frontmatter block with the bounded loader, or refuse it by name.
+
+    Two refusals, both about cost rather than content: a block over
+    :data:`MAX_FRONTMATTER_BYTES` is not read at all, and a block that uses a YAML
+    alias is refused by the loader before anything is built. Either is a
+    :class:`FrontmatterError`, which the compiler quarantines per document — so a
+    hostile block costs its own document and nothing else (roadmap 6.3).
+    """
+    size = len(block.encode("utf-8"))
+    if size > MAX_FRONTMATTER_BYTES:
+        msg = (
+            f"frontmatter block is {size} bytes, above the {MAX_FRONTMATTER_BYTES}-byte "
+            "ceiling; frontmatter is a handful of properties, not a payload"
+        )
+        raise FrontmatterError(msg)
+    return yaml.load(block, Loader=_FrontmatterLoader)  # noqa: S506 - a SafeLoader subclass
+
+
 def parse_frontmatter(text: str) -> FrontmatterResult:
     """Parse a document's frontmatter block and return it with the remaining body."""
     block, body, offset = split_frontmatter(text)
@@ -392,7 +450,7 @@ def parse_frontmatter(text: str) -> FrontmatterResult:
         return FrontmatterResult(frontmatter=Frontmatter(), body=text, body_line_offset=0)
 
     try:
-        loaded = yaml.safe_load(block)
+        loaded = _load_block(block)
     except yaml.YAMLError as exc:
         msg = f"frontmatter is not valid YAML: {exc}"
         raise FrontmatterError(msg) from exc
@@ -475,7 +533,7 @@ def upsert(
         remainder = body
     else:
         try:
-            loaded = yaml.safe_load(block)
+            loaded = _load_block(block)
         except yaml.YAMLError as error:
             msg = f"frontmatter is not readable YAML, so it will not be rewritten: {error}"
             raise FrontmatterError(msg) from error

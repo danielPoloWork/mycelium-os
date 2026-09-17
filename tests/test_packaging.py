@@ -24,6 +24,9 @@ from typing import Any
 import pytest
 import yaml
 
+pytestmark = pytest.mark.boundary("B2")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 ROOT = Path(__file__).parent.parent
 WORKFLOWS = ROOT / ".github" / "workflows"
 

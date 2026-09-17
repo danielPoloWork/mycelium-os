@@ -12,6 +12,9 @@ from mycelium.markdown.frontmatter import parse_frontmatter
 from mycelium.verification.errors import PromotionError
 from mycelium.verification.promotion import author_name, demote, promote, stamp
 
+pytestmark = pytest.mark.boundary("B5")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 WHEN = date(2026, 9, 1)
 
 DOCUMENT = """\

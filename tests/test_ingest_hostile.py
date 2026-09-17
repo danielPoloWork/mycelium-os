@@ -33,6 +33,9 @@ from mycelium.ingest.parsers.builder import KirBuilder
 from mycelium.ingest.safety import DEFAULT_LIMITS, Limits, guard, guard_archive, guard_markup
 from mycelium.sdk.types import CustodyKind, NodeKind
 
+pytestmark = [pytest.mark.boundary("B4"), pytest.mark.boundary("B9")]
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 FIXTURES = Path(__file__).parent / "fixtures" / "ingest"
 HOSTILE = FIXTURES / "hostile"
 
