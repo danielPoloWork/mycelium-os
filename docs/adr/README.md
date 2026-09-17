@@ -152,3 +152,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0118](0118-make-a-deferral-name-the-condition-that-ends-it.md) | Make a deferral name the condition that ends it, in code | Accepted |
 | [0119](0119-derive-the-suite-from-the-threat-model-and-bound-what-a-document-may-cost-to-read.md) | Derive the suite from the threat model, and bound what a document may cost to read | Accepted |
 | [0120](0120-build-the-reference-profile-publish-what-it-says-and-gate-the-instrument-not-the-verdict.md) | Build the reference profile, publish what it says, and gate the instrument rather than the verdict | Accepted |
+| [0121](0121-search-the-trademark-landscape-and-correct-what-d-024-assumed.md) | Search the trademark landscape, and correct what D-024 assumed | Accepted |
