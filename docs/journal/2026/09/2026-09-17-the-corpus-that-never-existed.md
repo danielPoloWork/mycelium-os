@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.4 — the public benchmark report with run manifests, and the
   agent-task gate quantified.
-- **PR:** `feat/reference-profile-benchmark`, following #154 (6.3, merged as `cf9e197`).
+- **PR:** #155 (`feat/reference-profile-benchmark`). Follows #154, merged as `cf9e197`.
 - **Milestone 6:** 6.4 closed. Six items filed from it: 6.18–6.23.
 - **Decision it records:** [ADR-0120](../../../adr/0120-build-the-reference-profile-publish-what-it-says-and-gate-the-instrument-not-the-verdict.md).
 
@@ -22,8 +22,9 @@ milestones went by.
 ## What the measurement said
 
 The headline is not that a budget is missed but **where the cost is**. End-to-end
-`mycelium_search` misses its 150 ms p95 on *every* corpus size, including a 60-document one,
-and the miss is a **constant ~250 ms that is not retrieval**: `handle_search` calls
+`mycelium_search` misses its 150 ms p95 on *every* corpus measured, down to a 568-chunk one
+of somebody else's documentation whose retrieval costs 7 ms at the median and whose tool call
+costs 278 ms. The miss is a **constant ~250–300 ms that is not retrieval**: `handle_search` calls
 `load_config` per call, which calls `installed_ids()`, which calls
 `importlib.metadata.entry_points()` — a re-read of every installed distribution's metadata,
 uncached, costing more than the entire budget before a chunk is ranked.
