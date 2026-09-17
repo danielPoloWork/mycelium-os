@@ -37,6 +37,8 @@ from mycelium.eval.harness import (
 )
 from mycelium.eval.metrics import (
     citation_coverage,
+    citation_precision,
+    cited_tokens,
     ndcg_at_k,
     recall_at_k,
     reciprocal_rank,
@@ -75,6 +77,8 @@ __all__ = [
     "Retriever",
     "build_retriever",
     "citation_coverage",
+    "citation_precision",
+    "cited_tokens",
     "load_cases",
     "ndcg_at_k",
     "recall_at_k",

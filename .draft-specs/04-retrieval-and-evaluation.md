@@ -159,6 +159,25 @@ Recall@10, Recall@50, nDCG@10, MRR; citation coverage (fraction of returned pass
 whose anchors resolve — must be 1.0); abstention correctness on `unanswerable` (the
 system returns "insufficient evidence" rather than confident noise); latency percentiles.
 
+**Citation precision, added at roadmap 6.7 (ADR-0122).** Every metric above ranks *chunks*
+— did the right passage come back, and how high — and coverage asks only whether the anchor
+resolves. Neither asks whether the anchor a reader is handed **names** anything: a passage
+returned under `#/7` is a correct answer and a citation nobody can check without this tool.
+So a run also reports the share of its top-ten anchors whose passage sits under at least one
+heading, and the mean size of the passages they point at. The two move independently, and a
+citation is imprecise in both directions — a located anchor into 700 tokens asks a reader to
+scan a page, an unlocated one into 60 asks them to find it first.
+
+It is **reported, not gated**, and the reason is stated rather than left as an omission: on
+the ingested corpus the number is dominated by the PDF lane, which reads 0.000 because
+ADR-0040 refused the pipeline that would fix it, so any threshold picked today would encode
+that decision instead of measuring anything. What arms it is the ADR-0040 re-take, which this
+metric is what makes possible.
+
+Note that locatedness is read from the **chunk**, never parsed from the anchor: an anchor
+omits the document's single level-1 heading (ADR-0007), so a passage under a real title and
+one in a document with no headings at all are spelled identically.
+
 ### 7.3 Gates (CI-enforced)
 
 | Gate | Rule |

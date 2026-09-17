@@ -64,12 +64,20 @@ from mycelium.config import load_config
 from mycelium.embedding import Embedder, EmbeddingError, build_embedder
 from mycelium.eval.metrics import (
     citation_coverage,
+    citation_precision,
+    cited_tokens,
     credit_judgments,
     ndcg_at_k,
     recall_at_k,
     reciprocal_rank,
 )
-from mycelium.eval.retrievers import Retriever, build_retriever, resolvable_anchors
+from mycelium.eval.retrievers import (
+    CitedPassage,
+    Retriever,
+    anchor_facts,
+    build_retriever,
+    resolvable_anchors,
+)
 from mycelium.sdk.identity import digest_json, digest_text, new_ulid
 from mycelium.sdk.types import (
     CaseResult,
@@ -112,6 +120,16 @@ __all__ = [
 EVAL_DIRNAME: Final = "eval"
 RETRIEVAL_LIMIT: Final = 50
 """Deep enough for Recall@50, which is the widest metric the spec asks for."""
+
+CITATION_WINDOW: Final = 10
+"""How many results the citation metrics are read over (roadmap 6.7).
+
+Ten, because that is what a reader is handed: `CaseResult.retrieved` records the
+top ten *"because the manifest records what a reader would see"*, the MCP tool's
+own `k` defaults to eight, and the rank metrics this sits beside are reported at
+10 as well. Scoring all fifty would measure the tail of a candidate list nobody
+reads, and would dilute exactly the anchors a citation metric is about.
+"""
 
 MAX_FALSE_ANSWER_RATE: Final = 0.05
 """Gate G4 for v1; tightens at 1.0."""
@@ -177,6 +195,13 @@ def _summarise(cases: Sequence[EvalCase], results: Sequence[CaseResult]) -> Metr
         return sum(values) / len(values) if values else 0.0
 
     false_answers = [r for r in unanswerable if not r.abstained]
+    # Both citation metrics average over *every* case, exactly as coverage always
+    # has: they are about the anchors a run handed back, not about its ranking, so
+    # the answerable/unanswerable split that protects the rank metrics does not
+    # apply. `cited_tokens` is the one exception — a case that returned nothing
+    # cited nothing, and averaging its 0 in would report the abstention as a
+    # smaller passage (roadmap 6.7).
+    cited = [r for r in results if r.cited_tokens > 0]
     return MetricSummary(
         cases=len(results),
         ndcg_at_10=mean([r.ndcg_at_10 for r in answerable]),
@@ -184,13 +209,31 @@ def _summarise(cases: Sequence[EvalCase], results: Sequence[CaseResult]) -> Metr
         recall_at_50=mean([r.recall_at_50 for r in answerable]),
         mrr=mean([r.reciprocal_rank for r in answerable]),
         citation_coverage=mean([r.citation_coverage for r in results]),
+        citation_precision=mean([r.citation_precision for r in results]),
+        cited_tokens=round(mean([r.cited_tokens for r in cited])),
         false_answer_rate=(len(false_answers) / len(unanswerable)) if unanswerable else 0.0,
         latency_p50_ms=_percentile(latencies, 0.50),
         latency_p95_ms=_percentile(latencies, 0.95),
     )
 
 
-def _evaluate_case(case: EvalCase, retriever: Retriever, resolvable: set[str]) -> CaseResult:
+def _located(facts: Mapping[str, CitedPassage]) -> set[str]:
+    """The anchors whose passage sits under at least one heading (roadmap 6.7).
+
+    Derived here rather than parsed from the anchor string, because an anchor
+    omits the document's title heading (ADR-0007) and a passage under a real
+    title is spelled exactly like one in a document with no headings at all
+    (ADR-0122).
+    """
+    return {anchor for anchor, passage in facts.items() if passage.heading_depth > 0}
+
+
+def _evaluate_case(
+    case: EvalCase,
+    retriever: Retriever,
+    resolvable: set[str],
+    facts: Mapping[str, CitedPassage],
+) -> CaseResult:
     judged = {relevant.anchor: relevant.grade for relevant in case.relevant}
     started = time.perf_counter()
     retrieved = retriever.search(case.query, RETRIEVAL_LIMIT)
@@ -210,6 +253,14 @@ def _evaluate_case(case: EvalCase, retriever: Retriever, resolvable: set[str]) -
         recall_at_50=recall_at_k(credited, judged, 50),
         reciprocal_rank=reciprocal_rank(credited, judged),
         citation_coverage=citation_coverage(retrieved, resolvable),
+        # Over the raw anchors, not the credited ones: what a reader is handed is
+        # every result, and crediting rewrites a section's chunks into the
+        # judgement they satisfy, which is the wrong subject for a question about
+        # what the anchor says (roadmap 6.7, ADR-0122).
+        citation_precision=citation_precision(retrieved, _located(facts), CITATION_WINDOW),
+        cited_tokens=cited_tokens(
+            retrieved, {a: f.tokens for a, f in facts.items()}, CITATION_WINDOW
+        ),
         abstained=not retrieved,
         latency_ms=elapsed_ms,
     )
@@ -770,10 +821,13 @@ def _gates(overall: MetricSummary, unanswerable_cases: int) -> tuple[GateResult,
 
 
 def _score(
-    cases: Sequence[EvalCase], retriever: Retriever, resolvable: set[str]
+    cases: Sequence[EvalCase],
+    retriever: Retriever,
+    resolvable: set[str],
+    facts: Mapping[str, CitedPassage],
 ) -> tuple[list[CaseResult], MetricSummary, dict[str, MetricSummary]]:
     """Run one retriever over the case set and summarise it overall and per slice."""
-    results = [_evaluate_case(case, retriever, resolvable) for case in cases]
+    results = [_evaluate_case(case, retriever, resolvable, facts) for case in cases]
     by_id = {case.case_id: case for case in cases}
     per_slice: dict[str, MetricSummary] = {}
     for slice_name in sorted({s.value for case in cases for s in case.slices}):
@@ -1131,7 +1185,8 @@ def run_evaluation(
         except ValueError as error:
             raise EvaluationError(str(error)) from error
         resolvable = resolvable_anchors(store)
-        results, overall, per_slice = _score(cases, retriever, resolvable)
+        facts = anchor_facts(store)
+        results, overall, per_slice = _score(cases, retriever, resolvable, facts)
         retriever_config = dict(retriever.config)
 
         chunks = store.counts()["chunks"]
@@ -1151,7 +1206,7 @@ def run_evaluation(
         gates.append(_gate_g6())
         if retriever_name == "hybrid":
             lexical_results, lexical, lexical_slices = _score(
-                cases, build_retriever("mycelium", store), resolvable
+                cases, build_retriever("mycelium", store), resolvable, facts
             )
             gates.append(
                 _gate_g2(
@@ -1176,12 +1231,12 @@ def run_evaluation(
             except ValueError as error:
                 raise EvaluationError(str(error)) from error
             incumbent_results, incumbent_overall, incumbent_slices = _score(
-                cases, incumbent, resolvable
+                cases, incumbent, resolvable, facts
             )
 
         companion_overall = None
         if companion:
-            _, companion_overall, _ = _score(companion, retriever, resolvable)
+            _, companion_overall, _ = _score(companion, retriever, resolvable, facts)
 
     return EvalRunManifest(
         run_id=new_ulid(),

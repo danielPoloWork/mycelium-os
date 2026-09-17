@@ -641,3 +641,63 @@ def test_the_lanes_agree_on_the_caption_they_used_to_disagree_about() -> None:
     assert not [text for text in source if "github.com/astral-sh/uv/assets" in text], (
         "the hero images' CDN URLs are terms of a chunk again"
     )
+
+
+# ---------------------------------------------------------------------------
+# The premise roadmap 6.7's deferred gate rests on (ADR-0122)
+# ---------------------------------------------------------------------------
+
+
+def test_the_pdf_lane_cites_nothing_a_reader_can_find(
+    manifest: dict[str, dict[str, str]],
+) -> None:
+    """Citation precision is reported and not gated, and this is why.
+
+    ADR-0122 measures what a citation *names*, and defers gating it because on this
+    corpus the aggregate is dominated by one lane reading 0.000 for a reason already
+    decided: v1 reads a PDF's text layer, which recovers no headings, so every
+    passage of a PDF-rendered document is cited by ordinal alone (ADR-0032,
+    ADR-0040). A threshold picked while that holds would encode the refusal rather
+    than measure anything.
+
+    This pins the premise so the deferral cannot outlive it (ADR-0118's rule, at
+    test scale). The day anyone ships PDF structure, this test fails and points at
+    ADR-0122's gating paragraph — which is the moment the gate is worth arming, and
+    the moment ADR-0040 is due its re-take.
+
+    **The control is the twin, not the other lanes.** `docx` and `html` are not
+    uniformly headed either — one HTML projection has no headings because its source
+    is a one-line mkdocs include — so "every other lane keeps them" is false and the
+    claim that matters is sharper: the other lanes lose a heading only where the
+    *source* had none, and the PDF lane loses them wherever the source had any.
+    Structural, like everything else in this file: it reads the projections and
+    their twins, so it needs no build.
+    """
+    from mycelium.markdown import parse_markdown
+    from mycelium.sdk.types import NodeKind
+
+    def headed(path: Path) -> bool:
+        kir = parse_markdown(path.read_text(encoding="utf-8")).kir
+        return any(node.kind is NodeKind.HEADING for node in kir.nodes)
+
+    faithful: dict[str, int] = Counter()
+    lost: dict[str, int] = Counter()
+    for source, entry in sorted(manifest.items()):
+        if not headed(TWIN / source):
+            continue  # the source has no structure to lose
+        lane = entry["format"]
+        if headed(CORPUS / entry["evidence"]):
+            faithful[lane] += 1
+        else:
+            lost[lane] += 1
+
+    assert faithful["pdf"] == 0 and lost["pdf"] > 0, (
+        "a PDF-rendered document now carries the headings its source had, so the PDF "
+        "lane no longer reads 0.000 on citation precision. That voids the premise "
+        "ADR-0122 defers the gate on, and re-opens ADR-0040 with the trade it asked for"
+    )
+    for lane in ("docx", "html"):
+        assert lost[lane] == 0 and faithful[lane] > 0, (
+            f"the {lane} lane has started losing headings its source had; the PDF "
+            "reading is only a finding about one lane while these two keep theirs"
+        )

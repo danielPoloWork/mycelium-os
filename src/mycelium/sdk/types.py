@@ -1038,6 +1038,21 @@ class CaseResult(Record):
     recall_at_50: float = Field(ge=0.0, le=1.0)
     reciprocal_rank: float = Field(ge=0.0, le=1.0)
     citation_coverage: float = Field(ge=0.0, le=1.0)
+    citation_precision: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Share of the returned anchors that name a heading path rather than only "
+            "a position in this product's own chunking (roadmap 6.7, ADR-0122). "
+            "Defaults to the vacuous 1.0 so a result written before this existed "
+            "validates, and so an abstention is not scored as a citation failure."
+        ),
+    )
+    cited_tokens: NonNegativeInt = Field(
+        default=0,
+        description="Mean size of the passages those anchors point at; 0 when none were.",
+    )
     abstained: bool = False
     latency_ms: NonNegativeInt = 0
 
@@ -1051,6 +1066,24 @@ class MetricSummary(Record):
     recall_at_50: float = Field(ge=0.0, le=1.0)
     mrr: float = Field(ge=0.0, le=1.0)
     citation_coverage: float = Field(ge=0.0, le=1.0)
+    citation_precision: float = Field(
+        default=1.0,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Mean share of returned anchors that name a heading path (roadmap 6.7, "
+            "ADR-0122). Reported, not gated: today it is dominated on one corpus by "
+            "a defect already decided (ADR-0040), and a threshold picked to pass that "
+            "would encode the decision rather than measure it."
+        ),
+    )
+    cited_tokens: NonNegativeInt = Field(
+        default=0,
+        description=(
+            "Mean size of the cited passages. The companion reading: a located anchor "
+            "into 700 tokens and an unlocated one into 60 are imprecise differently."
+        ),
+    )
     false_answer_rate: float = Field(
         default=0.0, ge=0.0, le=1.0, description="Unanswerable cases that returned results."
     )

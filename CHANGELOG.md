@@ -149,6 +149,22 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   an error result may carry are declared per code (`mycelium.mcp.errors.ERROR_FIELDS`), and
   a code cannot carry one it does not declare.
 
+### Added
+
+- **Citation precision: `mycelium eval` now scores what an anchor *names*, not only where a
+  passage ranked** (roadmap 6.7, ADR-0122). Every other metric ranks chunks, and citation
+  coverage asks only whether an anchor resolves; a run could be perfect on gate G1 and hand
+  back ten citations a reader cannot find. Each run reports the share of its top-ten anchors
+  whose passage sits under a heading, and the mean size of those passages, per case and per
+  slice. Reported, not gated, with the condition that would arm it pinned by a test. Two
+  findings came with it: the PDF lane of the ingested corpus reads **0.000** — the text layer
+  recovers no headings, so every PDF passage is cited by ordinal alone, which is the benefit
+  ADR-0040 refused a 2.4 GB pipeline over and could not score — and the product's citations
+  are **two to twenty-nine times smaller** than the grep incumbent's, which is the widest
+  margin this project has measured against it. `tools/measure_citation_precision.py` reports
+  the corpus-wide breakdown; `tools/measure_pdf_structure.py` carries the new columns so
+  ADR-0040's re-take is one command.
+
 ### Changed
 
 - **The agent-task suite's success rate is now over *scorable* tasks** (roadmap 6.4,

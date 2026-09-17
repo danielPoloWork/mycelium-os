@@ -29,6 +29,8 @@ from mycelium.eval import (
     MyceliumRetriever,
     build_retriever,
     citation_coverage,
+    citation_precision,
+    cited_tokens,
     compare_to_incumbent,
     incumbent_comparison,
     load_cases,
@@ -40,6 +42,7 @@ from mycelium.eval import (
     write_run,
 )
 from mycelium.eval.harness import _gate_g2, g2_regressions
+from mycelium.eval.retrievers import CitedPassage
 from mycelium.sdk.types import (
     CaseResult,
     EvalCase,
@@ -144,6 +147,76 @@ def test_citation_coverage_is_the_g1_measurement() -> None:
     assert citation_coverage(["a", "b"], {"a", "b"}) == 1.0
     assert citation_coverage(["a", "b"], {"a"}) == pytest.approx(0.5)
     assert citation_coverage([], set()) == 1.0  # abstention is measured separately
+
+
+# ---------------------------------------------------------------------------
+# Citation precision (roadmap 6.7, ADR-0122)
+# ---------------------------------------------------------------------------
+
+
+def test_citation_precision_scores_the_anchors_a_reader_is_handed() -> None:
+    known = {"docs/a.md#setup/0", "docs/a.md#setup/1"}
+    assert citation_precision(sorted(known), known, 10) == 1.0
+    assert citation_precision(["docs/a.md#/0", "docs/a.md#/1"], known, 10) == 0.0
+    assert citation_precision([*sorted(known), "docs/a.md#/4"], known, 10) == pytest.approx(2 / 3)
+    # Vacuously precise, the convention coverage already uses: a run that returned
+    # nothing has no citation to fault, and abstention is gated by G4 instead.
+    assert citation_precision([], known, 10) == 1.0
+
+
+def test_locatedness_comes_from_the_snapshot_not_from_the_anchor_string() -> None:
+    """The trap this metric was nearly built on, pinned (ADR-0122).
+
+    An anchor omits the document's single level-1 heading, because the document is
+    already identified by its path (ADR-0007). So a passage that sits under a real
+    title and before the first `##` is spelled `docs/a.md#/0` — character for
+    character what chunk 0 of a structureless document looks like. Only the chunk
+    record tells them apart, and reading the string calls 193 of this repository's
+    1 461 chunks unstructured when one is.
+    """
+    under_a_title = "docs/a.md#/0"
+    in_a_flat_document = "evidence/scan-pdf-abcd1234.md#/0"
+    assert under_a_title.partition("#")[2] == in_a_flat_document.partition("#")[2]
+
+    facts = {
+        under_a_title: CitedPassage(heading_depth=1, tokens=120),
+        in_a_flat_document: CitedPassage(heading_depth=0, tokens=500),
+    }
+    located = {a for a, passage in facts.items() if passage.heading_depth > 0}
+    assert citation_precision([under_a_title], located, 10) == 1.0
+    assert citation_precision([in_a_flat_document], located, 10) == 0.0
+
+
+def test_citation_precision_reads_only_the_window_a_reader_sees() -> None:
+    """Fifty candidates are generated; ten are what a manifest records and a
+    reader is shown, so scoring the tail would dilute the measurement."""
+    anchors = ["docs/a.md#setup/0"] * 10 + ["docs/a.md#/1"] * 40
+    assert citation_precision(anchors, {"docs/a.md#setup/0"}, 10) == 1.0
+    assert citation_precision(anchors, {"docs/a.md#setup/0"}, 50) == pytest.approx(0.2)
+
+
+def test_cited_tokens_is_the_companion_reading() -> None:
+    """A located anchor into a page and an unlocated one into a paragraph are
+    imprecise in different directions, so the size is reported beside the share."""
+    sizes = {"docs/a.md#setup/0": 60, "docs/a.md#setup/1": 140}
+    assert cited_tokens(["docs/a.md#setup/0", "docs/a.md#setup/1"], sizes, 10) == 100
+    assert cited_tokens([], sizes, 10) == 0
+    # An anchor the snapshot does not know is skipped rather than counted as zero;
+    # with coverage gated at 1.00 there are none, and a run that lost that has a
+    # louder failure to report than this mean.
+    assert cited_tokens(["docs/a.md#setup/0", "gone#x/0"], sizes, 10) == 60
+
+
+def test_the_two_citation_metrics_are_independent() -> None:
+    """The point of reporting both: an anchor can resolve and still name nothing.
+
+    This is the case ADR-0040 could not score — an ingested PDF returns the right
+    passage under an anchor no reader can find, and every rank metric, plus gate
+    G1, calls that a clean run.
+    """
+    retrieved = ["docs/a.md#/0", "docs/a.md#/1"]
+    assert citation_coverage(retrieved, set(retrieved)) == 1.0
+    assert citation_precision(retrieved, set(), 10) == 0.0
 
 
 # ---------------------------------------------------------------------------

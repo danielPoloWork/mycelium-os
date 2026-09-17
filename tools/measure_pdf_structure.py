@@ -73,10 +73,18 @@ DOC_ID = "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"
 MIN_COVERAGE = 0.5
 _TOKEN = re.compile(r"[A-Za-z0-9_]+")
 METRICS = (
-    ("nDCG@10", "ndcg_at_10"),
-    ("MRR", "mrr"),
-    ("R@10", "recall_at_10"),
-    ("R@50", "recall_at_50"),
+    ("nDCG@10", "ndcg_at_10", ".3f"),
+    ("MRR", "mrr", ".3f"),
+    ("R@10", "recall_at_10", ".3f"),
+    ("R@50", "recall_at_50", ".3f"),
+    # The two roadmap 6.7 added, and the reason this tool is worth re-running
+    # (ADR-0122). ADR-0040 refused this pipeline on the rank metrics above while
+    # naming one benefit none of them could see: an ingested PDF stops being cited
+    # by ordinal and starts being cited by section. `located` is that benefit, as
+    # a number. The text-layer arm reads 0.000 today, so whatever the ML arm reads
+    # here is the size of the prize, against the regression the ranks report.
+    ("located", "citation_precision", ".3f"),
+    ("tokens", "cited_tokens", ".0f"),
 )
 
 
@@ -336,12 +344,12 @@ def measure_retrieval(destination: Path, parsed: dict[str, KirDocument]) -> None
             print(f"\n{case_set}: no case is answered by a PDF-rendered document in all arms")
             continue
         print(f"\n{case_set}: {len(shared)} cases whose answer is in a PDF-rendered document")
-        header = f"  {'arm':<12}" + "".join(f"{name:>9}" for name, _ in METRICS) + f"{'target':>9}"
+        header = f"  {'arm':<12}" + "".join(f"{n:>9}" for n, _, _ in METRICS) + f"{'target':>9}"
         print(header)
         for label, corpus, _ in arms:
             cases = tuple(c for c in selections[label] if c.case_id in shared)
             summary = run_evaluation(corpus, cases, case_set=f"{case_set}.jsonl").overall
-            cells = "".join(f"{getattr(summary, field):9.3f}" for _, field in METRICS)
+            cells = "".join(format(getattr(summary, f), f">9{spec}") for _, f, spec in METRICS)
             print(f"  {label:<12}{cells}{target_size(corpus, cases):9.0f}")
         print(
             "  The Markdown row is the control. The text layer's numbers carry a target ten "
