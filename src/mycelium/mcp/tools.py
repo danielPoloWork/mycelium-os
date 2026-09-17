@@ -251,9 +251,17 @@ def _snapshot_id(root: Path) -> str:
 def _open_store(root: Path) -> SqliteStore:
     """A fresh read-only handle per call.
 
-    Opening costs microseconds against a 150 ms query budget, and it means a
-    long-lived agent session sees each published snapshot rather than the one
-    that happened to exist when the server started.
+    The point is correctness, not thrift: a long-lived agent session sees each
+    published snapshot rather than the one that happened to exist when the server
+    started.
+
+    **It is not free, and this docstring used to say it was** — *"opening costs
+    microseconds against a 150 ms query budget"*. Measured at roadmap 6.4 it costs
+    **10–12 ms**, four orders of magnitude off, and it is not the expensive part of
+    this call either: :func:`_config` re-reads `mycelium.toml` per call, and that
+    re-scans the environment's entry points at ~250 ms, which is more than the whole
+    end-to-end budget on any corpus. Both are recorded in
+    `docs/benchmarks/2026-09-17-reference-profile.md`; the fix is roadmap 6.18.
     """
     try:
         return SqliteStore.open(root, read_only=True)

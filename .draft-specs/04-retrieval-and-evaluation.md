@@ -187,12 +187,36 @@ Therefore, in addition to IR metrics:
 - If Mycelium OS does not visibly beat grep on these tasks, the correct response is to fix the
   product, not the benchmark.
 
+**Two gates, not one (roadmap 6.4, ADR-0120).** "Quantified gate at 1.0" was read as one thing
+and is two, and only the second waits:
+
+- The suite's **integrity** — does the comparison still measure retrieval? — is gated **now**.
+  `mycelium eval --tasks --gate` fails when a task requires a passage the snapshot no longer
+  holds, and CI runs it. At 6.4 four of the twenty-two tasks required anchors the packed
+  chunker had merged away, and both strategies had been scoring them as misses ever since, so
+  the rate had a silent ceiling of 18/22. Such a task is now *unresolved*: reported, and
+  excluded from the denominator.
+- The **verdict** — does Mycelium beat grep? — stays qualitative here and arms at the **v1.0.0
+  tag**, which Milestone 7 cuts. Its rule and its margin are quantified in
+  `docs/benchmarks/2026-09-17-reference-profile.md` ahead of arming, together with what has to
+  hold first: a green integrity gate, a denominator that does not move under it, and a corpus
+  that is not only our own.
+
 ### 7.5 Run manifests
 
 Every `mycelium eval` run writes a manifest (snapshot id, config digest, retriever config,
 metric table, per-case results, hardware) under `.mycelium/eval/`. Released benchmark reports
 are committed to the repo with their manifests; a report without a manifest is
 exploratory and cannot satisfy a gate (adopted verbatim in spirit from `gpt-specs` §3).
+
+**Enforced from roadmap 6.4 (ADR-0120), and one thing added.** The rule above held nothing up
+for six milestones because `docs/benchmarks/` held no report at all; it now holds one, and
+`tools/consistency_lint.py`'s `benchmarks` check refuses a report that cites no manifest, a
+citation that resolves to nothing, and a manifest no report cites. The addition is that a
+manifest records **what a file open costs on the machine that took it**, measured over the
+corpus it is about to build. Every build figure is dominated by that constant — ~1.3 ms on the
+machine of record, about a hundred times an unencumbered SSD — and without it a reader cannot
+tell a compiler cost from a machine cost.
 
 ### 7.6 Corpus plan
 

@@ -26,6 +26,18 @@ evidence was present in what the agent received", which is necessary for the
 agent to succeed and not sufficient — the model still has to read it. Spec 04
 §7.4 calls for qualitative scoring pre-1.0 and a quantified gate at 1.0; this is
 the qualitative half made reproducible, and ADR-0022 records what it leaves out.
+
+**A required anchor that no longer exists is reported, never scored** (roadmap
+6.4, ADR-0120). A task's `requires` list is a judgement about the corpus, and the
+corpus moves underneath it: at 6.4 four of the twenty-two tasks pointed at anchors
+the store no longer held, because the packed chunker (ADR-0047) had merged three
+chunks of one ADR into one and shifted every ordinal after it. Nothing noticed,
+because a missing anchor scored exactly like a retrieval miss — so the suite's
+headline rate had silently become *retrieval quality plus anchor rot*, with no way
+to tell them apart, and its ceiling was 18/22 rather than 22/22. Such a task is now
+counted as **unresolved** and excluded from the rate, which is the only honest
+reading: neither strategy can put in front of a model a passage that does not
+exist, so it measures nothing about either.
 """
 
 import json
@@ -109,6 +121,16 @@ class TaskOutcome:
     """Tokens of context the agent would have had to read."""
     documents_read: int
     latency_ms: int
+    unresolved: tuple[str, ...] = ()
+    """Required anchors this snapshot does not contain at all.
+
+    Not a retrieval failure and not scored as one: the passage a judgement names
+    is gone, so the task asks for evidence no strategy could return."""
+
+    @property
+    def scorable(self) -> bool:
+        """Whether this outcome says anything about retrieval."""
+        return not self.unresolved
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -116,6 +138,8 @@ class TaskOutcome:
             "strategy": self.strategy,
             "found": self.found,
             "missing": list(self.missing),
+            "unresolved": list(self.unresolved),
+            "scorable": self.scorable,
             "tokens": self.tokens,
             "documents_read": self.documents_read,
             "latency_ms": self.latency_ms,
@@ -132,8 +156,27 @@ class TaskSuiteReport:
     def by_strategy(self, strategy: str) -> tuple[TaskOutcome, ...]:
         return tuple(item for item in self.outcomes if item.strategy == strategy)
 
+    @property
+    def unresolved(self) -> dict[str, tuple[str, ...]]:
+        """Task id → the required anchors this snapshot does not hold, sorted.
+
+        The suite's own health, and the first thing a reader needs: a rate over
+        eighteen tasks and a rate over twenty-two are not the same measurement,
+        and only this says which one is being quoted.
+        """
+        return {
+            item.task_id: item.unresolved
+            for item in sorted(self.outcomes, key=lambda row: row.task_id)
+            if item.unresolved
+        }
+
+    @property
+    def scorable(self) -> int:
+        """Tasks whose required evidence still exists — the rate's denominator."""
+        return self.tasks - len(self.unresolved)
+
     def summary(self, strategy: str) -> dict[str, float]:
-        rows = self.by_strategy(strategy)
+        rows = tuple(item for item in self.by_strategy(strategy) if item.scorable)
         if not rows:
             return {}
         return {
@@ -150,6 +193,8 @@ class TaskSuiteReport:
         strategies = sorted({item.strategy for item in self.outcomes})
         return {
             "tasks": self.tasks,
+            "scorable": self.scorable,
+            "unresolved": {key: list(value) for key, value in self.unresolved.items()},
             "strategies": {name: self.summary(name) for name in strategies},
             "outcomes": [item.as_dict() for item in self.outcomes],
         }
@@ -227,6 +272,13 @@ def run_task_suite(
     outcomes: list[TaskOutcome] = []
     with SqliteStore.open(root, read_only=True) as store:
         for task in tasks:
+            # Asked of the snapshot before anything is timed: a judgement that
+            # names a passage the corpus no longer holds is stale, and scoring it
+            # as a miss would blame retrieval for the chunker having moved
+            # (roadmap 6.4).
+            unresolved = tuple(
+                sorted(anchor for anchor in task.requires if store.get_chunk(anchor) is None)
+            )
             for strategy in ("mycelium", "grep"):
                 started = time.perf_counter()
                 anchors, tokens, documents = (
@@ -245,6 +297,7 @@ def run_task_suite(
                         tokens=tokens,
                         documents_read=documents,
                         latency_ms=elapsed,
+                        unresolved=unresolved,
                     )
                 )
     return TaskSuiteReport(tasks=len(tasks), outcomes=tuple(outcomes))

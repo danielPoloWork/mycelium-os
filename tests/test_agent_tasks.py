@@ -61,15 +61,54 @@ def test_a_task_that_can_be_answered_is_scored_found(corpus: Path) -> None:
 
 
 def test_missing_evidence_is_named_not_merely_counted(corpus: Path) -> None:
+    """A real miss: the passage exists, and this query did not bring it back."""
+    licence = anchor_for(corpus, "knowledge/licence.md")
+    task = AgentTask(task_id="t-y", prompt="event bus routes messages", requires=(licence,))
+    outcome = run_task_suite(corpus, [task]).by_strategy("mycelium")[0]
+
+    assert not outcome.found
+    assert outcome.missing == (licence,)
+    assert outcome.unresolved == ()  # the evidence is there; retrieval did not find it
+    assert outcome.scorable
+
+
+def test_an_anchor_the_corpus_no_longer_holds_is_unresolved_not_a_miss(corpus: Path) -> None:
+    """Roadmap 6.4: the distinction the suite could not make, and the one that
+    silently capped its rate at 18/22 when the chunker moved four anchors."""
     task = AgentTask(
         task_id="t-y",
         prompt="what licence is the project distributed under",
         requires=("knowledge/nowhere.md#absent/0",),
     )
-    outcome = run_task_suite(corpus, [task]).by_strategy("mycelium")[0]
+    report = run_task_suite(corpus, [task])
+    outcome = report.by_strategy("mycelium")[0]
 
-    assert not outcome.found
-    assert outcome.missing == ("knowledge/nowhere.md#absent/0",)
+    assert outcome.unresolved == ("knowledge/nowhere.md#absent/0",)
+    assert not outcome.scorable
+    assert report.unresolved == {"t-y": ("knowledge/nowhere.md#absent/0",)}
+    assert report.scorable == 0
+
+
+def test_an_unresolved_task_is_excluded_from_the_rate_rather_than_failing_it(
+    corpus: Path,
+) -> None:
+    """Neither strategy can hand a model a passage that does not exist, so counting
+    it as a failure would report anchor rot as retrieval quality."""
+    answerable = AgentTask(
+        task_id="t-ok",
+        prompt="what licence is the project distributed under",
+        requires=(anchor_for(corpus, "knowledge/licence.md"),),
+    )
+    rotted = AgentTask(task_id="t-rot", prompt="anything", requires=("gone.md#nowhere/0",))
+    report = run_task_suite(corpus, [answerable, rotted])
+
+    assert report.tasks == 2
+    assert report.scorable == 1
+    # 1/1, not 1/2: the denominator is what the corpus can still answer for.
+    assert report.summary("mycelium")["success_rate"] == 1.0
+    payload = report.as_dict()
+    assert payload["scorable"] == 1
+    assert payload["unresolved"] == {"t-rot": ["gone.md#nowhere/0"]}
 
 
 def test_both_strategies_run_on_every_task(corpus: Path) -> None:
@@ -130,5 +169,42 @@ def test_the_report_serialises_for_a_run_manifest(corpus: Path) -> None:
     payload = json.loads(json.dumps(report.as_dict()))
 
     assert payload["tasks"] == 1
+    assert payload["scorable"] == 1
+    assert payload["unresolved"] == {}
     assert set(payload["strategies"]) == {"mycelium", "grep"}
     assert payload["outcomes"][0]["task_id"] == "t-1"
+
+
+def test_the_suite_gate_refuses_a_corpus_that_lost_a_required_passage(
+    corpus: Path, tmp_path: Path
+) -> None:
+    """`mycelium eval --tasks --gate` gates the *instrument*, not the product.
+
+    Whether Mycelium beats grep is scored qualitatively until 1.0 (spec 04 §7.4);
+    whether the suite still measures anything is decidable today, and CI now asks
+    (ADR-0120).
+    """
+    from typer.testing import CliRunner
+
+    from mycelium.cli.app import app
+
+    suite = corpus / "eval"
+    suite.mkdir(exist_ok=True)
+    good = AgentTask(
+        task_id="t-ok",
+        prompt="what licence is the project distributed under",
+        requires=(anchor_for(corpus, "knowledge/licence.md"),),
+    )
+    write_tasks(suite / "tasks.jsonl", [good])
+    runner = CliRunner()
+    assert runner.invoke(app, ["eval", str(corpus), "--tasks", "--gate"]).exit_code == 0
+
+    write_tasks(
+        suite / "tasks.jsonl",
+        [good, AgentTask(task_id="t-rot", prompt="x", requires=("gone.md#nowhere/0",))],
+    )
+    failed = runner.invoke(app, ["eval", str(corpus), "--tasks", "--gate"])
+    assert failed.exit_code == 1
+    assert "t-rot" in failed.stdout
+    # Without the gate it is a report, exactly as it was before.
+    assert runner.invoke(app, ["eval", str(corpus), "--tasks"]).exit_code == 0

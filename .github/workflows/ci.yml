@@ -551,7 +551,13 @@ jobs:
         run: uv run mycelium eval . --retriever grep || true
       - name: Agent-task suite against the grep loop
         shell: bash
-        run: uv run mycelium eval . --tasks
+        # `--gate` enforces the suite's integrity, never its verdict: it fails when a
+        # task requires a passage this snapshot no longer holds. Whether Mycelium beats
+        # grep stays qualitative until 1.0 (spec 04 §7.4); whether the comparison still
+        # measures retrieval at all is decidable now, and at roadmap 6.4 it did not —
+        # four of twenty-two tasks had been scoring as misses for both strategies since
+        # the packed chunker moved their anchors (ADR-0120).
+        run: uv run mycelium eval . --tasks --gate
 
   # Reproducible performance gate — runs only when the project has a benchmark suite.
   benchmark:

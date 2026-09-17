@@ -12,6 +12,29 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The first public benchmark report, measured at the conditions the budgets are stated for**
+  (roadmap 6.4, ADR-0120). `tools/benchmark_reference_profile.py` generates the 10⁵-chunk
+  reference corpus spec 04 §1 names — from prose harvested out of the vendored corpora, under
+  a seed, so it reproduces without being committed — builds it, and measures the three
+  performance claims across a curve of corpus sizes.
+  [`docs/benchmarks/2026-09-17-reference-profile.md`](docs/benchmarks/2026-09-17-reference-profile.md)
+  publishes what it found, with its run manifest committed beside it; the report says the
+  product misses three of its own budgets, files the fixes as roadmap 6.18–6.23, and records
+  [BUG-0031](docs/bugs/2026/09/BUG-0031-writing-a-chunk-scans-the-whole-lexical-index.md) —
+  writing a chunk deletes from an FTS5 table by an `UNINDEXED` column, which SQLite answers
+  with a full scan, so compiling *N* chunks costs O(*N*²) and the 10⁵-chunk reference corpus
+  takes about nine hours to load. The
+  manifest carries the machine **and what a file open costs on it**, because every build
+  figure is dominated by that constant and it is not a property of the compiler.
+- **`mycelium eval --tasks --gate`** — the agent-task suite's *integrity* gate (roadmap 6.4,
+  ADR-0120). It fails when a task requires a passage the snapshot no longer holds. Whether
+  Mycelium beats grep stays qualitative until 1.0 (spec 04 §7.4); whether the comparison still
+  measures retrieval is decidable now, and it did not: four of the twenty-two tasks had been
+  scoring as misses for *both* strategies since the packed chunker merged three chunks of one
+  ADR into one and shifted every ordinal after it. CI and `tools/verify.py` now run it gated.
+- **A `benchmarks` congruence check** in `tools/consistency_lint.py`: a published report is in
+  the index and cites a run manifest that exists, and no manifest is orphaned — spec 04 §7.5's
+  *"a report without a manifest is exploratory and cannot satisfy a gate"*, enforced.
 - **The threat-model-derived test suite** (roadmap 6.3, ADR-0119). A test file that holds a
   trust boundary of `docs/security/threat-model.md` now says so — `pytestmark =
   pytest.mark.boundary("B4")` — so `uv run pytest -m boundary` runs exactly the tests that
@@ -127,6 +150,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   a code cannot carry one it does not declare.
 
 ### Changed
+
+- **The agent-task suite's success rate is now over *scorable* tasks** (roadmap 6.4,
+  ADR-0120). A required anchor the snapshot does not hold is reported as `unresolved` and
+  excluded from the rate rather than scored as a retrieval miss, because neither strategy can
+  hand a model a passage that does not exist. Rates taken before this change are not
+  comparable with rates taken after it: ADR-0022's 64 % / 27 % was read off a 22-task
+  denominator that had four unanswerable tasks in it. The four are re-anchored to the chunks
+  that now carry the same passages.
+- **Three statements the reference profile falsified are corrected** (roadmap 6.4): the MCP
+  store handle's *"opening costs microseconds"* (it costs 10–12 ms), the store benchmark's
+  deferral of the real measurement to roadmap 3.7 (which never took it), and spec 06's
+  Phase-1 exit gate recorded as met on a measurement that was never made.
 
 ### Deprecated
 

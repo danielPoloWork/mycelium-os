@@ -13,6 +13,18 @@ reading the document, not by asking a retriever what it liked. Several of these
 reuse anchors already judged in `cases.jsonl`, which is the point: if an anchor
 is the answer to the question, it is the evidence for the task.
 
+**Validation at generation time is not enough, which roadmap 6.4 found the hard
+way.** Every anchor below was checked against a real build when it was written,
+and four of them had since stopped existing: the packed chunker (ADR-0047) merged
+ADR-0009's three Decision chunks into one and shifted every ordinal after it, so
+`#decision/1` and `#decision/2` — and `README.md#build-test-run/1` — named nothing.
+The suite went on scoring those four tasks as retrieval *misses* for both
+strategies, which put a silent ceiling of 18/22 on a rate nobody knew was capped.
+They are re-anchored here to the chunks that now carry the same passages, judged
+the same way: by reading them. The rot itself is caught from now on by the suite,
+which reports an unresolved anchor rather than scoring it, and by
+`mycelium eval --tasks --gate`, which CI runs (ADR-0120).
+
     python tools/build_agent_tasks.py
 """
 
@@ -50,7 +62,7 @@ TASKS: tuple[tuple[str, TaskKind, str, tuple[str, ...], str], ...] = (
         "t-0003",
         "answer",
         "Which Python version does the project require?",
-        ("README.md#build-test-run/1",),
+        ("README.md#build-test-run/0",),
         "A fact stated once, in a section about something else.",
     ),
     (
@@ -85,7 +97,7 @@ TASKS: tuple[tuple[str, TaskKind, str, tuple[str, ...], str], ...] = (
         "t-0008",
         "answer",
         "Why does the build write a mycelium_id into document frontmatter?",
-        ("docs/adr/0009-adopt-build-publication-semantics.md#decision/2",),
+        ("docs/adr/0009-adopt-build-publication-semantics.md#decision/0",),
         "Touches the one tier-2 write the compiler makes; an agent must not guess here.",
     ),
     (
@@ -109,7 +121,7 @@ LOCATE_AND_RELATE: tuple[tuple[str, TaskKind, str, tuple[str, ...], str], ...] =
         "t-0011",
         "locate",
         "Find where the publication order is defined: lock, transaction, pointer swap.",
-        ("docs/adr/0009-adopt-build-publication-semantics.md#decision/1",),
+        ("docs/adr/0009-adopt-build-publication-semantics.md#decision/0",),
         "The `locate` shape from spec 04 s7.4: find where X is defined.",
     ),
     (
@@ -180,7 +192,7 @@ LOCATE_AND_RELATE: tuple[tuple[str, TaskKind, str, tuple[str, ...], str], ...] =
         "What does rollback depend on that a plain pointer swap would not give it?",
         (
             "docs/adr/0016-make-snapshots-restorable.md#decision/0",
-            "docs/adr/0009-adopt-build-publication-semantics.md#decision/1",
+            "docs/adr/0009-adopt-build-publication-semantics.md#decision/0",
         ),
         "Evidence in two ADRs: the second is what the first had to work around.",
     ),

@@ -239,6 +239,12 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
         # build on a broken link or an unresolved reference rather than shipping
         # quietly (AGENTS.md §10's "API docs build without warnings" row).
         ("docs site", [python, "-m", "mkdocs", "build", "--strict"]),
+        # A published benchmark report is evidence only while its manifest is readable
+        # and says which machine took it (spec 04 §7.5). The congruence lint holds the
+        # report-to-manifest links; this holds what is inside. Instant, so it runs at
+        # every mode — the expensive half of that tool is run by hand and leaves the
+        # manifest behind (roadmap 6.4, ADR-0120).
+        ("benchmark manifests", [python, "tools/benchmark_reference_profile.py", "--check"]),
     ]
     if mode == "docs":
         return steps
@@ -323,7 +329,10 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
     # rules are part of what a measured default was measured under, so a change
     # to them without a re-measurement is the mistake `--check` exists to catch.
     steps.append(("routing ablation", [python, "tools/measure_routing.py", "--check"]))
-    steps.append(("agent tasks", [*MYCELIUM, "eval", ".", "--tasks"]))
+    # `--gate` here is the suite's *integrity*, not its verdict (ADR-0120): a task
+    # whose required passage the corpus no longer holds measures neither strategy,
+    # and scoring it as a miss is how the rate acquired a silent ceiling at 6.4.
+    steps.append(("agent tasks", [*MYCELIUM, "eval", ".", "--tasks", "--gate"]))
     if mode == "retrieval":
         return steps
     # The one thing `full` adds, and the one job CI gates on `full` alone. The
