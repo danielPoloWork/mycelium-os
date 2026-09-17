@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.8 — grow the judged sets until the per-slice conditions mean
   what they say. The instrument half.
-- **PR:** `feat/derive-slice-enforceability`, following #157.
+- **PR:** #158 (`feat/derive-slice-enforceability`). Follows #157.
 - **Milestone 6:** 6.8 **stays open** — the authoring is the larger half and is not here.
 - **Decision it records:** [ADR-0123](../../../adr/0123-derive-the-count-a-slice-needs-instead-of-guessing-it.md).
 
