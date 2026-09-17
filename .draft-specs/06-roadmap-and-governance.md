@@ -33,6 +33,18 @@ wired into CI; agent-task suite v0 (≥ 20 tasks).
 G1/G2/G6 green (G2 may legitimately conclude "ship lexical default" — that is a pass,
 not a failure); search p95 < 150 ms on the 10⁵-chunk reference corpus.
 
+> **Corrected at roadmap 6.4 (ADR-0120).** The first and third of those gates were recorded as
+> met and never measured at the conditions they name. The 10⁵-chunk reference corpus did not
+> exist until 6.4 built it: the largest corpus anything had ever been measured on was this
+> repository's own, at 1 420 chunks. Measured now, on the generated profile, **both are
+> missed** — the incremental rebuild passes 2 s p95 at ~250 documents, and end-to-end search
+> passes 150 ms p95 on every corpus including a 60-document one, for a reason that is not
+> retrieval at all. The numbers and their mechanisms are in
+> `docs/benchmarks/2026-09-17-reference-profile.md`; the fixes are roadmap 6.18–6.20. Phase 1
+> is not re-opened — it shipped v0.3.0 and its other gates hold — but the record says what was
+> measured and what was assumed, because a gate closed on an assumption is how a budget stops
+> meaning anything.
+
 ### Phase 2 — v0.2 "Ingestion"
 
 **Scope:** connector/parser plugin protocols exercised for real: docling adapter (PDF,

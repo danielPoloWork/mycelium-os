@@ -974,6 +974,7 @@ analysis, property tests, documented design decisions, SemVer releases.
 | [`docs/workflow/`](docs/workflow/) | Git, documentation, release, and maintenance conventions. |
 | [`docs/compatibility.md`](docs/compatibility.md) | What stays stable, from which version, and how a change to it is made. |
 | [`docs/security/`](docs/security/) | The threat model, the tests that hold each of its boundaries, and the registers of what each review found. |
+| [`docs/benchmarks/`](docs/benchmarks/) | Performance reports, each with the run manifest and the machine it was taken on — including the three budgets this project currently misses. |
 | [`docs/journal/`](docs/journal/) | Dated session checkpoints — how the work actually went. |
 | [`CHANGELOG.md`](CHANGELOG.md) | User-visible changes per release. |
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability. |

@@ -3,8 +3,14 @@
 """Store hot-path benchmarks (roadmap 2.6).
 
 Lexical search is the first stage of every query, and its stage budget is 60 ms of
-the 150 ms p95 (RFC-0001). This records a baseline on a small corpus; the real
-gate is measured against the 10^5-chunk reference profile at roadmap 3.7.
+the 150 ms p95 (RFC-0001). This records a baseline on a small corpus.
+
+The reference profile this sentence used to defer to — *"the real gate is measured
+against the 10^5-chunk reference profile at roadmap 3.7"* — was never built at 3.7,
+and the deferral outlived the item by three milestones. It exists now:
+`tools/benchmark_reference_profile.py` generates the corpus and
+`docs/benchmarks/2026-09-17-reference-profile.md` reports what it measured
+(roadmap 6.4, ADR-0120).
 """
 
 from collections.abc import Iterator

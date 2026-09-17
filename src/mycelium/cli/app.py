@@ -1559,8 +1559,16 @@ def doctor(
 # ---------------------------------------------------------------------------
 
 
-def _run_task_suite(path: Path, *, as_json: bool) -> None:
-    """Run the agent-task suite: what each strategy puts in front of a model, and its cost."""
+def _run_task_suite(path: Path, *, as_json: bool, gate: bool) -> None:
+    """Run the agent-task suite: what each strategy puts in front of a model, and its cost.
+
+    `gate` enforces the suite's **integrity**, not the product's quality: it fails
+    when a task requires a passage the snapshot no longer holds. That is the one
+    thing about this comparison that can be gated today, because a stale judgement
+    makes the number mean something other than what it says — while whether
+    Mycelium beats grep is scored qualitatively until 1.0 by spec 04 §7.4
+    (roadmap 6.4, ADR-0120).
+    """
     suite = path / "eval" / "tasks.jsonl"
     try:
         loaded = load_tasks(suite)
@@ -1574,9 +1582,24 @@ def _run_task_suite(path: Path, *, as_json: bool) -> None:
 
     if as_json:
         emit_json(report.as_dict())
+        if gate and report.unresolved:
+            # The JSON document is the output; the failure is the exit code, which
+            # is ADR-0010's rule for a gated command that also emits `--json`.
+            raise typer.Exit(ExitCode.FAILED)
         return
 
     success(f"{report.tasks} agent tasks, two strategies")
+    if report.unresolved:
+        warn(
+            f"  {len(report.unresolved)} task(s) require a passage this snapshot does not "
+            f"hold - excluded from the rates below, which are over {report.scorable} tasks"
+        )
+        for task_id, anchors in report.unresolved.items():
+            detail(f"    {task_id}: {', '.join(anchors)}")
+        detail(
+            "  Re-anchor them in tools/build_agent_tasks.py and regenerate: a judgement "
+            "that names a passage the corpus lost measures nothing (ADR-0120)."
+        )
     for name in ("mycelium", "grep"):
         summary = report.summary(name)
         if not summary:
@@ -1591,6 +1614,11 @@ def _run_task_suite(path: Path, *, as_json: bool) -> None:
     grep_tokens = report.summary("grep").get("total_tokens", 0.0)
     if mycelium_tokens:
         detail(f"  grep spends {grep_tokens / mycelium_tokens:.1f}x the context to answer")
+    if gate and report.unresolved:
+        raise fail(
+            f"{len(report.unresolved)} agent task(s) require a passage this snapshot does "
+            "not hold; the suite is measuring its own rot, not retrieval"
+        )
 
 
 @app.command()
@@ -1637,7 +1665,7 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
 ) -> None:
     """Score a judged case set against the published snapshot."""
     if tasks:
-        _run_task_suite(path, as_json=as_json)
+        _run_task_suite(path, as_json=as_json, gate=gate)
         return
 
     resolved = case_set if case_set.is_absolute() else path / case_set

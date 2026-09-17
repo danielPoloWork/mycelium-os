@@ -1,0 +1,1038 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 Daniel Polo
+"""Measure the performance claims at the scale they are stated for (roadmap 6.4).
+
+    python tools/benchmark_reference_profile.py --out <dir> [--chunks 100000]
+    python tools/benchmark_reference_profile.py --check          # cheap, CI-safe
+
+Three numbers are claimed in three places — spec 01 §8, spec 04 §1 / NFR-2, and
+spec 06 §Phase 1 — and all three are stated against a **reference profile**:
+
+| Claim | Budget | Stated conditions |
+|---|---|---|
+| Cold build | < 60 s | 1 000 documents |
+| Incremental single-document rebuild | < 2 s p95 | equals a clean rebuild |
+| End-to-end `mycelium_search` | ≤ 150 ms p95 | local profile, **10⁵ chunks**, warm store |
+
+The reference corpus those conditions name has never existed. Gate G5 enforces the
+query budget on whatever corpus the evaluation ran, and says so in its own detail
+string — the largest is this repository at ~1 400 chunks, which is **seventy times
+smaller** than the profile. A gate that cannot fail is not evidence, and *"search
+p95 < 150 ms on the 10⁵-chunk reference corpus"* has been a closed Phase-1 exit
+gate since v0.3.0 on the strength of a measurement at 1/70th of its scale.
+
+This tool builds the profile and measures against it.
+
+**Two modes, because one of the budgets cannot be reached by compiling.** `--scales`
+generates documents and *compiles* them, which is the only honest way to time a
+build. `--query-scale` writes chunks straight into a store, which is the only
+practical way to reach 10⁵ of them: loading a corpus that size through the
+compiler takes about nine hours, for the reason BUG-0031 records — a delete from
+an `UNINDEXED` FTS5 column that SQLite answers with a full scan, once per chunk.
+NFR-2's condition is what the retriever *reads*, and the retriever reads the
+derived store and nothing else, so the two paths present the same substrate; that
+is checked rather than assumed, by running both at a size each can reach.
+
+**The corpus is generated, not committed, and that is the only honest option at
+this size.** 10⁵ chunks is ~20 000 documents and hundreds of megabytes; a
+repository that committed it would be mostly benchmark. So it is *derived*: real
+prose harvested from the corpora this project already vendors, recomposed into
+distinct documents by a seeded generator. Same seed, same corpus, on any machine —
+which is what makes a number reproducible without shipping the bytes it was taken
+over.
+
+**What "realistic" means here, and what it does not.** The blocks are real
+technical documentation — real vocabulary, real term frequencies, real headings,
+real code fences — so the lexical index sees a term distribution it would meet in
+the field rather than random words, which would make BM25 look far better than it
+is. What the generator cannot reproduce is a real corpus's *link structure*: its
+documents cross-reference each other and these do not, so the graph stage is
+under-exercised and the edge count is low for the corpus size. Wikilinks are
+stripped for the same reason they would otherwise mislead — 20 000 dangling
+references are not what a real vault looks like either. Both limits belong in the
+report beside the numbers.
+
+**Every measurement here is wall-clock on one machine.** That is what the budgets
+are about, and it means the manifest has to carry the hardware or the number means
+nothing (`docs/benchmarks/README.md`, spec 04 §7.5). A committed report cites its
+manifest; `tools/consistency_lint.py` refuses one that does not.
+"""
+
+import argparse
+import ctypes
+import json
+import os
+import platform
+import random
+import re
+import shutil
+import sqlite3
+import statistics
+import subprocess
+import sys
+import time
+from collections.abc import Sequence
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, Final
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "src"))
+
+from mycelium.__about__ import __version__  # noqa: E402
+from mycelium.build import build  # noqa: E402
+from mycelium.build.publish import CURRENT_FILENAME  # noqa: E402
+from mycelium.eval.cases import load_cases  # noqa: E402
+from mycelium.mcp.tools import handle_search  # noqa: E402
+from mycelium.retrieval import search  # noqa: E402
+from mycelium.sdk.identity import canonical_json, encode_ulid, heading_slug  # noqa: E402
+from mycelium.sdk.types import (  # noqa: E402
+    Document,
+    DocumentStats,
+    Provenance,
+    TrustClass,
+    VerificationStatus,
+)
+from mycelium.store import STORE_DIRNAME, SqliteStore  # noqa: E402
+
+# `_stemmed` is imported private on purpose: the stem columns must be tokenised by
+# *the* function the compiler uses, and a second copy of that expression in this
+# tool is exactly the drift that would make the benchmark's index differ from the
+# product's.
+from mycelium.store.sqlite import _stemmed  # noqa: E402
+
+_DIGEST: Final = "sha256:" + "6f2a" * 16
+"""A placeholder content digest. Nothing in the query path reads it — the anchor
+resolves a chunk and the digest only travels into a citation — so a store built for
+a query measurement may share one."""
+
+SCHEMA: Final = "mycelium/benchmark/v0"
+"""The manifest's own schema tag. Not a record contract and not frozen: a
+benchmark manifest is a harness asset, like `AgentTask` and for ADR-0022's
+reason — it changes when the measurement changes."""
+
+REPORTS: Final = ROOT / "docs" / "benchmarks"
+MANIFESTS: Final = REPORTS / "manifests"
+
+SOURCE_CORPORA: Final = (
+    Path("eval/corpora/uv-docs/knowledge"),
+    Path("docs"),
+)
+"""Where the prose comes from: the vendored documentation corpus, and this
+repository's own. Two sources rather than one so the vocabulary is not a single
+project's."""
+
+REAL_CORPORA: Final = (
+    Path("."),
+    Path("eval/corpora/uv-docs"),
+    Path("eval/corpora/uv-docs-ingested"),
+)
+"""Corpora compiled by the real compiler from real documentation, measured as a
+cross-check on the generated ones.
+
+They are far too small to test a budget stated at 10⁵ chunks — that is the whole
+problem — but they are the answer to *"is the constant an artifact of your
+generator?"*. It is not: the end-to-end overhead is the same on documentation this
+project did not write."""
+
+QUERY_SETS: Final = (Path("eval/release.jsonl"), Path("eval/dev.jsonl"))
+"""Real judged queries, so the measurement is over questions somebody wrote to be
+answered rather than over terms picked to be fast."""
+
+COLD_BUILD_DOCUMENTS: Final = 1_000
+"""Spec 01 §8's cold-build claim is stated per thousand documents."""
+
+REFERENCE_CHUNKS: Final = 100_000
+"""Spec 04 §1's 10⁵-chunk reference profile."""
+
+QUERY_BUDGET_MS: Final = 150
+INCREMENTAL_BUDGET_MS: Final = 2_000
+COLD_BUILD_BUDGET_S: Final = 60
+
+INCREMENTAL_SAMPLES: Final = 20
+"""Single-document edits timed for the p95. Twenty is the fewest that makes a p95
+mean anything at all — the 95th percentile of twenty is the worst sample — and the
+manifest records the count so a reader can weigh it."""
+
+DEFAULT_SCALES: Final = (250, 1_000, 2_500, 5_000)
+"""The curve, in documents. A single point at the reference size would say whether
+the budget is met and nothing about *why*; the curve says which cost grows with the
+corpus and which is a constant, which is the difference between a number and a
+finding. 1 000 is spec 01 §8's own cold-build condition."""
+
+CHUNKS_PER_DOCUMENT: Final = 5
+BLOCKS_PER_CHUNK: Final = 2
+"""The shape a compiled corpus of this generator's documents actually has.
+
+Not guessed — read off the curve: 998 generated documents compile to 4 939
+chunks, so ~5 chunks a document, and each document carries ~10 harvested blocks,
+so ~2 blocks a chunk. A directly-populated store has to match *text volume per
+chunk* or it measures a smaller index than the compiler would build: at one block
+a chunk the same store answered a query in 28.5 ms where the compiled corpus took
+twice that. `--query-scale` at a size the curve also covers is the check that these
+two numbers are the same measurement."""
+
+IO_CALIBRATION_FILES: Final = 400
+"""How many generated files the I/O calibration reads.
+
+Every build number here is dominated by what it costs this machine to *open a small
+file*, and that is not a property of the compiler. On the machine of record a warm
+read of a 4 KB Markdown file costs ~1.2 ms — roughly a hundred times an unencumbered
+SSD, because a real-time malware scanner sits in the open path. A reader who does not
+know that will read a build number as a compiler cost. So the manifest carries the
+constant, and every build figure can be divided by the reader's own."""
+
+_FENCE = re.compile(r"^\s*(```|~~~)")
+_HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*#*$")
+_WIKILINK = re.compile(r"\[\[([^\]|]+)(?:\|([^\]]+))?\]\]")
+_FRONTMATTER = re.compile(r"\A---\r?\n.*?\r?\n---\r?\n", re.DOTALL)
+
+
+# ---------------------------------------------------------------------------
+# Hardware — a number without its machine is not comparable
+# ---------------------------------------------------------------------------
+
+
+def _total_memory_bytes() -> int | None:
+    """Physical memory, or ``None`` where this platform will not say.
+
+    Written without `psutil` on purpose: a benchmark tool must not add a runtime
+    dependency to the project it measures (D-013's spirit), and both platforms
+    this runs on answer through their own standard interface.
+    """
+    names = getattr(os, "sysconf_names", {})
+    sysconf = getattr(os, "sysconf", None)
+    if sysconf is not None and "SC_PHYS_PAGES" in names and "SC_PAGE_SIZE" in names:
+        try:
+            return int(sysconf("SC_PAGE_SIZE")) * int(sysconf("SC_PHYS_PAGES"))
+        except (OSError, ValueError):  # pragma: no cover - platform-dependent
+            return None
+
+    windll = getattr(ctypes, "windll", None)
+    if windll is None:  # pragma: no cover - platform-dependent
+        return None
+
+    class _MemoryStatus(ctypes.Structure):
+        _fields_ = (
+            ("dwLength", ctypes.c_ulong),
+            ("dwMemoryLoad", ctypes.c_ulong),
+            ("ullTotalPhys", ctypes.c_ulonglong),
+            ("ullAvailPhys", ctypes.c_ulonglong),
+            ("ullTotalPageFile", ctypes.c_ulonglong),
+            ("ullAvailPageFile", ctypes.c_ulonglong),
+            ("ullTotalVirtual", ctypes.c_ulonglong),
+            ("ullAvailVirtual", ctypes.c_ulonglong),
+            ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+        )
+
+    status = _MemoryStatus()
+    status.dwLength = ctypes.sizeof(_MemoryStatus)
+    if not windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+        return None  # pragma: no cover - platform-dependent
+    return int(status.ullTotalPhys)
+
+
+def hardware() -> dict[str, Any]:
+    """The machine, as the benchmarks methodology requires it to be recorded."""
+    memory = _total_memory_bytes()
+    return {
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "processor": platform.processor() or None,
+        "logical_cpus": os.cpu_count(),
+        "memory_gib": None if memory is None else round(memory / 1024**3, 1),
+    }
+
+
+def _commit() -> str | None:
+    try:
+        result = subprocess.run(  # noqa: S603 - fixed argv, no shell
+            ["git", "-C", str(ROOT), "rev-parse", "HEAD"],  # noqa: S607
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):  # pragma: no cover
+        return None
+    return result.stdout.strip() or None if result.returncode == 0 else None
+
+
+# ---------------------------------------------------------------------------
+# Harvesting real prose
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class Prose:
+    """Real blocks and headings, harvested once and sampled many times."""
+
+    blocks: tuple[str, ...]
+    headings: tuple[str, ...]
+
+    @property
+    def words(self) -> int:
+        return sum(len(block.split()) for block in self.blocks)
+
+
+def _blocks_of(text: str) -> tuple[list[str], list[str]]:
+    """Split one document into (blocks, headings), keeping code fences whole.
+
+    A fence split on blank lines is the bug this function exists to avoid: half a
+    fence in a generated document is markup the adapter reads as something else,
+    and the corpus stops resembling documentation at the one place the symbol
+    stage looks hardest.
+    """
+    blocks: list[str] = []
+    headings: list[str] = []
+    current: list[str] = []
+    fence: str | None = None
+
+    def flush() -> None:
+        joined = "\n".join(current).strip()
+        current.clear()
+        if joined:
+            blocks.append(joined)
+
+    for line in text.splitlines():
+        marker = _FENCE.match(line)
+        if fence is not None:
+            current.append(line)
+            if marker and line.strip().startswith(fence):
+                fence = None
+                flush()
+            continue
+        if marker:
+            flush()
+            fence = marker.group(1)
+            current.append(line)
+            continue
+        heading = _HEADING.match(line)
+        if heading:
+            flush()
+            title = heading.group(2).strip()
+            if 3 <= len(title) <= 70:
+                headings.append(title)
+            continue
+        if line.strip():
+            current.append(line)
+        else:
+            flush()
+    flush()
+    return blocks, headings
+
+
+def harvest(root: Path, sources: Sequence[Path] = SOURCE_CORPORA) -> Prose:
+    """Collect blocks and headings from the corpora this repository already holds."""
+    blocks: list[str] = []
+    headings: list[str] = []
+    for relative in sources:
+        directory = root / relative
+        if not directory.is_dir():
+            continue
+        for path in sorted(directory.rglob("*.md")):
+            try:
+                text = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):  # pragma: no cover - corpus is clean
+                continue
+            text = _FRONTMATTER.sub("", text)
+            # A wikilink in a generated document would resolve to nothing: 20 000
+            # dangling references are no more realistic than none, and they would
+            # put the link stage under a load a real vault never applies.
+            text = _WIKILINK.sub(lambda match: match.group(2) or match.group(1), text)
+            found, titles = _blocks_of(text)
+            blocks.extend(block for block in found if 40 <= len(block) <= 1_200)
+            headings.extend(titles)
+    if len(blocks) < 100 or len(headings) < 20:
+        msg = (
+            f"harvested only {len(blocks)} blocks and {len(headings)} headings from "
+            f"{[str(s) for s in sources]} - is this a full checkout?"
+        )
+        raise SystemExit(msg)
+    return Prose(blocks=tuple(blocks), headings=tuple(headings))
+
+
+# ---------------------------------------------------------------------------
+# Generating the corpus
+# ---------------------------------------------------------------------------
+
+_ULID_EPOCH_MS: Final = 1_767_225_600_000
+"""2026-01-01T00:00:00Z, the same instant the determinism gate pins mtimes to.
+
+Non-zero on purpose: a zero timestamp is how `is_derived_ulid` recognises a
+*derived* id (ADR-0046), and these are minted, not derived."""
+
+
+def _document(rng: random.Random, prose: Prose, index: int) -> str:
+    """One generated document: pinned identity, a title, and two to six sections."""
+    identity = encode_ulid(_ULID_EPOCH_MS + index, rng.randbytes(10))
+    title = f"{rng.choice(prose.headings)} ({index})"
+    lines = [
+        "---",
+        f"mycelium_id: {identity}",
+        f"title: {title.replace(':', ' -')}",
+        "---",
+        "",
+        f"# {title}",
+        "",
+        rng.choice(prose.blocks),
+        "",
+    ]
+    for _ in range(rng.randint(2, 6)):
+        lines += [f"## {rng.choice(prose.headings)}", ""]
+        for _ in range(rng.randint(1, 3)):
+            lines += [rng.choice(prose.blocks), ""]
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def generate(dest: Path, prose: Prose, documents: int, *, seed: int) -> int:
+    """Write `documents` generated documents under `dest`, deterministically.
+
+    Returns the number written. Documents are foldered a hundred to a directory:
+    a single directory of 20 000 files is not what a repository looks like, and
+    it measures the filesystem rather than the compiler.
+    """
+    knowledge = dest / "knowledge"
+    if knowledge.exists():
+        shutil.rmtree(knowledge)
+    rng = random.Random(seed)
+    for index in range(documents):
+        folder = knowledge / f"part-{index // 100:03d}"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / f"doc-{index:05d}.md").write_text(
+            _document(rng, prose, index), encoding="utf-8", newline="\n"
+        )
+    (dest / "mycelium.toml").write_text(
+        "# Generated by tools/benchmark_reference_profile.py - the reference profile\n"
+        "# spec 04 §1 states its budgets against (roadmap 6.4).\n"
+        "[project]\n"
+        'name = "reference-profile"\n'
+        "\n"
+        "[embedding]\n"
+        "# The shipped default query path is lexical (ADR-0017), so the profile is\n"
+        "# built without vectors: embedding 10^5 chunks would measure the embedder,\n"
+        "# which has its own benchmark, and would not change a lexical query's cost.\n"
+        'provider = "none"\n',
+        encoding="utf-8",
+        newline="\n",
+    )
+    return documents
+
+
+# ---------------------------------------------------------------------------
+# Measuring
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class Measurement:
+    """One timed claim, and the budget it is claimed against."""
+
+    name: str
+    unit: str
+    budget: float | None
+    samples: list[float] = field(default_factory=list)
+    notes: dict[str, Any] = field(default_factory=dict)
+
+    @property
+    def p50(self) -> float:
+        return statistics.median(self.samples)
+
+    @property
+    def p95(self) -> float:
+        ordered = sorted(self.samples)
+        return ordered[max(0, min(len(ordered) - 1, int(0.95 * (len(ordered) - 1))))]
+
+    def as_dict(self) -> dict[str, Any]:
+        within = None if self.budget is None else self.p95 <= self.budget
+        return {
+            "name": self.name,
+            "unit": self.unit,
+            "budget": self.budget,
+            "samples": len(self.samples),
+            "min": round(min(self.samples), 3),
+            "p50": round(self.p50, 3),
+            "p95": round(self.p95, 3),
+            "max": round(max(self.samples), 3),
+            "mean": round(statistics.fmean(self.samples), 3),
+            "within_budget": within,
+            **self.notes,
+        }
+
+
+def populate_store(workspace: Path, prose: Prose, chunks: int, *, seed: int) -> int:
+    """Write `chunks` chunks of real prose straight into a store, and publish it.
+
+    **For the query measurement only, and the distinction is the point.** NFR-2's
+    condition is *10⁵ chunks, warm store* — a statement about what the retriever
+    reads, not about how the rows got there. The retriever reads the derived store
+    and nothing else (spec 04 §1's token-frugality contract), so a store filled
+    directly is the same substrate a compiled one presents, and BM25 cannot tell
+    the difference: the FTS5 index is written by the same `put_chunks` the
+    compiler calls.
+
+    It would be worthless for a *build* measurement, where how the rows got there
+    is the entire question — which is why the cold-build and incremental figures
+    come from compiled corpora and only these two come from here.
+
+    Returns the number of chunks written.
+    """
+    rng = random.Random(seed)
+    store_dir = workspace / STORE_DIRNAME
+    if store_dir.exists():
+        shutil.rmtree(store_dir)
+    workspace.mkdir(parents=True, exist_ok=True)
+    (workspace / "mycelium.toml").write_text(
+        '[project]\nname = "reference-profile-query"\n\n[embedding]\nprovider = "none"\n',
+        encoding="utf-8",
+        newline="\n",
+    )
+
+    per_document = CHUNKS_PER_DOCUMENT
+    documents = max(1, chunks // per_document)
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    headings: list[tuple[str, str, str]] = []
+    with SqliteStore.open(workspace) as store:
+        for start in range(0, documents, 2_000):
+            with store.transaction():
+                for index in range(start, min(start + 2_000, documents)):
+                    doc_id = encode_ulid(_ULID_EPOCH_MS + index, rng.randbytes(10))
+                    path = f"knowledge/part-{index // 100:04d}/doc-{index:05d}.md"
+                    heading = rng.choice(prose.headings)
+                    headings.append((doc_id, path, heading))
+                    store.put_document(
+                        Document(
+                            doc_id=doc_id,
+                            path=path,
+                            title=heading,
+                            content_digest=_DIGEST,
+                            trust_class=TrustClass.AUTHORED,
+                            verification_status=VerificationStatus.VERIFIED,
+                            provenance=Provenance(),
+                            stats=DocumentStats(tokens=0, headings=1, chunks=0, links_out=0),
+                            created_at=now,
+                            updated_at=now,
+                        )
+                    )
+
+    # The chunks go in through plain SQL rather than `put_chunks`, and the reason is
+    # a defect this very report measured (BUG-0031): `put_chunks` deletes the anchor's
+    # row from `chunks_fts` before inserting, `anchor` is an UNINDEXED column of an
+    # FTS5 table, and SQLite can only answer that with a full scan — so loading N
+    # chunks costs O(N^2) and 10^5 of them is about nine hours. The statements below
+    # are `put_chunks`'s own, minus that delete, which has nothing to remove in a
+    # store built once: the rows, the columns and the tokenisation are identical, so
+    # the index a query reads is the index the compiler would have built.
+    written = 0
+    connection = sqlite3.connect(workspace / STORE_DIRNAME / "store.db")
+    try:
+        for start in range(0, len(headings), 2_000):
+            rows: list[tuple[Any, ...]] = []
+            fts: list[tuple[Any, ...]] = []
+            for doc_id, path, heading in headings[start : start + 2_000]:
+                for ordinal in range(per_document):
+                    text = "\n\n".join(rng.choice(prose.blocks) for _ in range(BLOCKS_PER_CHUNK))
+                    anchor = f"{path}#{heading_slug(heading)}/{ordinal}"
+                    rows.append(
+                        (
+                            anchor,
+                            doc_id,
+                            _DIGEST,
+                            canonical_json([heading]),
+                            canonical_json([f"n{ordinal}"]),
+                            text,
+                            len(text.split()),
+                            "prose",
+                            canonical_json([ordinal * 10, ordinal * 10 + 9]),
+                            "default",
+                        )
+                    )
+                    fts.append(
+                        (
+                            anchor,
+                            text,
+                            heading,
+                            heading,
+                            "",
+                            _stemmed(text),
+                            _stemmed(heading),
+                            _stemmed(heading),
+                            "",
+                        )
+                    )
+            connection.execute("BEGIN")
+            connection.executemany(
+                "INSERT INTO chunks(anchor, doc_id, chunk_digest, heading_path_json,"
+                " kir_nodes_json, text, tokens, kind, lines_json, namespace)"
+                " VALUES(?,?,?,?,?,?,?,?,?,?)",
+                rows,
+            )
+            connection.executemany(
+                "INSERT INTO chunks_fts(anchor, text, title, heading, ancestors,"
+                " text_stem, title_stem, heading_stem, ancestors_stem)"
+                " VALUES(?,?,?,?,?,?,?,?,?)",
+                fts,
+            )
+            connection.commit()
+            written += len(rows)
+            print(f"    {written} chunks", flush=True)
+    finally:
+        connection.close()
+    # `handle_search` refuses a repository with no published snapshot, and the
+    # pointer is the whole of publication a reader consults (ADR-0009).
+    (store_dir / CURRENT_FILENAME).write_text(
+        encode_ulid(_ULID_EPOCH_MS, bytes(10)) + "\n", encoding="utf-8", newline="\n"
+    )
+    return written
+
+
+def measure_file_io(workspace: Path, *, files: int = IO_CALIBRATION_FILES) -> Measurement:
+    """What one small-file open costs on this machine, warm.
+
+    The calibration constant the build measurements have to be read against. It is
+    taken over the generated corpus itself, so it is the same files, on the same
+    filesystem, through the same interpreter as the build that follows.
+    """
+    paths = sorted((workspace / "knowledge").rglob("*.md"))[:files]
+    for path in paths:  # warm the page cache; the scanner is what we are measuring
+        path.read_bytes()
+    measurement = Measurement(name="read one small Markdown file, warm", unit="ms", budget=None)
+    for path in paths:
+        started = time.perf_counter()
+        path.read_bytes()
+        measurement.samples.append((time.perf_counter() - started) * 1000)
+    measurement.notes["files"] = len(paths)
+    measurement.notes["mean_bytes"] = round(statistics.fmean(path.stat().st_size for path in paths))
+    return measurement
+
+
+def _queries(root: Path) -> tuple[str, ...]:
+    found: list[str] = []
+    for relative in QUERY_SETS:
+        path = root / relative
+        if path.is_file():
+            found.extend(case.query for case in load_cases(path))
+    if not found:  # pragma: no cover - the sets are committed
+        msg = "no judged queries found; the reference profile measures real questions"
+        raise SystemExit(msg)
+    return tuple(found)
+
+
+def measure_cold_build(workspace: Path, prose: Prose, documents: int, *, seed: int) -> Measurement:
+    """Time one clean build of `documents` generated documents (spec 01 §8)."""
+    generate(workspace, prose, documents, seed=seed)
+    started = time.perf_counter()
+    result = build(workspace, clean=True, pin_identity=False)
+    elapsed = time.perf_counter() - started
+    return Measurement(
+        name=f"cold build, {documents} documents",
+        unit="s",
+        budget=COLD_BUILD_BUDGET_S if documents == COLD_BUILD_DOCUMENTS else None,
+        samples=[elapsed],
+        notes={
+            "documents": result.manifest.counts.documents,
+            "chunks": result.manifest.counts.chunks,
+            "documents_per_second": round(result.manifest.counts.documents / elapsed, 1),
+        },
+    )
+
+
+def measure_incremental(workspace: Path, *, samples: int = INCREMENTAL_SAMPLES) -> Measurement:
+    """Time single-document edits, rebuilt incrementally (NFR-3, spec 06 Phase 1).
+
+    The edit is an appended sentence to a document chosen round-robin across the
+    tree, so the measurement is not one lucky file's.
+    """
+    documents = sorted((workspace / "knowledge").rglob("*.md"))
+    measurement = Measurement(
+        name="incremental rebuild, one document edited",
+        unit="ms",
+        budget=INCREMENTAL_BUDGET_MS,
+        notes={"corpus_documents": len(documents)},
+    )
+    step = max(1, len(documents) // samples)
+    for index in range(samples):
+        target = documents[(index * step) % len(documents)]
+        target.write_text(
+            target.read_text(encoding="utf-8")
+            + f"\nThe retry policy was revised in revision {index}.\n",
+            encoding="utf-8",
+            newline="\n",
+        )
+        started = time.perf_counter()
+        build(workspace, pin_identity=False)
+        measurement.samples.append((time.perf_counter() - started) * 1000)
+    return measurement
+
+
+def measure_queries(
+    workspace: Path, queries: Sequence[str]
+) -> tuple[Measurement, Measurement, int]:
+    """Time the query path two ways: warm in-process, and as an MCP call.
+
+    Both are reported because NFR-2 names `mycelium_search` **end to end**, and
+    the difference between them is a cost the in-process number hides: the tool
+    handler opens a fresh store per call *by design*, so that a long-lived agent
+    session sees each published snapshot rather than the one that existed when
+    the server started. At 1 400 chunks that was microseconds. Whether it still is
+    at 10⁵ is exactly the kind of thing a reference profile exists to find out.
+    """
+    warm = Measurement(name="search, warm store (in-process)", unit="ms", budget=QUERY_BUDGET_MS)
+    end_to_end = Measurement(
+        name="mycelium_search, end to end (MCP handler)", unit="ms", budget=QUERY_BUDGET_MS
+    )
+    with SqliteStore.open(workspace, read_only=True) as store:
+        chunks = store.counts()["chunks"]
+        for query in queries:  # one pass to warm the page cache
+            search(store, query, limit=10)
+        for query in queries:
+            started = time.perf_counter()
+            search(store, query, limit=10)
+            warm.samples.append((time.perf_counter() - started) * 1000)
+    for query in queries:
+        started = time.perf_counter()
+        handle_search(workspace, {"query": query})
+        end_to_end.samples.append((time.perf_counter() - started) * 1000)
+    return warm, end_to_end, chunks
+
+
+# ---------------------------------------------------------------------------
+# The run
+# ---------------------------------------------------------------------------
+
+
+def _incremental_samples(documents: int) -> int:
+    """Fewer timed edits on a big corpus, because each one costs a whole rebuild.
+
+    Stated rather than hidden: a p95 over five samples is the worst of five, and the
+    manifest records the count beside the number so nobody reads it as more.
+    """
+    if documents <= 2_500:
+        return INCREMENTAL_SAMPLES
+    return 8 if documents <= 5_000 else 5
+
+
+def _scale(
+    out: Path, prose: Prose, queries: Sequence[str], documents: int, *, seed: int
+) -> dict[str, Any]:
+    """Every measurement, at one corpus size."""
+    workspace = out / f"scale-{documents:06d}"
+    print(f"\n--- {documents} documents ---", flush=True)
+
+    cold = measure_cold_build(workspace, prose, documents, seed=seed)
+    print(
+        f"  cold build      {cold.p50:8.1f} s   "
+        f"{cold.notes['chunks']} chunks, {cold.notes['documents_per_second']} docs/s",
+        flush=True,
+    )
+
+    disk = measure_file_io(workspace)
+    print(f"  file open       {disk.p50:8.3f} ms  (calibration, warm)", flush=True)
+
+    samples = _incremental_samples(documents)
+    incremental = measure_incremental(workspace, samples=samples)
+    print(
+        f"  incremental     {incremental.p95:8.0f} ms p95 ({samples} edits)",
+        flush=True,
+    )
+
+    warm, end_to_end, chunks = measure_queries(workspace, queries)
+    print(
+        f"  search warm     {warm.p95:8.1f} ms p95   end-to-end {end_to_end.p95:.1f} ms p95",
+        flush=True,
+    )
+
+    # The corpus is the expensive part and there may be several more sizes to go.
+    shutil.rmtree(workspace, ignore_errors=True)
+
+    return {
+        "documents": cold.notes["documents"],
+        "chunks": chunks,
+        "measurements": [item.as_dict() for item in (cold, incremental, warm, end_to_end, disk)],
+    }
+
+
+def run(
+    out: Path,
+    *,
+    chunks: int,
+    seed: int,
+    scales: Sequence[int],
+    reference: bool,
+    query_scale: int = 0,
+    real_corpora: bool = False,
+    manifest_path: Path | None = None,
+) -> dict[str, Any]:
+    """Measure every claim across the curve, and return the manifest."""
+    prose = harvest(ROOT)
+    queries = _queries(ROOT)
+    print(
+        f"harvested {len(prose.blocks)} blocks ({prose.words} words), "
+        f"{len(prose.headings)} headings; {len(queries)} judged queries"
+    )
+    out.mkdir(parents=True, exist_ok=True)
+
+    manifest: dict[str, Any] = {
+        "schema": SCHEMA,
+        "generated_at": datetime.now(tz=UTC).isoformat().replace("+00:00", "Z"),
+        "commit": _commit(),
+        "toolchain": {"mycelium": __version__, "python": platform.python_version()},
+        "hardware": hardware(),
+        "corpus": {
+            "kind": "generated",
+            "generator": "tools/benchmark_reference_profile.py",
+            "seed": seed,
+            "sources": [str(path).replace("\\", "/") for path in SOURCE_CORPORA],
+            "queries": len(queries),
+            "query_sets": [str(path).replace("\\", "/") for path in QUERY_SETS],
+            "profile": "lexical (the shipped default, ADR-0017); built with no vectors",
+        },
+        "budgets": {
+            "cold_build_1k_s": COLD_BUILD_BUDGET_S,
+            "incremental_p95_ms": INCREMENTAL_BUDGET_MS,
+            "search_p95_ms": QUERY_BUDGET_MS,
+            "reference_chunks": REFERENCE_CHUNKS,
+        },
+        "scales": [],
+    }
+
+    def flush() -> None:
+        """Write what has been measured so far.
+
+        The reference scale takes hours, and a run that is interrupted at the last
+        size must still leave the curve behind rather than nothing.
+        """
+        if manifest_path is not None:
+            manifest_path.parent.mkdir(parents=True, exist_ok=True)
+            manifest_path.write_text(
+                json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+
+    targets = list(scales)
+    for index, documents in enumerate(targets):
+        manifest["scales"].append(_scale(out, prose, queries, documents, seed=seed + index))
+        flush()
+
+    if real_corpora:
+        print("\n=== cross-check: the real corpora, already built ===", flush=True)
+        rows: list[dict[str, Any]] = []
+        for relative in REAL_CORPORA:
+            root = ROOT / relative
+            if not (root / STORE_DIRNAME).is_dir():
+                print(f"  {relative}: not built, skipped", flush=True)
+                continue
+            warm, end_to_end, chunks = measure_queries(root, queries)
+            print(
+                f"  {str(relative):24} {chunks:6} chunks   warm p95 {warm.p95:6.1f} ms   "
+                f"end-to-end p95 {end_to_end.p95:6.1f} ms",
+                flush=True,
+            )
+            rows.append(
+                {
+                    "corpus": str(relative).replace("\\", "/"),
+                    "chunks": chunks,
+                    "measurements": [warm.as_dict(), end_to_end.as_dict()],
+                }
+            )
+        manifest["real_corpora"] = rows
+        flush()
+
+    if query_scale:
+        workspace = out / f"query-{query_scale:07d}"
+        print(
+            f"\n=== query profile: {query_scale} chunks written straight into a store ===",
+            flush=True,
+        )
+        started = time.perf_counter()
+        written = populate_store(workspace, prose, query_scale, seed=seed)
+        print(f"  populated {written} chunks in {time.perf_counter() - started:.0f} s", flush=True)
+        warm, end_to_end, chunks = measure_queries(workspace, queries)
+        print(
+            f"  search warm     {warm.p95:8.1f} ms p95   end-to-end {end_to_end.p95:.1f} ms p95",
+            flush=True,
+        )
+        manifest["query_profile"] = {
+            "chunks": chunks,
+            "documents": max(1, query_scale // 5),
+            "kind": "store populated directly (no compiler run); see populate_store()",
+            "measurements": [warm.as_dict(), end_to_end.as_dict()],
+        }
+        flush()
+        shutil.rmtree(workspace, ignore_errors=True)
+
+    if reference:
+        measured = manifest["scales"][-1]
+        per_document = measured["chunks"] / max(1, measured["documents"])
+        documents = max(1, round(chunks / per_document))
+        print(
+            f"\n=== reference profile: {documents} documents for ~{chunks} chunks "
+            f"({per_document:.1f} chunks/document) ===",
+            flush=True,
+        )
+        manifest["scales"].append(_scale(out, prose, queries, documents, seed=seed + len(targets)))
+        flush()
+
+    return manifest
+
+
+# ---------------------------------------------------------------------------
+# --check: the committed reports still answer for themselves
+# ---------------------------------------------------------------------------
+
+REQUIRED_MANIFEST_KEYS: Final = (
+    "schema",
+    "generated_at",
+    "commit",
+    "toolchain",
+    "hardware",
+    "corpus",
+    "budgets",
+)
+"""What every manifest must carry to be evidence rather than a note.
+
+`commit` and `hardware` are the two that make a number comparable at all; `budgets`
+is here so a reader can see what the run was measured *against* without going to the
+spec, and so a changed budget is visible in a diff."""
+
+MEASUREMENT_SECTIONS: Final = ("scales", "query_profile", "real_corpora")
+"""Where measurements live. A manifest needs at least one non-empty section — a run
+that timed nothing is a note about a machine."""
+
+
+def _measurement_blocks(section: Any) -> list[list[Any]]:
+    """The `measurements` lists inside one manifest section, whatever its shape.
+
+    `scales` and `real_corpora` are lists of blocks; `query_profile` is one block.
+    Reading all three the same way keeps the check from needing to know which is
+    which — and from silently skipping a section somebody adds later.
+    """
+    blocks = section if isinstance(section, list) else [section]
+    return [
+        block["measurements"]
+        for block in blocks
+        if isinstance(block, dict) and isinstance(block.get("measurements"), list)
+    ]
+
+
+def check() -> int:
+    """Every committed manifest is readable and carries what makes it evidence.
+
+    Cheap enough for CI, which is the point: the expensive half of this tool is
+    run by hand when a claim is being substantiated, and the report it leaves
+    behind is what everything afterwards reads.
+    """
+    problems: list[str] = []
+    manifests = sorted(MANIFESTS.glob("*.json")) if MANIFESTS.is_dir() else []
+    reports = [
+        path
+        for path in (sorted(REPORTS.glob("*.md")) if REPORTS.is_dir() else [])
+        if path.name not in {"README.md", "template.md"}
+    ]
+    if not manifests and not reports:
+        # Nothing has been published, so nothing is claimed. The congruence lint owns
+        # the other direction — a report that cites no manifest.
+        print("benchmark manifests: none, and no report claims one")
+        return 0
+    if not manifests:
+        problems.append(f"no benchmark manifests under {MANIFESTS.relative_to(ROOT).as_posix()}")
+    for path in manifests:
+        try:
+            document = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            problems.append(f"{path.name}: unreadable ({error})")
+            continue
+        missing = [key for key in REQUIRED_MANIFEST_KEYS if key not in document]
+        if missing:
+            problems.append(f"{path.name}: missing {', '.join(missing)}")
+            continue
+        if document["schema"] != SCHEMA:
+            problems.append(f"{path.name}: schema {document['schema']!r}, expected {SCHEMA!r}")
+        if not any(document.get(section) for section in MEASUREMENT_SECTIONS):
+            problems.append(
+                f"{path.name}: no measurements in any of {', '.join(MEASUREMENT_SECTIONS)}"
+            )
+        if document["hardware"].get("platform") is None:
+            problems.append(f"{path.name}: no hardware recorded - the number is not comparable")
+        if not document["commit"]:
+            problems.append(f"{path.name}: no commit recorded - the run names no tree")
+        for section in MEASUREMENT_SECTIONS:
+            for block in _measurement_blocks(document.get(section)):
+                for measurement in block:
+                    if not isinstance(measurement, dict) or "p95" not in measurement:
+                        problems.append(f"{path.name}: a measurement carries no p95")
+                        break
+
+    for problem in problems:
+        print(f"[benchmark] {problem}")
+    if problems:
+        return 1
+    print(f"benchmark manifests: OK - {len(manifests)} readable, each with its hardware")
+    return 0
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--check", action="store_true", help="Validate committed manifests only.")
+    parser.add_argument("--out", type=Path, help="Where to generate the corpora.")
+    parser.add_argument("--chunks", type=int, default=REFERENCE_CHUNKS)
+    parser.add_argument("--seed", type=int, default=20260917)
+    parser.add_argument(
+        "--scales",
+        default=",".join(str(size) for size in DEFAULT_SCALES),
+        help="Comma-separated corpus sizes, in documents.",
+    )
+    parser.add_argument(
+        "--no-reference",
+        action="store_true",
+        help=(
+            "Stop after the curve; do not COMPILE the 10^5-chunk profile. Compiling it "
+            "is ~9 hours (BUG-0031), so the query claim is measured with --query-scale "
+            "instead and this flag is the normal case."
+        ),
+    )
+    parser.add_argument(
+        "--real-corpora",
+        action="store_true",
+        help="Also measure the query path on the repository's own built corpora.",
+    )
+    parser.add_argument(
+        "--query-scale",
+        type=int,
+        default=0,
+        help=(
+            "Measure the query path at this many chunks, written straight into a store "
+            "instead of compiled. NFR-2's condition is what the retriever reads, so this "
+            "measures it at the reference size without a multi-hour build."
+        ),
+    )
+    parser.add_argument("--manifest", type=Path, help="Write the manifest here.")
+    args = parser.parse_args(argv)
+
+    if args.check:
+        return check()
+    if args.out is None:
+        parser.error("--out is required (the generated corpus needs somewhere to live)")
+
+    manifest = run(
+        args.out,
+        chunks=args.chunks,
+        seed=args.seed,
+        scales=[int(size) for size in args.scales.split(",") if size.strip()],
+        reference=not args.no_reference,
+        query_scale=args.query_scale,
+        real_corpora=args.real_corpora,
+        manifest_path=args.manifest,
+    )
+    if args.manifest:
+        print(f"\nmanifest: {args.manifest}")
+    else:
+        print(json.dumps(manifest, indent=2, sort_keys=True))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

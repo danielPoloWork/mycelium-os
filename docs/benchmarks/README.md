@@ -17,12 +17,42 @@ are not evidence.
   against a recorded baseline on comparable hardware (note when CI hardware is too noisy to
   gate and the run is informational).
 
+### Two rules added at roadmap 6.4 (ADR-0120)
+
+- **A report cites a run manifest, and the manifest is committed beside it.** Spec 04 §7.5:
+  *"a report without a manifest is exploratory and cannot satisfy a gate."* Manifests live in
+  [`manifests/`](manifests/); `tools/consistency_lint.py`'s `benchmarks` check refuses a
+  report that cites none, a citation that resolves to nothing, and a manifest no report
+  cites. What is *inside* a manifest is checked by
+  `python tools/benchmark_reference_profile.py --check`.
+- **Record what a file open costs on the machine.** Every build figure here is dominated by
+  it, and it is not a property of the compiler: on the machine of record a warm read of a
+  4 KB Markdown file costs ~1.3 ms, about a hundred times an unencumbered SSD, because a
+  real-time malware scanner sits in the open path. Without that constant a reader cannot
+  tell a compiler cost from a machine cost, and the incremental-build numbers are mostly the
+  second. The reference-profile tool measures it over the corpus it is about to build and
+  writes it into the manifest as a measurement like any other.
+
+### The reference profile
+
+Three budgets — cold build (spec 01 §8), incremental rebuild (NFR-3), and end-to-end search
+(NFR-2, spec 04 §1) — are stated against a **reference profile** of 10⁵ chunks on local
+hardware. That corpus is too large to commit, so it is *generated*:
+
+```bash
+python tools/benchmark_reference_profile.py --out <scratch-dir> \
+    --manifest docs/benchmarks/manifests/<date>-reference-profile.json
+```
+
+Same seed, same corpus, on any machine. The prose is harvested from the corpora this
+repository already vendors, so the term distribution is real documentation rather than
+random words; what it cannot reproduce is a real vault's link structure, and the report
+states that limit beside the numbers.
+
 ## Results
 
 One report per measured scenario, from [`template.md`](template.md). Keep the index newest-first.
 
 | Date | Scenario | Version | Headline result | Report |
 |------|----------|---------|-----------------|--------|
-| —    | —        | —       | —               | —      |
-
-_No benchmarks recorded yet._
+| 2026-09-17 | The reference profile: the three stated performance budgets, measured at the conditions they are stated for | v0.5.0 | All three missed. `mycelium_search` misses its 150 ms p95 **at every corpus size**, by a constant ~250 ms spent re-reading configuration before retrieval starts | [2026-09-17-reference-profile.md](2026-09-17-reference-profile.md) |

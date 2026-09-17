@@ -32,6 +32,8 @@ contract (the "congruence checks"):
   10. journal-index    — docs/journal/README.md matches what
       tools/update_journal_index.py would generate from the checkpoints on disk
       (roadmap 5.32).
+  11. benchmarks       — every published benchmark report is in the index and cites a run
+      manifest that exists, and no manifest is orphaned (spec 04 §7.5, roadmap 6.4).
 
 Each check is independent; all run, then the report lists every failure. The checks are
 designed to PASS on a freshly-generated repository (empty catalogues, no releases yet).
@@ -723,6 +725,57 @@ def check_posture() -> None:
         )
 
 
+def check_benchmarks() -> None:
+    """A published benchmark report cites a manifest, and the index cites the report.
+
+    Spec 04 §7.5 is the rule this enforces: *"Released benchmark reports are
+    committed to the repo with their manifests; a report without a manifest is
+    exploratory and cannot satisfy a gate."* A number in a document nobody can
+    reproduce is the thing the whole benchmarks directory exists to prevent, and
+    until roadmap 6.4 there was no report at all — so the rule had never had to
+    hold anything up.
+
+    Deliberately three cheap questions, not a re-measurement: is every report in
+    the index, does every report name a manifest, and does that manifest exist.
+    Whether the manifest is *well formed* is
+    `tools/benchmark_reference_profile.py --check`'s business — one list, two
+    readers, neither restating the other (ADR-0120).
+    """
+    name = "benchmarks"
+    if not exists("docs/benchmarks/README.md"):
+        return  # the directory is optional until the first report
+    index = read("docs", "benchmarks", "README.md")
+    directory = os.path.join(ROOT, "docs", "benchmarks")
+    reports = sorted(
+        entry
+        for entry in os.listdir(directory)
+        if entry.endswith(".md") and entry not in {"README.md", "template.md"}
+    )
+    for report in reports:
+        if f"({report})" not in index and f"]({report})" not in index:
+            fail(name, f"report '{report}' is not linked from the benchmarks index")
+        body = read("docs", "benchmarks", report)
+        # Deduplicated: a report naturally cites its manifest more than once — in the
+        # header, and again under "Reproduce" — and one missing file is one problem.
+        cited = sorted(set(re.findall(r"manifests/([A-Za-z0-9._-]+\.json)", body)))
+        if not cited:
+            fail(
+                name,
+                f"report '{report}' cites no run manifest; spec 04 §7.5 makes a report "
+                "without one exploratory, and it cannot satisfy a gate",
+            )
+        for manifest in cited:
+            if not exists(f"docs/benchmarks/manifests/{manifest}"):
+                fail(name, f"report '{report}' cites manifests/{manifest}, which does not exist")
+
+    manifest_dir = os.path.join(directory, "manifests")
+    if os.path.isdir(manifest_dir):
+        bodies = "\n".join(read("docs", "benchmarks", report) for report in reports)
+        for orphan in sorted(os.listdir(manifest_dir)):
+            if orphan.endswith(".json") and orphan not in bodies:
+                fail(name, f"manifests/{orphan} is cited by no report")
+
+
 CHECKS: Final[tuple[Callable[[], None], ...]] = (
     check_version_lockstep,
     check_adr_index,
@@ -737,6 +790,7 @@ CHECKS: Final[tuple[Callable[[], None], ...]] = (
     check_i18n_freshness,
     check_posture,
     check_journal_index,
+    check_benchmarks,
 )
 
 
