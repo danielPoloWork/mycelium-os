@@ -42,6 +42,9 @@ from mycelium.modules import (
 )
 from mycelium.sdk.protocols import MYCELIUM_API_VERSION, Module, PluginMeta
 
+pytestmark = pytest.mark.boundary("B7")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 INSTALLED = "chats"
 """The one module installed in this environment. Named once, so a second module
 arriving does not scatter edits through this file."""

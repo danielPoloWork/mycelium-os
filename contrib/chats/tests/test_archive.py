@@ -36,6 +36,9 @@ from mycelium_chats.archive import (
 from mycelium_chats.paths import projection_path
 from mycelium_chats.settings import ChatsSettings
 
+pytestmark = pytest.mark.boundary("B15")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 IMPORTED = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 
 

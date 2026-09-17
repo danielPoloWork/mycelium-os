@@ -26,6 +26,9 @@ from mycelium_chats.readers import ImportContext, ReaderError, reader_for, reade
 from mycelium_chats.readers.base import normalise_role
 from mycelium_chats.record import Fragment, Message
 
+pytestmark = pytest.mark.boundary("B15")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 CONTEXT = ImportContext(project="research", source_uri="fixture")
 
 

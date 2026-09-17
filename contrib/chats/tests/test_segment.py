@@ -41,6 +41,9 @@ from mycelium_chats.segment import (
 )
 from mycelium_chats.settings import ChatsSettings
 
+pytestmark = pytest.mark.boundary("B10")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 IMPORTED_AT = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 """A fixed import clock, so a test that asserts a path is not a test about today."""
 

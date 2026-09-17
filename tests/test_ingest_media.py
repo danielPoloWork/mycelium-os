@@ -18,6 +18,9 @@ from mycelium.ingest.media import (
     sniff,
 )
 
+pytestmark = pytest.mark.boundary("B4")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 
 @pytest.mark.parametrize(
     ("name", "expected"),

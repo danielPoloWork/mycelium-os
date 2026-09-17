@@ -50,6 +50,9 @@ from mycelium.mcp.tools import handle_fetch
 from mycelium.sdk.identity import parse_citation_uri
 from mycelium.store import SqliteStore
 
+pytestmark = pytest.mark.boundary("B6")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 # ---------------------------------------------------------------------------
 # The corpus
 # ---------------------------------------------------------------------------

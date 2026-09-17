@@ -43,6 +43,9 @@ from mycelium.ingest.inventory import (
 from mycelium.ingest.parsers import pandoc as pandoc_parser
 from mycelium.sdk.types import KirDocument, KirNode, NodeKind, OpaqueDisposition
 
+pytestmark = pytest.mark.boundary("B4")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 FIXTURES = Path(__file__).parent / "fixtures" / "ingest"
 INVENTORY = FIXTURES / "inventory.json"
 DOC_ID = "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"

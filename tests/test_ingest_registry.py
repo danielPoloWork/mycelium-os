@@ -15,6 +15,9 @@ from mycelium.ingest.registry import Registry, probe
 from mycelium.sdk.protocols import MYCELIUM_API_VERSION, Blob, Parser, PluginMeta
 from mycelium.sdk.types import KirDocument, KirNode, NodeKind, Ulid
 
+pytestmark = pytest.mark.boundary("B7")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 DOC_ID = "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"
 
 

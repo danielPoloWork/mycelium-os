@@ -33,6 +33,9 @@ from mycelium.sdk.identity import digest_text
 from mycelium.sdk.protocols import Blob, Parser
 from mycelium.sdk.types import KirDocument, NodeKind
 
+pytestmark = pytest.mark.boundary("B9")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 DOC_ID = "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"
 FIXTURES = Path(__file__).parent / "fixtures" / "ingest"
 

@@ -26,6 +26,9 @@ from mycelium.mcp import (
 )
 from mycelium.mcp.tools import handle_explain, handle_neighbors
 
+pytestmark = pytest.mark.boundary("B6")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 DOC = """---
 collection: core-docs
 ---

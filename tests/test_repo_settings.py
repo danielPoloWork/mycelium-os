@@ -23,6 +23,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import check_repo_settings as checker  # noqa: E402
 
+pytestmark = pytest.mark.boundary("B1")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 REGISTER = ROOT / "docs" / "security" / "audit-2026-08-29-bootstrap.md"
 
 

@@ -13,6 +13,9 @@ from mycelium.markdown.frontmatter import parse_frontmatter
 from mycelium.verification.grounding import Thresholds
 from mycelium.verification.lane import evidence_set, subjects, verify_tree
 
+pytestmark = pytest.mark.boundary("B5")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 WHEN = date(2026, 9, 1)
 LATER = date(2026, 10, 1)
 

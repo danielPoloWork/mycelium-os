@@ -65,7 +65,7 @@ class ChatGptReader:
         """
         try:
             parsed = json.loads(text)
-        except ValueError:
+        except (ValueError, RecursionError):
             return False
         items = parsed if isinstance(parsed, list) else [parsed]
         first = next((item for item in items if isinstance(item, dict)), None)
@@ -74,7 +74,10 @@ class ChatGptReader:
     def read(self, text: str, context: ImportContext) -> ReadResult:
         try:
             parsed = json.loads(text)
-        except ValueError as error:
+        except (ValueError, RecursionError) as error:
+            # `RecursionError` too: a hundred thousand nested brackets is not
+            # JSON this reader can hold, and the failure has to be the typed,
+            # per-input kind rather than a traceback (roadmap 6.3, BUG-0030).
             msg = f"not JSON: {error}"
             raise ReaderError(msg) from error
         items = parsed if isinstance(parsed, list) else [parsed]

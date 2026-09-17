@@ -42,6 +42,9 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
 import verify  # noqa: E402
 
+pytestmark = pytest.mark.boundary("B13")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 WORKFLOW = Path(__file__).parent.parent / ".github" / "workflows" / "ci.yml"
 
 _MODE_EQUALS = re.compile(r"outputs\.mode\s*==\s*'([a-z]+)'")

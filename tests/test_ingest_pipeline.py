@@ -29,6 +29,9 @@ from mycelium.ingest.parsers import pandoc as pandoc_parser
 from mycelium.sdk.identity import canonical_json, digest_bytes
 from mycelium.sdk.types import CustodyKind, QuarantineStage, SourceTrust
 
+pytestmark = [pytest.mark.boundary("B4"), pytest.mark.boundary("B11")]
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 FIXTURES = Path(__file__).parent / "fixtures" / "ingest"
 HOSTILE = FIXTURES / "hostile"
 DOC_ID = "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"

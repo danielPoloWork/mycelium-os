@@ -25,6 +25,9 @@ from mycelium.synthesis.citations import (
 )
 from mycelium.synthesis.errors import UngroundedError
 
+pytestmark = pytest.mark.boundary("B5")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 DOC_ID = "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"
 
 EVIDENCE_TEXT = """\

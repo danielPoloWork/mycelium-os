@@ -25,6 +25,9 @@ from mycelium.ingest.errors import (
 from mycelium.ingest.quarantine import Quarantine, quarantine_root, stage_of
 from mycelium.sdk.types import QuarantineStage
 
+pytestmark = pytest.mark.boundary("B4")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 DIGEST = "sha256:" + "ab" * 32
 URI = "file:///tmp/sources/report.pdf"
 EARLIER = datetime(2026, 3, 1, 9, 0, tzinfo=UTC)

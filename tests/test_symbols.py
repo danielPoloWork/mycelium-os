@@ -62,6 +62,9 @@ from mycelium.symbols import (
     symbols_digest,
 )
 
+pytestmark = pytest.mark.boundary("B14")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 DOC_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 
 REFERENCE = """# Reference

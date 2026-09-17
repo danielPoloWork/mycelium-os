@@ -534,8 +534,10 @@ to a reader's memory. Nothing is charged to the loss budget: no content disappea
 - **Twenty cases is a seed.** Small sets move a lot on single-case changes; read
   differences of a few points as noise.
 - **The `injection` slice is one case**, and it only checks that the doctrine is findable.
-  Resistance itself is tested as a property against a hostile fixture corpus
-  (`tests/test_injection.py`); the full adversarial suite is milestone 6.3.
+  Resistance itself is tested as a property against the injection corpus — twenty-three
+  attack documents under `tests/fixtures/injection/`, asserted by `tests/test_injection.py`
+  (roadmap 6.3, ADR-0119) — rather than scored here, because no ranking metric can say
+  *returned verbatim*.
 - **`synthesized` has no cases** — the synthesis lane arrives at 4.4.
 
 ## Gates evaluated here

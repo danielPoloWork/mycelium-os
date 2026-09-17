@@ -18,6 +18,9 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import verify  # noqa: E402 - the tool is not an installed package
 
+pytestmark = pytest.mark.boundary("B13")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 # ---------------------------------------------------------------------------
 # Derivation: the widest thing the diff touches decides
 # ---------------------------------------------------------------------------

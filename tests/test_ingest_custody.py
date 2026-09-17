@@ -17,6 +17,9 @@ from mycelium.sdk.identity import digest_bytes
 from mycelium.sdk.protocols import Blob
 from mycelium.sdk.types import CustodyKind
 
+pytestmark = pytest.mark.boundary("B12")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 ORIGINAL = b"%PDF-1.4\nsome acquired bytes\n\r\n"
 STAMP = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 

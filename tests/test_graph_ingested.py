@@ -31,6 +31,9 @@ from mycelium.sdk.identity import doc_ref, new_ulid
 from mycelium.sdk.types import EdgeStatus, EdgeType, ProvenanceOrigin
 from mycelium.store import SqliteStore
 
+pytestmark = pytest.mark.boundary("B11")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 # ---------------------------------------------------------------------------
 # A corpus shaped like a real projection: a flat evidence tree, a nested source
 # ---------------------------------------------------------------------------

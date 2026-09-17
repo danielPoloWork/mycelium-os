@@ -12,6 +12,30 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The threat-model-derived test suite** (roadmap 6.3, ADR-0119). A test file that holds a
+  trust boundary of `docs/security/threat-model.md` now says so — `pytestmark =
+  pytest.mark.boundary("B4")` — so `uv run pytest -m boundary` runs exactly the tests that
+  hold the model's controls, and `tests/test_threat_model.py` fails when a declared boundary
+  has no test behind it or a marker names a boundary the model does not declare. Thirty-seven
+  existing files are marked; the model's new §4 gives the reading.
+- **The injection corpus** spec 04 §6 asks for: twenty-three authored documents under
+  `tests/fixtures/injection/`, one attack class each — an instruction in prose, in a heading,
+  in a callout, in a title, in alt text; a fenced tool call; an envelope spoof; a fake
+  `mycelium://` citation; a hidden comment and a hidden block; zero-width joins, a bidi
+  override, a homoglyph; a status forged in the body and in frontmatter; a duplicate identity;
+  references outside the tree; a forged `mycelium_search` symbol; a credential in prose; and
+  the small forms of a YAML alias bomb and an emphasis run — declared in `attacks.json` and
+  asserted by `tests/test_injection.py`: every served payload comes back verbatim and only
+  inside its typed fields, the envelope and the graph are the server's whatever the document
+  says, and a document built to cost unbounded time is refused by name. It is a fixture
+  corpus, not part of the judged evaluation corpus; the deviation from spec 04 §6 is recorded.
+- **`tests/test_security_controls.py`** holds each bound the review added at the size that
+  used to break it, and gives the pandoc subprocess's `--sandbox`, stdin and timeout — claimed
+  since 4.1 — their first test.
+- **The security register of the review**, `docs/security/audit-2026-09-17-review-pass.md`:
+  findings F6–F14, four confirmed defects, no critical finding, no advisory. The threat model
+  is corrected where it undersold the product (three boundaries marked *design* four
+  milestones after they went live) and extended where the review found new rows.
 - **Every release is now signed and inventoried** (roadmap 6.6, ADR-0117). `release.yml`
   attests the build provenance of the wheel and the sdist through Sigstore, builds a
   CycloneDX 1.6 SBOM of everything the wheel can install, and attests that SBOM against the
@@ -112,6 +136,24 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Security
 
+- **A document's cost to read is bounded in both lanes** (roadmap 6.3, ADR-0119). Frontmatter
+  is loaded through an alias-free bounded YAML loader under a 64 KiB block ceiling — nine
+  lines of aliases had held `mycelium build` past ninety seconds (BUG-0027). The Markdown
+  adapter measures a document's nesting before building its syntax tree and refuses one past
+  markdown-it's own `maxNesting` of 100 as a typed `MarkdownError` — forty kilobytes of
+  asterisks had crashed `mycelium ingest` with a `RecursionError` and stalled the build for
+  thirteen seconds (BUG-0029). An authored document over the file connector's 64 MiB ceiling
+  is quarantined instead of read whole. Each is a per-document refusal that names itself.
+- **The secret scan is linear in the text, every rule included** (BUG-0028). The
+  `private-key-block` rule scanned to the end of the text once per footerless PEM header, so
+  twenty thousand headers had not finished in a minute; it now matches the header and extends
+  forward once. A key with a truncated footer, which used to match nothing, now flags and has
+  its body redacted; a header with nothing under it is documentation and flags nothing.
+- **`mycelium chats import` refuses deeply nested JSON instead of dying on it** (BUG-0030):
+  a `RecursionError` out of `json.loads` is a typed `ReaderError` in every reader and a
+  `SegmentationError` in the segmenter.
+- **One finding stays open by decision**: a query of twenty thousand terms holds the
+  single-threaded server for 57 s. The cap is a retrieval change and is filed as roadmap 6.17.
 - **The private disclosure channel `SECURITY.md` points at is not enabled**, and the risk
   register finding that covers it is re-rated **low → medium** (roadmap 6.16, ADR-0118).
   Register F3 accepted it in August on the premise that *"there are no external reporters

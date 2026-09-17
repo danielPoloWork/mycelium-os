@@ -27,6 +27,9 @@ from mycelium.synthesis.errors import ProviderError, ProviderUnavailableError
 from mycelium.synthesis.provider import LlmProvider
 from mycelium.synthesis.providers import anthropic as adapter
 
+pytestmark = pytest.mark.boundary("B10")
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 
 class StubResponse:
     def __init__(

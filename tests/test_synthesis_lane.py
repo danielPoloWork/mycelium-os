@@ -40,6 +40,9 @@ from mycelium.synthesis import (
     write_candidate,
 )
 
+pytestmark = [pytest.mark.boundary("B5"), pytest.mark.boundary("B10")]
+"""The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
 EVIDENCE_TEXT = """\
 ---
 title: Retry Policy
