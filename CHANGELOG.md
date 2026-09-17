@@ -162,6 +162,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   store handle's *"opening costs microseconds"* (it costs 10–12 ms), the store benchmark's
   deferral of the real measurement to roadmap 3.7 (which never took it), and spec 06's
   Phase-1 exit gate recorded as met on a measurement that was never made.
+- **Corrected the trademark note in `.draft-specs/01-product-strategy.md` §9** (roadmap 6.5,
+  ADR-0121): the Mycelium Bitcoin Wallet mark (MRD X-Change GmbH, US Reg. 6352173) is
+  registered in the *same* Nice class as this project's own software, not "a different
+  trademark class" as previously stated. The maintainer's decision, taken against a
+  landscape scan of this and three other software-adjacent marks: ship as-is under D-024,
+  revisit before any commercial or paid branding push.
 
 ### Deprecated
 

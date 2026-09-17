@@ -144,9 +144,19 @@ transitional alias; the console script is `mycelium` either way). The import-nam
 with the abandoned package is a theoretical collision only (dead since 2019, and
 uvx/venv isolation covers CLI users); PEP 541 eventually removes it. The earlier working
 name "KOS" is retired and survives only as history in the decision log. One name
-everywhere; shipping two names is forbidden. A trademark search remains a pre-1.0-launch
-task (document 06) — note the unrelated "Mycelium" Bitcoin-wallet brand exists in a
-different trademark class.
+everywhere; shipping two names is forbidden. **A landscape search ran at roadmap 6.5
+(2026-09-17, ADR-0121)**, correcting this section's earlier claim: the "Mycelium" Bitcoin
+wallet (MRD X-Change GmbH, US Reg. 6352173) is registered in the **same** Nice class as
+this project's own software (009, downloadable computer software), not a different one —
+its specific goods are a cryptocurrency wallet, which is what actually distinguishes it.
+The search also found a real open-source "operating system" answering to the bare name
+(`hawkw/mycelium`, no trademark claim found) and two further software-adjacent filings
+(Mycelium Software Inc., US, content-publishing apps; Mycelium Ventures Pty Ltd, Australia,
+fintech/SaaS services) — none of the four a live registration for a knowledge compiler or
+developer tool. The search is a web-search landscape scan, not an attorney clearance
+opinion; ADR-0121 states what each finding is and is not evidence of, and leaves what to do
+about it — file our own mark, commission real clearance, or ship as-is under D-024's
+already-accepted rationale — to the maintainer.
 
 ## 10. Ecosystem alignment — Mycelium LABS founder page
 
