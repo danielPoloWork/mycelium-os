@@ -48,6 +48,8 @@ __all__ = [
     "LexicalRetriever",
     "MyceliumRetriever",
     "Retriever",
+    "CitedPassage",
+    "anchor_facts",
     "build_retriever",
     "resolvable_anchors",
     "terms_of",
@@ -389,3 +391,39 @@ def build_retriever(name: str, store: SqliteStore, embedder: Embedder | None = N
 def resolvable_anchors(store: SqliteStore) -> set[str]:
     """Every anchor the snapshot can serve — the denominator of gate G1."""
     return {chunk.anchor for doc_id in store.document_ids() for chunk in store.chunks_of(doc_id)}
+
+
+@dataclass(frozen=True, slots=True)
+class CitedPassage:
+    """What the snapshot knows about one anchor, for the citation metrics (roadmap 6.7)."""
+
+    heading_depth: int
+    """How many headings the passage sits under, the document's title included.
+
+    **Read from the chunk, never parsed out of the anchor**, and that is the whole
+    reason this record exists. An anchor omits the document's single level-1
+    heading — the document is already identified by its path, so repeating its
+    title in every anchor is noise (ADR-0007) — so a passage sitting under the
+    title and before the first `##` is spelled `docs/a.md#/0`, which is
+    *indistinguishable by string* from chunk 0 of a document with no headings at
+    all. Parsing the anchor calls 193 of this repository's 1 461 chunks
+    unstructured when only one is (ADR-0122).
+    """
+
+    tokens: int
+    """How much text the citation points at."""
+
+
+def anchor_facts(store: SqliteStore) -> dict[str, CitedPassage]:
+    """What each servable anchor names and how big it is (roadmap 6.7).
+
+    Read from the snapshot rather than from the retriever, so both arms of a
+    comparison are measured against the same chunking — the grep baseline returns
+    anchors into this store too, and a shape it computed itself would be a second
+    definition of the same words.
+    """
+    return {
+        chunk.anchor: CitedPassage(heading_depth=len(chunk.heading_path), tokens=chunk.tokens)
+        for doc_id in store.document_ids()
+        for chunk in store.chunks_of(doc_id)
+    }

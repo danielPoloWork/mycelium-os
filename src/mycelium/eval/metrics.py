@@ -6,15 +6,25 @@ Recall@10, Recall@50, nDCG@10, MRR, and citation coverage. Standard definitions,
 written out rather than imported, because a metric whose implementation nobody can
 read is a number nobody should trust — and because the graded-relevance detail
 (gain ``2^grade - 1``) is exactly where evaluation harnesses quietly differ.
+
+**Two of these are not about ranking, and the second one is new.** Every metric
+above ranks *chunks* — did the right passage come back, and how high. Citation
+*coverage* asks instead whether the anchor resolves at all (gate G1), and citation
+*precision* asks whether it names a place a reader can find (roadmap 6.7,
+ADR-0122). A run can rank well and cite badly: an ingested PDF whose headings were
+never recovered returns the right passage under the anchor ``#/7``, which is a
+correct answer and a citation nobody can check without this tool.
 """
 
 import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping, Sequence, Set
 from typing import Final
 
 __all__ = [
     "SECTION_MARKER",
     "citation_coverage",
+    "citation_precision",
+    "cited_tokens",
     "credit_judgments",
     "dcg",
     "ndcg_at_k",
@@ -112,3 +122,82 @@ def citation_coverage(retrieved: Sequence[str], resolvable: set[str]) -> float:
     if not retrieved:
         return 1.0
     return sum(1 for anchor in retrieved if anchor in resolvable) / len(retrieved)
+
+
+def citation_precision(retrieved: Sequence[str], located: Set[str], k: int) -> float:
+    """Fraction of the top-`k` citations that name where in the document they point.
+
+    The companion to :func:`citation_coverage`, and the gap roadmap 6.7 was filed
+    to close. Coverage asks whether an anchor *resolves* — gate G1, NFR-5 — and
+    every other metric here ranks *chunks*. None of them asks whether the anchor a
+    reader is handed **names the right thing**, which is the property an agent
+    actually depends on when it cites evidence to a human who will check it.
+
+    That gap decided roadmap 4.9 in the negative: docling's ML pipeline turns
+    ``#/0`` into ``#platform-support/0`` for an ingested PDF — a real improvement
+    to a citation, and invisible to every number this project could produce
+    (ADR-0040). This is the number it was missing.
+
+    **`located` comes from the snapshot, and must not be computed from the anchor
+    string.** An anchor's two coordinates are different kinds of thing: a heading
+    path is *semantic* — a reader finds `#platform-support` by searching the
+    document for that heading — and an ordinal is *positional*, resolvable only by
+    the tool that minted it and moved by any edit above it. But an anchor omits
+    the document's single level-1 heading (ADR-0007), so a passage that sits under
+    a real title and before the first `##` is spelled `docs/a.md#/0`, exactly like
+    chunk 0 of a document with no headings whatsoever. The two are only
+    distinguishable from the chunk record, which is why
+    :func:`~mycelium.eval.retrievers.anchor_facts` supplies this set — and why
+    the first draft of this metric, which parsed the anchor, called 193 of this
+    repository's 1 461 chunks unstructured when one is (ADR-0122).
+
+    **Computed over every returned anchor, not only the ones that answered.** The
+    alternative — score the citations that satisfied a judgement — sounds more
+    targeted and is worse in two ways. It couples a citation-quality number to
+    ranking quality, so a retriever that ranks badly is measured on a handful of
+    anchors and a retriever that ranks well on many; and comparing two arms then
+    compares two different sample sizes. A reader is handed all `k`, so all `k`
+    are scored (ADR-0122).
+
+    **No judged input, and that is a finding rather than an omission.** Roadmap 6.7
+    predicted this metric would need "a judged notion of the correct anchor
+    granularity per case". It does not. Whether an anchor names a heading path is a
+    fact about the anchor, readable without an opinion about the query — and
+    ADR-0029's rule already answers the one question a judgement could add here: a
+    judgement that names a *section* has declared that any chunk under it is an
+    acceptable answer, so citing one chunk of a judged section is not a citation
+    failure by the judge's own standard. Adding a subjective input to a decidable
+    question would have made the measurement weaker, not stronger (ADR-0122).
+
+    An empty result set is vacuously precise, the same convention
+    :func:`citation_coverage` uses and for the same reason: abstention is measured
+    separately, and a run that returned nothing has no citation to fault.
+    """
+    head = retrieved[:k]
+    if not head:
+        return 1.0
+    return sum(1 for anchor in head if anchor in located) / len(head)
+
+
+def cited_tokens(retrieved: Sequence[str], tokens: Mapping[str, int], k: int) -> int:
+    """Mean size, in tokens, of the passages the top-`k` citations point at.
+
+    The diagnostic that makes :func:`citation_precision` readable, because the two
+    move independently and a citation is imprecise in both directions. A located
+    anchor pointing at 700 tokens still asks a reader to scan a page to check one
+    sentence; an unlocated anchor pointing at 60 asks them to find it first.
+
+    ADR-0039 and ADR-0040 already found this quantity deciding results and treated
+    it as a confound: a text-layer PDF arm's page-sized chunks scored *well* on
+    rank because a large chunk catches the answer more often, while its citations
+    were the worst in the corpus. Reported beside the precision, the confound
+    becomes a reading.
+
+    A mean rather than a median because every other summary here is a mean and
+    means compose across cases; the outlier it is sensitive to is exactly the
+    oversized chunk worth seeing. Anchors the map does not know are skipped — with
+    coverage gated at 1.00 there are none, and a run that has lost that has a
+    louder failure to report.
+    """
+    sizes = [tokens[anchor] for anchor in retrieved[:k] if anchor in tokens]
+    return round(sum(sizes) / len(sizes)) if sizes else 0

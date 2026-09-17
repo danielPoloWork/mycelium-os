@@ -1717,6 +1717,14 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
             f"false answers {overall.false_answer_rate:.1%}  "
             f"p95 {overall.latency_p95_ms} ms"
         )
+        # Reported beside coverage because they answer the other half of the same
+        # question: coverage says the anchor resolves, precision says it names a
+        # place a reader can find, and the size says how much they must read to
+        # check it (roadmap 6.7, ADR-0122).
+        detail(
+            f"  anchors located {overall.citation_precision:.3f}  "
+            f"cited passage ~{overall.cited_tokens} tokens"
+        )
         for name, summary in sorted(manifest.per_slice.items()):
             detail(f"  {name:<14} nDCG@10 {summary.ndcg_at_10:.3f}  ({summary.cases} cases)")
         comparison = incumbent_comparison(manifest, cases)
