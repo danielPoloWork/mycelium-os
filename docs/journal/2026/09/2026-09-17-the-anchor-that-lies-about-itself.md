@@ -1,7 +1,7 @@
 # 2026-09-17 — the anchor that lies about itself (roadmap 6.7)
 
 - **Session scope:** roadmap 6.7 — score citation precision, not only rank.
-- **PR:** `feat/score-citation-precision`, following #156.
+- **PR:** #157 (`feat/score-citation-precision`). Follows #156.
 - **Milestone 6:** 6.7 delivered. Open: 6.8–6.10, 6.12–6.15, 6.17–6.23.
 - **Decision it records:** [ADR-0122](../../../adr/0122-score-what-a-citation-names-and-read-it-from-the-chunk.md).
 
