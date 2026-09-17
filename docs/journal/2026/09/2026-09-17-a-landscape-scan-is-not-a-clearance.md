@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.5 — the trademark search and brand decision, routed
   `owner call`.
-- **PR:** `chore/trademark-search-6-5`, following #146.
+- **PR:** #156 (`chore/trademark-search-6-5`). Follows #146.
 - **Milestone 6:** 6.5 delivered. Open: 6.7–6.10, 6.12–6.15, 6.17–6.23.
 - **Decision it records:** [ADR-0121](../../../adr/0121-search-the-trademark-landscape-and-correct-what-d-024-assumed.md).
 
