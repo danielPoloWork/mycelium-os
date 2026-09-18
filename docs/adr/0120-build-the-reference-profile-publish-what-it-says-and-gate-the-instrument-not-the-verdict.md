@@ -7,7 +7,7 @@
   suite, and the gate it deferred to 1.0), [ADR-0013](0013-adopt-the-evaluation-harness.md)
   (the harness and the grep baseline), [ADR-0047](0047-flip-the-packed-chunker-on-and-let-the-gate-say-so.md)
   (the chunker change that moved four task anchors),
-  [ADR-0026](0026-pack-the-vectors-and-say-what-the-scan-costs.md) (the vector scan's own
+  [ADR-0026](0026-pack-the-vectors-into-a-memory-mapped-matrix.md) (the vector scan's own
   extrapolation to 10⁵), [ADR-0053](0053-report-on-the-corpus-we-author-and-gate-on-the-one-we-do-not.md)
   (a gate that cannot fail selects for being ignored),
   [ADR-0112](0112-date-the-baseline-to-a-release-because-the-drift-is-the-incumbents.md)

@@ -61,6 +61,7 @@ manifest; `tools/consistency_lint.py` refuses one that does not.
 
 import argparse
 import ctypes
+import hashlib
 import json
 import os
 import platform
@@ -84,6 +85,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from mycelium.__about__ import __version__  # noqa: E402
 from mycelium.build import build  # noqa: E402
 from mycelium.build.publish import CURRENT_FILENAME  # noqa: E402
+from mycelium.config import RetrievalConfig  # noqa: E402
+from mycelium.embedding import EmbeddingError, build_embedder  # noqa: E402
 from mycelium.eval.cases import load_cases  # noqa: E402
 from mycelium.mcp.tools import handle_search  # noqa: E402
 from mycelium.retrieval import search  # noqa: E402
@@ -104,9 +107,25 @@ from mycelium.store import STORE_DIRNAME, SqliteStore  # noqa: E402
 from mycelium.store.sqlite import _stemmed  # noqa: E402
 
 _DIGEST: Final = "sha256:" + "6f2a" * 16
-"""A placeholder content digest. Nothing in the query path reads it — the anchor
-resolves a chunk and the digest only travels into a citation — so a store built for
-a query measurement may share one."""
+"""A placeholder *document* content digest. Nothing in the query path reads it."""
+
+
+def _chunk_digest(anchor: str) -> str:
+    """A distinct content digest per chunk, derived from its anchor.
+
+    The chunks used to share :data:`_DIGEST`, on the true observation that the
+    lexical path never reads this column. The vector path does: vectors are keyed
+    ``(chunk_digest, model_id)`` (D-013) and `search_vectors` hydrates its results
+    by that key, so one shared digest would have meant **one vector for a hundred
+    thousand chunks** and a hydration that returned all of them (roadmap 6.21).
+
+    Derived from the anchor rather than drawn from the generator's `random.Random`
+    so the prose is byte-identical to what the same seed produced before: the rng
+    stream is untouched, and only this column moves. Nothing the lexical
+    measurement can see changes, which is what lets 6.4's published numbers and
+    these be read as measurements of one corpus."""
+    return "sha256:" + hashlib.sha256(anchor.encode("utf-8")).hexdigest()
+
 
 SCHEMA: Final = "mycelium/benchmark/v0"
 """The manifest's own schema tag. Not a record contract and not frozen: a
@@ -148,8 +167,14 @@ REFERENCE_CHUNKS: Final = 100_000
 """Spec 04 §1's 10⁵-chunk reference profile."""
 
 QUERY_BUDGET_MS: Final = 150
+CANDIDATE_BUDGET_MS: Final = 60
+"""Spec 04 §1's budget for plan + candidate generation, the stage the vector leg is."""
 INCREMENTAL_BUDGET_MS: Final = 2_000
 COLD_BUILD_BUDGET_S: Final = 60
+
+VECTOR_FRESH_SAMPLES: Final = 12
+"""Fresh-handle vector samples. Each opens a store and maps a 154 MB file, so this
+is deliberately fewer than the warm pass; the manifest records the count."""
 
 INCREMENTAL_SAMPLES: Final = 20
 """Single-document edits timed for the p95. Twenty is the fewest that makes a p95
@@ -161,6 +186,22 @@ DEFAULT_SCALES: Final = (250, 1_000, 2_500, 5_000)
 the budget is met and nothing about *why*; the curve says which cost grows with the
 corpus and which is a constant, which is the difference between a number and a
 finding. 1 000 is spec 01 §8's own cold-build condition."""
+
+VECTOR_MODEL_ID: Final = "reference-profile-384"
+VECTOR_DIM: Final = 384
+"""The synthetic embedding the vector profile is measured over (roadmap 6.21).
+
+**A model id of its own, not the shipped model's.** The vectors are random unit
+vectors, and writing them under `bge-small-en-v1.5` would leave a store claiming to
+hold embeddings of its own prose that are nothing of the kind. The dimension is the
+shipped model's, because that is what decides the matrix's size and therefore every
+cost here.
+
+**Random is honest for a *cost* measurement and would not be for a *quality* one.**
+The scan is exact and touches every vector whatever they contain, so geometry
+cannot change how long it takes to multiply the matrix — the same reasoning
+`tools/measure_vector_index.py` states, and the reason ADR-0028's *recall* half
+insists on real embeddings instead."""
 
 CHUNKS_PER_DOCUMENT: Final = 5
 BLOCKS_PER_CHUNK: Final = 2
@@ -539,7 +580,7 @@ def populate_store(workspace: Path, prose: Prose, chunks: int, *, seed: int) -> 
                         (
                             anchor,
                             doc_id,
-                            _DIGEST,
+                            _chunk_digest(anchor),
                             canonical_json([heading]),
                             canonical_json([f"n{ordinal}"]),
                             text,
@@ -586,6 +627,250 @@ def populate_store(workspace: Path, prose: Prose, chunks: int, *, seed: int) -> 
         encode_ulid(_ULID_EPOCH_MS, bytes(10)) + "\n", encoding="utf-8", newline="\n"
     )
     return written
+
+
+class _ProfileEmbedder:
+    """A deterministic stand-in for the query side of the vector leg.
+
+    It satisfies :class:`~mycelium.embedding.base.Embedder` and returns a seeded
+    unit vector, so `search` runs its whole hybrid path — plan, lexical leg,
+    vector leg, fusion — without a 133 MB model in the loop.
+
+    **What this excludes is measured separately and named in the report.** A real
+    hybrid query also pays one `embed_query` call against the local model, and
+    that cost belongs to the *embedder* rather than to retrieval; it is timed on
+    its own by :func:`measure_query_embedding` where the model is present, so a
+    reader adds two numbers instead of being handed one that hides which is which.
+    """
+
+    model_id = VECTOR_MODEL_ID
+    provider = "reference-profile"
+    dim = VECTOR_DIM
+    deterministic = True
+
+    def __init__(self, queries: Sequence[str] = ()) -> None:
+        # Precomputed, and that is not an optimisation — it is what keeps the
+        # instrument out of the measurement. Drawing 384 gaussians in Python costs
+        # milliseconds, and `search` calls `embed_query` *inside* the region a
+        # hybrid query is timed over, so a generated vector would have been
+        # charged to retrieval. The real embedder's cost is measured on its own
+        # by `measure_query_embedding` (roadmap 6.21).
+        self._cache = {query: self._draw(query) for query in queries}
+
+    def _draw(self, text: str) -> tuple[float, ...]:
+        rng = random.Random(hashlib.sha256(text.encode("utf-8")).digest())
+        values = [rng.gauss(0.0, 1.0) for _ in range(self.dim)]
+        norm = sum(value * value for value in values) ** 0.5
+        return tuple(value / norm for value in values)
+
+    def embed_documents(self, texts: Sequence[str]) -> list[tuple[float, ...]]:
+        return [self.embed_query(text) for text in texts]
+
+    def embed_query(self, text: str) -> tuple[float, ...]:
+        cached = self._cache.get(text)
+        if cached is None:
+            cached = self._cache[text] = self._draw(text)
+        return cached
+
+
+def populate_vectors(workspace: Path, *, seed: int) -> int:
+    """Write one synthetic unit vector per chunk, and let the store pack them.
+
+    Every chunk the store holds, keyed by the digest `populate_store` gave it, so
+    the matrix has exactly the shape a compiled corpus of that size would present.
+    The write goes through `put_vectors` inside a transaction — the same path the
+    embed stage uses — so the commit triggers `repack_vectors` and the memory-mapped
+    matrix (ADR-0026) is built by the code that builds it in production rather than
+    by this file.
+
+    Embedding 10⁵ real chunks with the local model is hours of work that would
+    measure the *embedder*; the scan's cost does not depend on what the vectors
+    contain, which is why synthetic ones are the honest choice here and why
+    `tests/bench/test_retrieval_bench.py` has always used them at 10 000
+    (roadmap 6.21).
+
+    Returns the number of vectors written.
+    """
+    rng = random.Random(seed)
+    written = 0
+    with SqliteStore.open(workspace) as store:
+        digests = [
+            str(row["chunk_digest"])
+            for row in store._connection.execute("SELECT DISTINCT chunk_digest FROM chunks")
+        ]
+        for start in range(0, len(digests), 5_000):
+            batch = digests[start : start + 5_000]
+            with store.transaction():
+                written += store.put_vectors(
+                    VECTOR_MODEL_ID, ((digest, _unit_vector(rng)) for digest in batch)
+                )
+            print(f"    {written} vectors", flush=True)
+    return written
+
+
+def _unit_vector(rng: random.Random) -> tuple[float, ...]:
+    values = [rng.gauss(0.0, 1.0) for _ in range(VECTOR_DIM)]
+    norm = sum(value * value for value in values) ** 0.5
+    return tuple(value / norm for value in values)
+
+
+def measure_vector_path(
+    workspace: Path, queries: Sequence[str]
+) -> tuple[list[Measurement], dict[str, Any]]:
+    """Time the vector leg and the whole hybrid query at this scale (roadmap 6.21).
+
+    Four measurements, because four different things were being confused.
+
+    **The vector leg on a fresh handle** is what a CLI invocation pays: a store
+    maps its packed matrix once per handle (ADR-0026), so the first query carries
+    the mapping and the process then exits. **On a warm handle** is what the MCP
+    server pays, every query after the first.
+
+    **The hybrid query, warm** is what a caller actually waits for with
+    `[retrieval] profile = "hybrid"`: the lexical leg, the vector leg and the
+    fusion of the two. **The lexical query, warm** is the same store and the same
+    questions with the vector leg off — the comparison that says what hybrid costs
+    *over* the shipped default rather than in the abstract.
+
+    Hybrid queries are split by whether the vector leg actually ran. It is
+    withheld where the lexical leg found nothing (ADR-0025), so folding those
+    into one mean would report the cost of a leg that did not run; the two
+    buckets and their counts are reported instead.
+
+    The page cache is warm for all of them: the pack was just written. A genuinely
+    cold file-system read is a property of the machine and the report says so
+    rather than pretending this measures it.
+    """
+    embedder = _ProfileEmbedder(queries)
+    hybrid_config = RetrievalConfig(profile="hybrid")
+    lexical_config = RetrievalConfig()
+    probe = embedder.embed_query("candidate generation over the reference profile")
+
+    fresh = Measurement(
+        name="vector leg, first query on a fresh handle (a CLI invocation)",
+        unit="ms",
+        budget=CANDIDATE_BUDGET_MS,
+    )
+    for query in queries[:VECTOR_FRESH_SAMPLES]:
+        with SqliteStore.open(workspace, read_only=True) as handle:
+            vector = embedder.embed_query(query)
+            started = time.perf_counter()
+            handle.search_vectors(vector, VECTOR_MODEL_ID, limit=50)
+            fresh.samples.append((time.perf_counter() - started) * 1000)
+
+    warm = Measurement(
+        name="vector leg, warm handle (the MCP server)", unit="ms", budget=CANDIDATE_BUDGET_MS
+    )
+    hybrid = Measurement(
+        name="search, hybrid, both legs ran, warm store (in-process)",
+        unit="ms",
+        budget=QUERY_BUDGET_MS,
+    )
+    withheld = Measurement(
+        name="search, hybrid configured but the vector leg withheld (ADR-0025)",
+        unit="ms",
+        budget=QUERY_BUDGET_MS,
+    )
+    lexical = Measurement(
+        name="search, lexical, warm store (in-process)", unit="ms", budget=QUERY_BUDGET_MS
+    )
+    precondition = Measurement(
+        name="vector_counts(), the hybrid precondition `search` runs per query",
+        unit="ms",
+        budget=None,
+    )
+    with SqliteStore.open(workspace, read_only=True) as store:
+        store.search_vectors(probe, VECTOR_MODEL_ID, limit=50)  # map the pack
+        for query in queries:
+            vector = embedder.embed_query(query)
+            started = time.perf_counter()
+            store.search_vectors(vector, VECTOR_MODEL_ID, limit=50)
+            warm.samples.append((time.perf_counter() - started) * 1000)
+
+        for query in queries:  # one pass to warm the page cache for both legs
+            search(store, query, limit=10, config=hybrid_config, embedder=embedder)
+        # Counted across every timed query, not read off the last one. The vector
+        # leg is *withheld* where the lexical leg found nothing (ADR-0025's
+        # precondition: hybrid abstains wherever lexical abstains), so a question
+        # this corpus cannot answer costs the lexical price and belongs in a
+        # different bucket. Sampling the final query's `legs` reported `lexical`
+        # for a pass in which the leg had run on almost all of them — an instrument
+        # defect caught before it reached a report (roadmap 6.21).
+        both_legs = 0
+        for query in queries:
+            started = time.perf_counter()
+            outcome = search(store, query, limit=10, config=hybrid_config, embedder=embedder)
+            elapsed = (time.perf_counter() - started) * 1000
+            if "vector" in outcome.legs:
+                both_legs += 1
+                hybrid.samples.append(elapsed)
+            else:
+                withheld.samples.append(elapsed)
+        for query in queries:
+            started = time.perf_counter()
+            search(store, query, limit=10, config=lexical_config)
+            lexical.samples.append((time.perf_counter() - started) * 1000)
+        # `search` asks this once per hybrid query, to decide whether the snapshot
+        # holds vectors for the model at all (ADR-0025's degradation path). It is a
+        # `GROUP BY` over the whole `vectors` table, so it is timed here rather
+        # than left inside the residual (roadmap 6.21).
+        for _ in queries:
+            started = time.perf_counter()
+            store.vector_counts()
+            precondition.samples.append((time.perf_counter() - started) * 1000)
+        vectors = store.vector_counts().get(VECTOR_MODEL_ID, 0)
+        packed = store._pack_for(VECTOR_MODEL_ID) is not None
+
+    notes: dict[str, Any] = {
+        "vectors": vectors,
+        "dim": VECTOR_DIM,
+        "matrix_bytes": vectors * VECTOR_DIM * 4,
+        "packed": packed,
+        "queries": len(queries),
+        "queries_that_ran_both_legs": both_legs,
+        "queries_with_the_vector_leg_withheld": len(queries) - both_legs,
+        "embedder": "synthetic unit vectors; see populate_vectors()",
+    }
+    measured = [fresh, warm, hybrid, lexical, precondition]
+    if withheld.samples:
+        measured.insert(3, withheld)
+    return measured, notes
+
+
+def measure_query_embedding(queries: Sequence[str]) -> Measurement | None:
+    """What one `embed_query` costs against the shipped local model, if it is here.
+
+    The half :class:`_ProfileEmbedder` leaves out. It is a property of the model
+    and the machine rather than of the corpus, so it does not scale with the
+    profile — which is exactly why it is measured once, separately, and added by
+    the reader rather than folded into the hybrid number.
+
+    ``None`` when the model is not on this machine: CI has no model by design
+    (D-013), and a benchmark that invented the number would be worse than one that
+    says it is missing.
+    """
+    try:
+        embedder = build_embedder(provider="local-onnx", model_id="bge-small-en-v1.5")
+    except EmbeddingError as error:
+        print(f"  query embedding: not measured - {error}", flush=True)
+        return None
+    if embedder is None:  # pragma: no cover - provider "none" is not passed here
+        return None
+    measurement = Measurement(
+        name="embed_query, local ONNX model (excluded from the hybrid figure above)",
+        unit="ms",
+        # No budget: spec 04 §1 budgets the stages of the query path, and the
+        # embedder is a property of the model and the machine, not of retrieval.
+        budget=None,
+        notes={"model_id": embedder.model_id, "provider": embedder.provider, "dim": embedder.dim},
+    )
+    for query in queries[:8]:  # warm the session
+        embedder.embed_query(query)
+    for query in queries:
+        started = time.perf_counter()
+        embedder.embed_query(query)
+        measurement.samples.append((time.perf_counter() - started) * 1000)
+    return measurement
 
 
 def measure_file_io(workspace: Path, *, files: int = IO_CALIBRATION_FILES) -> Measurement:
@@ -762,6 +1047,7 @@ def run(
     scales: Sequence[int],
     reference: bool,
     query_scale: int = 0,
+    vectors: bool = False,
     real_corpora: bool = False,
     manifest_path: Path | None = None,
 ) -> dict[str, Any]:
@@ -787,7 +1073,19 @@ def run(
             "sources": [str(path).replace("\\", "/") for path in SOURCE_CORPORA],
             "queries": len(queries),
             "query_sets": [str(path).replace("\\", "/") for path in QUERY_SETS],
-            "profile": "lexical (the shipped default, ADR-0017); built with no vectors",
+            # The corpus is *compiled* with the embedder off, which is what the
+            # shipped default reads. `--vectors` adds a synthetic matrix to the
+            # finished store afterwards and documents it under `vector_profile`;
+            # saying so here keeps the two from reading as a contradiction.
+            "profile": (
+                "lexical (the shipped default, ADR-0017); compiled with the embedder off"
+                + (
+                    ". A synthetic vector matrix was written into the finished store "
+                    "afterwards - see `vector_profile` (roadmap 6.21)"
+                    if vectors
+                    else ", and no vectors were written"
+                )
+            ),
         },
         "budgets": {
             "cold_build_1k_s": COLD_BUILD_BUDGET_S,
@@ -862,6 +1160,40 @@ def run(
             "measurements": [warm.as_dict(), end_to_end.as_dict()],
         }
         flush()
+
+        if vectors:
+            # The vector leg and the hybrid query at the same scale, on the same
+            # store, so the two halves of spec 04 §3's fusion are comparable
+            # rather than measured a milestone apart (roadmap 6.21).
+            print("\n=== vector profile: one synthetic vector per chunk ===", flush=True)
+            started = time.perf_counter()
+            written = populate_vectors(workspace, seed=seed + 1)
+            print(
+                f"  wrote and packed {written} vectors in {time.perf_counter() - started:.0f} s",
+                flush=True,
+            )
+            measurements, notes = measure_vector_path(workspace, queries)
+            for measurement in measurements:
+                print(
+                    f"  {measurement.name:<52} {measurement.p50:8.1f} ms p50"
+                    f"   {measurement.p95:8.1f} ms p95",
+                    flush=True,
+                )
+            embedding = measure_query_embedding(queries)
+            if embedding is not None:
+                print(
+                    f"  {embedding.name:<52} {embedding.p50:8.1f} ms p50"
+                    f"   {embedding.p95:8.1f} ms p95",
+                    flush=True,
+                )
+                measurements.append(embedding)
+            manifest["vector_profile"] = {
+                "chunks": chunks,
+                **notes,
+                "measurements": [item.as_dict() for item in measurements],
+            }
+            flush()
+
         shutil.rmtree(workspace, ignore_errors=True)
 
     if reference:
@@ -898,7 +1230,7 @@ REQUIRED_MANIFEST_KEYS: Final = (
 is here so a reader can see what the run was measured *against* without going to the
 spec, and so a changed budget is visible in a diff."""
 
-MEASUREMENT_SECTIONS: Final = ("scales", "query_profile", "real_corpora")
+MEASUREMENT_SECTIONS: Final = ("scales", "query_profile", "vector_profile", "real_corpora")
 """Where measurements live. A manifest needs at least one non-empty section — a run
 that timed nothing is a note about a machine."""
 
@@ -1009,6 +1341,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             "measures it at the reference size without a multi-hour build."
         ),
     )
+    parser.add_argument(
+        "--vectors",
+        action="store_true",
+        help=(
+            "With --query-scale: write one synthetic vector per chunk and measure the "
+            "vector leg and the hybrid query at that scale (roadmap 6.21)."
+        ),
+    )
     parser.add_argument("--manifest", type=Path, help="Write the manifest here.")
     args = parser.parse_args(argv)
 
@@ -1024,6 +1364,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         scales=[int(size) for size in args.scales.split(",") if size.strip()],
         reference=not args.no_reference,
         query_scale=args.query_scale,
+        vectors=args.vectors,
         real_corpora=args.real_corpora,
         manifest_path=args.manifest,
     )

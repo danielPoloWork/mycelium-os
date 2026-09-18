@@ -1,0 +1,169 @@
+{
+  "budgets": {
+    "cold_build_1k_s": 60,
+    "incremental_p95_ms": 2000,
+    "reference_chunks": 100000,
+    "search_p95_ms": 150
+  },
+  "commit": "767965c8ce48329580badfdc8385fc948a114cfe",
+  "corpus": {
+    "generator": "tools/benchmark_reference_profile.py",
+    "kind": "generated",
+    "profile": "lexical (the shipped default, ADR-0017); built with no vectors",
+    "queries": 39,
+    "query_sets": [
+      "eval/release.jsonl",
+      "eval/dev.jsonl"
+    ],
+    "seed": 20260917,
+    "sources": [
+      "eval/corpora/uv-docs/knowledge",
+      "docs"
+    ]
+  },
+  "generated_at": "2026-09-18T14:48:04.206666Z",
+  "hardware": {
+    "logical_cpus": 20,
+    "machine": "AMD64",
+    "memory_gib": 31.7,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+  },
+  "query_profile": {
+    "chunks": 100000,
+    "documents": 20000,
+    "kind": "store populated directly (no compiler run); see populate_store()",
+    "measurements": [
+      {
+        "budget": 150,
+        "max": 2024.721,
+        "mean": 797.31,
+        "min": 1.391,
+        "name": "search, warm store (in-process)",
+        "p50": 915.087,
+        "p95": 1657.14,
+        "samples": 39,
+        "unit": "ms",
+        "within_budget": false
+      },
+      {
+        "budget": 150,
+        "max": 1664.704,
+        "mean": 760.055,
+        "min": 16.643,
+        "name": "mycelium_search, end to end (MCP handler)",
+        "p50": 889.592,
+        "p95": 1588.534,
+        "samples": 39,
+        "unit": "ms",
+        "within_budget": false
+      }
+    ]
+  },
+  "scales": [],
+  "schema": "mycelium/benchmark/v0",
+  "toolchain": {
+    "mycelium": "0.5.0",
+    "python": "3.12.10"
+  },
+  "vector_profile": {
+    "chunks": 100000,
+    "dim": 384,
+    "embedder": "synthetic unit vectors; see populate_vectors()",
+    "matrix_bytes": 153600000,
+    "measurements": [
+      {
+        "budget": 60,
+        "max": 1424.318,
+        "mean": 158.606,
+        "min": 40.218,
+        "name": "vector leg, first query on a fresh handle (a CLI invocation)",
+        "p50": 43.229,
+        "p95": 46.224,
+        "samples": 12,
+        "unit": "ms",
+        "within_budget": true
+      },
+      {
+        "budget": 60,
+        "max": 13.49,
+        "mean": 12.044,
+        "min": 9.949,
+        "name": "vector leg, warm handle (the MCP server)",
+        "p50": 12.097,
+        "p95": 13.319,
+        "samples": 39,
+        "unit": "ms",
+        "within_budget": true
+      },
+      {
+        "budget": 150,
+        "max": 2274.321,
+        "mean": 1177.963,
+        "min": 161.753,
+        "name": "search, hybrid, both legs ran, warm store (in-process)",
+        "p50": 1288.313,
+        "p95": 2020.27,
+        "samples": 34,
+        "unit": "ms",
+        "within_budget": false
+      },
+      {
+        "budget": 150,
+        "max": 2.852,
+        "mean": 1.957,
+        "min": 1.447,
+        "name": "search, hybrid configured but the vector leg withheld (ADR-0025)",
+        "p50": 1.922,
+        "p95": 1.967,
+        "samples": 5,
+        "unit": "ms",
+        "within_budget": true
+      },
+      {
+        "budget": 150,
+        "max": 2212.386,
+        "mean": 898.34,
+        "min": 1.074,
+        "name": "search, lexical, warm store (in-process)",
+        "p50": 1004.923,
+        "p95": 1862.66,
+        "samples": 39,
+        "unit": "ms",
+        "within_budget": false
+      },
+      {
+        "budget": null,
+        "max": 134.808,
+        "mean": 122.884,
+        "min": 99.262,
+        "name": "vector_counts(), the hybrid precondition `search` runs per query",
+        "p50": 129.909,
+        "p95": 132.974,
+        "samples": 39,
+        "unit": "ms",
+        "within_budget": null
+      },
+      {
+        "budget": null,
+        "dim": 384,
+        "max": 13.228,
+        "mean": 9.886,
+        "min": 7.353,
+        "model_id": "bge-small-en-v1.5",
+        "name": "embed_query, local ONNX model (excluded from the hybrid figure above)",
+        "p50": 9.682,
+        "p95": 11.782,
+        "provider": "local-onnx",
+        "samples": 39,
+        "unit": "ms",
+        "within_budget": null
+      }
+    ],
+    "packed": true,
+    "queries": 39,
+    "queries_that_ran_both_legs": 34,
+    "queries_with_the_vector_leg_withheld": 5,
+    "vectors": 100000
+  }
+}
