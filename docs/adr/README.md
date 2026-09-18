@@ -157,3 +157,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0123](0123-derive-the-count-a-slice-needs-instead-of-guessing-it.md) | Derive the count a slice needs, instead of guessing it | Accepted |
 | [0124](0124-check-the-tests-like-the-source-because-there-was-no-middle-setting.md) | Check the tests like the source, because there was no middle setting | Accepted |
 | [0125](0125-exclude-the-root-changelog-because-unreleased-is-the-restatement-early.md) | Exclude the root CHANGELOG.md, because `[Unreleased]` is the restatement early | Accepted |
+| [0126](0126-measure-the-docs-site-before-deciding-whether-it-joins-the-corpus.md) | Measure the docs site before deciding whether it joins the corpus | Accepted |
