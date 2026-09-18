@@ -278,6 +278,54 @@ def check_discussions(repo: dict[str, object]) -> Finding:
     )
 
 
+def check_pages(slug: str) -> Finding:
+    """§4 — GitHub Pages, built from a workflow artifact rather than a branch.
+
+    `gh api repos/{slug}/pages` 404s when Pages is off, which `gh()` already turns
+    into ``None`` — the same "absent is an answer" shape branch protection gets.
+    Installed means more than "some Pages site exists": `.github/workflows/pages.yml`
+    deploys through `actions/deploy-pages`, which needs the *build type* to be
+    `workflow` rather than a branch. A repository still configured the legacy way
+    (source: a branch) would report as Pages-enabled while the deploy job's upload
+    step failed anyway, which is a worse finding than absent because it reads as
+    progress (roadmap 6.14, ADR-0127).
+    """
+    state = gh(f"repos/{slug}/pages")
+    if state is None:
+        return Finding(
+            key="pages",
+            step="GitHub Pages, source: GitHub Actions",
+            section="§4",
+            installed=False,
+            detail="not configured, so .github/workflows/pages.yml's deploy job cannot "
+            "succeed yet - it reports this in its own run and does nothing else",
+            remedy=f"the web UI step in {SETUP_DOC} §4 (one-time; the REST 'create' shape "
+            "for build_type=workflow is not consistently documented, and this is a "
+            "public-facing setting, so a mis-guessed gh api call is not worth the risk "
+            "a web-UI click does not carry)",
+        )
+    assert isinstance(state, dict)
+    build_type = str(state.get("build_type", ""))
+    installed = build_type == "workflow"
+    return Finding(
+        key="pages",
+        step="GitHub Pages, source: GitHub Actions",
+        section="§4",
+        installed=installed,
+        detail=(
+            f"enabled, serving {state.get('html_url', '(no url reported)')}"
+            if installed
+            else f"enabled with build_type={build_type!r}, not 'workflow' - the deploy "
+            "job's upload-pages-artifact step will fail against a branch-sourced site"
+        ),
+        remedy=(
+            ""
+            if installed
+            else f"the web UI step in {SETUP_DOC} §4 - switch Source to GitHub Actions"
+        ),
+    )
+
+
 def check_vulnerability_reporting(slug: str) -> Finding:
     """§4 — the private channel `SECURITY.md` promises.
 
@@ -483,6 +531,7 @@ def collect(slug: str, repo: dict[str, object]) -> list[Finding]:
         check_labels(slug),
         check_branch_protection(slug, branch),
         check_discussions(repo),
+        check_pages(slug),
         check_vulnerability_reporting(slug),
         check_milestones(slug),
     ]

@@ -966,7 +966,7 @@ analysis, property tests, documented design decisions, SemVer releases.
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | How AI agents (and humans) work in this repo — the contract. |
 | [`ROADMAP.md`](ROADMAP.md) | The numbered plan and what is done. |
-| [Docs site](docs-site/index.md) | Tutorial, how-to guides, the plugin-author guide, and a generated SDK reference — `uv run mkdocs serve` to preview. |
+| [Docs site](docs-site/index.md) | Tutorial, how-to guides, the plugin-author guide, and a generated SDK reference — published at [danielpolowork.github.io/mycelium-os](https://danielpolowork.github.io/mycelium-os/) on every push to `main`; `uv run mkdocs serve` to preview a change before it lands. |
 | [Plugin cookiecutter](tools/cookiecutter-mycelium-plugin/) | Generates a `Connector`, `Parser` or `Module` plugin, checked by rendering it. |
 | [`docs/adr/`](docs/adr/) | Why it is built the way it is (Architecture Decision Records). |
 | [`docs/rfc/`](docs/rfc/) | Design of record, reviewed and approved before code. |
