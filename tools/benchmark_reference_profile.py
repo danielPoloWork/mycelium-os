@@ -60,11 +60,13 @@ manifest; `tools/consistency_lint.py` refuses one that does not.
 """
 
 import argparse
+import cProfile
 import ctypes
 import hashlib
 import json
 import os
 import platform
+import pstats
 import random
 import re
 import shutil
@@ -906,11 +908,18 @@ def _queries(root: Path) -> tuple[str, ...]:
 
 
 def measure_cold_build(workspace: Path, prose: Prose, documents: int, *, seed: int) -> Measurement:
-    """Time one clean build of `documents` generated documents (spec 01 §8)."""
+    """Time one clean build of `documents` generated documents (spec 01 §8).
+
+    The manifest's own per-stage timings are carried into the notes (roadmap
+    6.19). A total says whether a budget is met; the stages say which part to
+    look at, and carrying them costs nothing because the compiler already
+    measured them — `timings_ms` is in every snapshot manifest (spec 03 §7).
+    """
     generate(workspace, prose, documents, seed=seed)
     started = time.perf_counter()
     result = build(workspace, clean=True, pin_identity=False)
     elapsed = time.perf_counter() - started
+    timings = dict(result.manifest.timings_ms)
     return Measurement(
         name=f"cold build, {documents} documents",
         unit="s",
@@ -920,8 +929,69 @@ def measure_cold_build(workspace: Path, prose: Prose, documents: int, *, seed: i
             "documents": result.manifest.counts.documents,
             "chunks": result.manifest.counts.chunks,
             "documents_per_second": round(result.manifest.counts.documents / elapsed, 1),
+            "ms_per_document": round(1000 * elapsed / max(1, result.manifest.counts.documents), 1),
+            "stages_ms": timings,
+            "stage_share": {
+                stage: round(100 * value / timings["total"], 1)
+                for stage, value in sorted(timings.items(), key=lambda row: -row[1])
+                if stage != "total" and timings.get("total")
+            },
         },
     )
+
+
+def profile_cold_build(
+    workspace: Path, prose: Prose, documents: int, *, seed: int, top: int = 25
+) -> dict[str, Any]:
+    """Where a cold build's time actually goes, by cumulative time (roadmap 6.19).
+
+    Filed as its own step rather than folded into the measurement above, because
+    a profiler's overhead is real and a timed run must not carry it. What it is
+    *for* is the rule ADR-0026 established the hard way: the cost everyone
+    assumed was the vector arithmetic turned out to be reading the vectors row by
+    row, so the stage that looks expensive is not evidence about the line that
+    is. Nothing here is optimised on the strength of a guess.
+
+    Reports both `cumtime` — which names the stage — and `tottime`, which names
+    the line, because a function high in one and low in the other is a caller
+    rather than a cost.
+    """
+    generate(workspace, prose, documents, seed=seed)
+    profiler = cProfile.Profile()
+    profiler.enable()
+    build(workspace, clean=True, pin_identity=False)
+    profiler.disable()
+
+    stats = pstats.Stats(profiler)
+    entries: list[tuple[str, int, float, float]] = [
+        (f"{Path(func[0]).name}:{func[1]}({func[2]})", primitive, tottime, cumtime)
+        for func, (_calls, primitive, tottime, cumtime, _callers) in stats.stats.items()  # type: ignore[attr-defined]
+    ]
+    # Summed rather than read off `Stats.total_tt`, which the stubs do not carry:
+    # the sum of every function's self time *is* the profiled total, by definition.
+    total = sum(tottime for _name, _primitive, tottime, _cumtime in entries)
+    rows: list[dict[str, Any]] = [
+        {
+            "function": name,
+            "calls": primitive,
+            "tottime_s": round(tottime, 3),
+            "cumtime_s": round(cumtime, 3),
+            "tottime_share": round(100 * tottime / total, 1) if total else 0.0,
+        }
+        for name, primitive, tottime, cumtime in entries
+    ]
+    by_self = sorted(rows, key=lambda row: -float(row["tottime_s"]))[:top]
+    by_cumulative = sorted(rows, key=lambda row: -float(row["cumtime_s"]))[:top]
+    return {
+        "documents": documents,
+        "profiled_seconds": round(total, 2),
+        "note": (
+            "under cProfile, so the total is inflated against the timed run; the "
+            "shares are what this is for"
+        ),
+        "by_self_time": by_self,
+        "by_cumulative_time": by_cumulative,
+    }
 
 
 def measure_incremental(workspace: Path, *, samples: int = INCREMENTAL_SAMPLES) -> Measurement:
@@ -1012,6 +1082,15 @@ def _scale(
         f"{cold.notes['chunks']} chunks, {cold.notes['documents_per_second']} docs/s",
         flush=True,
     )
+    shares = cold.notes.get("stage_share")
+    if isinstance(shares, dict):
+        # Which stage to look at, printed beside the total it adds up to. A build
+        # that misses its budget is a question; the stages are where to ask it.
+        print(
+            "  stages          "
+            + "  ".join(f"{stage} {share:.0f}%" for stage, share in list(shares.items())[:6]),
+            flush=True,
+        )
 
     disk = measure_file_io(workspace)
     print(f"  file open       {disk.p50:8.3f} ms  (calibration, warm)", flush=True)
@@ -1049,6 +1128,7 @@ def run(
     query_scale: int = 0,
     vectors: bool = False,
     real_corpora: bool = False,
+    profile: int = 0,
     manifest_path: Path | None = None,
 ) -> dict[str, Any]:
     """Measure every claim across the curve, and return the manifest."""
@@ -1113,6 +1193,18 @@ def run(
     targets = list(scales)
     for index, documents in enumerate(targets):
         manifest["scales"].append(_scale(out, prose, queries, documents, seed=seed + index))
+        flush()
+
+    if profile:
+        print(f"\n=== where a {profile}-document cold build spends its time ===", flush=True)
+        report = profile_cold_build(out / "profile", prose, profile, seed=seed)
+        for row in report["by_self_time"][:12]:
+            print(
+                f"  {row['tottime_share']:5.1f}%  {row['tottime_s']:7.2f} s self  "
+                f"{row['cumtime_s']:8.2f} s cum  {row['function']}",
+                flush=True,
+            )
+        manifest["build_profile"] = report
         flush()
 
     if real_corpora:
@@ -1237,6 +1329,8 @@ MEASUREMENT_SECTIONS: Final = (
     "real_corpora",
     "task_profile",
 )
+"""(`build_profile` is deliberately absent: it holds a profiler's shares rather than
+timings, so it has no `p95` and cannot make a manifest evidence on its own.)"""
 """Where measurements live. A manifest needs at least one non-empty section — a run
 that timed nothing is a note about a machine.
 
@@ -1361,6 +1455,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             "vector leg and the hybrid query at that scale (roadmap 6.21)."
         ),
     )
+    parser.add_argument(
+        "--profile",
+        type=int,
+        default=0,
+        metavar="DOCUMENTS",
+        help=(
+            "Also run one cold build of this many documents under cProfile and record "
+            "where its time goes (roadmap 6.19). Separate from the timed run, whose "
+            "number must not carry the profiler's overhead."
+        ),
+    )
     parser.add_argument("--manifest", type=Path, help="Write the manifest here.")
     args = parser.parse_args(argv)
 
@@ -1378,6 +1483,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         query_scale=args.query_scale,
         vectors=args.vectors,
         real_corpora=args.real_corpora,
+        profile=args.profile,
         manifest_path=args.manifest,
     )
     if args.manifest:

@@ -271,7 +271,12 @@ def test_the_schema_version_records_the_new_index(store: SqliteStore) -> None:
     # ADR-0076), which the columns below are deliberately unaffected by. The
     # version is pinned here anyway, because a store version that moves without
     # anyone noticing is a rebuild nobody asked for.
-    assert SCHEMA_VERSION == "mycelium/store/v6"
+    # v7 is the case that pin was written for, and the columns below are again
+    # unaffected: no DDL changed at all (roadmap 6.19, ADR-0132). What moved is
+    # an invariant *between* tables — a `chunks_fts` row now carries its chunk's
+    # rowid — so a store written before it holds rowids that mean nothing and has
+    # to be rebuilt. The tie itself is checked by the sibling test below.
+    assert SCHEMA_VERSION == "mycelium/store/v7"
     columns = {
         row[1] for row in store._connection.execute("PRAGMA table_info(chunks_fts)").fetchall()
     }

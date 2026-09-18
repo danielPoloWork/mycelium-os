@@ -657,6 +657,21 @@ class SqliteStore:
 
         The lexical index is written in the same statement run, so `chunks` and
         `chunks_fts` cannot disagree about what exists.
+
+        **The index row is addressed by the chunk's `rowid`** (roadmap 6.19,
+        [BUG-0031], ADR-0132). It used to be found by its anchor, which is an
+        `UNINDEXED` column of an FTS5 table — stored, unsearchable, and reachable
+        only by reading every row — so writing *N* chunks cost O(*N*²) and the
+        cold build was superlinear in the corpus. The upsert hands back the
+        chunk's rowid, the index row is written at that rowid, and `INSERT OR
+        REPLACE` then does in one seek what a scan and an insert did in two
+        statements. Measured on this machine: six batches of a thousand chunks
+        took 14.70 s by anchor and **0.85 s** by rowid, and the second number is
+        flat where the first grows with everything already stored.
+
+        The delete is gone rather than made cheap, and that is the same
+        guarantee: a chunk's index row *is* the row at its rowid, so replacing it
+        cannot leave the old text behind — which is what the delete was for.
         """
         written = 0
         for chunk in chunks:
@@ -667,8 +682,7 @@ class SqliteStore:
             # tokens an operator sees in `explain` are the tokens indexed.
             heading = path[-1] if path else ""
             ancestors = " / ".join(path[:-1])
-            self._connection.execute("DELETE FROM chunks_fts WHERE anchor = ?", (chunk.anchor,))
-            self._connection.execute(
+            row = self._connection.execute(
                 """
                 INSERT INTO chunks(
                     anchor, doc_id, chunk_digest, heading_path_json, kir_nodes_json,
@@ -680,6 +694,7 @@ class SqliteStore:
                     kir_nodes_json = excluded.kir_nodes_json, text = excluded.text,
                     tokens = excluded.tokens, kind = excluded.kind,
                     lines_json = excluded.lines_json, namespace = excluded.namespace
+                RETURNING rowid
                 """,
                 (
                     chunk.anchor,
@@ -693,12 +708,13 @@ class SqliteStore:
                     canonical_json(list(chunk.lines)),
                     chunk.namespace,
                 ),
-            )
+            ).fetchone()
             self._connection.execute(
-                "INSERT INTO chunks_fts(anchor, text, title, heading, ancestors,"
-                " text_stem, title_stem, heading_stem, ancestors_stem)"
-                " VALUES(?,?,?,?,?,?,?,?,?)",
+                "INSERT OR REPLACE INTO chunks_fts(rowid, anchor, text, title, heading,"
+                " ancestors, text_stem, title_stem, heading_stem, ancestors_stem)"
+                " VALUES(?,?,?,?,?,?,?,?,?,?)",
                 (
+                    row["rowid"],
                     chunk.anchor,
                     chunk.text,
                     title,
@@ -719,12 +735,18 @@ class SqliteStore:
         Chunks and the document's ``doc_state`` row go with it (``ON DELETE
         CASCADE``); the lexical index is cleaned here because FTS5 tables know
         nothing of foreign keys.
+
+        One statement, by rowid, and it has to run **before** the cascade: the
+        subquery reads `chunks` to learn which index rows belong to this
+        document, so the rows have to still be there. It replaced a loop that
+        deleted by anchor once per chunk and scanned the whole index each time —
+        339 ms for a twenty-chunk document against a twenty-thousand-chunk store,
+        where this is 1 ms (roadmap 6.19, [BUG-0031]).
         """
-        anchors = self._connection.execute(
-            "SELECT anchor FROM chunks WHERE doc_id = ?", (doc_id,)
-        ).fetchall()
-        for row in anchors:
-            self._connection.execute("DELETE FROM chunks_fts WHERE anchor = ?", (row["anchor"],))
+        self._connection.execute(
+            "DELETE FROM chunks_fts WHERE rowid IN (SELECT rowid FROM chunks WHERE doc_id = ?)",
+            (doc_id,),
+        )
         self._connection.execute("DELETE FROM documents WHERE doc_id = ?", (doc_id,))
 
     def put_doc_state(self, state: DocState) -> None:
