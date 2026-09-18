@@ -12,6 +12,26 @@ This is the first benchmark report this project has published. It exists because
 roadmap 6.4 asked for one and found that the corpus every performance claim is stated
 against had never been built.
 
+> **Amended 2026-09-18 by roadmap 6.18 ([ADR-0128](../adr/0128-cache-the-environment-not-the-repository-and-declare-the-names-instead-of-importing-them.md)).**
+> A dated report records what was measured on its date, so the figures below stand as taken.
+> Two of its *explanations* were wrong, and fixing the constant is what found them.
+>
+> - **The first-call import cost is not the docling/pandoc/PDFium graph** (see
+>   [Where the end-to-end cost goes](#where-the-end-to-end-cost-goes)). Those three parser
+>   modules guard their engines behind a factory, and importing
+>   `mycelium.ingest.registry` imports **no engine module at all**. What it imports is 126
+>   modules of which **63 are `markdown_it`**, reached because `mycelium/ingest/__init__.py`
+>   eagerly imports its whole package.
+> - **The MCP server does not pay that cost on its first call**; it pays it at *import*,
+>   because `mycelium.mcp.tools` already pulls all 20 `mycelium.ingest` modules through
+>   `mycelium.build.publish`. It is a startup cost and never appears in the p95. Roadmap
+>   6.25 owns it.
+>
+> **What the fix moved**, same machine, same corpus: `load_config` 262 ms → **2.1 ms**, and
+> `handle_search` end to end 302 ms → **45 ms mean / 58.6 ms p95** — inside NFR-2's budget at
+> this corpus size for the first time. Interpretation 2 below is unaffected and remains the
+> live question: at 10⁵ chunks the warm query alone is 1 816 ms p95 (roadmap 6.21).
+
 ## Scenario
 
 Three budgets are stated in three documents, and all three name conditions:

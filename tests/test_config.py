@@ -4,11 +4,14 @@
 absent, every error names its key, and the digest reacts to exactly what reaches the
 compiler."""
 
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 from mycelium.config import (
+    BUILTIN_PARSER_IDS,
     CONFIG_FILENAME,
     UNHONOURED_SECTIONS,
     ConfigError,
@@ -121,6 +124,49 @@ def test_the_specs_connector_list_is_refused_by_name(tmp_path: Path) -> None:
     body = '[ingest]\nconnectors = ["markdown", "html", "pdf"]\n'
     with pytest.raises(ConfigError, match="names parser"):
         load_config(write(tmp_path, body))
+
+
+def test_the_declared_parser_ids_are_the_registry_s_own() -> None:
+    """Two lists, one test (roadmap 6.18, ADR-0128).
+
+    The check above needs four parser *names*; reading them from the registry's
+    mapping cost a 126-module import — the whole `mycelium.ingest` package plus
+    `markdown_it` — so they are declared in `mycelium.config` instead. This is
+    the moment a fifth built-in parser would otherwise slip past the check in
+    silence.
+    """
+    from mycelium.ingest.registry import BUILTIN_PARSERS
+
+    assert set(BUILTIN_PARSER_IDS) == set(BUILTIN_PARSERS)
+
+
+def test_reading_the_configuration_does_not_import_the_ingest_package() -> None:
+    """What the declaration above buys, pinned so it cannot quietly come back.
+
+    `load_config` used to reach `mycelium.ingest.registry` for those four names,
+    and importing anything under `mycelium.ingest` runs that package's eager
+    `__init__` — 126 modules and ~446 ms on the machine of record, of which 63
+    modules are `markdown_it`, to read four dictionary keys (ADR-0128).
+
+    A subprocess, because an in-process assertion would pass or fail on whatever
+    an earlier test in the session happened to import.
+    """
+    probe = (
+        "import sys; sys.path.insert(0, 'src');"
+        "from mycelium.config import load_config; load_config(__import__('pathlib').Path('.'));"
+        "print(sorted(n for n in sys.modules if n.startswith('mycelium.ingest')));"
+        "print(len([n for n in sys.modules if 'markdown_it' in n]))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).parent.parent,
+    )
+    ingest, markdown_it = result.stdout.strip().splitlines()
+    assert ingest == "[]"
+    assert markdown_it == "0"
 
 
 def test_pack_atomic_reaches_the_chunker(tmp_path: Path) -> None:

@@ -257,11 +257,17 @@ def _open_store(root: Path) -> SqliteStore:
 
     **It is not free, and this docstring used to say it was** — *"opening costs
     microseconds against a 150 ms query budget"*. Measured at roadmap 6.4 it costs
-    **10–12 ms**, four orders of magnitude off, and it is not the expensive part of
-    this call either: :func:`_config` re-reads `mycelium.toml` per call, and that
-    re-scans the environment's entry points at ~250 ms, which is more than the whole
-    end-to-end budget on any corpus. Both are recorded in
-    `docs/benchmarks/2026-09-17-reference-profile.md`; the fix is roadmap 6.18.
+    **8–12 ms**, four orders of magnitude off, and recorded in
+    `docs/benchmarks/2026-09-17-reference-profile.md`.
+
+    It is now the largest constant in this call, and it is **kept** (roadmap 6.18,
+    ADR-0128). The one that mattered was :func:`_config`, which re-scanned the
+    environment's entry points at ~259 ms — more than the whole end-to-end budget,
+    on any corpus — and is cached. This one buys the freshness above for 8–12 ms of
+    a 150 ms budget, beside ~27 ms of retrieval on this repository's corpus; caching
+    it would trade a correctness property an agent session depends on for a margin
+    nothing needs. If the budget ever gets tight enough that 10 ms is the difference,
+    the honest fix is to notice a *new* snapshot rather than to re-open blindly.
     """
     try:
         return SqliteStore.open(root, read_only=True)
@@ -297,6 +303,16 @@ def _config(root: Path) -> MyceliumConfig:
     A malformed `mycelium.toml` must not take the server down mid-session: the
     query path degrades to documented defaults, and `mycelium doctor` is where an
     operator is told the file is broken.
+
+    **Read per call, and that is deliberate** (roadmap 6.18, ADR-0128). The file
+    is a property of the repository and an operator may edit it while the server
+    runs, so the next query should honour the edit — which is only affordable
+    because the 259 ms environment scan that used to hide inside this call is
+    cached one layer down (:func:`mycelium.modules._points`). What is left is
+    **2.4 ms** of reading and validating the file, measured, which is what the
+    read is supposed to cost. The second cache the filing item predicted — one for
+    this file, on its own lifetime — was refused on that measurement rather than
+    built for symmetry.
     """
     try:
         return load_config(root)

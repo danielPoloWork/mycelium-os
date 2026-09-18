@@ -63,6 +63,7 @@ paragraph above refuses three extension mechanisms (ADR-0086).
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from importlib.metadata import EntryPoint, entry_points
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
 from mycelium.sdk.protocols import MYCELIUM_API_VERSION, Module
@@ -76,6 +77,7 @@ __all__ = [
     "ModuleError",
     "ModuleStatus",
     "activated",
+    "forget_installed",
     "installed_ids",
     "load_module",
     "mount",
@@ -167,21 +169,71 @@ class ModuleStatus:
         }
 
 
+_installed: Mapping[str, EntryPoint] | None = None
+"""The scan, once it has been done. ``None`` means "not scanned in this process yet"."""
+
+
 def _points() -> Mapping[str, EntryPoint]:
     """Installed module entry points by id, ignoring nothing and loading nothing.
 
     Reading the metadata without importing is what lets configuration *validate*
     a module name — refusing one nothing provides, with a remedy — while leaving
     the cost of importing it to whoever actually uses it.
+
+    **Scanned once per process, and the lifetime is the whole decision**
+    (roadmap 6.18, ADR-0128). :func:`importlib.metadata.entry_points` re-reads
+    the metadata of *every* installed distribution on every call — measured at
+    **259 ms** on the machine of record, against the 150 ms budget NFR-2 sets for
+    an entire `mycelium_search`. `load_config` calls this to decide whether a
+    configuration section names an installed module (ADR-0077), so before this
+    cache existed every tool call paid it, and no corpus of any size had ever met
+    that budget.
+
+    The cache is sound because of *what* is being cached. A set of installed
+    distributions is a property of the **environment**, and a running process
+    cannot honour a change to it in any case: importing a distribution installed
+    after interpreter start needs :func:`importlib.invalidate_caches` at minimum
+    and is not supported in general. Meanwhile every CLI invocation is its own
+    process, so `mycelium doctor` — the surface whose entire job is to report the
+    truth about this environment — re-scans by construction and cannot see this
+    cache at all. The one long-lived process is the stdio MCP server, which is
+    precisely the case that must not pay 259 ms per call; an operator who
+    installs a module while it runs restarts it, which they must do anyway for
+    that module's commands to appear at all (:func:`mount` builds the command
+    tree once, at startup).
+
+    Contrast `mycelium.toml`, which is a property of the *repository* and which
+    an operator may edit under a running server: it is re-read per call and
+    deliberately **not** cached here (ADR-0128 measured what that read costs once
+    this scan is cached, and it is nothing).
+
+    Returned read-only, so one caller cannot corrupt what every later caller
+    sees. :func:`forget_installed` drops it.
     """
-    found: dict[str, EntryPoint] = {}
-    for point in entry_points(group=MODULE_ENTRY_POINT_GROUP):
-        found.setdefault(point.name, point)
-    return found
+    global _installed
+    if _installed is None:
+        found: dict[str, EntryPoint] = {}
+        for point in entry_points(group=MODULE_ENTRY_POINT_GROUP):
+            found.setdefault(point.name, point)
+        _installed = MappingProxyType(found)
+    return _installed
+
+
+def forget_installed() -> None:
+    """Drop the cached entry-point scan; the next lookup reads the environment again.
+
+    The escape hatch :func:`_points`'s cache needs in order to be honest rather
+    than merely fast. Two callers want it: a test that installs or fakes a
+    distribution mid-process, and any future caller that has just changed the
+    environment on purpose and can say so. Nothing in the query path calls it,
+    because nothing in the query path changes what is installed.
+    """
+    global _installed
+    _installed = None
 
 
 def installed_ids() -> tuple[str, ...]:
-    """Every installed module id, sorted. Imports nothing."""
+    """Every installed module id, sorted. Imports nothing, and scans once per process."""
     return tuple(sorted(_points()))
 
 

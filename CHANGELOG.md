@@ -10,6 +10,24 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Fixed
+
+- **`mycelium_search` is 7x faster, and meets its latency budget for the first time**
+  (roadmap 6.18, ADR-0128). Reading `mycelium.toml` asked which modules are installed, which
+  re-read the metadata of every installed distribution on **every tool call**: 262 ms of a
+  302 ms call, against NFR-2's 150 ms budget for the whole thing. The scan is a property of
+  the environment, so it is now done once per process; `mycelium.toml` is a property of the
+  repository and is still read per call, so an edit under a running server is still honoured
+  on the next query. Measured on this repository's corpus: `load_config` 262 ms → **2.1 ms**,
+  `handle_search` 302 ms → **45 ms mean / 58.6 ms p95**. The budget's own condition — 10⁵
+  chunks — is still missed by the query path itself (roadmap 6.21); this fixes the constant,
+  which no corpus of any size had ever escaped.
+- **Reading the configuration no longer imports the ingestion subsystem.** It reached
+  `mycelium.ingest.registry` for the names of four built-in parsers, and importing anything
+  under `mycelium.ingest` costs 126 modules — 63 of them `markdown_it` — for four dictionary
+  keys. The ids are declared instead, with a test that fails if they ever disagree with the
+  registry: `load_config` goes from +127 modules to **+2** in a fresh process.
+
 ### Added
 
 - **The docs site is published**, from a workflow artifact to GitHub Pages, tracking `main`

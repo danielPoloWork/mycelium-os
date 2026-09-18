@@ -813,13 +813,25 @@ def _gate_g3(
 
 
 def _gate_g5(overall: MetricSummary, chunks: int) -> GateResult:
-    """Gate G5 — the query budget from spec 04 §1: p95 ≤ 150 ms end to end.
+    """Gate G5 — the query budget from spec 04 §1: p95 ≤ 150 ms.
 
     Enforced on whatever corpus was run, and *reported with its size*, because
     the budget is defined against the 10⁵-chunk reference profile. Passing here
     is necessary and not sufficient: a small corpus that misses the budget is
     certainly broken, while one that meets it has proved only that it meets it
     at this size (ADR-0022).
+
+    **It does not measure end to end, and this docstring used to say it did.**
+    The latency it reads is timed around the *retriever*, inside the harness
+    (:func:`_evaluate_case`); spec 04 §1's budget is stated for `mycelium_search`,
+    the MCP tool call, which also reads the configuration, opens the store and
+    resolves the published snapshot. Those three were **274 ms of constant** until
+    roadmap 6.18 cached the worst of them, so for five milestones this gate ran
+    green over a call that missed its own budget on every corpus — the 6.4
+    reference profile is where that was finally measured, and it needed a separate
+    instrument to see it. Closing the gap means timing the handler here, which
+    needs a published snapshot inside the harness; roadmap 6.24 owns it. Until
+    then this number is a floor on a floor, and the detail line below says so.
     """
     within = overall.latency_p95_ms <= QUERY_BUDGET_P95_MS
     return GateResult(

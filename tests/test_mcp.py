@@ -155,6 +155,44 @@ def test_a_budget_too_small_for_one_result_is_a_typed_error(repo: Path) -> None:
     assert "include_text" in error.value.message
 
 
+def test_a_tool_call_does_not_rescan_the_environment(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """NFR-2's budget was spent before retrieval started (roadmap 6.18, ADR-0128).
+
+    `handle_search` reads the configuration per call — correctly, since an
+    operator may edit `mycelium.toml` under a running server — and `load_config`
+    asked `mycelium.modules` whether a section names an installed module, which
+    re-read the metadata of every installed distribution: **259 ms** against a
+    150 ms budget for the whole call. Measured end to end on this repository's
+    own corpus, the call went from 302 ms to 41 ms once the scan was cached.
+
+    The assertion counts scans rather than milliseconds: a timing bar on a shared
+    runner is a flake, and "once per process, no matter how many calls" is the
+    property that actually has to hold.
+    """
+    from importlib.metadata import EntryPoints, entry_points
+
+    from mycelium import modules
+
+    modules.forget_installed()
+    scans = 0
+
+    def counted(*, group: str) -> EntryPoints:
+        nonlocal scans
+        scans += 1
+        return entry_points(group=group)
+
+    monkeypatch.setattr("mycelium.modules.entry_points", counted)
+    try:
+        for _ in range(5):
+            assert search(repo)["results"]
+        handle_fetch(repo, {"uri": first_uri(repo)})
+        assert scans <= 1
+    finally:
+        modules.forget_installed()
+
+
 def test_explain_reports_the_plan_that_ran(repo: Path) -> None:
     assert "explain" not in search(repo)
     # A question rather than the bare `retry`, which since roadmap 5.23 has a
