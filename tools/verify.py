@@ -124,8 +124,8 @@ Measured before adding them — `ruff check` and `ruff format --check` are under
 second either way, and the difference between the two target lists is smaller than
 the run-to-run spread of either one."""
 
-TYPED_PATHS: Final = ("src", "tools", "contrib/chats/src")
-"""What `mypy --strict` reads. No `tests/`, and that is a separate question.
+TYPED_PATHS: Final = ("src", "tools", "contrib/chats/src", "tests", "contrib/chats/tests")
+"""What `mypy --strict` reads — everything this repository writes, since 6.9.
 
 `tools/` cost nothing measurable to add: three cold runs read 79.2 / 58.3 / 56.5 s
 for `src` against 60.0 / 58.3 / 57.4 s for `src tools`, because the time goes into
@@ -135,9 +135,20 @@ the third-party graph — pydantic, numpy, typer — which `src` already imports
 
 `contrib/chats/src` joined at roadmap 5.5, named as a path rather than as
 `contrib` because a distribution's *sources* are what `mypy --strict` reads and
-its tests are the separate question `tests/` still is. Same reasoning, same
-result: the third-party graph is already loaded, so 105 files checked becomes
-110."""
+its tests were then still the separate question.
+
+**Both test suites joined at roadmap 6.9** (ADR-0124), and the price is the same
+one twice over: two paired cold runs read 69.5 / 55.2 s without them against
+60.1 / 56.8 s with — the run-to-run variance is larger than the difference,
+because the time is the third-party graph these files import rather than the
+files themselves. 110 checked becomes 216.
+
+The question the item asked — *how strict does a test file have to be* — was
+answered by measuring rather than by choosing: the errors a non-strict override
+would have kept are mypy's base checks, on at every setting, and what it would
+have turned off is `disallow_untyped_defs`, whose absence means the body is not
+checked at all. There was no useful middle, so `tests/` is read exactly as `src`
+is."""
 
 MYCELIUM = [sys.executable, "-c", "from mycelium.cli import main; main()"]
 """How to invoke the CLI without depending on a console script being on PATH.

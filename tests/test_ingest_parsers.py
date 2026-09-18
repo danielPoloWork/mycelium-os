@@ -397,7 +397,7 @@ def test_pandoc_below_version_three_is_refused_for_the_missing_sandbox(
         stdout = b"pandoc 2.19.2\nCompiled with ...\n"
         stderr = b""
 
-    monkeypatch.setattr(pandoc_parser.subprocess, "run", lambda *a, **k: Completed())
+    monkeypatch.setattr("subprocess.run", lambda *a, **k: Completed())
     with pytest.raises(PluginUnavailableError, match="--sandbox"):
         pandoc_parser.plugin()
 

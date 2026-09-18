@@ -43,7 +43,8 @@ def committed() -> dict[str, Any]:
 
 def current(record: dict[str, Any]) -> dict[str, Any]:
     """A deep-enough copy for one test to spoil one field."""
-    return json.loads(json.dumps(record))
+    copied: dict[str, Any] = json.loads(json.dumps(record))
+    return copied
 
 
 # ---------------------------------------------------------------------------

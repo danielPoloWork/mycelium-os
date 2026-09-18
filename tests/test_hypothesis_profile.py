@@ -21,9 +21,22 @@ from hypothesis import strategies as st
 import conftest
 
 
+def loaded() -> settings:
+    """The profile actually in effect, asserted rather than assumed.
+
+    `settings.default` is `settings | None` — None until some profile is loaded —
+    and every assertion in this file reads an attribute straight off it. Asserting
+    once here means a run with no profile loaded fails saying so, instead of
+    raising `AttributeError` on whichever line happened to be first (roadmap 6.9).
+    """
+    current = settings.default
+    assert current is not None, "no hypothesis profile is loaded"
+    return current
+
+
 def test_the_registered_profile_is_the_one_in_effect() -> None:
     """`register_profile` without `load_profile` is a no-op nobody would notice."""
-    assert settings.default.deadline == timedelta(milliseconds=conftest.DEADLINE_MS)
+    assert loaded().deadline == timedelta(milliseconds=conftest.DEADLINE_MS)
 
 
 def test_the_deadline_is_declared_rather_than_inherited() -> None:
@@ -49,7 +62,7 @@ def test_a_failure_prints_a_blob_that_survives_the_lost_database() -> None:
     the traceback. `print_blob` puts a `@reproduce_failure(...)` in the failure
     output itself, which no truncation of the *database* can take away.
     """
-    assert settings.default.print_blob is True
+    assert loaded().print_blob is True
 
 
 def test_the_debug_profile_exists_and_removes_the_deadline() -> None:
@@ -62,20 +75,20 @@ def test_the_debug_profile_exists_and_removes_the_deadline() -> None:
     debug = settings.get_profile("debug")
     assert debug.deadline is None
     assert debug.print_blob is True
-    assert debug.max_examples > settings.default.max_examples
+    assert debug.max_examples > loaded().max_examples
 
 
 def test_the_profile_env_var_selects_a_profile() -> None:
     """`HYPOTHESIS_PROFILE=debug` has to reach `load_profile`, not just exist."""
     assert conftest.PROFILE_ENV_VAR == "HYPOTHESIS_PROFILE"
     # Loading is global, so it is restored before this test returns.
-    previous = settings.default
+    previous = loaded()
     try:
         settings.load_profile("debug")
-        assert settings.default.deadline is None
+        assert loaded().deadline is None
     finally:
         settings.load_profile(conftest.DEFAULT_PROFILE)
-        assert settings.default.deadline == previous.deadline
+        assert loaded().deadline == previous.deadline
 
 
 _EXAMPLES_SEEN: list[int] = []
@@ -104,7 +117,7 @@ def test_a_per_test_setting_still_overrides_the_profile() -> None:
     _property_with_its_own_settings()
     assert 0 < len(_EXAMPLES_SEEN) <= 5 + 1, (
         f"{len(_EXAMPLES_SEEN)} examples ran; the profile's default of "
-        f"{settings.default.max_examples} was not overridden"
+        f"{loaded().max_examples} was not overridden"
     )
 
 

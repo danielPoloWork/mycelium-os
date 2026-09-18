@@ -26,6 +26,7 @@ import shutil
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Final, Literal
 
 import pytest
 from hypothesis import given
@@ -37,9 +38,9 @@ from mycelium.chunking import ChunkingPolicy, chunk_document
 from mycelium.cli.doctor import diagnose
 from mycelium.determinism import observe_build
 from mycelium.export import RECORDS_DIRNAME, export_bundle
-from mycelium.markdown import parse_markdown
+from mycelium.markdown import MarkdownDocument, parse_markdown
 from mycelium.sdk.identity import symbol_id
-from mycelium.sdk.types import Symbol
+from mycelium.sdk.types import Chunk, Symbol
 from mycelium.store import SqliteStore
 from mycelium.symbols import (
     CODE_FENCE,
@@ -64,6 +65,13 @@ from mycelium.symbols import (
 
 pytestmark = pytest.mark.boundary("B14")
 """The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
+
+SURROGATES: Final[tuple[Literal["Cs"]]] = ("Cs",)
+"""Unicode surrogate code points, excluded from generated text.
+
+Spelled as a literal tuple because hypothesis types `exclude_categories` as a
+collection of the 38 category literals, and a bare `("Cs",)` is `tuple[str, ...]`
+(roadmap 6.9)."""
 
 DOC_ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV"
 
@@ -99,7 +107,9 @@ policy = build_policy()
 """
 
 
-def parsed_and_chunks(markdown: str, path: str = "a.md") -> tuple[object, tuple[object, ...]]:
+def parsed_and_chunks(
+    markdown: str, path: str = "a.md"
+) -> tuple[MarkdownDocument, tuple[Chunk, ...]]:
     parsed = parse_markdown(markdown, doc_id=DOC_ID)
     chunks = chunk_document(parsed.kir, doc_path=path, policy=ChunkingPolicy())
     return parsed, chunks
@@ -412,9 +422,12 @@ def test_an_out_of_class_definition_and_its_declaration_are_one_symbol() -> None
 def test_fence_info_strings_reach_their_grammar() -> None:
     assert grammar_for("python") is grammar_for("py") is grammar_for("Python3")
     assert grammar_for('python title="x.py"') is grammar_for("python")
-    assert grammar_for("rs") is not None and grammar_for("rs").language == "rust"
-    assert grammar_for("tsx") is not None and grammar_for("tsx").language == "typescript"
-    assert grammar_for("c++") is not None and grammar_for("c++").name == "cpp"
+    # Bound rather than called twice: the second call is what mypy could not
+    # narrow, and one lookup is what the assertion is actually about.
+    rust, tsx, cpp = grammar_for("rs"), grammar_for("tsx"), grammar_for("c++")
+    assert rust is not None and rust.language == "rust"
+    assert tsx is not None and tsx.language == "typescript"
+    assert cpp is not None and cpp.name == "cpp"
     for unread in ("console", "toml", "yaml", "text", "", "   ", None):
         assert grammar_for(unread) is None
 
@@ -428,7 +441,7 @@ def test_lowercase_assignments_and_calls_define_nothing(python_grammar: LoadedGr
     assert [(item.name, item.kind) for item in definitions] == [("MAX_ATTEMPTS", "constant")]
 
 
-@given(st.text(alphabet=st.characters(exclude_categories=("Cs",)), max_size=2000))
+@given(st.text(alphabet=st.characters(exclude_categories=SURROGATES), max_size=2000))
 def test_any_python_fence_is_read_without_error_and_deterministically(text: str) -> None:
     loaded = load_grammar("python")
     if loaded is None:
@@ -559,7 +572,7 @@ def test_an_oversized_fence_is_a_warning_on_the_document_not_a_lost_document(
     huge = "x = 1\n" * (MAX_FENCE_BYTES // 6 + 1000)
     text = f"# Big\n\n## Section\n\n```python\n{huge}```\n"
     parsed, chunks = parsed_and_chunks(text)
-    extraction = extract_symbols(parsed.kir, chunks, doc_path="big.md")  # type: ignore[arg-type]
+    extraction = extract_symbols(parsed.kir, chunks, doc_path="big.md")
     assert extraction.symbols == ()
     assert len(extraction.warnings) == 1
     assert "exceeds" in extraction.warnings[0] and "line 5" in extraction.warnings[0]

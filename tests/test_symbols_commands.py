@@ -274,7 +274,7 @@ def test_kir_nodes_carry_their_inline_code_spans_in_order() -> None:
         "> [!note] Title\n> body `git status`\n\n## `pip check`\n",
         doc_id=DOC_ID,
     )
-    by_kind = {}
+    by_kind: dict[NodeKind, list[tuple[str, ...]]] = {}
     for node in parsed.kir.nodes:
         if node.spans:
             by_kind.setdefault(node.kind, []).append(node.spans)

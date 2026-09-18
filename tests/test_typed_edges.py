@@ -496,7 +496,7 @@ def test_the_spec_example_filter_now_returns_something(tmp_path: Path, grammars:
     payload = mcp_tools.handle_neighbors(
         root, {"uri": "knowledge/verified/api.md", "types": ["defines", "links_to"]}
     )
-    kinds = {str(item["type"]) for item in payload["neighbors"]}  # type: ignore[index,union-attr]
+    kinds = {str(item["type"]) for item in payload["neighbors"]}
 
     # `defines` is what nothing emitted before this item; `links_to` is the
     # inbound link from the guide, and the filter admits both and nothing else.
@@ -506,9 +506,7 @@ def test_the_spec_example_filter_now_returns_something(tmp_path: Path, grammars:
     narrowed = mcp_tools.handle_neighbors(
         root, {"uri": "knowledge/verified/api.md", "types": ["defines"]}
     )
-    assert {str(item["type"]) for item in narrowed["neighbors"]} == {  # type: ignore[index,union-attr]
-        "defines"
-    }
+    assert {str(item["type"]) for item in narrowed["neighbors"]} == {"defines"}
 
 
 def test_the_tools_accept_a_symbol_as_the_origin(tmp_path: Path, grammars: None) -> None:
@@ -517,7 +515,7 @@ def test_the_tools_accept_a_symbol_as_the_origin(tmp_path: Path, grammars: None)
 
     payload = mcp_tools.handle_neighbors(root, {"uri": target})
     assert payload["origin"] == target
-    assert {str(item["type"]) for item in payload["neighbors"]} == {  # type: ignore[index,union-attr]
+    assert {str(item["type"]) for item in payload["neighbors"]} == {
         "defines",
         "references",
     }

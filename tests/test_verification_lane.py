@@ -11,7 +11,7 @@ import pytest
 from mycelium.corpus import CorpusScope
 from mycelium.markdown.frontmatter import parse_frontmatter
 from mycelium.verification.grounding import Thresholds
-from mycelium.verification.lane import evidence_set, subjects, verify_tree
+from mycelium.verification.lane import Verified, evidence_set, subjects, verify_tree
 
 pytestmark = pytest.mark.boundary("B5")
 """The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
@@ -86,7 +86,7 @@ def tree(tmp_path: Path) -> Path:
 SCOPE = CorpusScope()
 
 
-def run(tree: Path, **kwargs: object) -> tuple:
+def run(tree: Path, **kwargs: object) -> tuple[Verified, ...]:
     defaults: dict[str, object] = {"thresholds": Thresholds(), "today": WHEN}
     defaults.update(kwargs)
     return verify_tree(tree, SCOPE, **defaults)  # type: ignore[arg-type]
@@ -251,12 +251,15 @@ def test_auto_promotion_does_not_re_promote_something_already_verified(tree: Pat
 
 def test_the_json_shape_carries_the_gate_decision(tree: Path) -> None:
     (result,) = run(tree, judge=Judge(entailed=False))
-    payload = result.as_dict()
+    payload: dict[str, object] = result.as_dict()
     assert payload["passes"] is False
     assert payload["document"] == "knowledge/candidate/webhook-retries.md"
     assert payload["entailment"] == 0.0
-    assert payload["blockers"][0]["code"] == "entailment-below-threshold"
-    assert payload["checker"].startswith("mycelium verify")
+    blockers = payload["blockers"]
+    assert isinstance(blockers, list)
+    assert blockers[0]["code"] == "entailment-below-threshold"
+    checker = payload["checker"]
+    assert isinstance(checker, str) and checker.startswith("mycelium verify")
 
 
 def test_an_empty_tree_verifies_nothing_without_complaining(tmp_path: Path) -> None:

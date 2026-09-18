@@ -5,6 +5,7 @@ controlled vocabularies are exact, and every record round-trips JSON losslessly.
 
 import json
 from datetime import UTC, datetime, timedelta, timezone
+from typing import Any
 
 import pytest
 from hypothesis import given
@@ -23,6 +24,7 @@ from mycelium.sdk.types import (
     KirNode,
     NodeKind,
     ProvenanceOrigin,
+    Record,
     SnapshotManifest,
     SourceTrust,
     Symbol,
@@ -179,7 +181,9 @@ SPEC_MANIFEST = {
     ],
     ids=["document", "kir", "chunk", "symbol", "edge", "manifest"],
 )
-def test_spec_examples_validate_and_round_trip(model: type, payload: dict) -> None:
+def test_spec_examples_validate_and_round_trip(
+    model: type[Record], payload: dict[str, Any]
+) -> None:
     record = model.model_validate(payload)
     assert model.model_validate_json(record.model_dump_json()) == record
 
@@ -278,7 +282,7 @@ def test_vocabularies_are_exact() -> None:
         {"kind": "paragraph", "text": "plain"},
     ],
 )
-def test_kir_nodes_accept_the_fields_their_kind_declares(fields: dict) -> None:
+def test_kir_nodes_accept_the_fields_their_kind_declares(fields: dict[str, Any]) -> None:
     KirNode.model_validate({"id": "n1", "ord": 0, **fields})
 
 
@@ -294,7 +298,9 @@ def test_kir_nodes_accept_the_fields_their_kind_declares(fields: dict) -> None:
         ({"kind": "table", "variant": "header"}, "variant"),
     ],
 )
-def test_kir_nodes_reject_fields_their_kind_does_not_declare(fields: dict, expected: str) -> None:
+def test_kir_nodes_reject_fields_their_kind_does_not_declare(
+    fields: dict[str, Any], expected: str
+) -> None:
     with pytest.raises(ValidationError, match=expected):
         KirNode.model_validate({"id": "n1", "ord": 0, **fields})
 
@@ -323,7 +329,7 @@ def test_src_locator_line_span_must_be_ordered() -> None:
 def test_records_are_frozen() -> None:
     doc = Document.model_validate(SPEC_DOCUMENT)
     with pytest.raises(ValidationError):
-        doc.title = "Renamed"  # type: ignore[misc]
+        doc.title = "Renamed"
 
 
 def test_unknown_fields_are_rejected() -> None:
@@ -342,7 +348,7 @@ def test_unknown_fields_are_rejected() -> None:
         {"created_at": "2026-07-31T10:00:00"},  # naive timestamp
     ],
 )
-def test_document_field_contracts_reject(mutation: dict) -> None:
+def test_document_field_contracts_reject(mutation: dict[str, Any]) -> None:
     with pytest.raises(ValidationError):
         Document.model_validate({**SPEC_DOCUMENT, **mutation})
 
@@ -376,7 +382,13 @@ def test_chunk_line_span_must_be_ordered() -> None:
 def test_edge_validates_and_serializes_by_alias() -> None:
     by_alias = Edge.model_validate(SPEC_EDGE)
     by_name = Edge(
-        from_="doc:architecture.md",
+        # `validate_by_name` is on (`Record.model_config`), so passing the field's
+        # Python name is the record's own contract being exercised — which is what
+        # this test is for. mypy sees only the `from` alias, because this project
+        # does not run pydantic's mypy plugin; enabling it reaches every record in
+        # `src` and is a decision of its own, not one a test should take
+        # (roadmap 6.9, ADR-0124).
+        from_="doc:architecture.md",  # type: ignore[call-arg]
         to="doc:agents.md",
         type=EdgeType.LINKS_TO,
         status=EdgeStatus.AUTHORED,

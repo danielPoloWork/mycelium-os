@@ -43,9 +43,9 @@ from mycelium.sdk.identity import (
 )
 from mycelium.sdk.types import Anchor, EdgeType, Sha256Digest, Symbol, Ulid
 
-ANCHOR_ADAPTER = TypeAdapter(Anchor)
-DIGEST_ADAPTER = TypeAdapter(Sha256Digest)
-ULID_ADAPTER = TypeAdapter(Ulid)
+ANCHOR_ADAPTER: TypeAdapter[str] = TypeAdapter(Anchor)
+DIGEST_ADAPTER: TypeAdapter[str] = TypeAdapter(Sha256Digest)
+ULID_ADAPTER: TypeAdapter[str] = TypeAdapter(Ulid)
 
 # Slugs that survive `heading_slug` unchanged, for building anchors in properties.
 slug_strategy = st.from_regex(r"\A[a-z0-9]+(?:-[a-z0-9]+)*\Z", fullmatch=True)

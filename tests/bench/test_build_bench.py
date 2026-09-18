@@ -63,4 +63,5 @@ def test_single_edit_incremental_build(edited_repo: Path, benchmark: BenchmarkFi
     def edit_one() -> None:
         target.write_text(f"{pinned}\nEdit {next(counter)}.\n", encoding="utf-8")
 
-    benchmark.pedantic(build, args=(edited_repo,), setup=edit_one, rounds=10)
+    # `pytest-benchmark` ships no stubs, so its fixture is untyped (roadmap 6.9).
+    benchmark.pedantic(build, args=(edited_repo,), setup=edit_one, rounds=10)  # type: ignore[no-untyped-call]

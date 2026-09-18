@@ -7,7 +7,7 @@ version is refused rather than reinterpreted."""
 import random
 import sqlite3
 from collections.abc import Iterator
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -178,7 +178,9 @@ def test_document_round_trips_with_every_field(store: SqliteStore) -> None:
         tags=("architecture", "event-bus"),
         curated=True,
         verification_status=VerificationStatus.CANDIDATE,
-        verification=Verification(verified_by="daniel", verified_at="2026-07-31", grounding=0.97),
+        verification=Verification(
+            verified_by="daniel", verified_at=date(2026, 7, 31), grounding=0.97
+        ),
         provenance=Provenance(
             origin=ProvenanceOrigin.INGESTED,
             source_uri="https://example.invalid/doc",

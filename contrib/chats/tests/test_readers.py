@@ -22,7 +22,14 @@ from pathlib import Path
 
 import pytest
 
-from mycelium_chats.readers import ImportContext, ReaderError, reader_for, reader_ids
+from mycelium_chats.readers import (
+    ImportContext,
+    Reader,
+    ReaderError,
+    ReadResult,
+    reader_for,
+    reader_ids,
+)
 from mycelium_chats.readers.base import normalise_role
 from mycelium_chats.record import Fragment, Message
 
@@ -32,7 +39,13 @@ pytestmark = pytest.mark.boundary("B15")
 CONTEXT = ImportContext(project="research", source_uri="fixture")
 
 
-def read(name: str, fixtures: Path, *, provider: str | None = None, mapping: dict | None = None):
+def read(
+    name: str,
+    fixtures: Path,
+    *,
+    provider: str | None = None,
+    mapping: dict[str, str] | None = None,
+) -> tuple[Reader, ReadResult]:
     text = (fixtures / name).read_text(encoding="utf-8")
     reader = reader_for(text, provider=provider, source_uri=name, mapping=mapping)
     return reader, reader.read(
@@ -203,7 +216,8 @@ def test_claude_timestamps_are_read_as_utc(fixtures: Path) -> None:
 
     assert started is not None
     assert started.isoformat().startswith("2026-07-31T09:02:11")
-    assert started.utcoffset() is not None and started.utcoffset().total_seconds() == 0
+    offset = started.utcoffset()
+    assert offset is not None and offset.total_seconds() == 0
 
 
 # ---------------------------------------------------------------------------

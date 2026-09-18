@@ -446,9 +446,8 @@ def test_a_pending_pdf_without_the_renderer_names_the_command_that_installs_it(
     half was right: the group is not on PyPI's side of the problem, and the
     default sync deliberately removes it again.
     """
-    import build_ingested_corpus
 
-    monkeypatch.setattr(build_ingested_corpus.importlib.util, "find_spec", lambda name: None)
+    monkeypatch.setattr("importlib.util.find_spec", lambda name: None)
     with pytest.raises(SystemExit) as caught:
         require_typst(9)
     message = str(caught.value)
@@ -489,9 +488,8 @@ def test_a_pending_render_without_pandoc_names_the_command_that_installs_it(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """It refuses before writing, the same shape `require_typst` does."""
-    import build_ingested_corpus
 
-    monkeypatch.setattr(build_ingested_corpus.shutil, "which", lambda name: None)  # noqa: ARG005
+    monkeypatch.setattr("shutil.which", lambda name: None)  # noqa: ARG005
     with pytest.raises(SystemExit) as caught:
         require_pandoc(7)
     message = str(caught.value)
@@ -503,16 +501,10 @@ def test_a_pending_render_without_pandoc_names_the_command_that_installs_it(
 def test_a_pandoc_below_the_floor_is_refused_by_its_own_reported_version(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import build_ingested_corpus
 
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/pandoc")  # noqa: ARG005
     monkeypatch.setattr(
-        build_ingested_corpus.shutil,
-        "which",
-        lambda name: "/usr/bin/pandoc",  # noqa: ARG005
-    )
-    monkeypatch.setattr(
-        build_ingested_corpus.subprocess,
-        "run",
+        "subprocess.run",
         lambda *a, **k: SimpleNamespace(returncode=0, stdout="pandoc 2.9.2.1"),  # noqa: ARG005
     )
     with pytest.raises(SystemExit) as caught:
