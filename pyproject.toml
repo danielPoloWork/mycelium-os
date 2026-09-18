@@ -133,15 +133,17 @@ mycelium = "mycelium.cli:main"
 # the repository and the issue tracker, and not the documentation or the
 # changelog (roadmap 6.11).
 Homepage = "https://github.com/danielPoloWork/mycelium-os"
-Documentation = "https://github.com/danielPoloWork/mycelium-os/tree/main/docs-site"
+Documentation = "https://danielpolowork.github.io/mycelium-os/"
 Changelog = "https://github.com/danielPoloWork/mycelium-os/blob/main/CHANGELOG.md"
 Source = "https://github.com/danielPoloWork/mycelium-os"
 Issues = "https://github.com/danielPoloWork/mycelium-os/issues"
-# `Documentation` points at the site's *sources* rather than at `mkdocs.yml`'s
-# `site_url`, because nothing hosts the built site yet: 6.2 builds and checks it,
-# and no workflow deploys it. It moves to the Pages URL in the change that starts
-# publishing it, and not before — a dead documentation link on an index page is
-# the same defect as the install line this item was filed to fix.
+# `Documentation` now names the Pages URL `.github/workflows/pages.yml` deploys to
+# (roadmap 6.14, ADR-0127) — this is the change that starts publishing the site,
+# so the link moves with it rather than waiting for a later PR to remember. It
+# resolves the moment the owner's one Settings step (§4 of github-setup.md, or
+# `python tools/check_repo_settings.py`'s own finding) turns Pages on; nothing on
+# any package index points at it yet (6.11's publish step is dispatch-only and
+# has not been run), so there is no live index page carrying a dead link meanwhile.
 
 # BUG-0003 (ROADMAP.md 1.3): the group is now complete (hatch, pytest, pytest-benchmark,
 # ruff, mypy) and uv.lock ships alongside it — this is what flips CI's bootstrap probe to

@@ -1,0 +1,110 @@
+name: pages
+
+# Publish docs-site as GitHub Pages (roadmap 6.14, ADR-0127).
+#
+# Fires on every push to `main`, never on a release tag. The site links out to
+# canonical content pinned at `main` (project.md, D-029, ADR-0115) rather than
+# duplicating it, so it is a view onto the default branch and not a release
+# artifact — gating it on a tag would leave it lagging between releases, which
+# is its own defect for exactly the reader this item was filed for: rung 2 of
+# the contribution ladder (CONTRIBUTING.md) promises that a merged documentation
+# fix is visible, and "visible at the next release" is not that promise kept.
+#
+# Not versioned. Pre-1.0 there is exactly one build of the site, tracking `main`
+# — the same choice `docs-site/project.md`'s links already made. The one place an
+# older reader needs a stable answer is the compatibility promise itself, which
+# lives at a permanent path (`docs/compatibility.md`) and is linked to, not
+# rendered here. Revisit with a versioned build (e.g. `mike`) only if a real
+# reader needs one, not ahead of that need (roadmap 6.1's own refusal to design
+# from a sample of nobody).
+#
+# Artifact-based deploy (`actions/deploy-pages`), not a `gh-pages` branch: the
+# built site is never committed, the same disposability this repository already
+# gives every other derived artifact (`.mycelium/`, `site/`, both gitignored).
+#
+# `probe` reads the repository's own public Pages metadata with no token and no
+# added permission — enabling Pages is a repository setting under the owner's
+# account (the same boundary `tools/check_repo_settings.py` draws around branch
+# protection and vulnerability reporting, docs/workflow/github-setup.md §4), so
+# this workflow reports that it is off rather than calling an API to turn it on,
+# and does nothing destructive while it is off. The one-time step is a web-UI
+# click, not a `gh api` call: the REST "create a Pages site" body for an
+# Actions-sourced site is not consistently documented, and a mis-guessed call
+# against a public-facing setting is not worth the risk the UI does not carry.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs-site/**"
+      - "mkdocs.yml"
+      - "src/mycelium/**"   # mkdocstrings renders these docstrings into the reference page
+      - ".github/workflows/pages.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# Never cancel an in-flight deploy: a half-published site is worse than a queued one,
+# and a stale build finishing after a fresher one starts would serve the older content
+# last (the same reasoning release.yml and publish.yml give their own concurrency groups).
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    name: pages / is the site enabled?
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.probe.outputs.ready }}
+    steps:
+      - id: probe
+        shell: bash
+        # A public repository's Pages metadata is readable with no token at all (verified:
+        # an unauthenticated GET returns 404 when unconfigured, not 401/403), so this needs
+        # no permission this workflow does not already have.
+        run: |
+          status=$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://api.github.com/repos/${{ github.repository }}/pages")
+          if [ "$status" = "200" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Pages not enabled::GitHub Pages is not configured for this repository (the public /pages endpoint answered $status). One owner action turns it on: Settings -> Pages -> Build and deployment -> Source: GitHub Actions. This workflow starts deploying on the next push to main after that."
+          fi
+
+  build:
+    name: pages / mkdocs build --strict
+    needs: probe
+    if: needs.probe.outputs.ready == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v7
+      - run: uv sync --all-extras --dev
+      - run: uv run mkdocs build --strict
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    name: pages / deploy
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

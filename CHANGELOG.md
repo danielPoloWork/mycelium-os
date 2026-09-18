@@ -10,6 +10,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Added
+
+- **The docs site is published**, from a workflow artifact to GitHub Pages, tracking `main`
+  (roadmap 6.14, ADR-0127). `.github/workflows/pages.yml` deploys on every push that touches
+  `docs-site/`, `mkdocs.yml`, or `src/mycelium/`; never on a release tag, and not versioned —
+  the site links canonical content at `main` rather than duplicating it. Enabling Pages itself
+  is a repository setting under the owner's account and is reported (`tools/check_repo_settings.py`),
+  never executed by CI. `pyproject.toml`'s `Documentation` link now names the Pages URL.
+
 ### Changed
 
 - **`docs-site/` joins this repository's own corpus** (roadmap 6.13, ADR-0126), resolving the

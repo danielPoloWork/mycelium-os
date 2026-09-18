@@ -99,12 +99,18 @@ seen their exact names in the first CI run.
 ```bash
 # Enable Discussions (questions/ideas; linked from the issue chooser).
 gh api -X PATCH repos/$OWNER/$REPO -F has_discussions=true
-
-# GitHub Pages from the docs/ folder on the default branch (optional doc site).
-gh api -X POST repos/$OWNER/$REPO/pages \
-  -F "source[branch]=$BRANCH" -F "source[path]=/docs" 2>/dev/null \
-  || echo "Pages already configured or needs the web UI once."
 ```
+
+**GitHub Pages, built from `.github/workflows/pages.yml` (roadmap 6.14, ADR-0127).**
+This is a web-UI step, not a `gh api` call: Settings → Pages → Build and deployment →
+Source: **GitHub Actions**. `docs-site/` is mkdocs source, not a folder GitHub can serve
+directly, and the REST "create a Pages site" request body for an Actions-backed site
+(`build_type=workflow`) is not consistently documented — a mis-guessed call against a
+public-facing setting is a worse outcome than one manual click. `python
+tools/check_repo_settings.py` reports whether this is done and whether it is done the
+right way (`build_type` must read `workflow`, not the legacy branch source); once it is,
+the workflow starts deploying on the next push to `main` that touches `docs-site/`,
+`mkdocs.yml`, `src/mycelium/`, or itself.
 
 ```bash
 # Private vulnerability reporting — the channel SECURITY.md and the issue chooser both
