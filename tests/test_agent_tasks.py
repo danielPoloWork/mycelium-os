@@ -124,22 +124,125 @@ def test_both_strategies_run_on_every_task(corpus: Path) -> None:
     assert {item.strategy for item in report.outcomes} == {"mycelium", "grep"}
 
 
-def test_grep_pays_for_whole_documents(corpus: Path) -> None:
+def test_grep_pays_for_whole_documents_when_they_fit(corpus: Path) -> None:
     """The comparison's whole point: a grep hit is a line number, so the loop reads
-    the file — and the file is what the model has to be handed."""
+    the file — and the file is what the model has to be handed. A small document is
+    read whole, which is every document in this fixture and most of a real corpus."""
     task = AgentTask(task_id="t-z", prompt="retry backoff attempts parked")
     report = run_task_suite(corpus, [task])
 
     mycelium = report.by_strategy("mycelium")[0]
     grep = report.by_strategy("grep")[0]
     assert grep.tokens >= mycelium.tokens
-    assert grep.documents_read <= mycelium.documents_read  # fewer files, more text
 
 
 def test_the_budget_is_respected(corpus: Path) -> None:
     task = AgentTask(task_id="t-b", prompt="retry backoff messages licence bus")
     outcome = run_task_suite(corpus, [task], budget_tokens=20).by_strategy("mycelium")[0]
     assert outcome.tokens <= 20
+
+
+# ---------------------------------------------------------------------------
+# What a grep loop does with a file larger than its budget (roadmap 6.22)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def lopsided(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    """One document far larger than any read, beside small ones that answer.
+
+    The shape that broke the measurement on the real corpus: `ROADMAP.md` grew to
+    88 000 tokens, matched every query, and was read whole — so the loop spent its
+    whole budget on the wrong file and never opened a second (ADR-0131).
+    """
+    root = tmp_path_factory.mktemp("lopsided")
+    (root / "knowledge").mkdir()
+    filler = "\n\n".join(
+        f"## Section {index}\n\nRetry backoff messages bus parked attempts. " + "word " * 200
+        for index in range(40)
+    )
+    (root / "knowledge/huge.md").write_text(f"# Huge\n\n{filler}\n", encoding="utf-8", newline="\n")
+    for name, text in CORPUS.items():
+        target = root / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text, encoding="utf-8", newline="\n")
+    build(root)
+    return root
+
+
+def test_a_document_larger_than_the_read_does_not_consume_the_whole_loop(
+    lopsided: Path,
+) -> None:
+    """The defect 6.4 found and 6.22 fixed, in one assertion.
+
+    Before: the first matching file was read whole whatever it cost, so one
+    oversized document was the entire measurement and the other four reads the
+    model promises never happened.
+    """
+    task = AgentTask(task_id="t-huge", prompt="retry backoff bus licence distributed")
+    outcome = run_task_suite(lopsided, [task], budget_tokens=4_000).by_strategy("grep")[0]
+
+    assert outcome.documents_read == 4  # every matching file, not just the biggest
+    assert outcome.tokens <= 4 * 4_000  # bounded by the model of the loop
+
+
+def test_the_evidence_in_a_small_file_survives_a_huge_one_ranking_above_it(
+    lopsided: Path,
+) -> None:
+    """Why the bound is not a detail: the answer is in a file the loop only reaches
+    because it is no longer spending everything on the first one."""
+    task = AgentTask(
+        task_id="t-reach",
+        prompt="retry backoff bus licence distributed",
+        requires=(anchor_for(lopsided, "knowledge/licence.md"),),
+    )
+    assert run_task_suite(lopsided, [task], budget_tokens=4_000).by_strategy("grep")[0].found
+
+
+def test_one_read_costs_at_most_the_callers_budget(lopsided: Path) -> None:
+    """A read is bounded by what one search may spend, so the incumbent's cost is a
+    property of the loop rather than of whichever document happened to match."""
+    task = AgentTask(task_id="t-window", prompt="retry backoff")
+    for budget in (500, 1_000, 4_000):
+        outcome = run_task_suite(lopsided, [task], budget_tokens=budget).by_strategy("grep")[0]
+        assert outcome.tokens <= outcome.documents_read * budget
+
+
+def test_a_section_larger_than_the_window_is_read_but_carries_no_evidence(
+    tmp_path: Path,
+) -> None:
+    """The case that has to be named: the agent saw part of a passage, which is not
+    being handed it. Scoring it as evidence would credit text nobody can point at."""
+    root = tmp_path / "one-huge-section"
+    (root / "knowledge").mkdir(parents=True)
+    (root / "knowledge/wall.md").write_text(
+        "# Wall\n\n## Only\n\n" + "backoff retry " * 4_000 + "\n", encoding="utf-8", newline="\n"
+    )
+    build(root)
+    section = anchor_for(root, "knowledge/wall.md")
+
+    task = AgentTask(task_id="t-wall", prompt="backoff retry", requires=(section,))
+    outcome = run_task_suite(root, [task], budget_tokens=1_000).by_strategy("grep")[0]
+
+    assert outcome.documents_read == 1
+    assert outcome.tokens == 1_000  # the read happened, and was truncated
+    assert not outcome.found  # and it is not evidence
+    assert outcome.unresolved == ()  # the passage exists; the read did not cover it
+
+
+def test_how_many_files_the_loop_opens_is_a_parameter_the_band_can_vary(
+    lopsided: Path,
+) -> None:
+    """`tools/measure_agent_task_band.py` measures the constant instead of asserting
+    it, which is only possible because the loop takes it rather than reads it."""
+    task = AgentTask(task_id="t-band", prompt="retry backoff bus licence distributed")
+    read = [
+        run_task_suite(lopsided, [task], max_grep_files=count).by_strategy("grep")[0]
+        for count in (1, 2, 4)
+    ]
+
+    assert [outcome.documents_read for outcome in read] == [1, 2, 4]
+    assert read[0].tokens < read[1].tokens < read[2].tokens
 
 
 def test_a_suite_round_trips_through_jsonl(tmp_path: Path) -> None:

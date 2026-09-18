@@ -1230,9 +1230,21 @@ REQUIRED_MANIFEST_KEYS: Final = (
 is here so a reader can see what the run was measured *against* without going to the
 spec, and so a changed budget is visible in a diff."""
 
-MEASUREMENT_SECTIONS: Final = ("scales", "query_profile", "vector_profile", "real_corpora")
+MEASUREMENT_SECTIONS: Final = (
+    "scales",
+    "query_profile",
+    "vector_profile",
+    "real_corpora",
+    "task_profile",
+)
 """Where measurements live. A manifest needs at least one non-empty section — a run
-that timed nothing is a note about a machine."""
+that timed nothing is a note about a machine.
+
+`task_profile` is `tools/measure_agent_task_band.py`'s (roadmap 6.22), and it is
+the first section here whose measurements are not milliseconds: it reports the
+*context* each strategy puts in front of a model, in tokens. The `p95` every
+measurement must carry still means what it means — a distribution's tail over the
+suite's tasks — which is why it needed no exception."""
 
 
 def _measurement_blocks(section: Any) -> list[list[Any]]:
