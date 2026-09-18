@@ -40,6 +40,12 @@ been indexed all along. v0.4.0 only made it large enough to trip a guard.
 
 ## Decision
 
+> **Amended at roadmap 6.10 ([ADR-0125](0125-exclude-the-root-changelog-because-unreleased-is-the-restatement-early.md)).**
+> The root `CHANGELOG.md` was left in the corpus here on the reasoning that only the *released*
+> copies were the restatement. `[Unreleased]` is the same restatement, staged one release
+> early — the release procedure moves it into `docs/changelog` verbatim — so the exclusion below
+> now covers the file whole, closing the gap that let a release move this benchmark twice.
+
 **`docs/changelog` and `docs/releases` leave the corpus**, via the `[project] exclude`
 mechanism ADR-0021 built for exactly this class of file.
 

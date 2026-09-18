@@ -10,6 +10,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **The root `CHANGELOG.md` leaves this repository's own corpus** (roadmap 6.10, ADR-0125),
+  closing the gap ADR-0072 left when it excluded `docs/changelog` and `docs/releases`:
+  `[Unreleased]` is not a draft of a future restatement, it *is* one, staged one release early
+  and moved into `docs/changelog` verbatim at the next cut. Measured today: our own score is
+  unchanged to the fifteenth decimal on both judged sets, and grep's nDCG@10 moves up 0.0055 on
+  `dev` and 0.0082 on `release` — the corpus, not the retriever, was carrying part of the
+  reported lead. A narrower fix that kept the small "Released versions" index table indexed was
+  considered and refused on ADR-0072's own precedent: no exclusion mechanism exists below file
+  granularity, and the content spared is worth almost nothing in either direction.
+
 ### Added
 
 - **The first public benchmark report, measured at the conditions the budgets are stated for**
