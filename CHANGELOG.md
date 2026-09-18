@@ -12,6 +12,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **`docs-site/` joins this repository's own corpus** (roadmap 6.13, ADR-0126), resolving the
+  provisional exclusion 6.2 filed rather than decided. Measured, not defaulted: grep's release
+  score is unchanged bit-for-bit and its dev score moves within noise, while ours moves up on
+  release and is flat on dev net of one case — the opposite of the incumbent-dilution pattern
+  that excluded `docs/changelog`. `eval/baselines/release.json` is re-blessed to the
+  206-document corpus, both arms.
 - **The root `CHANGELOG.md` leaves this repository's own corpus** (roadmap 6.10, ADR-0125),
   closing the gap ADR-0072 left when it excluded `docs/changelog` and `docs/releases`:
   `[Unreleased]` is not a draft of a future restatement, it *is* one, staged one release early

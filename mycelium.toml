@@ -35,15 +35,14 @@ exclude = [
     "eval/corpora",            # the second judged corpus is documentation we did NOT
                                # write (ADR-0027); indexing it here would mix the two
                                # corpora the dev/release split exists to keep apart
-    "docs-site",               # the mkdocs site source (roadmap 6.2): genuine new
-                               # documentation, not a restatement like docs/changelog
-                               # above - and deliberately NOT excluded for that reason.
-                               # Excluded here only provisionally, because joining the
-                               # corpus is a measured corpus decision this repository
-                               # takes as its own PR (ADR-0072's precedent), not a side
-                               # effect of the PR that first wrote the content. See
-                               # roadmap 6.13.
 ]
+# `docs-site/` (roadmap 6.2) joins the corpus rather than being excluded: measured at
+# 6.13 (ADR-0126) and found to be the opposite case from `docs/changelog` above - it is
+# genuine task-oriented content, not a restatement, and including it moves our own
+# scores by roughly a case's worth in either direction and leaves grep's release score
+# unchanged - nothing like the incumbent-dilution ADR-0072 refused. `mkdocs.yml` was
+# never a candidate: `discover()` only ever reads `*.md`, so a YAML file cannot enter
+# this corpus regardless of what `exclude` says.
 
 [retrieval]
 profile = "lexical"            # hybrid has not earned the default (ADR-0017)
