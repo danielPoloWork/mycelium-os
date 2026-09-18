@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.10 — close the gap ADR-0072 left in this repository's own
   corpus scope.
-- **PR:** #160 (`docs/exclude-root-changelog-from-corpus`), following #159, merged.
+- **PR:** #160 (`docs/exclude-root-changelog-from-corpus`), following #159. Opened, awaiting the maintainer's merge.
 - **Milestone 6:** still open. 6.10 delivered; 6.8, 6.12–6.15, 6.17–6.23 remain.
 - **Decision it records:** [ADR-0125](../../../adr/0125-exclude-the-root-changelog-because-unreleased-is-the-restatement-early.md),
   amending [ADR-0072](../../../adr/0072-keep-our-own-restatements-out-of-our-own-benchmark.md).
