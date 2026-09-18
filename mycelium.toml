@@ -25,6 +25,12 @@ exclude = [
                                # incumbent NARROWS, +0.218 to +0.183 on the release set, which
                                # is the direction that says this is not a fitted change
                                # (roadmap 4.44, ADR-0072)
+    "CHANGELOG.md",            # the root file ADR-0072 missed: `[Unreleased]` is exactly
+                               # the same restatement `docs/changelog` was excluded for -
+                               # it is a per-version changelog entry before a release moves
+                               # it into one - so the mechanism survived in the one file a
+                               # release itself empties, oscillating with the release cycle
+                               # instead of shrinking (roadmap 6.10, ADR-0125)
     ".mycelium-os-legacy",     # the superseded implementation, kept for salvage only
     "eval/corpora",            # the second judged corpus is documentation we did NOT
                                # write (ADR-0027); indexing it here would mix the two
