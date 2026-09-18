@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **A pasted document no longer holds the server for two minutes** (roadmap 6.17, ADR-0129).
+  Every other cost on the serving path was bounded — `k` at 50, `budget_tokens` on the answer,
+  the embedder at its sequence length, a candidate budget per leg — and the *question* was not,
+  so the server's cost was a function of what a caller pasted rather than of what the corpus
+  holds. Pasting this repository's own `README.md` as a query took **146 s** (62 KB, 7 384
+  terms); `AGENTS.md` 25 s; a 9 KB page 5 s. All three now take **~94 ms**, the same 94 ms.
+  `mycelium_search`, `mycelium_explain` and `mycelium search` read the first **64 terms** of a
+  question — seven times the longest query this project measures itself on — and `explain` says
+  how many terms went unread. Nothing is refused: the answer to a bounded question is the answer
+  to its first terms, and no judged score moves. Closes the 6.3 security review's F11 and the
+  threat model's B6 denial-of-service row.
+
 - **`mycelium_search` is 7x faster, and meets its latency budget for the first time**
   (roadmap 6.18, ADR-0128). Reading `mycelium.toml` asked which modules are installed, which
   re-read the metadata of every installed distribution on **every tool call**: 262 ms of a

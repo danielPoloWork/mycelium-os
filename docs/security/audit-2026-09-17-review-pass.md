@@ -24,10 +24,32 @@
 | F8 | **medium** (confirmed defect) | `mycelium.markdown.adapter` — B4, both lanes | Forty kilobytes of asterisks nest emphasis ten thousand levels; markdown-it parses it and building the syntax tree recurses past the interpreter's limit. The build caught the `RecursionError` in its per-document catch-all — 13 s, with the interpreter's error as the quarantine reason — and `mycelium ingest` did not catch it at all: exit 1, a traceback, no quarantine record. | **Fixed here**: the token tree's depth is measured before it is built and refused past `MAX_NESTING` (100, the parser's own number; the deepest real document nests six) as a `MarkdownError`, with a guard behind it for a shape the measure does not model. Both lanes quarantine by name in milliseconds. [BUG-0029](../bugs/2026/09/BUG-0029-a-long-emphasis-run-recurses-past-the-interpreter-limit.md) |
 | F9 | **low** (confirmed defect) | `mycelium_chats.readers`, `mycelium_chats.segment` — B15/B10 | `json.loads` raises `RecursionError` on a hundred thousand nested brackets, which is not the `ValueError` every reader and the segmenter catch, so `mycelium chats import` died with a traceback instead of reporting the input as unreadable. Nothing written. | **Fixed here**: typed as `ReaderError` / `SegmentationError`; `pasted` declines to claim bracket soup. [BUG-0030](../bugs/2026/09/BUG-0030-deeply-nested-json-crashes-chats-import.md) |
 | F10 | **low** (missing control) | `mycelium.build.orchestrator` — B4, authored lane | The file connector bounds an ingested source at 64 MiB; an authored document had no ceiling and was read whole into memory before anything asked its size. D-017 declares the user's own documents untrusted content, so the asymmetry was a gap rather than a choice. | **Fixed here**: `MAX_SOURCE_BYTES` = the connector's ceiling; a larger document is quarantined by name and the build carries on |
-| F11 | **low** (open, filed) | `mycelium.mcp.tools`, `mycelium.store` — B6 | The query is unbounded. Twenty thousand terms (190 KB) hold the single-threaded stdio server for 57 s; five thousand take 2.7 s; the growth is superlinear in the term count. Every other call waits meanwhile. A local, single-user client can only stall itself, and an agent pasting a document as a query is the realistic case. | **Not fixed here, by decision**: a cap on the terms a query contributes is a retrieval change and belongs under the evaluation gates, not inside a security PR. Filed as roadmap **6.17**. Until then the threat-model row is ⚠️ |
+| F11 | **low** (fixed at 6.17) | `mycelium.mcp.tools`, `mycelium.store` — B6 | The query is unbounded. Twenty thousand terms (190 KB) hold the single-threaded stdio server for 57 s; five thousand take 2.7 s; the growth is superlinear in the term count. Every other call waits meanwhile. A local, single-user client can only stall itself, and an agent pasting a document as a query is the realistic case. | **Not fixed here, by decision**: a cap on the terms a query contributes is a retrieval change and belongs under the evaluation gates, not inside a security PR. Filed as roadmap **6.17**, and **closed there** ([ADR-0129](../adr/0129-bound-the-question-once-before-anything-reads-it.md)) — see the note below, which revises this row's own numbers downward in severity of measurement and upward in cost |
 | F12 | **info** (accepted residual) | the Markdown profile — B6/B11 | Since ADR-0110 the profile drops markup and keeps words, so text a *renderer* would hide — `<div hidden>…</div>`, a `display:none` span — is indexed and served as prose, verbatim, with the notice. A human reading the rendered page never sees it; the agent sees exactly what the index holds. HTML comments and link titles are *not* indexed, so the two channels that carry no visible words at all are already closed. | **Accepted**: closing the rest means the compiler guessing at CSS, which it cannot do honestly. Declared in the injection corpus (`hidden-html-block`) so the suite asserts the current behaviour and a change to it is a decision. A `mycelium doctor` warning for hidden-attribute markup is a possible future control, not a promise |
 | F13 | **info** (model drift) | `docs/security/threat-model.md` | Three boundaries were still marked *(design)* four milestones after their controls shipped (B6 since 2.9, B8's only crossing since 3.3, the repudiation and promotion rows since 2.7 and 4.5), one row still rested on "private repo today", and a duplicated B14 row sat outside the table. The model described a smaller product than the one that existed, in the direction that undersells the controls. | **Corrected here**, and §4 makes the model name its tests so the next drift is caught by a test rather than a reading |
 | F14 | **info** (untested control) | `mycelium.ingest.parsers.pandoc` — B9 | The model claimed since 4.1 that pandoc runs `--sandbox`, over stdin, with a fixed argument vector and a timeout. All four were true in the code and none had a test; a refactor could have dropped `--sandbox` without a red run. | **Test added** (`test_pandoc_runs_sandboxed_over_stdin_with_a_timeout_and_no_shell`); the same walk found four more sentence-only controls, all now under `-m boundary` |
+
+### F11, closed at roadmap 6.17 — and the probe understated it
+
+The cap landed in its own PR under the evaluation gates, as this register said it should
+([ADR-0129](../adr/0129-bound-the-question-once-before-anything-reads-it.md)). Recorded here
+because re-measuring changed two things this row asserted.
+
+**The number was low.** The probe timed the lexical primitive; the server runs the whole
+`search` path, and the symbol leg — **on** by default since roadmap 5.25 — composes one
+candidate id per identifier-like token per language and then re-ranks with BM25 over the same
+expression. Through that path this repository's own `README.md` pasted as a query held the
+server for **146 s**, not 57: 130 s lexical, 7 s symbol. `AGENTS.md` took 25 s and a 9 KB page
+5 s. All three now cost **~94 ms**.
+
+**"Superlinear" was right only at the extreme.** The cost is linear at 3–4 ms a term with a
+knee at twenty thousand (4.2 ms/term against 3.3 at five thousand). Unbounded and linear was
+already enough; reaching for the knee made the finding sound narrower than it was.
+
+**What that means for a review's probes**, and it generalises past this row: a probe aimed at
+the component a finding is *about* measures that component, and the boundary is the path. The
+probes here ran against `mycelium.store`; the boundary is B6, the serving edge, and the leg
+that doubled the cost was one the probe never called.
 
 ## What the walk found sound
 

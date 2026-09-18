@@ -26,8 +26,10 @@ from fakes import FakeEmbedder
 from mycelium.build import build
 from mycelium.config import RetrievalConfig
 from mycelium.retrieval import (
+    MAX_QUERY_TERMS,
     RRF_K,
     STOPWORDS,
+    bound_query,
     query_terms,
     reciprocal_rank_fusion,
     retrieval_identity,
@@ -447,10 +449,17 @@ def test_explain_reports_the_terms_that_ran_not_the_words_typed(tmp_path: Path) 
 
 
 def test_the_vector_leg_is_given_the_whole_question(tmp_path: Path) -> None:
-    """The boundary is the lexical leg's, not the query path's.
+    """The *function-word* boundary is the lexical leg's, not the query path's.
 
     An embedder is asked in the words it was trained on, so it must see the
     grammar the lexical index has no use for.
+
+    The bound on length is the other way round and deliberately so: it is the
+    query path's, so the embedder sees the question the server agreed to read
+    rather than a longer one (ADR-0129). The two rules answer different questions
+    — which words are *searched on*, and how much of the question is *read* — and
+    a query under the bound, which is every query this project measures itself
+    on, is unaffected by the second.
     """
     embedder = FakeEmbedder()
     seen: list[str] = []
@@ -464,6 +473,126 @@ def test_the_vector_leg_is_given_the_whole_question(tmp_path: Path) -> None:
     with SqliteStore.open(root, read_only=True) as store:
         search(store, "what is the delivery guarantee", config=HYBRID, embedder=Recording())
     assert seen == ["what is the delivery guarantee"]
+
+
+# ---------------------------------------------------------------------------
+# The bound on the question (roadmap 6.17, ADR-0129)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("count", [0, 1, MAX_QUERY_TERMS - 1, MAX_QUERY_TERMS])
+def test_a_question_under_the_bound_is_returned_untouched(count: int) -> None:
+    """Identity below the bound, not merely equivalence: every query this project
+    measures itself on is under it, so the bound must be a no-op there."""
+    query = " ".join(f"w{index}" for index in range(count))
+    assert bound_query(query) == (query, 0)
+
+
+def test_a_question_over_the_bound_is_cut_and_counts_what_it_did_not_read() -> None:
+    query = " ".join(f"w{index}" for index in range(MAX_QUERY_TERMS + 36))
+    text, unread = bound_query(query)
+    assert unread == 36
+    assert query_terms(text) == [f"w{index}" for index in range(MAX_QUERY_TERMS)]
+
+
+def test_the_bound_slices_the_caller_s_own_text_so_a_name_survives() -> None:
+    """`uv.lock` is one token to the symbol leg and two to this counter. Rebuilding
+    the question from `\\w+` matches would have handed the symbol leg `uv lock`,
+    which names nothing (ADR-0080)."""
+    text, _ = bound_query("uv.lock " + " ".join(f"w{index}" for index in range(MAX_QUERY_TERMS)))
+    assert text.startswith("uv.lock ")
+
+
+def test_the_bound_counts_terms_rather_than_bytes() -> None:
+    """A long word is one term. The cost the bound exists to stop is per-term —
+    one posting list per term — so a bound on length would refuse the wrong thing."""
+    assert bound_query("a" * 100_000) == ("a" * 100_000, 0)
+
+
+def test_the_bound_keeps_a_non_latin_question_whole() -> None:
+    # The corpus is multilingual (D-028) and `\w+` is unicode-aware here.
+    assert bound_query("設計 パターン") == ("設計 パターン", 0)
+
+
+def test_a_bounded_search_says_what_it_did_not_read(tmp_path: Path) -> None:
+    root = built(tmp_path)
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, "delivery guarantee " + "filler " * 200)
+    note = next(item for item in outcome.notes if "bounded" in item)
+    assert f"first {MAX_QUERY_TERMS} terms" in note
+    assert "138 further term(s) were not read" in note
+
+
+def test_an_unbounded_question_gets_no_note_and_no_bound(tmp_path: Path) -> None:
+    root = built(tmp_path)
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, "what is the delivery guarantee")
+    assert not any("bounded" in item for item in outcome.notes)
+
+
+def test_the_bound_reaches_every_leg_because_it_is_taken_before_the_plan(
+    tmp_path: Path,
+) -> None:
+    """The property a bound at one leg would not have had. The plan, the lexical
+    leg, the symbol leg's id composition and the term report all read the question
+    the server agreed to read — so a term past the bound cannot reach any of them."""
+    root = built(tmp_path)
+    tail = "SomeIdentifierPastTheBound"
+    query = "delivery guarantee " + "filler " * 200 + tail
+    with SqliteStore.open(root, read_only=True) as store:
+        outcome = search(store, query, explain=True)
+    assert tail.lower() not in {item.term for item in outcome.terms}
+    assert all(tail.lower() not in item.lower() for item in outcome.notes if "bounded" not in item)
+
+
+def test_the_answer_to_a_bounded_question_is_the_answer_to_its_first_terms(
+    tmp_path: Path,
+) -> None:
+    """Truncation, not refusal: the realistic long query is an agent pasting a
+    document, and answering its first terms beats an error (ADR-0129)."""
+    root = built(tmp_path)
+    with SqliteStore.open(root, read_only=True) as store:
+        bounded = search(store, "delivery guarantee " + "zzz " * 400)
+        short = search(store, "delivery guarantee " + "zzz " * 20)
+    assert bounded.hits
+    assert [hit.hit.path for hit in bounded.hits] == [hit.hit.path for hit in short.hits]
+
+
+def test_the_bound_is_part_of_the_ranking_fingerprint() -> None:
+    """It decides which terms are ranked on at all, so a verdict measured under one
+    bound is not about another (the rule `retrieval_identity` states of itself)."""
+    before = retrieval_identity()
+    with patch("mycelium.retrieval.MAX_QUERY_TERMS", MAX_QUERY_TERMS * 2):
+        assert retrieval_identity() != before
+
+
+def test_no_query_this_project_measures_itself_on_reaches_the_bound() -> None:
+    """The evidence the bound was chosen on, kept as a test: if a judged set ever
+    grows a question long enough to be cut, the cut is a scoring change and this
+    says so before a gate reports it as one (roadmap 6.17)."""
+    import json
+
+    root = Path(__file__).parent.parent
+    sets = [
+        root / "eval/dev.jsonl",
+        root / "eval/release.jsonl",
+        root / "eval/corpora/uv-docs/eval/dev.jsonl",
+        root / "eval/corpora/uv-docs/eval/release.jsonl",
+        root / "eval/corpora/uv-docs-ingested/eval/dev.jsonl",
+        root / "eval/corpora/uv-docs-ingested/eval/release.jsonl",
+    ]
+    longest = 0
+    for path in sets:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                longest = max(longest, len(query_terms(json.loads(line)["query"])))
+    for line in (root / "eval/tasks.jsonl").read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            longest = max(longest, len(query_terms(json.loads(line)["prompt"])))
+    assert longest < MAX_QUERY_TERMS, (
+        f"the longest measured query is {longest} terms against a bound of "
+        f"{MAX_QUERY_TERMS}; the bound now cuts a judged question"
+    )
 
 
 def test_the_harness_and_the_product_share_one_list() -> None:
