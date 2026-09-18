@@ -202,6 +202,28 @@ class ChunkingConfig(_Section):
         )
 
 
+BUILTIN_PARSER_IDS: Final = ("markdown", "docling", "pandoc", "pdf")
+"""The parser ids the core provides, declared rather than imported (roadmap 6.18).
+
+:meth:`IngestConfig._connectors_are_not_parsers` needs these four *names* to
+catch an operator who copied spec 05 §2's `connectors = ["markdown", "html",
+"pdf"]`. It used to read them from `mycelium.ingest.registry.BUILTIN_PARSERS`,
+which costs **~446 ms and 126 module imports** — `registry` imports the four
+parser modules, importing anything under `mycelium.ingest` runs that package's
+eager `__init__`, and `mycelium.ingest.parsers.markdown` reaches
+`markdown_it` (63 modules of CommonMark parser). All of it, to read four
+dictionary keys, on the first `load_config` in any process that had not already
+paid for it (ADR-0128).
+
+Declared, so the names cost nothing and the check can stay. It is **two lists
+with one test** rather than one list with two readers, because the alternative
+inverts a dependency `config` deliberately keeps lazy in the other direction:
+`tests/test_config.py` fails if this tuple and the registry's mapping ever
+disagree, which is the moment a fifth built-in parser would otherwise slip past
+the check in silence.
+"""
+
+
 class IngestConfig(_Section):
     """`[ingest]` — which plugins compile a source, and two knobs that do not yet.
 
@@ -272,10 +294,12 @@ class IngestConfig(_Section):
         Protocols. This project honours the split (ADR-0032), so the old shape is
         refused *by name* rather than accepted into a resolution failure three
         commands later.
-        """
-        from mycelium.ingest.registry import BUILTIN_PARSERS
 
-        confused = sorted(set(self.connectors) & set(BUILTIN_PARSERS))
+        Reads :data:`BUILTIN_PARSER_IDS` rather than the registry's own mapping:
+        the names are four strings and the mapping costs a 126-module import to
+        reach (roadmap 6.18, ADR-0128).
+        """
+        confused = sorted(set(self.connectors) & set(BUILTIN_PARSER_IDS))
         if confused:
             msg = (
                 f"[ingest] connectors names parser(s) {confused}; parsers are pinned by "
@@ -689,10 +713,18 @@ class MyceliumConfig(BaseModel):
     """A factory, not an instance, and the difference is an import cycle.
 
     A section instantiated in this class body runs its validators while
-    `mycelium.config` is still executing — and `[ingest]`'s validator asks
-    `mycelium.ingest.registry` which plugin ids exist, which reaches
-    `mycelium.build`, which imports this module. Deferring construction to
-    instantiation breaks the loop, and by then nothing is half-imported."""
+    `mycelium.config` is still executing, so any validator that imports a
+    sibling package can close a loop back onto this half-built module.
+    Deferring construction to instantiation breaks it, and by then nothing is
+    half-imported.
+
+    **The specific chain this was written for no longer runs** (roadmap 6.18):
+    `[ingest]`'s validator asked `mycelium.ingest.registry` which plugin ids
+    exist, which reached `mycelium.build`, which imports this module. It now
+    reads :data:`BUILTIN_PARSER_IDS` and imports nothing. The factory stays
+    because the hazard is structural rather than about that one chain — the next
+    validator to need a sibling would meet it again — and because a section's
+    construction time is not something to change for tidiness."""
 
     chunking: ChunkingConfig = ChunkingConfig()
     embedding: EmbeddingConfig = EmbeddingConfig()

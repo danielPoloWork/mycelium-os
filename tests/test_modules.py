@@ -24,6 +24,9 @@ created a cycle and swallowed the evidence; both are now impossible.
 """
 
 import importlib
+import subprocess
+import sys
+from importlib.metadata import EntryPoints, entry_points
 from pathlib import Path
 
 import pytest
@@ -34,6 +37,7 @@ from mycelium.modules import (
     MODULE_ENTRY_POINT_GROUP,
     MODULE_SURFACE,
     ModuleError,
+    forget_installed,
     installed_ids,
     load_module,
     mount,
@@ -110,6 +114,99 @@ def test_the_installed_module_is_discovered_without_being_imported() -> None:
     validate a name for free."""
     assert INSTALLED in installed_ids()
     assert installed_ids() == tuple(sorted(installed_ids()))
+
+
+# ---------------------------------------------------------------------------
+# The entry-point scan is cached, and the cache has a lifetime (roadmap 6.18)
+# ---------------------------------------------------------------------------
+
+
+def test_the_environment_is_scanned_once_per_process(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fix NFR-2 needed: `entry_points()` re-reads every installed
+    distribution's metadata, measured at 259 ms against a 150 ms budget for an
+    entire tool call, and `load_config` called it every time (ADR-0128).
+
+    Counted rather than timed. A millisecond assertion on a shared runner is a
+    flake; the mechanism — one scan, however many lookups — is exact.
+    """
+    forget_installed()
+    scans = 0
+
+    def counted(*, group: str) -> EntryPoints:
+        nonlocal scans
+        scans += 1
+        return entry_points(group=group)
+
+    monkeypatch.setattr("mycelium.modules.entry_points", counted)
+    try:
+        first = installed_ids()
+        for _ in range(20):
+            installed_ids()
+        statuses()
+        assert scans == 1
+        assert installed_ids() == first
+    finally:
+        forget_installed()
+
+
+def test_forgetting_the_scan_makes_the_next_lookup_read_the_environment_again(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The escape hatch that keeps the cache honest rather than merely fast.
+
+    A cache nothing can drop would make the module table a fact about when the
+    process started, with no way for a caller that *has* changed the environment
+    to say so.
+    """
+    forget_installed()
+    scans = 0
+
+    def counted(*, group: str) -> EntryPoints:
+        nonlocal scans
+        scans += 1
+        return entry_points(group=group)
+
+    monkeypatch.setattr("mycelium.modules.entry_points", counted)
+    try:
+        installed_ids()
+        installed_ids()
+        assert scans == 1
+        forget_installed()
+        installed_ids()
+        assert scans == 2
+    finally:
+        forget_installed()
+
+
+def test_the_cached_scan_cannot_be_corrupted_by_a_caller() -> None:
+    """One shared mapping needs one guard: before the cache each call built its
+    own dict, so a caller mutating the result hurt nobody but itself."""
+    from mycelium.modules import _points
+
+    with pytest.raises(TypeError):
+        _points()["intruder"] = object()  # type: ignore[index]
+    assert "intruder" not in installed_ids()
+
+
+def test_a_fresh_process_rescans_so_doctor_always_reports_the_truth() -> None:
+    """The reason a process-lifetime cache is sound: the surface whose whole job
+    is to report this environment runs as its own process every time, so it
+    cannot observe the cache at all (ADR-0128)."""
+    probe = (
+        "import sys; sys.path.insert(0, 'src');"
+        "from mycelium import modules;"
+        "print(modules._installed is None, modules.installed_ids())"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).parent.parent,
+    )
+    unscanned, ids = result.stdout.strip().split(" ", 1)
+    assert unscanned == "True"  # a new interpreter starts with no scan behind it
+    assert INSTALLED in ids
 
 
 def test_loading_an_unknown_module_names_the_group_and_what_is_installed() -> None:
