@@ -493,6 +493,18 @@ def _check_corpora(record: Mapping[str, Any], notes: list[str]) -> list[str]:
             notes.append(f"{label}: not built here, so its fingerprint was not compared")
             continue
         fingerprint = corpus_fingerprint_of(root)
+        if not fingerprint.content:
+            # A store this build cannot read fingerprints as empty, and an empty
+            # fingerprint matches nothing — so without this branch a *stale store*
+            # was reported as a *changed corpus*, which sends the reader to
+            # `--record` and the one machine that holds the embedding model, for a
+            # problem whose actual remedy is `mycelium build`. Found the first time
+            # the store version moved after this check was written (roadmap 6.19).
+            notes.append(
+                f"{label}: built by another store version and not read, so its fingerprint "
+                "was not compared; `mycelium build` rebuilds it (D-016)"
+            )
+            continue
         if fingerprint.chunks != entry.get("chunks_digest"):
             notes.append(f"{label}: chunk boundaries moved since the verdict was recorded")
         if fingerprint.content == entry.get("content_digest"):

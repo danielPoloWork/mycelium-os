@@ -274,6 +274,30 @@ def test_an_unbuilt_corpus_says_it_was_not_compared(
     assert any("not built here" in note for note in notes)
 
 
+def test_a_corpus_built_by_another_store_version_is_not_a_changed_corpus(
+    committed: dict[str, Any], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A store this build cannot open fingerprints as empty, and empty matches
+    nothing — so without the distinction a *stale store* was reported as a *changed
+    corpus*, which sends the reader to `--record` and the one machine holding the
+    embedding model, for a problem `mycelium build` fixes.
+
+    Found the first time the store version moved after this check was written
+    (roadmap 6.19, ADR-0132): the bump to v7 made every corpus on disk unreadable
+    at once, and the gate said all three had changed.
+    """
+    built = tmp_path / "corpus"
+    (built / STORE_DIRNAME).mkdir(parents=True)
+    (built / STORE_DIRNAME / STORE_FILENAME).write_bytes(b"")
+    monkeypatch.setattr(g2, "CORPORA", (("uv", built),))  # 'uv' is dated: it *would* fail
+    monkeypatch.setattr(g2, "corpus_fingerprint_of", lambda root: _Fingerprint("", ""))
+
+    notes: list[str] = []
+    assert g2._check_corpora(committed, notes) == []
+    assert any("another store version" in note for note in notes)
+    assert any("mycelium build" in note for note in notes)
+
+
 def compare(
     record: dict[str, Any], measured: list[g2.SetVerdict], notes: list[str] | None = None
 ) -> list[str]:

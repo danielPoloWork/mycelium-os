@@ -17,7 +17,7 @@ two stores built from the same sources hold byte-identical column values.
 import re
 from typing import Final
 
-SCHEMA_VERSION: Final = "mycelium/store/v6"
+SCHEMA_VERSION: Final = "mycelium/store/v7"
 """Bumped whenever the DDL below changes. v1 migration policy is rebuild (D-016):
 a *writer* that meets a foreign version recreates the file (the store is derived
 data, D-005 — ADR-0015); a *reader* refuses and points at `mycelium build`.
@@ -30,7 +30,18 @@ policy exists for; v4 → v5 split `heading_path` into `heading` and `ancestors`
 (roadmap 4.36, ADR-0063), for the same reason: the columns of an FTS5 table
 cannot be altered, and re-deriving them from `chunks` is what a rebuild is;
 v5 → v6 added `entities` (roadmap 5.4, ADR-0076), the one table spec 03 §8's
-layout never drew because the stage that fills it is optional."""
+layout never drew because the stage that fills it is optional.
+
+**v6 → v7 is the first bump that changes no DDL at all** (roadmap 6.19,
+[BUG-0031], ADR-0132). What moved is an invariant *between* two tables: a
+`chunks_fts` row now carries the `rowid` of the `chunks` row it indexes, which
+is what lets the writer address it in O(log n) instead of scanning the whole
+index for its `UNINDEXED` anchor. A store written before this holds rowids that
+mean nothing, so it has to be rebuilt — which is exactly what a version bump
+says. It is worth noticing that the statement below is byte-identical across the
+bump, and therefore that `fts_schema()` and gate G2's verdict are untouched: the
+two versions are deliberately different questions, and this is the case that
+proves it (ADR-0084)."""
 
 FTS_TABLE: Final = "chunks_fts"
 """The one table whose shape decides a *ranking* rather than a build.
@@ -155,6 +166,17 @@ CREATE INDEX IF NOT EXISTS chunks_digest ON chunks(chunk_digest);
 -- of its parent's: every word that matched the parent matched the child too, at
 -- the same weight. `heading` is the leaf — what this chunk is about — and
 -- `ancestors` is where it sits, and they are different evidence.
+--
+-- A row's `rowid` is its chunk's `rowid` in `chunks`, and that is a contract
+-- rather than a coincidence (roadmap 6.19, [BUG-0031], ADR-0132). `anchor` is
+-- UNINDEXED, so it is stored and nothing more — an FTS5 table has no ordinary
+-- indexes, and the only way to find a row by it is to read every row. Writing a
+-- corpus that way is quadratic in its size. The rowid is the one key FTS5 can
+-- seek on, so the writer carries the chunk's across and addresses the index by
+-- it; the schema cannot express the tie, which is why it is stated here and
+-- enforced by `SqliteStore.put_chunks` and a test. Note that none of this moves
+-- the statement itself: the fingerprint gate G2 is dated by reads the DDL, and
+-- this paragraph is a comment it normalises away.
 CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
     anchor UNINDEXED,
     text,

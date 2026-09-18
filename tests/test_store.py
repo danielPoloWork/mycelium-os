@@ -6,6 +6,7 @@ version is refused rather than reinterpreted."""
 
 import random
 import sqlite3
+import time
 from collections.abc import Iterator
 from datetime import UTC, date, datetime
 from pathlib import Path
@@ -564,6 +565,117 @@ def test_rebuilding_a_document_replaces_its_chunks(tmp_path: Path) -> None:
             store.put_chunks([make_chunk("a.md#y/0", "replacement text")])
         assert store.search_chunks("original") == ()
         assert len(store.search_chunks("replacement")) == 1
+
+
+# ---------------------------------------------------------------------------
+# The lexical index is addressed by rowid (roadmap 6.19, BUG-0031, ADR-0132)
+# ---------------------------------------------------------------------------
+
+
+def _fts_rowids(store: SqliteStore) -> dict[str, int]:
+    return {
+        row["anchor"]: row["rowid"]
+        for row in store._connection.execute(  # noqa: SLF001 - asserting the storage form
+            "SELECT rowid, anchor FROM chunks_fts"
+        )
+    }
+
+
+def _chunk_rowids(store: SqliteStore) -> dict[str, int]:
+    return {
+        row["anchor"]: row["rowid"]
+        for row in store._connection.execute(  # noqa: SLF001 - asserting the storage form
+            "SELECT rowid, anchor FROM chunks"
+        )
+    }
+
+
+def test_an_index_row_carries_the_rowid_of_the_chunk_it_indexes(store: SqliteStore) -> None:
+    """The invariant the schema cannot express, and the whole reason a write is
+    O(log n) rather than a scan of the index (BUG-0031)."""
+    seed(
+        store,
+        make_chunk("a.md#x/0", "alpha"),
+        make_chunk("a.md#x/1", "beta"),
+        make_chunk("a.md#y/0", "gamma"),
+    )
+    assert _fts_rowids(store) == _chunk_rowids(store)
+
+
+def test_rewriting_a_chunk_keeps_the_tie_and_loses_the_old_text(store: SqliteStore) -> None:
+    """`INSERT OR REPLACE` at the chunk's rowid replaced a delete-then-insert, so
+    the property that delete existed for is asserted directly: a rewritten chunk
+    leaves nothing of its old text in the index."""
+    seed(store, make_chunk("a.md#x/0", "original wording"))
+    before = _chunk_rowids(store)["a.md#x/0"]
+
+    with store.transaction():
+        store.put_chunks([make_chunk("a.md#x/0", "replacement wording")])
+
+    assert _chunk_rowids(store)["a.md#x/0"] == before  # the upsert keeps the rowid
+    assert _fts_rowids(store) == _chunk_rowids(store)
+    assert store.search_chunks("original") == ()
+    assert len(store.search_chunks("replacement")) == 1
+    assert len(_fts_rowids(store)) == 1  # replaced, not duplicated
+
+
+def test_the_index_passes_its_own_integrity_check_after_a_rewrite(store: SqliteStore) -> None:
+    """FTS5 can check itself, and a replace-by-rowid has to survive that — an index
+    that answers today and is internally inconsistent is a defect waiting."""
+    seed(store, make_chunk("a.md#x/0", "alpha beta"), make_chunk("a.md#x/1", "gamma"))
+    with store.transaction():
+        store.put_chunks([make_chunk("a.md#x/0", "delta epsilon")])
+    store._connection.execute(  # noqa: SLF001 - FTS5's own self-check
+        "INSERT INTO chunks_fts(chunks_fts) VALUES('integrity-check')"
+    )
+
+
+def test_deleting_a_document_clears_its_index_rows_and_leaves_the_others(
+    store: SqliteStore,
+) -> None:
+    """The document delete became one statement over a rowid subquery, which reads
+    `chunks` — so it has to run before the cascade takes those rows away."""
+    seed(store, make_chunk("a.md#x/0", "kept text"))
+    other = make_document(doc_id=OTHER_ID, path="b.md")
+    with store.transaction():
+        store.put_document(other)
+        store.put_chunks([make_chunk("b.md#x/0", "removed text", doc_id=OTHER_ID)])
+
+    with store.transaction():
+        store.delete_document(OTHER_ID)
+
+    assert store.search_chunks("removed") == ()
+    assert len(store.search_chunks("kept")) == 1
+    assert _fts_rowids(store) == _chunk_rowids(store)
+
+
+def test_writing_a_chunk_does_not_get_slower_as_the_store_fills(tmp_path: Path) -> None:
+    """BUG-0031 in one property: the cost of a write is not a function of what is
+    already stored. Asserted as a *ratio* rather than a wall-clock budget, because
+    the defect was quadratic — the late batch cost 25x the early one — and a factor
+    that survives a noisy CI runner is the only honest form of this check.
+    """
+    batch, batches = 400, 5
+    with SqliteStore.open(tmp_path) as store:
+        with store.transaction():
+            store.put_document(make_document())
+        elapsed: list[float] = []
+        for index in range(batches):
+            chunks = [
+                make_chunk(f"a.md#s{index}/{number}", f"alpha beta gamma delta {number} " * 8)
+                for number in range(batch)
+            ]
+            started = time.perf_counter()
+            with store.transaction():
+                store.put_chunks(chunks)
+            elapsed.append(time.perf_counter() - started)
+
+    first, last = elapsed[0], elapsed[-1]
+    assert last < first * 5, (
+        f"writing into a store holding {batch * (batches - 1)} chunks cost {last:.3f} s "
+        f"against {first:.3f} s into an empty one; the delete-by-anchor scan is back "
+        f"(BUG-0031). Batches: {[f'{item:.3f}' for item in elapsed]}"
+    )
 
 
 def test_concurrent_readers_see_committed_writes(tmp_path: Path) -> None:

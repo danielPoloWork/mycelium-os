@@ -163,3 +163,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0129](0129-bound-the-question-once-before-anything-reads-it.md) | Bound the question once, before anything reads it | Accepted |
 | [0130](0130-measure-the-vector-path-and-retire-three-disagreeing-extrapolations.md) | Measure the vector path, and retire three disagreeing extrapolations | Accepted |
 | [0131](0131-bound-the-incumbents-read-and-publish-the-band-it-buys-evidence-along.md) | Bound the incumbent's read, and publish the band it buys evidence along | Accepted |
+| [0132](0132-address-the-lexical-index-by-rowid-and-profile-what-is-left.md) | Address the lexical index by rowid, and profile what is left before touching it | Accepted |

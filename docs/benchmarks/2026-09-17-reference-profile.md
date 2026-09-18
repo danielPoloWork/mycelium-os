@@ -205,6 +205,16 @@ thousand chunks into an empty store take 2.7 s; the thousand after nine thousand
 the compiler is about nine hours. None of this is the machine — file opens are ~1.3 ms, under
 one percent of the build. Roadmap 6.19 owns the fix and the profiling of what remains.
 
+> **Answered on 2026-09-19** ([the quadratic in the lexical
+> index](2026-09-19-the-quadratic-in-the-lexical-index.md), ADR-0132). The fix is in: the
+> 1 000-document cold build is **91.7 s** and the cost per document is **flat** — 93 ms at 250
+> and 92 at 1 000, against 134 and 194 here — so the figures above are superseded and the build
+> is linear in the corpus. The budget is still missed, by 1.5×. **The last sentence above is the
+> one that did not survive**: profiling what remains found that it *is* largely the machine.
+> 2 995 content-addressed blob writes at 26.4 ms each are ~79 s of the 91.7 s, and a plain 4 KiB
+> write costs 12.6 ms here — file *opens* being cheap said nothing about what a write costs on a
+> machine with a scanner in that path. Filed as 6.30 and 6.31.
+
 **4. The incremental floor is a decision, not a bug.** `_plan` reads and digests every file
 on every build — *"content truth comes from the digest, never from metadata"* — and calls
 that read *"the incremental floor"*. The floor is linear in the corpus and crosses NFR-3's

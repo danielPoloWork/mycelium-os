@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **Writing a chunk no longer scans the whole lexical index, so a cold build is linear in the
+  corpus** ([BUG-0031](docs/bugs/2026/09/BUG-0031-writing-a-chunk-scans-the-whole-lexical-index.md),
+  roadmap 6.19, ADR-0132). A `chunks_fts` row now carries the `rowid` of the `chunks` row it
+  indexes, so the writer addresses it by the one key FTS5 can seek on instead of deleting by an
+  `UNINDEXED` anchor — which SQLite answered with a full scan, once per chunk. The 1 000-document
+  cold build goes **193.5 s to 91.7 s**, and the cost per document stops growing: **93 ms at 250
+  documents and 92 at 1 000**, against 134 and 194 before. Deleting a twenty-chunk document from a
+  twenty-thousand-chunk store goes from 339 ms to 1 ms. **The store schema version bumps to
+  `mycelium/store/v7`**, so an existing `.mycelium/` is rebuilt on the next build (D-016); no DDL
+  changed, so gate G2's recorded verdict is untouched. Report:
+  [`docs/benchmarks/2026-09-19-the-quadratic-in-the-lexical-index.md`](docs/benchmarks/2026-09-19-the-quadratic-in-the-lexical-index.md).
+
 - **The agent-task suite's grep baseline reads a bounded window, not the first matching file
   whole** (roadmap 6.22, ADR-0131). One read now costs at most the caller's own
   `budget_tokens` and the loop opens the five files `MAX_GREP_FILES` has always claimed; a

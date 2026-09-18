@@ -1,0 +1,578 @@
+{
+  "budgets": {
+    "cold_build_1k_s": 60,
+    "incremental_p95_ms": 2000,
+    "reference_chunks": 100000,
+    "search_p95_ms": 150
+  },
+  "build_profile": {
+    "by_cumulative_time": [
+      {
+        "calls": 1,
+        "cumtime_s": 140.045,
+        "function": "orchestrator.py:738(build)",
+        "tottime_s": 0.019,
+        "tottime_share": 0.0
+      },
+      {
+        "calls": 1,
+        "cumtime_s": 139.994,
+        "function": "orchestrator.py:932(_build_locked)",
+        "tottime_s": 0.142,
+        "tottime_share": 0.1
+      },
+      {
+        "calls": 2995,
+        "cumtime_s": 62.109,
+        "function": "cas.py:44(cas_put)",
+        "tottime_s": 0.05,
+        "tottime_share": 0.0
+      },
+      {
+        "calls": 2997,
+        "cumtime_s": 58.669,
+        "function": "layout.py:53(atomic_write_text)",
+        "tottime_s": 0.027,
+        "tottime_share": 0.0
+      },
+      {
+        "calls": 2997,
+        "cumtime_s": 58.591,
+        "function": "layout.py:58(atomic_write_bytes)",
+        "tottime_s": 0.093,
+        "tottime_share": 0.1
+      },
+      {
+        "calls": 998,
+        "cumtime_s": 49.131,
+        "function": "orchestrator.py:534(_stage_parse)",
+        "tottime_s": 0.027,
+        "tottime_share": 0.0
+      },
+      {
+        "calls": 998,
+        "cumtime_s": 36.318,
+        "function": "sqlite.py:655(put_chunks)",
+        "tottime_s": 0.116,
+        "tottime_share": 0.1
+      },
+      {
+        "calls": 19992,
+        "cumtime_s": 31.796,
+        "function": "sqlite.py:297(_stemmed)",
+        "tottime_s": 0.074,
+        "tottime_share": 0.1
+      },
+      {
+        "calls": 19992,
+        "cumtime_s": 31.295,
+        "function": "stemming.py:244(stem_text)",
+        "tottime_s": 0.589,
+        "tottime_share": 0.4
+      },
+      {
+        "calls": 660677,
+        "cumtime_s": 30.464,
+        "function": "stemming.py:230(stem)",
+        "tottime_s": 2.531,
+        "tottime_share": 1.8
+      },
+      {
+        "calls": 2998,
+        "cumtime_s": 22.899,
+        "function": "~:0(<built-in method nt.close>)",
+        "tottime_s": 22.899,
+        "tottime_share": 16.5
+      },
+      {
+        "calls": 998,
+        "cumtime_s": 21.936,
+        "function": "adapter.py:444(parse_markdown)",
+        "tottime_s": 0.053,
+        "tottime_share": 0.0
+      },
+      {
+        "calls": 998,
+        "cumtime_s": 21.041,
+        "function": "orchestrator.py:558(_stage_chunk)",
+        "tottime_s": 0.022,
+        "tottime_share": 0.0
+      },
+      {
+        "calls": 2997,
+        "cumtime_s": 20.753,
+        "function": "~:0(<built-in method nt.replace>)",
+        "tottime_s": 20.73,
+        "tottime_share": 14.9
+      },
+      {
+        "calls": 512944,
+        "cumtime_s": 12.118,
+        "function": "stemming.py:187(_step2)",
+        "tottime_s": 4.32,
+        "tottime_share": 3.1
+      },
+      {
+        "calls": 998,
+        "cumtime_s": 11.877,
+        "function": "main.py:252(parse)",
+        "tottime_s": 0.007,
+        "tottime_share": 0.0
+      },
+      {
+        "calls": 998,
+        "cumtime_s": 11.854,
+        "function": "parser_core.py:43(process)",
+        "tottime_s": 0.009,
+        "tottime_share": 0.0
+      },
+      {
+        "calls": 2998,
+        "cumtime_s": 11.318,
+        "function": "~:0(<built-in method nt.open>)",
+        "tottime_s": 11.312,
+        "tottime_share": 8.1
+      },
+      {
+        "calls": 14272456,
+        "cumtime_s": 10.344,
+        "function": "stemming.py:135(_replace)",
+        "tottime_s": 5.815,
+        "tottime_share": 4.2
+      },
+      {
+        "calls": 28404071,
+        "cumtime_s": 8.77,
+        "function": "~:0(<method 'endswith' of 'str' objects>)",
+        "tottime_s": 8.77,
+        "tottime_share": 6.3
+      },
+      {
+        "calls": 998,
+        "cumtime_s": 5.933,
+        "function": "inline.py:4(inline)",
+        "tottime_s": 0.054,
+        "tottime_share": 0.0
+      },
+      {
+        "calls": 25168,
+        "cumtime_s": 5.879,
+        "function": "parser_inline.py:206(parse)",
+        "tottime_s": 0.145,
+        "tottime_share": 0.1
+      },
+      {
+        "calls": 512944,
+        "cumtime_s": 5.778,
+        "function": "stemming.py:203(_step4)",
+        "tottime_s": 2.738,
+        "tottime_share": 2.0
+      },
+      {
+        "calls": 998,
+        "cumtime_s": 5.566,
+        "function": "block.py:5(block)",
+        "tottime_s": 0.007,
+        "tottime_share": 0.0
+      },
+      {
+        "calls": 998,
+        "cumtime_s": 5.559,
+        "function": "parser_block.py:105(parse)",
+        "tottime_s": 0.006,
+        "tottime_share": 0.0
+      }
+    ],
+    "by_self_time": [
+      {
+        "calls": 2998,
+        "cumtime_s": 22.899,
+        "function": "~:0(<built-in method nt.close>)",
+        "tottime_s": 22.899,
+        "tottime_share": 16.5
+      },
+      {
+        "calls": 2997,
+        "cumtime_s": 20.753,
+        "function": "~:0(<built-in method nt.replace>)",
+        "tottime_s": 20.73,
+        "tottime_share": 14.9
+      },
+      {
+        "calls": 2998,
+        "cumtime_s": 11.318,
+        "function": "~:0(<built-in method nt.open>)",
+        "tottime_s": 11.312,
+        "tottime_share": 8.1
+      },
+      {
+        "calls": 28404071,
+        "cumtime_s": 8.77,
+        "function": "~:0(<method 'endswith' of 'str' objects>)",
+        "tottime_s": 8.77,
+        "tottime_share": 6.3
+      },
+      {
+        "calls": 14272456,
+        "cumtime_s": 10.344,
+        "function": "stemming.py:135(_replace)",
+        "tottime_s": 5.815,
+        "tottime_share": 4.2
+      },
+      {
+        "calls": 22524,
+        "cumtime_s": 4.424,
+        "function": "~:0(<method 'execute' of 'sqlite3.Connection' objects>)",
+        "tottime_s": 4.424,
+        "tottime_share": 3.2
+      },
+      {
+        "calls": 512944,
+        "cumtime_s": 12.118,
+        "function": "stemming.py:187(_step2)",
+        "tottime_s": 4.32,
+        "tottime_share": 3.1
+      },
+      {
+        "calls": 1014,
+        "cumtime_s": 2.778,
+        "function": "~:0(<built-in method nt.utime>)",
+        "tottime_s": 2.775,
+        "tottime_share": 2.0
+      },
+      {
+        "calls": 512944,
+        "cumtime_s": 5.778,
+        "function": "stemming.py:203(_step4)",
+        "tottime_s": 2.738,
+        "tottime_share": 2.0
+      },
+      {
+        "calls": 2997,
+        "cumtime_s": 2.649,
+        "function": "~:0(<built-in method nt.fsync>)",
+        "tottime_s": 2.649,
+        "tottime_share": 1.9
+      },
+      {
+        "calls": 660677,
+        "cumtime_s": 30.464,
+        "function": "stemming.py:230(stem)",
+        "tottime_s": 2.531,
+        "tottime_share": 1.8
+      },
+      {
+        "calls": 1291372,
+        "cumtime_s": 2.828,
+        "function": "identity.py:104(_canonical)",
+        "tottime_s": 2.191,
+        "tottime_share": 1.6
+      },
+      {
+        "calls": 3000,
+        "cumtime_s": 1.913,
+        "function": "~:0(<built-in method nt.mkdir>)",
+        "tottime_s": 1.906,
+        "tottime_share": 1.4
+      },
+      {
+        "calls": 13711,
+        "cumtime_s": 2.471,
+        "function": "~:0(<built-in method nt.stat>)",
+        "tottime_s": 1.777,
+        "tottime_share": 1.3
+      },
+      {
+        "calls": 512944,
+        "cumtime_s": 4.102,
+        "function": "stemming.py:195(_step3)",
+        "tottime_s": 1.556,
+        "tottime_share": 1.1
+      },
+      {
+        "calls": 1006,
+        "cumtime_s": 1.406,
+        "function": "~:0(<built-in method _io.open>)",
+        "tottime_s": 1.404,
+        "tottime_share": 1.0
+      },
+      {
+        "calls": 33852,
+        "cumtime_s": 0.983,
+        "function": "~:0(<method 'findall' of 're.Pattern' objects>)",
+        "tottime_s": 0.983,
+        "tottime_share": 0.7
+      },
+      {
+        "calls": 36437,
+        "cumtime_s": 0.927,
+        "function": "encoder.py:205(iterencode)",
+        "tottime_s": 0.927,
+        "tottime_share": 0.7
+      },
+      {
+        "calls": 3268780,
+        "cumtime_s": 0.88,
+        "function": "~:0(<built-in method builtins.isinstance>)",
+        "tottime_s": 0.855,
+        "tottime_share": 0.6
+      },
+      {
+        "calls": 998,
+        "cumtime_s": 0.916,
+        "function": "state_block.py:15(__init__)",
+        "tottime_s": 0.801,
+        "tottime_share": 0.6
+      },
+      {
+        "calls": 27181,
+        "cumtime_s": 5.114,
+        "function": "parser_inline.py:174(tokenize)",
+        "tottime_s": 0.771,
+        "tottime_share": 0.6
+      },
+      {
+        "calls": 265146,
+        "cumtime_s": 1.173,
+        "function": "stemming.py:103(_measure)",
+        "tottime_s": 0.764,
+        "tottime_share": 0.5
+      },
+      {
+        "calls": 512944,
+        "cumtime_s": 2.004,
+        "function": "stemming.py:157(_step1b)",
+        "tottime_s": 0.74,
+        "tottime_share": 0.5
+      },
+      {
+        "calls": 79995,
+        "cumtime_s": 1.224,
+        "function": "~:0(<method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects>)",
+        "tottime_s": 0.731,
+        "tottime_share": 0.5
+      },
+      {
+        "calls": 512944,
+        "cumtime_s": 1.373,
+        "function": "stemming.py:145(_step1a)",
+        "tottime_s": 0.722,
+        "tottime_share": 0.5
+      }
+    ],
+    "documents": 1000,
+    "note": "under cProfile, so the total is inflated against the timed run; the shares are what this is for",
+    "profiled_seconds": 139.17
+  },
+  "commit": "de0292298b4828f8900b22acb831ac4457cfbfa6",
+  "corpus": {
+    "generator": "tools/benchmark_reference_profile.py",
+    "kind": "generated",
+    "profile": "lexical (the shipped default, ADR-0017); compiled with the embedder off, and no vectors were written",
+    "queries": 39,
+    "query_sets": [
+      "eval/release.jsonl",
+      "eval/dev.jsonl"
+    ],
+    "seed": 20260917,
+    "sources": [
+      "eval/corpora/uv-docs/knowledge",
+      "docs"
+    ]
+  },
+  "generated_at": "2026-09-18T19:20:03.604389Z",
+  "hardware": {
+    "logical_cpus": 20,
+    "machine": "AMD64",
+    "memory_gib": 31.7,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+  },
+  "scales": [
+    {
+      "chunks": 1249,
+      "documents": 250,
+      "measurements": [
+        {
+          "budget": null,
+          "chunks": 1249,
+          "documents": 250,
+          "documents_per_second": 10.8,
+          "max": 23.241,
+          "mean": 23.241,
+          "min": 23.241,
+          "ms_per_document": 93.0,
+          "name": "cold build, 250 documents",
+          "p50": 23.241,
+          "p95": 23.241,
+          "samples": 1,
+          "stage_share": {
+            "compile": 79.7,
+            "discover": 3.3,
+            "graph": 0.5,
+            "plan": 2.9,
+            "store": 13.4,
+            "symbols": 0.1
+          },
+          "stages_ms": {
+            "compile": 18203,
+            "discover": 750,
+            "graph": 110,
+            "plan": 656,
+            "store": 3061,
+            "symbols": 31,
+            "total": 22843
+          },
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "budget": 2000,
+          "corpus_documents": 250,
+          "max": 1191.106,
+          "mean": 1105.356,
+          "min": 1053.703,
+          "name": "incremental rebuild, one document edited",
+          "p50": 1095.171,
+          "p95": 1155.349,
+          "samples": 20,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": 150,
+          "max": 22.701,
+          "mean": 11.111,
+          "min": 0.346,
+          "name": "search, warm store (in-process)",
+          "p50": 13.292,
+          "p95": 20.222,
+          "samples": 39,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": 150,
+          "max": 37.443,
+          "mean": 26.277,
+          "min": 12.672,
+          "name": "mycelium_search, end to end (MCP handler)",
+          "p50": 28.536,
+          "p95": 35.829,
+          "samples": 39,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": null,
+          "files": 250,
+          "max": 1.8,
+          "mean": 1.067,
+          "mean_bytes": 3741,
+          "min": 0.907,
+          "name": "read one small Markdown file, warm",
+          "p50": 1.009,
+          "p95": 1.346,
+          "samples": 250,
+          "unit": "ms",
+          "within_budget": null
+        }
+      ]
+    },
+    {
+      "chunks": 4929,
+      "documents": 998,
+      "measurements": [
+        {
+          "budget": 60,
+          "chunks": 4929,
+          "documents": 998,
+          "documents_per_second": 10.9,
+          "max": 91.716,
+          "mean": 91.716,
+          "min": 91.716,
+          "ms_per_document": 91.9,
+          "name": "cold build, 1000 documents",
+          "p50": 91.716,
+          "p95": 91.716,
+          "samples": 1,
+          "stage_share": {
+            "compile": 81.7,
+            "discover": 0.4,
+            "graph": 0.5,
+            "plan": 3.1,
+            "store": 14.1,
+            "symbols": 0.2
+          },
+          "stages_ms": {
+            "compile": 74421,
+            "discover": 328,
+            "graph": 500,
+            "plan": 2781,
+            "store": 12812,
+            "symbols": 156,
+            "total": 91125
+          },
+          "unit": "s",
+          "within_budget": false
+        },
+        {
+          "budget": 2000,
+          "corpus_documents": 1000,
+          "max": 3986.864,
+          "mean": 3760.169,
+          "min": 3625.233,
+          "name": "incremental rebuild, one document edited",
+          "p50": 3723.844,
+          "p95": 3944.588,
+          "samples": 20,
+          "unit": "ms",
+          "within_budget": false
+        },
+        {
+          "budget": 150,
+          "max": 75.824,
+          "mean": 33.286,
+          "min": 0.72,
+          "name": "search, warm store (in-process)",
+          "p50": 38.009,
+          "p95": 64.609,
+          "samples": 39,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": 150,
+          "max": 85.94,
+          "mean": 46.705,
+          "min": 12.811,
+          "name": "mycelium_search, end to end (MCP handler)",
+          "p50": 51.645,
+          "p95": 76.299,
+          "samples": 39,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": null,
+          "files": 400,
+          "max": 1.899,
+          "mean": 1.192,
+          "mean_bytes": 3823,
+          "min": 0.975,
+          "name": "read one small Markdown file, warm",
+          "p50": 1.157,
+          "p95": 1.424,
+          "samples": 400,
+          "unit": "ms",
+          "within_budget": null
+        }
+      ]
+    }
+  ],
+  "schema": "mycelium/benchmark/v0",
+  "toolchain": {
+    "mycelium": "0.5.0",
+    "python": "3.12.10"
+  }
+}

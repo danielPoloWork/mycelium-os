@@ -1,11 +1,12 @@
 ---
 id: BUG-0031
 title: writing a chunk scans the whole lexical index, so a build is quadratic in corpus size
-status: confirmed
+status: fixed
 severity: high
 reporter: internal
 discovered: 2026-09-17
 affected-versions: ">=0.1.0"
+fixed-in: "0.6.0"
 ---
 
 # BUG-0031: writing a chunk scans the whole lexical index, so a build is quadratic in corpus size
@@ -80,22 +81,45 @@ prevent.
 
 ## Fix
 
-Not fixed here — roadmap 6.19 owns it, and the choice wants an argument rather than a
-patch. The candidates, cheapest first: make `chunks_fts` an **external-content** table over
-`chunks` so deletion is by `rowid`; or keep the content table and give the FTS row the same
-`rowid` as its `chunks` row, deleting by `rowid` (indexed) instead of by `anchor`; or ask
-`chunks` — an indexed lookup — whether the anchor exists and issue the delete only then,
-which fixes the common case and leaves the rewrite case as it is. The first two change the
-lexical schema, which bumps the store version *and* moves `retrieval_identity()`, so gate
-G2's verdict has to be re-recorded with them (ADR-0068, ADR-0084); the third does not touch
-the schema at all.
+**Fixed at roadmap 6.19 (ADR-0132), by the second candidate** — and one thing this record
+said about it was wrong, which is worth keeping rather than editing away.
+
+A `chunks_fts` row now carries the `rowid` of the `chunks` row it indexes. The upsert hands
+that rowid back (`RETURNING rowid`), the index row is written at it, and `INSERT OR REPLACE`
+does in one seek what a full scan and an insert did in two statements — so the delete is
+**gone** rather than made cheap. `delete_document` became a single statement over a rowid
+subquery instead of a per-anchor loop.
+
+Measured on the machine of record: six batches of a thousand chunks cost 14.70 s by anchor
+and **0.85 s** by rowid, and the second number is flat where the first grows with everything
+already stored. Deleting a twenty-chunk document from a twenty-thousand-chunk store went
+from 339 ms to **1 ms**. The 1 000-document cold build went from 193.5 s to **91.7 s**, and
+its throughput stopped degrading: 93 ms per document at 250 and 92 at 1 000, against 134 and
+194 before.
+
+**The correction.** The candidate list above says the first two options move
+`retrieval_identity()` and stale gate G2's verdict. That is true of the first and **not of
+the second**: `retrieval_identity()` digests the `chunks_fts` *statement*, not the store's
+schema version (ADR-0084 separated exactly these two), and aligning the rowids changes no
+DDL at all. Verified rather than assumed — the digest is byte-identical across the fix,
+`sha256:44bb6f6c…`. The store version still bumps, v6 → v7, because a store written earlier
+holds rowids that mean nothing and has to be rebuilt; that is the first bump in this
+project's history that changes no schema, and it is why the two versions are separate
+questions.
+
+The third candidate — ask `chunks` whether the anchor exists, and delete only then — would
+have fixed the cold build and left `delete_document` quadratic, which is the path every
+*rebuild* takes.
 
 ## References
 
 - `src/mycelium/store/sqlite.py` — `put_chunks`; `src/mycelium/store/schema.py` — the
   `chunks_fts` DDL.
 - `docs/benchmarks/2026-09-17-reference-profile.md` — where it was found, and what it costs.
-- [ADR-0120](../../../adr/0120-build-the-reference-profile-publish-what-it-says-and-gate-the-instrument-not-the-verdict.md);
+- `docs/benchmarks/2026-09-19-the-quadratic-in-the-lexical-index.md` — the fix measured, and
+  the profile of what the build spends its time on now that this is gone.
+- [ADR-0120](../../../adr/0120-build-the-reference-profile-publish-what-it-says-and-gate-the-instrument-not-the-verdict.md),
+  [ADR-0132](../../../adr/0132-address-the-lexical-index-by-rowid-and-profile-what-is-left.md);
   roadmap 6.4, 6.19.
 - Sibling in kind, not in cause: [BUG-0028](BUG-0028-the-private-key-secret-rule-scans-quadratically.md),
   the other quadratic this project has found.
