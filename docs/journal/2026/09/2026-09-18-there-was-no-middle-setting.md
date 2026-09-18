@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.9 — decide how strict a test file has to be, and type-check
   `tests/` accordingly.
-- **PR:** `feat/type-check-tests`, following #158.
+- **PR:** #159 (`feat/type-check-tests`). Follows #158.
 - **Milestone 6:** 6.9 delivered. Open: 6.8 (the authoring half), 6.10, 6.12–6.15, 6.17–6.23.
 - **Decision it records:** [ADR-0124](../../../adr/0124-check-the-tests-like-the-source-because-there-was-no-middle-setting.md).
 
