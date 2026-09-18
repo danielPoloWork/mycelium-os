@@ -162,3 +162,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0128](0128-cache-the-environment-not-the-repository-and-declare-the-names-instead-of-importing-them.md) | Cache the environment, not the repository — and declare the names instead of importing them | Accepted |
 | [0129](0129-bound-the-question-once-before-anything-reads-it.md) | Bound the question once, before anything reads it | Accepted |
 | [0130](0130-measure-the-vector-path-and-retire-three-disagreeing-extrapolations.md) | Measure the vector path, and retire three disagreeing extrapolations | Accepted |
+| [0131](0131-bound-the-incumbents-read-and-publish-the-band-it-buys-evidence-along.md) | Bound the incumbent's read, and publish the band it buys evidence along | Accepted |

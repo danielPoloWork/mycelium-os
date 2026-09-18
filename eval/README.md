@@ -574,13 +574,28 @@ each task runs through both. Because a model in the loop needs a key, a budget, 
 network — none of which belongs in an offline gate — what is measured is the *substrate*
 each strategy hands a model: did the required evidence arrive, and what did it cost?
 
-| | evidence found | mean tokens | p95 |
-|---|---|---|---|
-| mycelium | 64 % | 2 165 | 13 ms |
-| grep | 27 % | 4 333 | 129 ms |
+Measured on this repository's corpus at 212 documents (ADR-0131, and the
+[report](../docs/benchmarks/2026-09-18-the-incumbent-reads-a-window.md) it cites):
 
-The gap in tokens is the point: a grep hit is a line number, so the loop reads whole files,
-and whole files are what the model has to be handed.
+| | evidence found | mean tokens | median |
+|---|---|---|---|
+| mycelium | 16 / 22 | 2 735 | 2 684 |
+| grep | 14 / 22 | 15 268 | 15 179 |
+
+**The incumbent's model has two numbers in it, and both are measured rather than asserted.**
+A grep hit is a line number, so the loop *reads* — and one read costs at most what one search
+may, because `budget_tokens` is what a caller will spend on one step of context-gathering and
+a grep loop has no packing to spend it once. A document that fits is read whole; one that does
+not is read around the hit; a section larger than the window is read and carries no evidence,
+because seeing part of a passage is not being handed it. The loop opens `MAX_GREP_FILES` files.
+`python tools/measure_agent_task_band.py .` runs the comparison across the band both constants
+trace: each extra file the incumbent opens costs ~3 800 tokens and returns ~3 tasks, so at
+*equal cost* its first read brings back 1/22 against our 16/22, and at *comparable evidence* it
+pays 5.7× the context.
+
+Numbers from before 2026-09-18 are not comparable with these. ADR-0022's original 64 %/27 %
+was read off a denominator with four unanswerable tasks in it (fixed at 6.4, ADR-0120), and
+then off an incumbent that read one file on every task whatever its size (fixed at 6.22).
 
 **What this cannot tell you:** whether the model then answers correctly. Evidence reaching
 the context is necessary and not sufficient, and no number here should be quoted as a

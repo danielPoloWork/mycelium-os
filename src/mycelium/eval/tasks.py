@@ -16,16 +16,27 @@ the model, and what does that cost in tokens?
 
 - **Mycelium** issues one search and returns budgeted, cited passages.
 - **grep** does what an agent does without an index: scan for the task's terms,
-  then *read the matching files whole*, because a grep hit is a line number and
-  the model needs the surrounding document.
+  then *read* the files that matched, because a grep hit is a line number and the
+  model needs the surrounding document.
 
 That second sentence is the whole comparison. Both strategies usually *find* the
-evidence in a small corpus; what differs by an order of magnitude is how much
-text the model has to be handed to see it. Task success here means "the required
-evidence was present in what the agent received", which is necessary for the
-agent to succeed and not sufficient — the model still has to read it. Spec 04
-§7.4 calls for qualitative scoring pre-1.0 and a quantified gate at 1.0; this is
-the qualitative half made reproducible, and ADR-0022 records what it leaves out.
+evidence in a small corpus; what differs is how much text the model has to be
+handed to see it. Task success here means "the required evidence was present in
+what the agent received", which is necessary for the agent to succeed and not
+sufficient — the model still has to read it. Spec 04 §7.4 calls for qualitative
+scoring pre-1.0 and a quantified gate at 1.0; this is the qualitative half made
+reproducible, and ADR-0022 records what it leaves out.
+
+**A read is bounded, and that changed the measurement** (roadmap 6.22, ADR-0131).
+The loop used to read the first matching file *whole, whatever it cost*, and then
+stop because the budget was gone. On a corpus whose largest document had grown to
+88 000 tokens that produced a degenerate incumbent: one file on 22 of 22 tasks,
+93 % of its measured cost in that one file, and five-sixths of the loop its own
+constant describes never running. An agent does not read a file larger than its
+context — it reads a window around the hit, or it re-greps. So one read costs at
+most what one search may, the loop opens :data:`MAX_GREP_FILES` files, and the
+incumbent's cost is bounded by the model of the loop rather than by whichever
+document happened to match.
 
 **A required anchor that no longer exists is reported, never scored** (roadmap
 6.4, ADR-0120). A task's `requires` list is a judgement about the corpus, and the
@@ -53,6 +64,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from mycelium.chunking import estimate_tokens
 from mycelium.eval.retrievers import terms_of
 from mycelium.retrieval import search
+from mycelium.sdk.types import Chunk
 from mycelium.store import SqliteStore
 
 __all__ = [
@@ -84,6 +96,10 @@ MAX_GREP_FILES: Final = 5
 An agent does not read forty files; it reads the first few and re-greps. Five is
 generous to the baseline — the point is not to make grep look bad, it is to
 count what a reasonable loop actually costs.
+
+Until roadmap 6.22 this number was aspirational: the loop read the *first*
+matching file whole whatever it cost, which on this corpus meant one document on
+22 of 22 tasks and never a second (ADR-0131).
 """
 
 
@@ -224,14 +240,90 @@ def _mycelium_context(
     return anchors, tokens, len(documents)
 
 
+def _read_window(
+    chunks: Sequence[Chunk], patterns: Sequence[re.Pattern[str]], window: int
+) -> tuple[tuple[Chunk, ...], int]:
+    """One read of one document: what an agent gets back, and what it costs.
+
+    A small document is read whole, because an agent that has decided to open a
+    file does not page through four kilobytes. A document larger than the window
+    is read *around the hit* — grep handed over a line number, and the read tool
+    takes an offset — so the loop takes the best-matching section and grows
+    outward, preferring what follows the hit, until the next section would not
+    fit (roadmap 6.22, ADR-0131).
+
+    Sections rather than lines, and the rounding is stated rather than hidden:
+    the whole harness works in the store's rendered view of the corpus, so this
+    measures grep's cost in the same tokens as Mycelium's instead of charging it
+    for markup a model never sees. What it costs is fidelity at the window's
+    edge — a real read stops mid-section.
+
+    A section larger than the window is the case worth naming. The read is
+    truncated at the window and returns **no** section: the agent saw part of a
+    passage, which is not the same as being handed it, and scoring it as evidence
+    would credit grep for text nobody can point at. This corpus has five such
+    sections and four of them are in `ROADMAP.md`.
+    """
+    costs = [estimate_tokens(chunk.text) for chunk in chunks]
+    whole = sum(costs)
+    if whole <= window:
+        return tuple(chunks), whole
+
+    ranked = sorted(
+        range(len(chunks)),
+        key=lambda index: (
+            -sum(1 for pattern in patterns if pattern.search(chunks[index].text)),
+            index,
+        ),
+    )
+    centre = ranked[0]
+    if costs[centre] > window:
+        return (), window
+
+    taken = {centre}
+    spent = costs[centre]
+    after, before = centre + 1, centre - 1
+    while True:
+        # Forward first: a section's answer usually follows the term that found it.
+        nxt = next(
+            (
+                index
+                for index in (after, before)
+                if 0 <= index < len(chunks) and spent + costs[index] <= window
+            ),
+            None,
+        )
+        if nxt is None:
+            break
+        taken.add(nxt)
+        spent += costs[nxt]
+        if nxt == after:
+            after += 1
+        else:
+            before -= 1
+    return tuple(chunks[index] for index in sorted(taken)), spent
+
+
 def _grep_context(
-    store: SqliteStore, root: Path, task: AgentTask, budget: int
+    store: SqliteStore, task: AgentTask, budget: int, max_files: int
 ) -> tuple[set[str], int, int]:
-    """What a grep loop would hand the agent: whole files that matched a term.
+    """What a grep loop would hand the agent: a read of each file that matched.
 
     The read is the expensive half and the honest one. `grep` returns a line
     number, and a line number is not context — an agent that greps then reads is
     the loop this product exists to replace, so the loop is what gets measured.
+
+    **What one read costs is the caller's own budget** (roadmap 6.22). Mycelium
+    spends `budget_tokens` once, on passages it ranked; a grep loop spends it per
+    file it opens, because there is no packing and no ranking across files — and
+    it opens `max_files` of them. So the incumbent's ceiling is five reads, set by
+    the model of the loop, where before it was the size of the largest document
+    that happened to match.
+
+    `max_files` is a parameter rather than a constant read from module scope
+    because it is a *modelling choice*, and one this project measured instead of
+    asserting: `tools/measure_agent_task_band.py` runs the comparison across the
+    band, so a reader can see how much of the verdict the choice is worth.
     """
     terms = terms_of(task.prompt)
     if not terms:
@@ -254,21 +346,27 @@ def _grep_context(
     anchors: set[str] = set()
     tokens = 0
     read = 0
-    for _, path in scored[:MAX_GREP_FILES]:
-        chunks = corpus[path]
-        cost = sum(estimate_tokens(chunk.text) for chunk in chunks)
-        if tokens + cost > budget and read:
-            break
+    for _, path in scored[:max_files]:
+        taken, cost = _read_window(corpus[path], patterns, budget)
         tokens += cost
         read += 1
-        anchors.update(chunk.anchor for chunk in chunks)
+        anchors.update(chunk.anchor for chunk in taken)
     return anchors, tokens, read
 
 
 def run_task_suite(
-    root: Path, tasks: Sequence[AgentTask], *, budget_tokens: int = DEFAULT_BUDGET_TOKENS
+    root: Path,
+    tasks: Sequence[AgentTask],
+    *,
+    budget_tokens: int = DEFAULT_BUDGET_TOKENS,
+    max_grep_files: int = MAX_GREP_FILES,
 ) -> TaskSuiteReport:
-    """Run every task through both strategies against the published snapshot."""
+    """Run every task through both strategies against the published snapshot.
+
+    Both constants of the incumbent's model are parameters — how much one read
+    costs, and how many files the loop opens — because the verdict depends on
+    them and a number nobody can vary is a number nobody can check (roadmap 6.22).
+    """
     outcomes: list[TaskOutcome] = []
     with SqliteStore.open(root, read_only=True) as store:
         for task in tasks:
@@ -284,7 +382,7 @@ def run_task_suite(
                 anchors, tokens, documents = (
                     _mycelium_context(store, task, budget_tokens)
                     if strategy == "mycelium"
-                    else _grep_context(store, root, task, budget_tokens)
+                    else _grep_context(store, task, budget_tokens, max_grep_files)
                 )
                 elapsed = int((time.perf_counter() - started) * 1000)
                 missing = tuple(sorted(set(task.requires) - anchors))

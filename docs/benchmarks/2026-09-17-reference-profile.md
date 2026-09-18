@@ -163,6 +163,14 @@ owns the question it raises, which is a real one — what *does* a grep loop do 
 larger than its budget? — and must be answered on what an agent does, never on what makes
 our number better.
 
+> **Answered on 2026-09-18** ([the incumbent reads a
+> window](2026-09-18-the-incumbent-reads-a-window.md), ADR-0131): it reads a window, so one
+> read now costs at most what one search may and the loop opens the five files its constant
+> always claimed. The incumbent gained **13 tasks** (1/22 → 14/22) and shed two-thirds of its
+> cost (52 529 → 15 268 mean). **The table above is superseded; do not quote it.** Our lead on
+> evidence is **+2 tasks** and the context ratio **5.7×**, and the verdict gate quantified
+> below no longer passes its first condition on the repaired instrument.
+
 One more reason these figures are dated rather than durable: writing this report grew
 `ROADMAP.md` by roughly a thousand tokens, which moved the incumbent's cost. A benchmark on
 a self-hosting corpus is inside its own measurement, and the only defence is to name the
@@ -234,8 +242,15 @@ produce more of it than the product does. Three things have to hold first:
 | Precondition | State |
 |---|---|
 | The integrity gate is green: no task requires a passage the snapshot lost | **done here** — enforced by `mycelium eval --tasks --gate` in CI and the ladder |
-| The incumbent reads what its own model says it reads | **open** — roadmap 6.22 |
+| The incumbent reads what its own model says it reads | **done 2026-09-18** — roadmap 6.22, ADR-0131 |
 | The suite runs on a corpus we did not author (ADR-0053) | **open** — roadmap 6.23 |
+
+> **The margin did not survive the second precondition.** With the incumbent's read bounded,
+> the lead is **exactly two tasks** (16/22 against 14/22), so condition (a) — *more than* two —
+> **fails**, while (b) passes at 5.7× against a bar of 2×. The rule is deliberately not re-cut:
+> see [the 2026-09-18 report](2026-09-18-the-incumbent-reads-a-window.md#interpretation) and
+> ADR-0131, which carry the question to roadmap 6.23 rather than moving the bar in the act of
+> discovering we no longer clear it.
 
 ## What these numbers do not say
 

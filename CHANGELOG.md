@@ -10,6 +10,22 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Fixed
+
+- **The agent-task suite's grep baseline reads a bounded window, not the first matching file
+  whole** (roadmap 6.22, ADR-0131). One read now costs at most the caller's own
+  `budget_tokens` and the loop opens the five files `MAX_GREP_FILES` has always claimed; a
+  document that fits is still read whole, one that does not is read around the hit, and a
+  section larger than the window carries no evidence. On this repository's corpus the incumbent
+  had been reading **one document on 22 of 22 tasks**, with 93 % of its measured cost in a
+  single 88 000-token file. **The repaired comparison is much less flattering to us**: grep's
+  evidence rate goes 1/22 → **14/22**, its mean context 52 529 → **15 268**, our lead **+15
+  tasks → +2**, and the context ratio 19.2× → **5.6×** on means. The verdict gate quantified at
+  6.4 no longer passes its first condition, and is deliberately not re-cut. Both constants of
+  the loop are parameters now, and `tools/measure_agent_task_band.py` publishes the band each
+  one traces. Report:
+  [`docs/benchmarks/2026-09-18-the-incumbent-reads-a-window.md`](docs/benchmarks/2026-09-18-the-incumbent-reads-a-window.md).
+
 ### Added
 
 - **The hybrid path is measured at 10⁵ chunks** (roadmap 6.21, ADR-0130), which the reference

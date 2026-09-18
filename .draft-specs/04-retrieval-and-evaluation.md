@@ -232,6 +232,18 @@ and is two, and only the second waits:
   hold first: a green integrity gate, a denominator that does not move under it, and a corpus
   that is not only our own.
 
+**What the incumbent is, precisely (roadmap 6.22, ADR-0131).** A grep loop is modelled by two
+numbers — how much one read costs, and how many files it opens — and both are now measured
+rather than asserted, because leaving either unexamined is what let the comparison rot. One
+read costs at most the caller's own `budget_tokens`: a document that fits is read whole, one
+that does not is read *around the hit*, and a section larger than the window is read and
+carries no evidence, because seeing part of a passage is not being handed it. The loop opens
+`MAX_GREP_FILES` of them. `tools/measure_agent_task_band.py` runs the comparison across the
+band both constants trace, and `docs/benchmarks/2026-09-18-the-incumbent-reads-a-window.md`
+publishes it. Before that bound the loop read the first matching file whole whatever its size,
+which on a corpus with one 88 000-token document meant one file on every task and 93 % of the
+incumbent's measured cost in it.
+
 ### 7.5 Run manifests
 
 Every `mycelium eval` run writes a manifest (snapshot id, config digest, retriever config,
