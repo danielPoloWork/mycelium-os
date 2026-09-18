@@ -39,7 +39,16 @@ TOP_K = 50
 BUDGET_MS = 60
 """spec 04 §1's candidate-generation budget."""
 REFERENCE_N = 100_000
-"""D-002's upper envelope, where the exact scan misses the budget."""
+"""D-002's upper envelope, where the exact scan is measured against the budget.
+
+This used to read *"where the exact scan misses the budget"*, which ADR-0030
+had already disproved when it corrected the cost model in August, and roadmap
+6.21 has now measured through the product rather than over a bare matrix:
+`search_vectors` costs 43.2 ms on a fresh handle and 12.1 ms on a warm one at
+this size, both inside the 60 ms budget below (ADR-0130). The numbers this file
+prints are the *arithmetic* — what an index would have to beat — and the ones a
+caller pays are in
+`docs/benchmarks/2026-09-18-the-hybrid-path-at-the-reference-profile.md`."""
 
 
 def corpus_vectors(root: Path) -> tuple[np.ndarray, str]:

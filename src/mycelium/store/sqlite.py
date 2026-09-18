@@ -1204,12 +1204,17 @@ class SqliteStore:
 
         A brute-force scan, and an honest one: it is **exact**, so there is no
         recall cliff to tune, and it is **linear**. Against the packed matrix
-        (ADR-0026) a query costs 2.9 ms over 10 000 chunks, and about **31 ms**
-        over 10^5 — the top of the v1 envelope — from a fresh process, against
-        spec 04 §1's 60 ms candidate budget. A process that holds the mapping,
-        which is every process that asks twice, pays about 1 ms. Both patterns are
-        inside the budget; an earlier note here said otherwise, and ADR-0030 has
-        the correction and the benchmark defect behind it.
+        (ADR-0026) a query costs 2.9 ms over 10 000 chunks. At 10^5 — the top of
+        the v1 envelope — **this method** costs **43.2 ms** on a fresh handle,
+        which is what a CLI invocation pays, and **12.1 ms** on a warm one, which
+        is what a server pays for every query after its first; both are inside
+        spec 04 §1's 60 ms candidate budget (roadmap 6.21, ADR-0130).
+
+        Those replace ~31 ms and ~1 ms, which were right about the *arithmetic*
+        and low about the method: ADR-0030 timed a `numpy` memmap and a matrix
+        multiply, and this also resolves the pack, applies the filters in SQL and
+        hydrates fifty results. The figure before that, ~70 ms, was the
+        re-map-per-query pattern no code path has (ADR-0030, BUG-0015).
 
         It stays exact on purpose. Four ways of not reading every vector were
         measured and every one of them failed (ADR-0028): coarse quantisation is

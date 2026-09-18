@@ -16,11 +16,20 @@ Python. Against the packed matrix the same query is **2.9 ms**, and a fresh
 process — what a CLI invocation is — pays 23 ms including opening the store,
 against 108 ms before.
 
-The committed size is 10 000 chunks, which keeps the benchmark job quick. The
-scan is linear in the corpus, so the reference profile is a multiplication: the
-packed matrix at 100 000 chunks measures ~70 ms for the first query in a fresh
-process and ~1 ms for every query after it, which is the honest limit ADR-0026
-records rather than a budget it claims to meet.
+The committed size is 10 000 chunks, which keeps the benchmark job quick. **The
+reference profile is no longer a multiplication from it** (roadmap 6.21,
+ADR-0130): at 100 000 chunks `search_vectors` measures **43.2 ms** for the first
+query on a fresh handle — a CLI invocation — and **12.1 ms** on a warm one, both
+inside spec 04 §1's 60 ms candidate budget, reported in
+`docs/benchmarks/2026-09-18-the-hybrid-path-at-the-reference-profile.md`.
+
+This paragraph used to say ~70 ms and ~1 ms, citing ADR-0026. Both were wrong and
+the first was wrong twice over: ~70 ms is the *re-map-per-query* pattern
+[BUG-0015] found no code path has, and ADR-0030 took that label away from it in
+August — a correction this file never received. ADR-0030's own ~31 ms was measured
+over a bare `numpy` memmap, so it missed the pack resolution, the SQL filters and
+the hydration of fifty results that the method actually performs; the warm figure
+was the larger error, twelve times rather than one.
 
 Fusion is measured separately because it is pure arithmetic over rank lists: if
 it ever shows up next to the scan, something has gone wrong with it.

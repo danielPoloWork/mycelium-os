@@ -256,6 +256,7 @@ produce more of it than the product does. Three things have to hold first:
 - **The profile measures the shipped default, which is lexical** (ADR-0017). Nothing here
   says what the hybrid path costs at 10⁵ chunks; the only statement this project makes
   about that is an extrapolation from 10 000 chunks, and roadmap 6.21 owns replacing it.
+  **Answered on 2026-09-18** ([the hybrid path at the reference profile](2026-09-18-the-hybrid-path-at-the-reference-profile.md), ADR-0130): the vector leg is 43.2 ms on a fresh handle and 12.1 ms on a warm one at 10⁵ chunks, both inside spec 04 §1's 60 ms candidate budget — and the extrapolation was one of *three* disagreeing statements, all now retired.
 - **The end-to-end figure is noisy, and its conclusion is not.** Across runs its p95 moved
   between roughly 330 ms and 700 ms on corpora of the same size, because most of it is an
   environment scan whose cost depends on the filesystem cache. Every reading is 2–5× the

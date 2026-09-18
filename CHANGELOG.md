@@ -10,7 +10,26 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Added
+
+- **The hybrid path is measured at 10⁵ chunks** (roadmap 6.21, ADR-0130), which the reference
+  profile had explicitly left open. `tools/benchmark_reference_profile.py --vectors` writes one
+  synthetic vector per chunk, lets the store pack them, and times the vector leg, the whole
+  hybrid query, the same queries lexical-only, and the per-query precondition. The vector leg
+  is **inside** spec 04 §1's 60 ms candidate budget at the top of the v1 corpus envelope:
+  **43.2 ms** on a fresh handle, **12.1 ms** on a warm one. Report:
+  [`docs/benchmarks/2026-09-18-the-hybrid-path-at-the-reference-profile.md`](docs/benchmarks/2026-09-18-the-hybrid-path-at-the-reference-profile.md).
+
 ### Fixed
+
+- **Three statements about the vector scan at 10⁵ chunks disagreed, and all three are
+  retired** (roadmap 6.21). The benchmark said ~70 ms citing ADR-0026 — the re-map-per-query
+  figure [BUG-0015] found no code path has, and ADR-0030 had taken that label away from it five
+  milestones ago. `search_vectors`'s own docstring said ~31 ms, correct about the arithmetic
+  and low about the method, which also resolves the pack, filters in SQL and hydrates fifty
+  results. `tools/measure_vector_index.py` still called 10⁵ the size *"where the exact scan
+  misses the budget"*, which the same ADR had disproved. All three now carry the measured pair
+  and point at the report.
 
 - **A pasted document no longer holds the server for two minutes** (roadmap 6.17, ADR-0129).
   Every other cost on the serving path was bounded — `k` at 50, `budget_tokens` on the answer,
