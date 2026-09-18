@@ -158,7 +158,9 @@ def anchors(hits: tuple[FusedHit, ...]) -> list[str]:
 
 
 def on(**extra: bool) -> RetrievalConfig:
-    return RetrievalConfig(symbol_lookup=True, **extra)
+    # A helper for varying one flag at a time: the splat cannot be checked against
+    # a constructor whose parameters are typed individually (roadmap 6.9).
+    return RetrievalConfig(symbol_lookup=True, **extra)  # type: ignore[arg-type]
 
 
 def off(**extra: bool) -> RetrievalConfig:
@@ -170,7 +172,7 @@ def off(**extra: bool) -> RetrievalConfig:
     default cannot measure that default, and it reads as correct for exactly as
     long as the default is off.
     """
-    return RetrievalConfig(symbol_lookup=False, **extra)
+    return RetrievalConfig(symbol_lookup=False, **extra)  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------

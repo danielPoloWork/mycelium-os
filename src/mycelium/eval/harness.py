@@ -610,7 +610,11 @@ def _attribute(results: Sequence[CaseResult], before: Mapping[str, float] | None
 
 def _gate_g3(
     per_slice: dict[str, MetricSummary],
-    baseline: dict[str, object] | None,
+    # `Mapping`, not `dict`, because this only ever reads it — and `dict` is
+    # invariant, so a caller holding a `dict[str, float]` could not pass one
+    # without copying it. Found by type-checking the tests, which is where a
+    # needlessly narrow parameter shows up first (roadmap 6.9, ADR-0124).
+    baseline: Mapping[str, object] | None,
     fingerprint: CorpusFingerprint,
     cases_digest: Sha256Digest,
     slice_cases: Mapping[str, Sequence[CaseResult]] | None = None,

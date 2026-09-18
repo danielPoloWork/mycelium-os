@@ -26,6 +26,7 @@ from mycelium.ingest import Custody
 from mycelium.sdk.identity import digest_bytes, is_derived_ulid
 from mycelium.sdk.types import CustodyKind
 from mycelium_chats.archive import (
+    ImportOutcome,
     find,
     import_text,
     list_archive,
@@ -42,7 +43,9 @@ pytestmark = pytest.mark.boundary("B15")
 IMPORTED = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 
 
-def do_import(repo: Path, text: str, settings: ChatsSettings, **kwargs: object):
+def do_import(
+    repo: Path, text: str, settings: ChatsSettings, **kwargs: object
+) -> tuple[tuple[ImportOutcome, ...], tuple[str, ...]]:
     return import_text(
         repo,
         text,
@@ -60,7 +63,9 @@ def do_import(repo: Path, text: str, settings: ChatsSettings, **kwargs: object):
 # ---------------------------------------------------------------------------
 
 
-def test_the_archive_path_is_the_one_the_spec_draws(repo: Path, fixtures: Path, settings) -> None:
+def test_the_archive_path_is_the_one_the_spec_draws(
+    repo: Path, fixtures: Path, settings: ChatsSettings
+) -> None:
     outcomes, _ = do_import(repo, (fixtures / "claude-export.json").read_text("utf-8"), settings)
     (only,) = outcomes
     parts = only.record_path.parts
@@ -77,7 +82,7 @@ def test_the_archive_path_is_the_one_the_spec_draws(repo: Path, fixtures: Path, 
 
 
 def test_identity_is_derived_from_the_original_rather_than_minted(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     """ADR-0046's mechanism: reproducible without being recorded."""
     outcomes, _ = do_import(repo, (fixtures / "claude-export.json").read_text("utf-8"), settings)
@@ -85,7 +90,7 @@ def test_identity_is_derived_from_the_original_rather_than_minted(
 
 
 def test_importing_the_same_export_twice_changes_nothing(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     """The property that makes a nightly re-export a safe habit."""
     text = (fixtures / "chatgpt-export.json").read_text("utf-8")
@@ -102,7 +107,7 @@ def test_importing_the_same_export_twice_changes_nothing(
 
 
 def test_a_changed_export_lands_beside_its_predecessor(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     """Different bytes are a different conversation: the digest is in the id."""
     text = (fixtures / "claude-export.json").read_text("utf-8")
@@ -116,7 +121,7 @@ def test_a_changed_export_lands_beside_its_predecessor(
 
 
 def test_two_conversations_in_one_export_get_their_own_identities(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     outcomes, _ = do_import(repo, (fixtures / "chatgpt-export.json").read_text("utf-8"), settings)
     ids = {item.transcript.conversation.conv_id for item in outcomes}
@@ -126,7 +131,7 @@ def test_two_conversations_in_one_export_get_their_own_identities(
 
 
 def test_the_record_round_trips_through_its_own_encoding(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     outcomes, _ = do_import(repo, (fixtures / "transcript.md").read_text("utf-8"), settings)
     written = load_record(repo / outcomes[0].record_path)
@@ -145,7 +150,7 @@ def test_the_record_round_trips_through_its_own_encoding(
 
 
 def test_the_original_input_is_kept_under_its_own_digest(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     text = (fixtures / "claude-export.json").read_text("utf-8")
     outcomes, _ = do_import(repo, text, settings)
@@ -161,7 +166,7 @@ def test_the_original_input_is_kept_under_its_own_digest(
 
 
 def test_every_import_files_a_fidelity_report_in_custody(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     outcomes, _ = do_import(repo, (fixtures / "chatgpt-export.json").read_text("utf-8"), settings)
     reports = [
@@ -172,7 +177,9 @@ def test_every_import_files_a_fidelity_report_in_custody(
     assert len(reports) == len(outcomes)
 
 
-def test_the_fidelity_report_accounts_for_every_turn(repo: Path, fixtures: Path, settings) -> None:
+def test_the_fidelity_report_accounts_for_every_turn(
+    repo: Path, fixtures: Path, settings: ChatsSettings
+) -> None:
     outcomes, _ = do_import(repo, (fixtures / "chatgpt-export.json").read_text("utf-8"), settings)
     report = outcomes[0].fidelity
 
@@ -185,7 +192,9 @@ def test_the_fidelity_report_accounts_for_every_turn(repo: Path, fixtures: Path,
     assert not report.complete
 
 
-def test_a_clean_provider_import_is_complete(repo: Path, fixtures: Path, settings) -> None:
+def test_a_clean_provider_import_is_complete(
+    repo: Path, fixtures: Path, settings: ChatsSettings
+) -> None:
     outcomes, _ = do_import(repo, (fixtures / "claude-export.json").read_text("utf-8"), settings)
     assert outcomes[0].fidelity.complete
 
@@ -196,7 +205,7 @@ def test_a_clean_provider_import_is_complete(repo: Path, fixtures: Path, setting
 
 
 def test_a_secret_is_flagged_and_redacted_in_the_projection_not_the_record(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     """Doc 08 §6's asymmetry: the projection reaches Git and the index, the
     record is the archive, and the original is already in custody."""
@@ -205,6 +214,7 @@ def test_a_secret_is_flagged_and_redacted_in_the_projection_not_the_record(
     )
     conversation = outcomes[0].transcript.conversation
     record = (repo / outcomes[0].record_path).read_text("utf-8")
+    assert outcomes[0].projection_path is not None
     projection = (repo / outcomes[0].projection_path).read_text("utf-8")
 
     assert conversation.secrets, "the fixture carries a token-shaped string"
@@ -268,7 +278,7 @@ def test_a_conversation_inside_the_window_is_projected(repo: Path, fixtures: Pat
 
 
 def test_the_listing_is_newest_first_and_filters_by_project(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     do_import(repo, (fixtures / "claude-export.json").read_text("utf-8"), settings)
     do_import(
@@ -289,7 +299,9 @@ def test_the_listing_is_newest_first_and_filters_by_project(
     assert [entry.conversation.project for entry in only_notes] == ["notes"]
 
 
-def test_a_conversation_is_found_by_an_id_prefix(repo: Path, fixtures: Path, settings) -> None:
+def test_a_conversation_is_found_by_an_id_prefix(
+    repo: Path, fixtures: Path, settings: ChatsSettings
+) -> None:
     outcomes, _ = do_import(repo, (fixtures / "claude-export.json").read_text("utf-8"), settings)
     conv_id = outcomes[0].transcript.conversation.conv_id
 
@@ -299,7 +311,7 @@ def test_a_conversation_is_found_by_an_id_prefix(repo: Path, fixtures: Path, set
 
 
 def test_a_conversation_is_found_by_the_handle_the_listing_prints(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     """The bug running the CLI found: `chats list` prints the last six characters
     as the handle, and identity is *derived*, so every id begins with ten zeros
@@ -319,14 +331,16 @@ def test_an_empty_lookup_matches_nothing(repo: Path) -> None:
 
 
 def test_an_ambiguous_prefix_is_refused_rather_than_resolved(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     do_import(repo, (fixtures / "chatgpt-export.json").read_text("utf-8"), settings)
     with pytest.raises(ValueError, match="more than one conversation"):
         find(repo, "0")  # every derived ULID starts with ten zeros
 
 
-def test_the_listing_survives_a_damaged_record(repo: Path, fixtures: Path, settings) -> None:
+def test_the_listing_survives_a_damaged_record(
+    repo: Path, fixtures: Path, settings: ChatsSettings
+) -> None:
     """A listing is not the place a corrupt file stops the world."""
     outcomes, _ = do_import(repo, (fixtures / "claude-export.json").read_text("utf-8"), settings)
     (repo / outcomes[0].record_path).write_text("not jsonl at all\n", encoding="utf-8")
@@ -339,7 +353,7 @@ def test_the_listing_survives_a_damaged_record(repo: Path, fixtures: Path, setti
 
 
 def test_deletion_removes_the_record_and_the_projection_and_keeps_the_evidence(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     outcomes, _ = do_import(repo, (fixtures / "claude-export.json").read_text("utf-8"), settings)
     entry = find(repo, outcomes[0].transcript.conversation.conv_id)
@@ -350,13 +364,16 @@ def test_deletion_removes_the_record_and_the_projection_and_keeps_the_evidence(
 
     assert set(removed) == {entry.record_path, projection_path(entry.record_path, "knowledge")}
     assert not (repo / entry.record_path).exists()
+    assert outcomes[0].projection_path is not None
     assert not (repo / outcomes[0].projection_path).exists()
     # ADR-0033: deleting evidence is an explicit act, never a side effect.
     assert Custody(repo / ".mycelium").get(digest) is not None
     assert list_archive(repo) == ()
 
 
-def test_purge_also_removes_the_archived_original(repo: Path, fixtures: Path, settings) -> None:
+def test_purge_also_removes_the_archived_original(
+    repo: Path, fixtures: Path, settings: ChatsSettings
+) -> None:
     outcomes, _ = do_import(repo, (fixtures / "claude-export.json").read_text("utf-8"), settings)
     entry = find(repo, outcomes[0].transcript.conversation.conv_id)
     assert entry is not None
@@ -368,7 +385,7 @@ def test_purge_also_removes_the_archived_original(repo: Path, fixtures: Path, se
 
 
 def test_deletion_prunes_the_dated_directories_it_emptied(
-    repo: Path, fixtures: Path, settings
+    repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     outcomes, _ = do_import(repo, (fixtures / "claude-export.json").read_text("utf-8"), settings)
     entry = find(repo, outcomes[0].transcript.conversation.conv_id)
@@ -402,7 +419,9 @@ def test_the_configured_timezone_decides_the_paths_date(repo: Path, fixtures: Pa
     assert conversation.started_at.isoformat().endswith("+00:00")
 
 
-def test_the_projection_mirrors_the_records_path(repo: Path, fixtures: Path, settings) -> None:
+def test_the_projection_mirrors_the_records_path(
+    repo: Path, fixtures: Path, settings: ChatsSettings
+) -> None:
     outcomes, _ = do_import(repo, (fixtures / "claude-export.json").read_text("utf-8"), settings)
     (only,) = outcomes
 

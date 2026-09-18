@@ -202,7 +202,9 @@ def test_explain_reports_the_plan_that_ran(repo: Path) -> None:
         {"query": "ok", "filters": {"verification_status": "fictional"}},
     ],
 )
-def test_bad_search_arguments_are_invalid_argument(repo: Path, arguments: dict) -> None:
+def test_bad_search_arguments_are_invalid_argument(
+    repo: Path, arguments: dict[str, object]
+) -> None:
     with pytest.raises(McpToolError) as error:
         handle_search(repo, arguments)
     assert error.value.code is ErrorCode.INVALID_ARGUMENT
@@ -268,7 +270,7 @@ def test_an_unknown_document_is_not_found(repo: Path) -> None:
         {"uri": "mycelium://01J1ZF8Q4R6XKQ3F0V9T8B2M7N#a/0", "context": "everything"},
     ],
 )
-def test_bad_fetch_arguments_are_invalid_argument(repo: Path, arguments: dict) -> None:
+def test_bad_fetch_arguments_are_invalid_argument(repo: Path, arguments: dict[str, object]) -> None:
     with pytest.raises(McpToolError) as error:
         handle_fetch(repo, arguments)
     assert error.value.code is ErrorCode.INVALID_ARGUMENT
@@ -332,7 +334,9 @@ def test_neighbors_answers_the_reverse_question_too(repo: Path) -> None:
         {"uri": ""},
     ],
 )
-def test_bad_neighbors_arguments_are_invalid_argument(repo: Path, arguments: dict) -> None:
+def test_bad_neighbors_arguments_are_invalid_argument(
+    repo: Path, arguments: dict[str, object]
+) -> None:
     with pytest.raises(McpToolError) as error:
         handle_neighbors(repo, arguments)
     assert error.value.code is ErrorCode.INVALID_ARGUMENT

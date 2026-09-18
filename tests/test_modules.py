@@ -99,7 +99,10 @@ def test_the_entry_point_group_is_the_module_group_not_the_plugin_one() -> None:
     from mycelium.ingest import ENTRY_POINT_GROUP as PLUGIN_GROUP
 
     assert MODULE_ENTRY_POINT_GROUP == "mycelium.modules"
-    assert MODULE_ENTRY_POINT_GROUP != PLUGIN_GROUP
+    # Both are `Final` literals, so mypy folds the comparison to a constant and
+    # says it can never be equal — which is the assertion's point, at runtime,
+    # for a reader who changes one of them (roadmap 6.9).
+    assert MODULE_ENTRY_POINT_GROUP != PLUGIN_GROUP  # type: ignore[comparison-overlap]
 
 
 def test_the_installed_module_is_discovered_without_being_imported() -> None:
@@ -316,7 +319,8 @@ def test_a_broken_module_does_not_stop_the_rest_of_the_cli(
     mounted, problems = modules.mount(app)
 
     assert mounted == () and problems
-    assert [command.callback.__name__ for command in app.registered_commands] == ["core"]
+    named = [c.callback.__name__ for c in app.registered_commands if c.callback is not None]
+    assert named == ["core"]
     assert app.registered_groups == []
 
 

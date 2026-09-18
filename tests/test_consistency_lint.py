@@ -201,7 +201,7 @@ def amendments(monkeypatch: pytest.MonkeyPatch) -> Iterator[RunAdrs]:
 
     def run(files: dict[str, str]) -> list[str]:
         monkeypatch.setattr(lint, "exists", lambda *parts: True)
-        monkeypatch.setattr(lint.os, "listdir", lambda _: sorted(files))
+        monkeypatch.setattr("os.listdir", lambda _: sorted(files))
         monkeypatch.setattr(lint, "read", lambda *parts: files[parts[-1]])
         lint.failures.clear()
         lint.check_amendments()

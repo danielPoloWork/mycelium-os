@@ -23,11 +23,12 @@ answer is the one to reuse.
 """
 
 from datetime import UTC, datetime
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 
 from mycelium.cli.output import ExitCode
+from mycelium.sdk.protocols import EvidenceDocument
 from mycelium.synthesis import Completion, UngroundedError, WikiSynthesizer
 from mycelium.synthesis.citations import citable_names
 from mycelium.verification.grounding import section_text
@@ -40,6 +41,7 @@ from mycelium_chats.distil import (
     write_distillation,
 )
 from mycelium_chats.projection import message_heading
+from mycelium_chats.record import Transcript
 from mycelium_chats.settings import ChatsSettings
 
 pytestmark = pytest.mark.boundary("B10")
@@ -104,7 +106,9 @@ class ScriptedProvider:
         return Completion(text=self._answers.pop(0), model=self._model, parameters={})
 
 
-def archived(repo: Path, fixtures: Path, settings: ChatsSettings, name: str = FIXTURE):
+def archived(
+    repo: Path, fixtures: Path, settings: ChatsSettings, name: str = FIXTURE
+) -> tuple[Transcript, PurePosixPath]:
     """Import one fixture and return what a distillation needs from it."""
     outcomes, _ = import_text(
         repo,
@@ -120,7 +124,9 @@ def archived(repo: Path, fixtures: Path, settings: ChatsSettings, name: str = FI
     return outcome.transcript, outcome.projection_path
 
 
-def evidence_of_fixture(repo: Path, fixtures: Path, settings: ChatsSettings):
+def evidence_of_fixture(
+    repo: Path, fixtures: Path, settings: ChatsSettings
+) -> tuple[Transcript, PurePosixPath, EvidenceDocument]:
     transcript, projection = archived(repo, fixtures, settings)
     text = (repo / projection).read_text("utf-8")
     return transcript, projection, citable_evidence(transcript, projection, text)

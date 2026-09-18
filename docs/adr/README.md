@@ -155,3 +155,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0121](0121-search-the-trademark-landscape-and-correct-what-d-024-assumed.md) | Search the trademark landscape, and correct what D-024 assumed | Accepted |
 | [0122](0122-score-what-a-citation-names-and-read-it-from-the-chunk.md) | Score what a citation names, and read it from the chunk rather than the anchor | Accepted |
 | [0123](0123-derive-the-count-a-slice-needs-instead-of-guessing-it.md) | Derive the count a slice needs, instead of guessing it | Accepted |
+| [0124](0124-check-the-tests-like-the-source-because-there-was-no-middle-setting.md) | Check the tests like the source, because there was no middle setting | Accepted |

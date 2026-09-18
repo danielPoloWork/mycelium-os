@@ -66,9 +66,10 @@ def triggers(workflow: dict[str, Any]) -> set[str]:
     same one ADR-0006 records for frontmatter — so both spellings are accepted here
     rather than silently returning nothing.
     """
-    raw = workflow.get("on", workflow.get(True))
+    raw = workflow.get("on", workflow.get(True))  # type: ignore[call-overload]
     if isinstance(raw, str):
         return {raw}
+    assert raw is not None, "the workflow declares no trigger at all"
     return set(raw)
 
 
@@ -183,7 +184,10 @@ def test_the_publish_default_is_the_index_that_can_be_thrown_away(
 ) -> None:
     """TestPyPI is the rehearsal: a real upload over a real Trusted Publisher, on an
     index whose contents nobody depends on. The default must be the harmless one."""
-    dispatch = publish.get("on", publish.get(True))["workflow_dispatch"]
+    # `on:` is YAML 1.1's boolean `True`; both spellings are read, as above.
+    triggers = publish.get("on", publish.get(True))  # type: ignore[call-overload]
+    assert triggers is not None, "the workflow declares no trigger at all"
+    dispatch = triggers["workflow_dispatch"]
     index = dispatch["inputs"]["index"]
     assert index["default"] == "testpypi"
     assert set(index["options"]) == {"testpypi", "pypi"}

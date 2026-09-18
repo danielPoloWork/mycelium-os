@@ -332,7 +332,25 @@ select = [
 [tool.mypy]
 strict = true
 python_version = "3.12"
-files = ["src", "contrib/chats/src"]
+files = ["src", "contrib/chats/src", "tests", "contrib/chats/tests"]
+
+# `tests/` joined at roadmap 6.9, under the same `strict` as everything else, because
+# the measurement found no useful setting between the two (ADR-0124). The errors a
+# non-strict override would have kept — `arg-type`, `union-attr`, `attr-defined` — are
+# mypy's *base* checks and are on at every strictness; what such an override would have
+# turned off is `disallow_untyped_defs`, and an unannotated test function is one mypy
+# does not check the body of at all. So the choice was all or nothing, and the errors
+# it surfaced were nearly all real looseness rather than deliberate invalidity.
+
+# Where a test *does* feed an invalid value on purpose, the per-line `# type: ignore[...]`
+# is the vocabulary for saying so, and it documents the intent at the site rather than in
+# a settings file that covers every test equally.
+
+mypy_path = ["tools"]
+# `tests/` imports `verify`, `consistency_lint` and `update_journal_index` to hold the
+# tools to their own contracts. They reach them through a `sys.path` insertion, which is
+# a runtime trick mypy cannot see — so the path is declared here instead of the imports
+# being ignored (roadmap 6.9).
 # The plugin cookiecutter (roadmap 6.2) renders real, checked Python — Jinja
 # substitutions live only inside string literals and TOML values, never in
 # identifier or control-flow position — but its own `{{ cookiecutter.* }}`
@@ -361,5 +379,11 @@ module = [
     "docling.*",
     "pypdfium2.*",
     "typst.*",
+    # Test-only, and here for the same reason as the rest: neither ships stubs, and
+    # both are exercised at two call sites whose surface a test already asserts
+    # (roadmap 6.9). `cookiecutter` renders the plugin template; `jsonschema` validates
+    # the MCP tool schemas against their dialect.
+    "cookiecutter.*",
+    "jsonschema.*",
 ]
 ignore_missing_imports = true

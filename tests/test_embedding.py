@@ -155,11 +155,11 @@ def _build_with(root: Path, embedder: Embedder, **kwargs: object) -> None:
     import mycelium.build.orchestrator as orchestrator
 
     original = orchestrator._resolve_embedder
-    orchestrator._resolve_embedder = lambda config, *, require_vectors: (embedder, None)  # type: ignore[assignment]
+    orchestrator._resolve_embedder = lambda config, *, require_vectors: (embedder, None)
     try:
         build(root, **kwargs)  # type: ignore[arg-type]
     finally:
-        orchestrator._resolve_embedder = original  # type: ignore[assignment]
+        orchestrator._resolve_embedder = original
 
 
 def test_a_build_without_an_embedder_degrades_and_explains(tmp_path: Path) -> None:
@@ -242,11 +242,11 @@ def test_unchanged_text_is_never_re_embedded(tmp_path: Path) -> None:
     import mycelium.build.orchestrator as orchestrator
 
     original = orchestrator._resolve_embedder
-    orchestrator._resolve_embedder = lambda config, *, require_vectors: (embedder, None)  # type: ignore[assignment]
+    orchestrator._resolve_embedder = lambda config, *, require_vectors: (embedder, None)
     try:
         result = build(root)
     finally:
-        orchestrator._resolve_embedder = original  # type: ignore[assignment]
+        orchestrator._resolve_embedder = original
 
     assert result.stats.embedded == 1  # the new chunk, and nothing else
     with SqliteStore.open(root, read_only=True) as store:

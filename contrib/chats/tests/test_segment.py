@@ -26,7 +26,7 @@ from pathlib import Path
 import pytest
 
 from mycelium.synthesis import Completion, ProviderError
-from mycelium_chats.archive import import_text
+from mycelium_chats.archive import ImportOutcome, import_text
 from mycelium_chats.record import Fragment, Message
 from mycelium_chats.segment import (
     MAX_ATTEMPTS,
@@ -117,10 +117,19 @@ class UnreachableProvider:
 
 
 def enabled(**overrides: object) -> ChatsSettings:
-    return ChatsSettings(timezone="UTC", default_project="research", segmenter="llm", **overrides)
+    # Same shape as the helper in `test_symbol_leg`: arbitrary overrides, one
+    # constructor with individually typed parameters (roadmap 6.9).
+    return ChatsSettings(
+        timezone="UTC",
+        default_project="research",
+        segmenter="llm",
+        **overrides,  # type: ignore[arg-type]
+    )
 
 
-def run(repo: Path, text: str, settings: ChatsSettings, provider: object | None):
+def run(
+    repo: Path, text: str, settings: ChatsSettings, provider: object | None
+) -> tuple[tuple[ImportOutcome, ...], tuple[str, ...]]:
     return import_text(
         repo,
         text,
@@ -143,7 +152,11 @@ def test_a_segmented_paste_becomes_messages_sliced_from_its_own_text(repo: Path)
     lines = outcomes[0].transcript.lines
 
     assert [type(line).__name__ for line in lines] == ["Message", "Message", "Message"]
-    assert [line.role for line in lines] == ["user", "assistant", "user"]  # type: ignore[union-attr]
+    assert [line.role for line in lines if isinstance(line, Message)] == [
+        "user",
+        "assistant",
+        "user",
+    ]
     for line in lines:
         assert line.content in PASTE, "a message is a literal slice of the paste"
     assert warnings == ()
@@ -394,6 +407,7 @@ def test_a_segmented_paste_gains_the_message_anchors_the_floor_could_not_give(
     """What the item is for: an unlabelled paste was one chunk and one citation
     for the whole thing, and a citation into a conversation names a message."""
     outcomes, _ = run(repo, PASTE, enabled(), ScriptedProvider(TURNS))
+    assert outcomes[0].projection_path is not None
     projection = (repo / outcomes[0].projection_path).read_text("utf-8")
 
     headings = [line for line in projection.splitlines() if line.startswith("## ")]

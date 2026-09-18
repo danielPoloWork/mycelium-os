@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 from cookiecutter.exceptions import FailedHookException
@@ -155,8 +156,11 @@ def test_the_rendered_plugin_satisfies_its_protocol(
     sys.path.insert(0, str(project / "src"))
     try:
         module = __import__("mycelium_test_thing", fromlist=["Plugin"])
-        plugin = module.Plugin()
-        assert isinstance(plugin, protocol)
+        loaded = module.Plugin()
+        assert isinstance(loaded, protocol)
+        # `protocol` is a variable, so the narrowing lands on `object`; the
+        # assertions below are about the instance this line just proved conforms.
+        plugin: Any = loaded
         assert plugin.meta.id == "test-thing"
         assert plugin.meta.description
         assert plugin.meta.supports(0)

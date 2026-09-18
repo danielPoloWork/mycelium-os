@@ -15,7 +15,7 @@ from mycelium.config import (
     MyceliumConfig,
     load_config,
 )
-from mycelium.sdk.types import VerificationStatus
+from mycelium.sdk.types import SourceTrust, VerificationStatus
 
 # spec 05 §2, verbatim except for the commented-out alternatives and one documented
 # deviation: the spec's single `[ingest] connectors` list names *parsers*, because §2
@@ -107,7 +107,7 @@ def test_the_specs_own_file_loads(tmp_path: Path) -> None:
     assert config.verification.cites_coverage_min == 0.95
     assert config.verification.entailment_min == 0.90
     assert config.verification.auto_promote is False
-    assert config.sources.trust_for("https://docs.python.org/3/library").value == "high"
+    assert config.sources.trust_for("https://docs.python.org/3/library") is SourceTrust.HIGH
     assert config.source == tmp_path / CONFIG_FILENAME
 
 
@@ -469,9 +469,9 @@ def test_a_bad_verification_setting_names_its_key(tmp_path: Path, body: str, exp
 def test_sources_matches_the_longest_pattern_first(tmp_path: Path) -> None:
     body = '[sources]\n"example.com" = "medium"\n"example.com/internal" = "low"\n"*" = "unknown"\n'
     sources = load_config(write(tmp_path, body)).sources
-    assert sources.trust_for("https://example.com/internal/wiki").value == "low"
-    assert sources.trust_for("https://example.com/public").value == "medium"
-    assert sources.trust_for("https://elsewhere.test/page").value == "unknown"
+    assert sources.trust_for("https://example.com/internal/wiki") is SourceTrust.LOW
+    assert sources.trust_for("https://example.com/public") is SourceTrust.MEDIUM
+    assert sources.trust_for("https://elsewhere.test/page") is SourceTrust.UNKNOWN
 
 
 def test_sources_with_no_catch_all_answers_none_for_an_unknown_origin(tmp_path: Path) -> None:

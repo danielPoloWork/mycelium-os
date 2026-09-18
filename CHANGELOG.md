@@ -167,6 +167,25 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **`tests/` and `contrib/chats/tests/` are type-checked under `mypy --strict`, like
+  everything else this repository writes** (roadmap 6.9, ADR-0124). 212 errors resolved; 216
+  files check clean. Roadmap 6.9 proposed a non-strict override for tests, and the measurement
+  refused it: `arg-type`, `union-attr` and `attr-defined` — the classes it wanted
+  forgiven — are mypy's base checks and stay on at every setting, while what the override
+  would have switched off is `disallow_untyped_defs`, whose absence means a function body is
+  not checked at all. Most errors had a better fix than an ignore: a string where a `date`
+  belongs, six unchecked `Optional` reads, a test narrowing one variable and using another.
+  Seven deliberate sites keep a commented per-line ignore, which is the vocabulary for saying
+  a value is invalid on purpose. Measured cost: none — 69.5 / 55.2 s without the suites
+  against 60.1 / 56.8 s with.
+- **`mycelium.eval.harness._gate_g3` takes a `Mapping` rather than a `dict`**, found by
+  the above: it only reads the baseline, and `dict` is invariant, so a caller holding a
+  `dict[str, float]` could not pass one without copying. Nineteen of the 212 errors were
+  that one signature.
+- **`mycelium-chats` ships `py.typed`** (roadmap 6.9, ADR-0124). The core advertised its
+  types from roadmap 4.43; the module became a distribution of its own at 5.5 and never got
+  the same marker, so a consumer installing it received none — and mypy could not see into a
+  package this repository already type-checks.
 - **Gate G3 enforces a slice only when the slice can carry the bar, and says what it needs
   when it cannot** (roadmap 6.8, ADR-0123). The count is derived from the blessed baseline —
   `n >= q / (0.02 * m)`, with `q` the median non-zero per-case score — rather than compared

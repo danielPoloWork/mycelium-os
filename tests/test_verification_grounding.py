@@ -58,7 +58,9 @@ class Judge:
         return True, "default"
 
 
-def evidence(text: str = EVIDENCE_TEXT, *, name: str = "retries", trust: SourceTrust | None = None):
+def evidence(
+    text: str = EVIDENCE_TEXT, *, name: str = "retries", trust: SourceTrust | None = None
+) -> EvidenceDocument:
     parsed = parse_markdown(text)
     headings = tuple(
         node.text for node in parsed.kir.nodes if node.kind is NodeKind.HEADING and node.text

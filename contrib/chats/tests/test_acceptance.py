@@ -29,7 +29,7 @@ from mycelium.ingest import Custody
 from mycelium.modules import MODULE_SURFACE
 from mycelium.retrieval import search
 from mycelium.store import SearchFilters, SqliteStore
-from mycelium_chats.archive import find, import_text, list_archive, purge
+from mycelium_chats.archive import ImportOutcome, find, import_text, list_archive, purge
 from mycelium_chats.paths import projection_path
 from mycelium_chats.record import Message, decode_transcript
 from mycelium_chats.settings import ChatsSettings
@@ -46,7 +46,9 @@ PASTED_FIXTURES = ("pasted-labelled.txt", "pasted-unlabelled.txt")
 ALL_FIXTURES = (*PROVIDER_FIXTURES, *PASTED_FIXTURES, "transcript.md")
 
 
-def import_fixture(repo: Path, fixtures: Path, name: str, settings: ChatsSettings):
+def import_fixture(
+    repo: Path, fixtures: Path, name: str, settings: ChatsSettings
+) -> tuple[tuple[ImportOutcome, ...], tuple[str, ...]]:
     return import_text(
         repo,
         (fixtures / name).read_text("utf-8"),
@@ -84,7 +86,7 @@ def test_gate1_covers_at_least_two_providers_and_pasted_text(
     repo: Path, fixtures: Path, settings: ChatsSettings
 ) -> None:
     """The gate names the corpus it wants: two providers, plus pasted cases."""
-    readers = set()
+    readers: set[str] = set()
     for name in ALL_FIXTURES:
         outcomes, _ = import_fixture(repo, fixtures, name, settings)
         readers.update(item.fidelity.reader for item in outcomes)
@@ -142,6 +144,7 @@ def test_gate2_the_same_record_projects_byte_identically(
         assert here.record_path == there.record_path
         assert here.projection_path == there.projection_path
         assert here.projection_path is not None
+        assert there.projection_path is not None
         assert (repo / here.projection_path).read_text("utf-8") == (
             elsewhere / there.projection_path
         ).read_text("utf-8")
@@ -173,7 +176,8 @@ def test_gate2_a_dated_source_projects_the_same_on_any_machine_at_any_time(
 
     for here, there in zip(first, second, strict=True):
         assert here.record_path == there.record_path
-        assert here.projection_path is not None and there.projection_path is not None
+        assert here.projection_path is not None
+        assert there.projection_path is not None
         assert (repo / here.projection_path).read_text("utf-8") == (
             elsewhere / there.projection_path
         ).read_text("utf-8")
@@ -524,6 +528,7 @@ def test_gate6_the_core_contains_no_reference_to_this_module() -> None:
 
 
 def test_gate6_the_module_is_mounted_by_the_core_without_being_named() -> None:
+    from typer.core import TyperGroup
     from typer.main import get_command
 
     from mycelium.cli.app import app
@@ -534,9 +539,15 @@ def test_gate6_the_module_is_mounted_by_the_core_without_being_named() -> None:
     _, problems = mount(app)
     assert problems == ()
 
-    commands = get_command(app).commands
+    group = get_command(app)
+    # `get_command` is typed as returning a bare `click.Command`; a Typer app with
+    # subcommands yields a `TyperGroup`, which is what carries `.commands`.
+    assert isinstance(group, TyperGroup), "the CLI root is a group, not a bare command"
+    commands = group.commands
     assert "chats" in commands
-    assert set(commands["chats"].commands) == {
+    chats = commands["chats"]
+    assert isinstance(chats, TyperGroup), "the module mounts a group of subcommands"
+    assert set(chats.commands) == {
         "import",
         "list",
         "show",

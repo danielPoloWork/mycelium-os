@@ -228,7 +228,7 @@ jobs:
       # The path lists are `tools/verify.py`'s CHECKED_PATHS and TYPED_PATHS, and
       # `tests/test_verify_ladder.py` fails when this line and that file disagree
       # (ADR-0059). `contrib/` joined at roadmap 5.5 with the first module.
-      - run: uv run ruff format --check src tests tools contrib && uv run ruff check src tests tools contrib && uv run mypy --strict src tools contrib/chats/src
+      - run: uv run ruff format --check src tests tools contrib && uv run ruff check src tests tools contrib && uv run mypy --strict src tools contrib/chats/src tests contrib/chats/tests
 
   # ---------------------------------------------------------------------------
   # What a publish would upload (roadmap 6.11, ADR-0116). A published version is

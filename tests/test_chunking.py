@@ -442,9 +442,12 @@ def test_a_custom_token_counter_is_honoured() -> None:
         ({"overlap_tokens": 50}, "overlap is not implemented"),
     ],
 )
-def test_invalid_policies_are_refused(kwargs: dict, expected: str) -> None:
+def test_invalid_policies_are_refused(kwargs: dict[str, object], expected: str) -> None:
     with pytest.raises(ValueError, match=expected):
-        ChunkingPolicy(**kwargs)
+        # The kwargs are invalid on purpose — that is what this asserts — so the
+        # splat cannot type-check against the constructor, and the ignore is the
+        # vocabulary for saying so (roadmap 6.9, ADR-0124).
+        ChunkingPolicy(**kwargs)  # type: ignore[arg-type]
 
 
 def test_empty_document_yields_no_chunks() -> None:

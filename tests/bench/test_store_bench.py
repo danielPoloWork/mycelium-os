@@ -19,7 +19,14 @@ from datetime import UTC, datetime
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
 
-from mycelium.sdk.types import Chunk, Document, DocumentStats, Provenance, TrustClass
+from mycelium.sdk.types import (
+    Chunk,
+    Document,
+    DocumentStats,
+    Provenance,
+    TrustClass,
+    VerificationStatus,
+)
 from mycelium.store import SqliteStore
 
 DOC_ID = "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"
@@ -56,7 +63,7 @@ def populated_store(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Sqlite
                     title="Document",
                     content_digest=DIGEST,
                     trust_class=TrustClass.AUTHORED,
-                    verification_status="verified",
+                    verification_status=VerificationStatus.VERIFIED,
                     provenance=Provenance(),
                     stats=DocumentStats(tokens=0, headings=0, chunks=0, links_out=0),
                     created_at=datetime(2026, 7, 31, tzinfo=UTC),
@@ -86,7 +93,7 @@ def test_put_chunks(tmp_path_factory: pytest.TempPathFactory, benchmark: Benchma
                 title="Document",
                 content_digest=DIGEST,
                 trust_class=TrustClass.AUTHORED,
-                verification_status="verified",
+                verification_status=VerificationStatus.VERIFIED,
                 provenance=Provenance(),
                 stats=DocumentStats(tokens=0, headings=0, chunks=0, links_out=0),
                 created_at=datetime(2026, 7, 31, tzinfo=UTC),

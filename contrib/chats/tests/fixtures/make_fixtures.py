@@ -13,16 +13,37 @@ are what a human actually pastes, and generating them would lose the point.
 
 import json
 from pathlib import Path
+from typing import Any
 
 OUT = Path(__file__).resolve().parent
 
+Json = dict[str, Any]
+"""One JSON object of a provider export, as this generator assembles it.
 
-def node(node_id, parent, children, message=None):
+`Any` rather than a recursive union because these fixtures exist to be a
+*provider's* shape, including the parts this module does not model — a narrower
+alias here would be a claim about ChatGPT's format rather than about this file."""
+
+
+def node(
+    node_id: str,
+    parent: str | None,
+    children: list[str],
+    message: Json | None = None,
+) -> Json:
     return {"id": node_id, "parent": parent, "children": children, "message": message}
 
 
-def message(node_id, role, text, *, created=None, model=None, extra=None):
-    body = {
+def message(
+    node_id: str,
+    role: str,
+    text: str,
+    *,
+    created: float | None = None,
+    model: str | None = None,
+    extra: Json | None = None,
+) -> Json:
+    body: Json = {
         "id": node_id,
         "author": {"role": role, "name": None, "metadata": {}},
         "create_time": created,

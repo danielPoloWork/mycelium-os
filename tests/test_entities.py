@@ -53,7 +53,7 @@ from mycelium.entities import (
 from mycelium.export import RECORDS_DIRNAME, export_bundle
 from mycelium.markdown import parse_markdown
 from mycelium.sdk.identity import derived_ulid, entity_ref
-from mycelium.sdk.types import EdgeStatus, EdgeType, Entity, ProvenanceOrigin
+from mycelium.sdk.types import Chunk, EdgeStatus, EdgeType, Entity, ProvenanceOrigin
 from mycelium.store import SqliteStore
 
 ENABLED = "[entities]\nenabled = true\n"
@@ -265,7 +265,7 @@ def test_state_written_before_the_stage_decodes_with_no_declarations() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _chunks(text: str, path: str = "b.md") -> list[tuple[str, object]]:
+def _chunks(text: str, path: str = "b.md") -> list[tuple[str, Chunk]]:
     parsed = parse_markdown(text)
     return [
         (path, chunk)
@@ -330,7 +330,7 @@ def test_the_longest_declared_name_wins_at_a_position() -> None:
     assert [edge.to for edge in found] == ["ent:event-bus"]
 
 
-@given(st.text(alphabet=st.characters(exclude_categories=("Cs",)), max_size=400))
+@given(st.text(alphabet=st.characters(exclude_categories=("Cs",)), max_size=400))  # type: ignore[arg-type]
 def test_any_prose_is_scanned_without_error_and_deterministically(text: str) -> None:
     entities = resolve_entities(
         [

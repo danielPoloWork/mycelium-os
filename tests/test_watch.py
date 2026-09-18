@@ -29,7 +29,7 @@ from pathlib import Path
 
 import pytest
 
-from mycelium.build import build
+from mycelium.build import BuildResult, build
 from mycelium.config import EmbeddingConfig, MyceliumConfig
 from mycelium.watch import (
     CHANGE_EVENT_TYPES,
@@ -447,7 +447,7 @@ def test_a_change_triggers_exactly_one_build(tmp_path: Path) -> None:
     build(root, config=LEXICAL)
     (root / "knowledge" / "retries.md").write_text("# Retries\n\nRewritten.\n", encoding="utf-8")
 
-    results = []
+    results: list[BuildResult] = []
     stats = run_watch(
         root,
         source(root / "knowledge" / "retries.md"),
@@ -470,7 +470,7 @@ def test_a_watched_build_publishes_what_a_manual_build_would(tmp_path: Path) -> 
     rather than the compiler.
     """
     root = repo(tmp_path)
-    results = []
+    results: list[BuildResult] = []
     run_watch(
         root,
         source(root / "knowledge" / "architecture.md"),
@@ -495,7 +495,7 @@ def test_a_failing_build_is_reported_and_the_loop_continues(tmp_path: Path) -> N
     broken = root / "knowledge" / "broken.md"
     broken.write_text("---\nmycelium_id: not-a-ulid\n---\n\n# Broken\n", encoding="utf-8")
 
-    results: list[object] = []
+    results: list[BuildResult] = []
     failures: list[Exception] = []
     stats = run_watch(
         root,

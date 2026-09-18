@@ -1437,7 +1437,14 @@ def test_a_redacted_document_is_indexed_with_its_flags(tmp_path: Path) -> None:
     assert invoke("build", str(tmp_path)).exit_code == ExitCode.OK
     store = SqliteStore.open(tmp_path, read_only=True)
     try:
-        documents = [store.get_document(doc_id) for doc_id in store.document_ids()]
+        # Filtered before it is read: `get_document` is `Document | None`, and a
+        # missing one should fail the unpacking below rather than raise
+        # `AttributeError` from inside the comprehension.
+        documents = [
+            document
+            for doc_id in store.document_ids()
+            if (document := store.get_document(doc_id)) is not None
+        ]
         (ingested,) = [item for item in documents if item.path.startswith("knowledge/evidence/")]
         assert ingested.secret_flags == ("aws-access-key-id",)
     finally:

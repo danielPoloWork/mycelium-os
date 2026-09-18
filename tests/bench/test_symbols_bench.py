@@ -55,7 +55,7 @@ def python_grammar() -> object:
 
 def test_extract_one_python_fence(benchmark: BenchmarkFixture, python_grammar: object) -> None:
     source = FENCE.format(index=0).encode("utf-8")
-    benchmark(extract_definitions, python_grammar, source)  # type: ignore[arg-type]
+    benchmark(extract_definitions, python_grammar, source)
 
 
 def test_extract_symbols_of_a_document(benchmark: BenchmarkFixture, python_grammar: object) -> None:

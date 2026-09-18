@@ -29,6 +29,7 @@ it ever shows up next to the scan, something has gone wrong with it.
 import random
 import struct
 import time
+from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
@@ -41,6 +42,7 @@ from mycelium.sdk.types import (
     Document,
     DocumentStats,
     Provenance,
+    ProvenanceOrigin,
     TrustClass,
     VerificationStatus,
 )
@@ -61,7 +63,7 @@ def _unit(rng: random.Random) -> tuple[float, ...]:
 
 
 @pytest.fixture(scope="module")
-def vector_store(tmp_path_factory: pytest.TempPathFactory) -> SqliteStore:
+def vector_store(tmp_path_factory: pytest.TempPathFactory) -> Iterator[SqliteStore]:
     """A store holding `CHUNKS` chunks and one vector each."""
     root = tmp_path_factory.mktemp("bench-vectors")
     rng = random.Random(20260830)
@@ -78,7 +80,7 @@ def vector_store(tmp_path_factory: pytest.TempPathFactory) -> SqliteStore:
                     content_digest="sha256:" + "0" * 64,
                     trust_class=TrustClass.AUTHORED,
                     verification_status=VerificationStatus.VERIFIED,
-                    provenance=Provenance(origin="authored"),
+                    provenance=Provenance(origin=ProvenanceOrigin.AUTHORED),
                     stats=DocumentStats(tokens=1, headings=1, chunks=PER_DOC, links_out=0),
                     created_at=now,
                     updated_at=now,

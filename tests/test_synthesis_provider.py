@@ -114,7 +114,7 @@ def test_the_default_model_is_the_most_capable_of_the_family() -> None:
 def test_the_request_carries_the_model_the_thinking_mode_and_the_effort() -> None:
     engine = provider(StubResponse(), model="claude-opus-5", effort="xhigh")
     engine.complete(system="rules", prompt="write it")
-    (call,) = engine._client.calls  # type: ignore[attr-defined]
+    (call,) = engine._client.calls
     assert call["model"] == "claude-opus-5"
     assert call["system"] == "rules"
     assert call["thinking"] == {"type": "adaptive"}

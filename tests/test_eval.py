@@ -48,6 +48,7 @@ from mycelium.sdk.types import (
     EvalCase,
     EvalRunManifest,
     EvalSlice,
+    GateResult,
     MetricSummary,
     RelevantAnchor,
 )
@@ -628,7 +629,10 @@ def scored(case_id: str, ndcg: float) -> CaseResult:
 def compare_three_cases(ours: dict[str, float], theirs: dict[str, float]) -> IncumbentComparison:
     """One conceded `fact` slice of three cases, scored by hand."""
     cases = [judged(case_id, "fact") for case_id in ours]
-    mean = lambda values: sum(values) / len(values)  # noqa: E731
+
+    def mean(values: list[float]) -> float:
+        return sum(values) / len(values)
+
     return compare_to_incumbent(
         "grep",
         summary(ndcg=mean(list(ours.values()))),
@@ -887,7 +891,7 @@ def g2(
     slices_after: dict[str, float],
     slice_cases: dict[str, list[CaseResult]] | None = None,
     lexical_per_case: dict[str, float] | None = None,
-):  # type: ignore[no-untyped-def]
+) -> GateResult:
     return _gate_g2(
         summary(ndcg=overall_after),
         summary(ndcg=overall_before),
@@ -1001,7 +1005,7 @@ def test_a_slice_the_hybrid_arm_does_not_have_is_not_invented() -> None:
 # ---------------------------------------------------------------------------
 
 
-def gates_of(manifest) -> dict:  # type: ignore[no-untyped-def]
+def gates_of(manifest: EvalRunManifest) -> dict[str, GateResult]:
     return {result.gate.split()[0]: result for result in manifest.gates}
 
 
@@ -1616,7 +1620,9 @@ def test_blessing_writes_a_baseline_that_g3_then_reads(tmp_path: Path, corpus: P
     assert written.is_file()
     baseline = read_baseline(tmp_path, "cases.jsonl", "mycelium")
     assert baseline is not None
-    assert set(baseline["per_slice"]) == set(manifest.per_slice)  # type: ignore[index]
+    per_slice = baseline["per_slice"]
+    assert isinstance(per_slice, dict)
+    assert set(per_slice) == set(manifest.per_slice)
     # Both fingerprints: the first decides whether G3 enforces, the second is what
     # it reports so a reviewer can tell a re-cut corpus from a changed one (ADR-0045).
     assert baseline["content_digest"]
