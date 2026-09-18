@@ -31,10 +31,19 @@ from mycelium.ingest.parsers.pandoc import PandocParser
 from mycelium.markdown import MarkdownError, parse_markdown
 from mycelium.markdown.adapter import MAX_NESTING
 from mycelium.markdown.frontmatter import MAX_FRONTMATTER_BYTES, FrontmatterError, parse_frontmatter
+from mycelium.retrieval import MAX_QUERY_TERMS, search
 from mycelium.sdk.protocols import Blob
+from mycelium.store import SqliteStore
 
-pytestmark = [pytest.mark.boundary("B4"), pytest.mark.boundary("B9")]
-"""The threat-model boundaries these tests hold (docs/security/threat-model.md §4)."""
+pytestmark = [
+    pytest.mark.boundary("B4"),
+    pytest.mark.boundary("B9"),
+    pytest.mark.boundary("B6"),
+]
+"""The threat-model boundaries these tests hold (docs/security/threat-model.md §4).
+
+B6 joined at roadmap 6.17 with the bound on the question — the one cost on the serving
+path that the review left open (register F11), held here at the size that found it."""
 
 DOC_ID = "01J1ZC8Q4R6XKQ3F0V9T8B2M7N"
 BUDGET_S = 5.0
@@ -171,6 +180,49 @@ def test_the_authored_ceiling_is_the_connectors() -> None:
     from mycelium.ingest.connectors.file import DEFAULT_MAX_BYTES
 
     assert orchestrator.MAX_SOURCE_BYTES == DEFAULT_MAX_BYTES == 64 * 1024 * 1024
+
+
+# ---------------------------------------------------------------------------
+# The question is bounded too (B6, register F11, roadmap 6.17)
+# ---------------------------------------------------------------------------
+
+
+def test_a_document_pasted_as_a_query_is_answered_in_milliseconds(tmp_path: Path) -> None:
+    """The finding the review left open, at the size that found it.
+
+    F11 measured twenty thousand terms holding the single-threaded stdio server for
+    57 s. Re-measured through the whole `search` path at 6.17 it was worse: this
+    repository's own README — 62 KB, 7 384 terms, an agent pasting a document and
+    nothing hostile at all — held it for **146 s**. Bounded, the same query is
+    answered in ~94 ms.
+    """
+    (tmp_path / "knowledge").mkdir()
+    (tmp_path / "knowledge" / "retries.md").write_text(
+        "# Retries\n\nFailed deliveries retry with exponential backoff.\n", encoding="utf-8"
+    )
+    build(tmp_path)
+
+    pasted = "exponential backoff " + " ".join(
+        f"word{index % 977} filler prose" for index in range(2500)
+    )
+    assert len(pasted.split()) > 7000
+
+    with SqliteStore.open(tmp_path, read_only=True) as store:
+        started = time.perf_counter()
+        outcome = search(store, pasted)
+        elapsed = time.perf_counter() - started
+
+    assert elapsed < BUDGET_S, f"a pasted document took {elapsed:.1f} s"
+    assert outcome.hits, "the bounded question is still answered, not refused"
+    assert any("bounded" in note for note in outcome.notes)
+
+
+def test_the_bound_is_the_only_unbounded_cost_the_review_found_still_open() -> None:
+    """The other three costs on this path were already bounded, and the bound is
+    sized against a question rather than against a document (ADR-0129)."""
+    assert MAX_QUERY_TERMS == 64
+    # Seven times the longest query anything in this project measures itself on.
+    assert MAX_QUERY_TERMS > 9 * 7
 
 
 # ---------------------------------------------------------------------------

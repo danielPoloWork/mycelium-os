@@ -93,6 +93,7 @@ __all__ = [
     "GRAPH_DISCOUNT",
     "GRAPH_NODES",
     "GRAPH_SEEDS",
+    "MAX_QUERY_TERMS",
     "RRF_K",
     "STOPWORDS",
     "SYMBOL_CANDIDATES",
@@ -104,6 +105,7 @@ __all__ = [
     "FusedHit",
     "Plan",
     "SearchOutcome",
+    "bound_query",
     "query_terms",
     "reciprocal_rank_fusion",
     "retrieval_identity",
@@ -112,6 +114,38 @@ __all__ = [
 ]
 
 DEFAULT_LIMIT: Final = 10
+
+MAX_QUERY_TERMS: Final = 64
+"""How many terms of a question the server reads (roadmap 6.17, ADR-0129).
+
+**Why there is a bound at all.** Every other cost on this path is bounded: `k` is
+capped at 50 by the tool schema, `budget_tokens` bounds the answer, the embedder
+truncates at its model's sequence length, and the leg budgets bound the
+candidates. The *question* was not, and its cost is linear in the terms it
+carries at 3-4 ms a term on the corpus of record — so the server's cost was a
+function of what a caller pasted rather than of what this corpus holds. Pasting
+this repository's own README as a query held it for **146 s**: 130 s in the
+lexical leg, 7 s in the symbol leg, the rest in fusion and the plan (the 6.3
+security review's F11, measured again and larger at 6.17). The stdio server is
+single-threaded, so every other call waits behind it.
+
+**Why 64.** The longest query anything in this project measures itself on is
+**nine terms** — one agent task — and the median across the six judged sets and
+the agent-task suite is three to four. Sixty-four is seven times that maximum and
+sixteen times the median, so no question this project can observe reaches it,
+which is the first thing a bound must be true of. It is also where the bound
+still binds: at 64 terms the lexical leg costs ~210 ms on the largest corpus
+here, against ~110 ms at 32 and ~470 ms at 128, so the worst case stays inside
+the same order as a normal query rather than inside the same order as a document.
+
+**What it is not.** It is not a refusal. The realistic long query is an agent
+pasting a document, which is not hostile, and answering its first sixty-four
+terms is more useful than an error — so the question is read to the bound, the
+answer is served, and `explain` says how many terms went unread. Refusing would
+also have meant tightening `mycelium_search`'s input schema, which is one of the
+five frozen contracts (ADR-0114) and would need an RFC to narrow.
+"""
+
 RRF_K: Final = 60
 """Fusion constant (spec 04 §3): each list contributes ``1 / (RRF_K + rank)``."""
 VECTOR_CANDIDATES: Final = 50
@@ -258,7 +292,14 @@ def retrieval_identity() -> Sha256Digest:
     - the planner's relationship phrasings, which decide *whether* the graph leg
       runs on a given query and are therefore part of the ranking exactly as the
       leg's own constants are (roadmap 5.11). The membership, again, rather than
-      the count.
+      the count;
+    - the bound on the question (:data:`MAX_QUERY_TERMS`), which decides a
+      ranking for every query above it by deciding which terms are ranked on at
+      all. No judged query comes near it — the longest is nine terms against a
+      bound of sixty-four — so moving it cannot move a recorded number, and it is
+      here anyway, because a digest that held only the parameters that happen to
+      bind today would be a record of the corpus rather than of the product
+      (roadmap 6.17).
 
     Each of the four changes above moves at least one of them, which is the check
     that this fingerprint is a fingerprint rather than a decoration. What it
@@ -294,8 +335,42 @@ def retrieval_identity() -> Sha256Digest:
             "routing": {"relationship_phrases": sorted(RELATIONSHIP_PHRASES)},
             "stem_weight": STEM_WEIGHT,
             "stopwords": sorted(STOPWORDS),
+            "max_query_terms": MAX_QUERY_TERMS,
         }
     )
+
+
+def bound_query(query: str) -> tuple[str, int]:
+    """The question the server reads, and how many terms it declined to read.
+
+    :data:`MAX_QUERY_TERMS` terms, counted the way the lexical leg counts them,
+    and the text returned is the caller's own — sliced at the end of the last
+    term read, never reassembled. Slicing rather than rejoining is what keeps a
+    name intact: the symbol leg tokenizes `uv.lock` as one token
+    (:data:`_QUERY_TOKEN`) where this counter sees two, and a question rebuilt
+    from `\\w+` matches would have handed it `uv lock`.
+
+    **Applied once, before the plan and before any leg.** Every consumer of the
+    question is then bounded by construction — the lexical leg, the symbol leg's
+    id composition and its BM25 re-rank, the foothold probe, the term report and
+    the planner's own scans — including any consumer added later, which is the
+    property a bound at one leg would not have had. The alternative, a cap inside
+    `fts_query`, was rejected for the opposite reason: that function also builds
+    the expression the *index* is written with, so a bound there would have been
+    a bound on indexing.
+
+    Returns the query unchanged, and zero, for every question under the bound —
+    which is every question this project measures itself on (ADR-0129).
+    """
+    read = 0
+    cut = 0
+    total = 0
+    for total, match in enumerate(_TERM.finditer(query), start=1):
+        if total <= MAX_QUERY_TERMS:
+            read, cut = total, match.end()
+    if total <= MAX_QUERY_TERMS:
+        return query, 0
+    return query[:cut], total - read
 
 
 def query_terms(query: str) -> list[str]:
@@ -305,6 +380,10 @@ def query_terms(query: str) -> list[str]:
     no content words to fall back on, and searching for nothing would abstain on
     a question the corpus may well answer. Removing every term is never an
     improvement over searching badly.
+
+    Bounded by :func:`bound_query` before it arrives here, not here: the bound is
+    on the question rather than on this leg's reading of it, so the function-word
+    rule below applies to the terms that were read and says so in the same note.
     """
     found = [term.lower() for term in _TERM.findall(query)]
     kept = [term for term in found if term not in STOPWORDS]
@@ -790,6 +869,10 @@ def search(
     measures p95 latency runs thousands of queries.
     """
     settings = config or RetrievalConfig()
+    # The bound is on the *question*, and it is taken before anything reads it —
+    # the plan, both legs, the foothold probe and the term report all see the
+    # question the server agreed to read (roadmap 6.17, ADR-0129).
+    query, unread = bound_query(query)
     plan = plan_query(query, related=related)
     filters, policy_note = _serve_only(filters, settings)
     if filters is None and policy_note is not None:
@@ -816,6 +899,12 @@ def search(
     lists: list[tuple[str, Sequence[SearchHit]]] = [(_LEXICAL, lexical)]
     degraded: list[str] = []
     notes: list[str] = [policy_note] if policy_note else []
+    if unread:
+        notes.append(
+            f"query bounded to its first {MAX_QUERY_TERMS} terms: {unread} further "
+            f"term(s) were not read. A question this long is a document, and reading "
+            f"it whole would hold this server against every other call (roadmap 6.17)"
+        )
     if dropped:
         notes.append(
             f"lexical leg searched on {searched!r}: {len(dropped)} function word(s) "

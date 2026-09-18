@@ -160,3 +160,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0126](0126-measure-the-docs-site-before-deciding-whether-it-joins-the-corpus.md) | Measure the docs site before deciding whether it joins the corpus | Accepted |
 | [0127](0127-publish-docs-site-from-a-workflow-artifact-tracking-main.md) | Publish docs-site from a workflow artifact, tracking `main` | Accepted |
 | [0128](0128-cache-the-environment-not-the-repository-and-declare-the-names-instead-of-importing-them.md) | Cache the environment, not the repository — and declare the names instead of importing them | Accepted |
+| [0129](0129-bound-the-question-once-before-anything-reads-it.md) | Bound the question once, before anything reads it | Accepted |

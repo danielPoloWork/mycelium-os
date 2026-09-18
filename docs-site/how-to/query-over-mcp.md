@@ -27,6 +27,13 @@ Pass `"related": true` when the question is really about relationships — *"wha
 depends on this"* — rather than about content; it is opt-in because the measurement
 that would make it the default has not passed (see the README's retrieval section).
 
+**A question is read to its first 64 terms.** Paste a whole document as the query and
+you get an answer to its opening — not an error — and `explain` says how many terms
+went unread. The bound is there because the server is single-threaded and the cost of
+a query is linear in its length: unbounded, one pasted README held it for over two
+minutes while every other call waited. Sixty-four is seven times the longest question
+this project measures itself on, so an actual question never reaches it.
+
 ## `mycelium_fetch` — read more around a result
 
 ```json

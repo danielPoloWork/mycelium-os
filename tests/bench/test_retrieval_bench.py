@@ -35,7 +35,15 @@ from datetime import UTC, datetime
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
 
-from mycelium.retrieval import RRF_K, VECTOR_CANDIDATES, reciprocal_rank_fusion
+from mycelium.retrieval import (
+    MAX_QUERY_TERMS,
+    RRF_K,
+    VECTOR_CANDIDATES,
+    bound_query,
+    query_terms,
+    reciprocal_rank_fusion,
+    search,
+)
 from mycelium.sdk.types import (
     Chunk,
     ChunkKind,
@@ -169,6 +177,57 @@ def test_rank_fusion_of_two_full_candidate_lists(benchmark: BenchmarkFixture) ->
     lexical = [hit(f"a.md#s/{index}") for index in range(VECTOR_CANDIDATES)]
     vector = [hit(f"a.md#s/{index}") for index in range(VECTOR_CANDIDATES // 2, 150)]
     benchmark(reciprocal_rank_fusion, [("lexical", lexical), ("vector", vector)], k=RRF_K)
+
+
+def test_a_pasted_document_costs_what_a_question_costs(
+    vector_store: SqliteStore, benchmark: BenchmarkFixture
+) -> None:
+    """The claim roadmap 6.17 makes: the server's cost is a function of the corpus,
+    not of what a caller pasted.
+
+    Before the bound, the lexical leg cost 3-4 ms a term with nothing above it —
+    this repository's own README as a query held the server for **146 s** (62 KB,
+    7 384 terms), `AGENTS.md` for 25 s, and a 9 KB page for 5 s. Bounded, all three
+    cost ~94 ms, which is what a normal question costs on that corpus.
+
+    What is benchmarked is `search`, the path a caller reaches — not
+    `search_chunks`, the unbounded primitive underneath it. That distinction is
+    the whole subject: the same document through the primitive is what used to
+    cost 146 s.
+    """
+    pasted = " ".join(["compilers retrieval documents"] * 600)
+    assert bound_query(pasted)[1] > 0, "the fixture must be long enough to be bounded"
+    benchmark(search, vector_store, pasted)
+
+
+def test_the_bound_is_what_makes_that_true(vector_store: SqliteStore) -> None:
+    """Not a benchmark: the mechanism behind the number above, measured once.
+
+    `search` bounds the question; `search_chunks` is the unbounded primitive, and
+    measuring both on the same text is what shows the bound is doing the work
+    rather than the fixture being small.
+    """
+    pasted = " ".join(["compilers retrieval documents"] * 200)
+    read, unread = bound_query(pasted)
+    assert unread > 0
+    assert len(query_terms(read)) <= MAX_QUERY_TERMS
+
+    started = time.perf_counter()
+    bounded = search(vector_store, pasted)
+    with_bound = (time.perf_counter() - started) * 1000
+    assert any("bounded" in note for note in bounded.notes)
+
+    started = time.perf_counter()
+    vector_store.search_chunks(pasted, limit=VECTOR_CANDIDATES)
+    without_bound = (time.perf_counter() - started) * 1000
+
+    # Generous by design: this guards the *bound*, not the machine. At 600 terms
+    # against 64 the unbounded path costs roughly nine times as much, and the
+    # ratio grows without limit in the length of what was pasted.
+    assert with_bound * 3 < without_bound, (
+        f"bounded {with_bound:.0f} ms vs unbounded {without_bound:.0f} ms - "
+        "the bound is not binding"
+    )
 
 
 def test_the_stored_vector_is_fixed_width_float32() -> None:

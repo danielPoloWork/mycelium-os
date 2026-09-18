@@ -250,6 +250,18 @@ chunks; `adr` reaches 60 %). The numbers, the refusals and the two instruments t
 them are in
 [ADR-0057](docs/adr/0057-drop-the-function-words-and-score-the-seam-that-ships.md).
 
+The other rule about your question is a **bound on its length**: the first 64 terms are
+read, and `--explain` says how many were not. Everything else on this path was already
+bounded — `k` at 50, `budget_tokens` on the answer, the embedder at its sequence length —
+and the question was not, so what the server spent was decided by what you pasted rather
+than by what the corpus holds. Pasting *this README* as a query held it for **146 seconds**;
+it now takes 94 milliseconds, and so does a document seven times shorter, which is the
+property that was missing. Nothing is refused, because an agent pasting a document is
+ordinary use and the answer to its opening is a real answer. Sixty-four is seven times the
+longest question this project measures itself on — nine terms — and a test fails on the day
+a judged question grows past it, because on that day the truncation is a scoring change
+([ADR-0129](docs/adr/0129-bound-the-question-once-before-anything-reads-it.md)).
+
 ### The graph is typed, and every type is derived from something you wrote
 
 D-014 fixes a vocabulary of eight edge types and no graph database. **All eight are derived**,
