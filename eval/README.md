@@ -66,11 +66,12 @@ block naming each twin chunk that several distinct judged units landed on (roadm
 ```bash
 python tools/build_eval_cases.py           # this repository's documentation
 python tools/build_uv_docs_cases.py        # the second corpus
+python tools/build_uv_docs_tasks.py        # the second corpus's agent tasks
 python tools/build_ingested_corpus.py      # the third corpus's evidence documents
-python tools/build_ingested_cases.py       # ...and the judgements carried onto them
+python tools/build_ingested_cases.py       # ...and the judgements carried onto them, tasks included
 ```
 
-Those four ingest and carry; none of them renders. Re-rendering the third corpus's binary
+Those five ingest and carry; none of them renders. Re-rendering the third corpus's binary
 sources is `--render`, a one-time provenance act, and it needs pandoc plus the pinned PDF
 renderer — which is declared in its own dependency group and deliberately left out of the
 default sync, because it is 62.5 MB and CI never renders
@@ -565,22 +566,48 @@ pay for the model is argued in that ADR rather than assumed: the cost is small (
 
 ## The agent-task suite
 
-[`tasks.jsonl`](tasks.jsonl) — 22 tasks, built by
-[`tools/build_agent_tasks.py`](../tools/build_agent_tasks.py) with the same discipline as
-the cases: judgments as data, every required anchor validated against a real build.
+There are two of them, for the reason there are two judged corpora (ADR-0053): *report* on
+the corpus we author, *gate* on the one we do not.
+
+- [`tasks.jsonl`](tasks.jsonl) — 22 tasks over this repository's own documentation, built
+  by [`tools/build_agent_tasks.py`](../tools/build_agent_tasks.py).
+- [`corpora/uv-docs/eval/tasks.jsonl`](corpora/uv-docs/eval/tasks.jsonl) — 22 tasks over
+  `uv`'s documentation, built by
+  [`tools/build_uv_docs_tasks.py`](../tools/build_uv_docs_tasks.py) and added at roadmap 6.23
+  ([ADR-0135](../docs/adr/0135-judge-the-agent-tasks-on-a-corpus-we-did-not-write-and-carry-them-rather-than-re-judge-them.md)),
+  because the verdict spec 04 §7.4 arms at 1.0 cannot be read on a corpus whose documents
+  its own authors edit every merge. `--check` refuses a hand edit, as it does for the judged
+  sets ([BUG-0026](../docs/bugs/2026/09/BUG-0026-the-uv-judged-sets-do-not-reproduce-from-their-generator.md)).
+- [`corpora/uv-docs-ingested/eval/tasks.jsonl`](corpora/uv-docs-ingested/eval/tasks.jsonl) —
+  the same 22 tasks **carried** onto the ingested twin by
+  [`tools/build_ingested_cases.py`](../tools/build_ingested_cases.py), never re-judged: only
+  the anchor is recomputed, through the same coverage and `whole` floors the cases cross, with
+  `tasks-carry.json` as the receipt. A task that loses any required anchor is dropped whole,
+  because a task is scored on *every* required anchor arriving and a shorter `requires` list
+  would be an easier task rather than the same one.
+
+All three are built with the same discipline as the cases: judgments as data, every required
+anchor validated against a real build, and `mycelium eval <corpus> --tasks --gate` failing in
+CI and in the ladder when a required passage the snapshot no longer holds is named.
 
 D-010's standard is not another retriever, it is the agent's own `grep`/`read` loop, so
 each task runs through both. Because a model in the loop needs a key, a budget, and a
 network — none of which belongs in an offline gate — what is measured is the *substrate*
 each strategy hands a model: did the required evidence arrive, and what did it cost?
 
-Measured on this repository's corpus at 212 documents (ADR-0131, and the
-[report](../docs/benchmarks/2026-09-18-the-incumbent-reads-a-window.md) it cites):
+Measured at `fa6757d` on all three corpora (ADR-0135, and the
+[report](../docs/benchmarks/2026-09-19-the-suite-on-a-corpus-we-did-not-write.md) it cites),
+at the shipped 4 000-token budget:
 
-| | evidence found | mean tokens | median |
+| Corpus | mycelium | grep | median tokens, ours / theirs |
 |---|---|---|---|
-| mycelium | 16 / 22 | 2 735 | 2 684 |
-| grep | 14 / 22 | 15 268 | 15 179 |
+| `uv-docs` — not ours | **18 / 22** | 13 / 22 | 2 274 / 15 251 |
+| `uv-docs-ingested` — not ours, projected | **17 / 22** | 11 / 22 | 2 479 / 15 173 |
+| this repository | 16 / 22 | 15 / 22 | 2 697 / 15 130 |
+
+Three measurements, not one: different documents, different questions, one instrument. The
+third row is also the argument for the first two — it read +2 on 2026-09-18 and +1 one day
+and three merges later, with no retrieval change in between.
 
 **The incumbent's model has two numbers in it, and both are measured rather than asserted.**
 A grep hit is a line number, so the loop *reads* — and one read costs at most what one search
@@ -588,10 +615,12 @@ may, because `budget_tokens` is what a caller will spend on one step of context-
 a grep loop has no packing to spend it once. A document that fits is read whole; one that does
 not is read around the hit; a section larger than the window is read and carries no evidence,
 because seeing part of a passage is not being handed it. The loop opens `MAX_GREP_FILES` files.
-`python tools/measure_agent_task_band.py .` runs the comparison across the band both constants
-trace: each extra file the incumbent opens costs ~3 800 tokens and returns ~3 tasks, so at
-*equal cost* its first read brings back 1/22 against our 16/22, and at *comparable evidence* it
-pays 5.7× the context.
+`python tools/measure_agent_task_band.py <corpus>` runs the comparison across the band both
+constants trace: each extra file the incumbent opens costs ~3 000-3 800 tokens and returns
+~3 tasks, so at *equal cost* its first read brings back a handful of tasks against our
+sixteen-to-eighteen, and at *comparable evidence* it pays 5.6-6.7× the context. The band also
+shows what our own side cannot do: our evidence rate is flat from 4 000 tokens upward, because
+`_mycelium_context` asks for ten hits whatever the budget says (roadmap 6.28).
 
 Numbers from before 2026-09-18 are not comparable with these. ADR-0022's original 64 %/27 %
 was read off a denominator with four unanswerable tasks in it (fixed at 6.4, ADR-0120), and

@@ -277,6 +277,11 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
         # carry still reproduced, because a carry copies whatever it is given
         # ([BUG-0026], roadmap 5.30). 10 s on this machine.
         ("judged cases", [python, "tools/build_uv_docs_cases.py", "--check"]),
+        # The agent-task suite over the same corpus (roadmap 6.23), on the same
+        # terms: the judgements live in the generator, so a task edited into the
+        # committed file by hand is invisible there and the next run deletes it
+        # ([BUG-0026]). The carry below covers the twin's copy of it.
+        ("judged tasks", [python, "tools/build_uv_docs_tasks.py", "--check"]),
         ("carried cases", [python, "tools/build_ingested_cases.py", "--check"]),
         # What a publish would upload, checked before there is anything to un-publish
         # (roadmap 6.11, ADR-0116). It builds both artifacts, asserts the sdist carries
@@ -315,6 +320,11 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
                     "grep",
                 ],
             ),
+            # The suite's integrity on the corpus we did not write, beside the
+            # one on the corpus we did: the chunker moves anchors in a vendored
+            # corpus exactly as it moves them in ours, and here nobody can
+            # re-judge the documents to make it stop (roadmap 6.23, ADR-0053).
+            (f"agent tasks {corpus}", [*MYCELIUM, "eval", corpus, "--tasks", "--gate"]),
         ]
     # Gate G2, which until now had no runner at all (roadmap 4.40). It goes after
     # the corpora because it fingerprints them, and it does not need the embedding

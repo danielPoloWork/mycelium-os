@@ -253,7 +253,15 @@ produce more of it than the product does. Three things have to hold first:
 |---|---|
 | The integrity gate is green: no task requires a passage the snapshot lost | **done here** — enforced by `mycelium eval --tasks --gate` in CI and the ladder |
 | The incumbent reads what its own model says it reads | **done 2026-09-18** — roadmap 6.22, ADR-0131 |
-| The suite runs on a corpus we did not author (ADR-0053) | **open** — roadmap 6.23 |
+| The suite runs on a corpus we did not author (ADR-0053) | **done 2026-09-19** — roadmap 6.23, ADR-0135: twenty-two tasks over `uv-docs`, carried to its ingested twin |
+
+> **All three preconditions now hold, and the first condition's answer depends on the corpus**
+> ([the suite on a corpus we did not write](2026-09-19-the-suite-on-a-corpus-we-did-not-write.md),
+> ADR-0135). On `uv-docs` the lead is **+5 tasks** at **6.7×** the median context and on its
+> ingested twin **+6** at 6.1×, so both conditions pass there; on this repository, re-measured
+> at `fa6757d`, the lead is **+1** — one task *lower* than the +2 below, after three merges and
+> no retrieval change. Which corpus the rule is read on is therefore part of the rule, and
+> roadmap 7.3 settles it before the tag.
 
 > **The margin did not survive the second precondition.** With the incumbent's read bounded,
 > the lead is **exactly two tasks** (16/22 against 14/22), so condition (a) — *more than* two —

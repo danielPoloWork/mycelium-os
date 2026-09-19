@@ -166,3 +166,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0132](0132-address-the-lexical-index-by-rowid-and-profile-what-is-left.md) | Address the lexical index by rowid, and profile what is left before touching it | Accepted |
 | [0133](0133-raise-the-floor-off-the-contents-and-state-the-corpus-the-budget-holds-for.md) | Raise the floor off the contents, and state the corpus the budget holds for | Accepted |
 | [0134](0134-own-the-decode-and-stop-asking-whatever-is-importable.md) | Own the decode, and stop asking whatever is importable | Accepted |
+| [0135](0135-judge-the-agent-tasks-on-a-corpus-we-did-not-write-and-carry-them-rather-than-re-judge-them.md) | Judge the agent tasks on a corpus we did not write, and carry them rather than re-judge them | Accepted |

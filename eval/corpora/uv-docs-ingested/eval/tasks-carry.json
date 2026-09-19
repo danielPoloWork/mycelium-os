@@ -1,0 +1,148 @@
+{
+  "anchors": {
+    "docs/concepts/cache.md#cache-safety/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/cache-docx-abb8aeee.md#cache-safety/0",
+      "whole": 1.0
+    },
+    "docs/concepts/cache.md#caching-in-continuous-integration/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/cache-docx-abb8aeee.md#caching-in-continuous-integration/0",
+      "whole": 1.0
+    },
+    "docs/concepts/cache.md#clearing-the-cache/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/cache-docx-abb8aeee.md#clearing-the-cache/0",
+      "whole": 1.0
+    },
+    "docs/concepts/cache.md#dependency-caching/0": {
+      "coverage": 0.7468,
+      "twin": "knowledge/evidence/cache-docx-abb8aeee.md#for-local-dependencies-uv-caches-based-on-the-last-modified-time-of-the-source-archive-i-e-the-local-whl-or-tar-gz-file-for-directories-uv-caches-based-on-the-last-modified-time-of-the-pyproject-toml-setup-py-or-setup-cfg-file/0",
+      "whole": 0.729
+    },
+    "docs/concepts/indexes.md#searching-across-multiple-indexes/0": {
+      "coverage": 0.8545,
+      "twin": "knowledge/evidence/indexes-pdf-d37689d3.md#/1",
+      "whole": 0.8075
+    },
+    "docs/concepts/preview.md#enabling-preview-features/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/preview-docx-74c46018.md#enabling-preview-features/0",
+      "whole": 1.0
+    },
+    "docs/concepts/projects/layout.md#the-project-environment/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/layout-html-ca5b0a5f.md#the-project-environment/0",
+      "whole": 1.0
+    },
+    "docs/concepts/projects/run.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/run-pdf-b372319f.md#/0",
+      "whole": 1.0
+    },
+    "docs/concepts/projects/run.md#signal-handling/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/run-pdf-b372319f.md#/0",
+      "whole": 1.0
+    },
+    "docs/concepts/projects/sync.md#checking-the-lockfile/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/sync-docx-5e063fa4.md#checking-the-lockfile/0",
+      "whole": 1.0
+    },
+    "docs/concepts/projects/sync.md#syncing-the-environment/handling-of-extraneous-packages/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/sync-docx-5e063fa4.md#syncing-the-environment/handling-of-extraneous-packages/0",
+      "whole": 1.0
+    },
+    "docs/concepts/projects/workspaces.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/workspaces-html-9648e527.md#/0",
+      "whole": 1.0
+    },
+    "docs/concepts/projects/workspaces.md#when-not-to-use-workspaces/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/workspaces-html-9648e527.md#when-not-to-use-workspaces/0",
+      "whole": 1.0
+    },
+    "docs/concepts/python-versions.md#disabling-automatic-python-downloads/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/5",
+      "whole": 1.0
+    },
+    "docs/concepts/resolution.md#lockfile-versioning/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/resolution-docx-dfb376de.md#lockfile-versioning/0",
+      "whole": 1.0
+    },
+    "docs/concepts/tools.md#execution-vs-installation/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/tools-html-816d0891.md#execution-vs-installation/0",
+      "whole": 1.0
+    },
+    "docs/concepts/tools.md#the-uv-tool-interface/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/tools-html-816d0891.md#the-uv-tool-interface/0",
+      "whole": 1.0
+    },
+    "docs/concepts/tools.md#tool-environments/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/tools-html-816d0891.md#tool-environments/0",
+      "whole": 1.0
+    },
+    "docs/guides/integration/github.md#caching/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/github-html-9b78e8d6.md#caching/0",
+      "whole": 1.0
+    },
+    "docs/pip/compatibility.md#virtual-environments-by-default/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/compatibility-html-9bece5cd.md#virtual-environments-by-default/0",
+      "whole": 1.0
+    },
+    "docs/pip/environments.md#discovery-of-python-environments/0": {
+      "coverage": 0.9143,
+      "twin": "knowledge/evidence/environments-html-8c414191.md#an-activated-conda-environment-based-on-the-conda-prefix-environment-variable/0",
+      "whole": 0.72
+    },
+    "docs/reference/policies/license.md#/0": {
+      "coverage": 0.8723,
+      "twin": "knowledge/evidence/license-html-431e71b5.md#apache-license-version-2-0-license-apache-or-https-www-apache-org-licenses-license-2-0/0",
+      "whole": 0.8841
+    },
+    "docs/reference/policies/platforms.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/platforms-pdf-d7057eca.md#/0",
+      "whole": 1.0
+    },
+    "docs/reference/policies/platforms.md#linux-versions/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/platforms-pdf-d7057eca.md#/0",
+      "whole": 1.0
+    },
+    "docs/reference/policies/versioning.md#lockfile-versioning/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/versioning-docx-45920d09.md#lockfile-versioning/0",
+      "whole": 1.0
+    },
+    "docs/reference/storage.md#storage-directories/executable-directory/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/storage-html-ca9fb50d.md#storage-directories/executable-directory/0",
+      "whole": 1.0
+    },
+    "docs/reference/storage.md#types-of-data/tools/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/storage-html-ca9fb50d.md#types-of-data/tools/0",
+      "whole": 1.0
+    },
+    "docs/reference/troubleshooting/build-failures.md#why-does-uv-build-a-package/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/build-failures-html-6bc73393.md#why-does-uv-build-a-package/0",
+      "whole": 1.0
+    }
+  },
+  "dropped_tasks": 0,
+  "min_coverage": 0.5,
+  "min_whole": 0.4,
+  "schema_version": "mycelium/eval-task-carry/v1"
+}
