@@ -311,3 +311,68 @@ def test_the_suite_gate_refuses_a_corpus_that_lost_a_required_passage(
     assert "t-rot" in failed.stdout
     # Without the gate it is a report, exactly as it was before.
     assert runner.invoke(app, ["eval", str(corpus), "--tasks"]).exit_code == 0
+
+
+def test_the_committed_suite_on_the_corpus_we_did_not_write_meets_the_same_floor() -> None:
+    """Spec 04 §7.4's floor, on the suite the 1.0 verdict is meant to be read on.
+
+    The same assertions as the suite above, on the corpus ADR-0053 says a *gate*
+    has to run on: twenty tasks, more than one shape, evidence behind every one
+    (roadmap 6.23, ADR-0135).
+    """
+    tasks = load_tasks(Path("eval/corpora/uv-docs/eval/tasks.jsonl"))
+
+    assert len(tasks) >= 20
+    assert {task.kind for task in tasks} == {"answer", "locate", "relate"}
+    assert all(task.requires for task in tasks)
+    assert len({task.task_id for task in tasks}) == len(tasks)
+    # Every anchor names a document of that corpus, which is the half of "we did
+    # not write it" a file can assert on its own.
+    assert all(anchor.startswith("docs/") for task in tasks for anchor in task.requires), (
+        "a required anchor points outside the vendored corpus"
+    )
+
+
+def test_the_twins_suite_is_carried_rather_than_judged() -> None:
+    """Nothing in the ingested twin's suite is a fresh judgement (ADR-0135).
+
+    Every task id, prompt, kind and note is the source suite's; only the anchors
+    differ, because only the anchors are computed. A prompt that diverged would
+    mean somebody re-judged the twin, which answers a question about this agent
+    rather than about retrieval (ADR-0027).
+    """
+    source = {
+        task.task_id: task for task in load_tasks(Path("eval/corpora/uv-docs/eval/tasks.jsonl"))
+    }
+    carried = load_tasks(Path("eval/corpora/uv-docs-ingested/eval/tasks.jsonl"))
+
+    assert carried, "the twin's suite is empty"
+    for task in carried:
+        origin = source[task.task_id]
+        assert (task.prompt, task.kind, task.note) == (origin.prompt, origin.kind, origin.note)
+        assert task.requires, "a carried task kept no evidence"
+        assert len(task.requires) <= len(origin.requires)
+        assert all(anchor.startswith("knowledge/evidence/") for anchor in task.requires)
+
+
+def test_a_manifest_says_which_corpus_ran_and_never_a_local_path(tmp_path: Path) -> None:
+    """What a published manifest claims about its own run (roadmap 6.23).
+
+    Two things it must get right, because both end up committed: *which* corpus
+    the comparison ran on — the verdict means different things on ours and on a
+    vendored one (ADR-0053) — and a path a reader elsewhere can resolve. The
+    self-hosted arm is measured in a clean checkout precisely because the working
+    tree holds the report, and that checkout's temporary directory has no business
+    in the record.
+    """
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
+    from measure_agent_task_band import ROOT, kind_of, recorded
+
+    assert kind_of(ROOT / "eval" / "tasks.jsonl") == "this repository's own, compiled"
+    assert "did not write" in kind_of(ROOT / "eval/corpora/uv-docs/eval/tasks.jsonl")
+    # A checkout somewhere else is recorded relative to itself, not by its path.
+    assert recorded(tmp_path, tmp_path) == "."
+    assert recorded(tmp_path / "eval" / "tasks.jsonl", tmp_path) == "eval/tasks.jsonl"
+    assert recorded(ROOT / "eval" / "corpora" / "uv-docs", ROOT) == "eval/corpora/uv-docs"
