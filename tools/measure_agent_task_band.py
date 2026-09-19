@@ -3,7 +3,7 @@
 # Copyright (c) 2026 Daniel Polo
 """What the agent-task verdict is worth, across the two constants that set it.
 
-    python tools/measure_agent_task_band.py [ROOT] [--manifest PATH]
+    python tools/measure_agent_task_band.py [ROOT] [--tasks PATH] [--manifest PATH]
 
 The comparison spec 04 §7.4 asks for has a model of the incumbent inside it, and
 that model has exactly two numbers: **how much one read costs** and **how many
@@ -81,7 +81,8 @@ def _stats(report: TaskSuiteReport, strategy: str) -> dict[str, Any]:
 
 def _corpus(root: Path) -> dict[str, Any]:
     """The corpus the comparison ran over — a verdict without it is a verdict about
-    nothing, and this one is a self-hosting corpus that grows with every merge."""
+    nothing, and one of the two it can be is a self-hosting corpus that grows with
+    every merge (roadmap 6.23)."""
     with SqliteStore.open(root, read_only=True) as store:
         counts = store.counts()
     return {"documents": counts["documents"], "chunks": counts["chunks"]}
@@ -99,11 +100,52 @@ def _commit() -> str:
         return ""
 
 
+def recorded(path: Path, root: Path) -> str:
+    """How a manifest names a path: repo-relative where it is, never a local one.
+
+    A measurement of *this* corpus at a committed tree is taken in a clean
+    checkout somewhere else — the working tree holds the change being written up,
+    and a self-hosting corpus would otherwise include the report measuring it
+    (roadmap 6.23). What belongs in the manifest is the commit, which it already
+    records, and the shape of the tree — not the temporary directory it happened
+    to sit in.
+    """
+    for base in (ROOT, root):
+        try:
+            relative = path.resolve().relative_to(base.resolve()).as_posix()
+        except ValueError:
+            continue
+        return relative or "."
+    return path.name
+
+
+def kind_of(suite: Path) -> str:
+    """Which corpus a comparison ran on, read from the suite it ran."""
+    return (
+        "vendored, compiled - documentation this project did not write"
+        if "corpora" in suite.resolve().parts
+        else "this repository's own, compiled"
+    )
+
+
+def suite_of(root: Path) -> Path:
+    """Where a corpus keeps its agent-task suite.
+
+    A parameter rather than this repository's own path, because since roadmap
+    6.23 there is more than one suite: `eval/corpora/uv-docs` carries tasks
+    judged against documentation nobody here wrote, and the verdict spec 04 §7.4
+    arms at 1.0 is meant to be read on that one (ADR-0053). The convention is the
+    CLI's — `<root>/eval/tasks.jsonl` — so a band and `mycelium eval --tasks`
+    cannot end up measuring two different files.
+    """
+    return root / "eval" / "tasks.jsonl"
+
+
 def measure(
-    root: Path, budgets: Sequence[int], files: Sequence[int]
+    root: Path, budgets: Sequence[int], files: Sequence[int], suite: Path | None = None
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
     """The two bands, and the shipped point they both pass through."""
-    tasks = load_tasks(ROOT / "eval" / "tasks.jsonl")
+    tasks = load_tasks(suite if suite is not None else suite_of(root))
 
     by_files: list[dict[str, Any]] = []
     for count in files:
@@ -159,13 +201,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         default=",".join(str(size) for size in DEFAULT_FILES),
         help="Comma-separated counts of files the grep loop opens.",
     )
+    parser.add_argument(
+        "--tasks",
+        type=Path,
+        help="The suite to run; defaults to <root>/eval/tasks.jsonl, as the CLI reads it.",
+    )
     parser.add_argument("--manifest", type=Path, help="Write the run manifest here.")
     parser.add_argument("--json", action="store_true", help="Print the run as JSON.")
     args = parser.parse_args(argv)
 
     budgets = [int(item) for item in str(args.budgets).split(",") if item.strip()]
     files = [int(item) for item in str(args.files).split(",") if item.strip()]
-    by_files, by_budget, shipped = measure(args.root, budgets, files)
+    suite = args.tasks if args.tasks is not None else suite_of(args.root)
+    by_files, by_budget, shipped = measure(args.root, budgets, files, suite)
 
     mine, theirs = shipped["mycelium"], shipped["grep"]
     print(
@@ -188,9 +236,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         "toolchain": {"mycelium": __version__, "python": platform.python_version()},
         "hardware": hardware(),
         "corpus": {
-            "kind": "this repository's own, compiled",
-            "root": str(args.root).replace("\\", "/"),
-            "tasks": "eval/tasks.jsonl",
+            # Which corpus a comparison ran on *is* the comparison since roadmap
+            # 6.23, so the manifest says which of the two it was rather than
+            # restating a constant that used to be true.
+            "kind": kind_of(suite),
+            "root": recorded(args.root, args.root),
+            "tasks": recorded(suite, args.root),
             "generator": "tools/measure_agent_task_band.py",
             **_corpus(args.root),
         },

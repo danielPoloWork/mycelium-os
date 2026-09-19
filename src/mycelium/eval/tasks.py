@@ -73,6 +73,7 @@ __all__ = [
     "TaskKind",
     "TaskOutcome",
     "TaskSuiteReport",
+    "encode_tasks",
     "load_tasks",
     "run_task_suite",
 ]
@@ -401,11 +402,23 @@ def run_task_suite(
     return TaskSuiteReport(tasks=len(tasks), outcomes=tuple(outcomes))
 
 
-def write_tasks(path: Path, tasks: Iterable[AgentTask]) -> Path:
-    """Write a task suite as JSONL — one task per line, deterministic bytes."""
+def encode_tasks(tasks: Iterable[AgentTask]) -> str:
+    """The bytes :func:`write_tasks` would write, without writing them.
+
+    Split out for the reason :func:`mycelium.eval.cases.encode_cases` was: a
+    generator's `--check` compares what it would write against what is committed,
+    and a second rendering of the same records is a second thing that can quietly
+    disagree with the writer. There is one canonical form and one function that
+    produces it (roadmap 5.38, 6.23).
+    """
     lines = [
         json.dumps(task.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
         for task in tasks
     ]
-    path.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8", newline="\n")
+    return "".join(f"{line}\n" for line in lines)
+
+
+def write_tasks(path: Path, tasks: Iterable[AgentTask]) -> Path:
+    """Write a task suite as JSONL — one task per line, deterministic bytes."""
+    path.write_text(encode_tasks(tasks), encoding="utf-8", newline="\n")
     return path

@@ -37,6 +37,26 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The agent-task comparison now runs on documentation this project did not write**
+  (roadmap 6.23, [ADR-0135](docs/adr/0135-judge-the-agent-tasks-on-a-corpus-we-did-not-write-and-carry-them-rather-than-re-judge-them.md)).
+  Twenty-two tasks over `eval/corpora/uv-docs` — ten `answer`, six `locate`, six `relate` —
+  judged by reading uv's documentation and committed before anything was scored on them
+  (`tools/build_uv_docs_tasks.py`, with a `--check` that refuses a hand edit), plus the same
+  suite **carried** onto the ingested twin by `tools/build_ingested_cases.py`: only the anchor
+  is recomputed, through the coverage and `whole` floors the judged cases already cross, and a
+  task that loses any required anchor is dropped whole rather than carried one anchor lighter.
+  This is the third and last of the preconditions
+  [the reference profile](docs/benchmarks/2026-09-17-reference-profile.md) states for arming
+  the verdict gate at 1.0, and it is the one ADR-0053 has required of a gating measurement
+  since Milestone 4. `mycelium eval <corpus> --tasks --gate` now runs on all three corpora in
+  CI and in `tools/verify.py`, and `tools/measure_agent_task_band.py` takes the suite to run
+  as `--tasks`. **What it reads:** 18/22 against the grep loop's 13/22 at a median 2 274
+  tokens against 15 251 on `uv-docs`, 17/22 against 11/22 on its ingested twin — wider on
+  both than this repository's own corpus gives, where the lead is now +1. The verdict stays
+  reported rather than armed (spec 04 §7.4 conditions it on 1.0) and the question of *which
+  corpus the rule is read on* travels to roadmap 7.3 with the report:
+  [`docs/benchmarks/2026-09-19-the-suite-on-a-corpus-we-did-not-write.md`](docs/benchmarks/2026-09-19-the-suite-on-a-corpus-we-did-not-write.md).
+
 - **The HTML lane decides its own encoding** (roadmap 6.15, ADR-0134, BUG-0032).
   `mycelium.ingest.encoding` reads a document's bytes by a rule this project states — a
   byte-order mark, then an encoding the document declares, then UTF-8, then windows-1252,

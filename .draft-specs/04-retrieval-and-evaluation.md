@@ -244,6 +244,19 @@ publishes it. Before that bound the loop read the first matching file whole what
 which on a corpus with one 88 000-token document meant one file on every task and 93 % of the
 incumbent's measured cost in it.
 
+**The suite runs on a corpus we did not write (roadmap 6.23, ADR-0135).** The third
+precondition above is met: `eval/corpora/uv-docs/eval/tasks.jsonl` holds twenty-two tasks
+judged against uv's documentation, and its ingested twin carries the same judgements with only
+the anchor recomputed — dropping a task that loses any required anchor, because `found` is a
+conjunction and a shorter `requires` list is an easier task rather than the same one. The
+integrity gate runs on all three corpora. This matters for the *verdict* rule rather than for
+the metric: measured at `fa6757d`, the lead on evidence is **+5 tasks** on `uv-docs` and **+6**
+on its twin against **+1** on this repository's own corpus, so which corpus the rule is read on
+decides whether its first condition passes — the decision roadmap 7.3 takes before the tag,
+with `docs/benchmarks/2026-09-19-the-suite-on-a-corpus-we-did-not-write.md` in front of it.
+§7.1's own answer for the judged sets is ADR-0053's: report on the corpus we author, gate on
+the one we do not.
+
 ### 7.5 Run manifests
 
 Every `mycelium eval` run writes a manifest (snapshot id, config digest, retriever config,

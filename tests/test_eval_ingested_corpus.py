@@ -26,10 +26,12 @@ import tomllib
 from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
 from mycelium.eval.cases import load_cases
+from mycelium.store import SqliteStore
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
 
@@ -693,3 +695,101 @@ def test_the_pdf_lane_cites_nothing_a_reader_can_find(
             f"the {lane} lane has started losing headings its source had; the PDF "
             "reading is only a finding about one lane while these two keep theirs"
         )
+
+
+def no_store() -> SqliteStore:
+    """A store the carry never opens, because `map_anchor` is stubbed out.
+
+    The rule under test is what :func:`carry_tasks` does with a mapping's answer,
+    and reaching a real store to get one would test the mapping instead
+    (roadmap 6.23).
+    """
+    return cast("SqliteStore", SimpleNamespace())
+
+
+def test_a_task_that_loses_a_required_anchor_is_dropped_whole(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The one rule the task carry does not share with the case carry (ADR-0135).
+
+    A case is graded per anchor, so it keeps whatever survived. A task is `found`
+    only when *every* required anchor reached the agent, so carrying it one anchor
+    lighter would weaken the conjunction: the twin would be running an easier task
+    and its rate would rise for a reason that is not retrieval.
+
+    Stubbed rather than driven through the corpora, because the rule is the thing
+    under test and the committed carry happens to drop nothing today — which is
+    exactly when a rule stops being exercised.
+    """
+    import build_ingested_cases
+
+    from mycelium.eval.tasks import AgentTask
+
+    landings = {
+        "a.md#one/0": ("twin.md#one/0", 0.9, 0.9),
+        "a.md#two/0": ("twin.md#two/0", 0.8, 0.8),
+    }
+    monkeypatch.setattr(
+        build_ingested_cases,
+        "map_anchor",
+        lambda *args: landings.get(args[3], "best coverage 0.10"),
+    )
+    tasks = (
+        AgentTask(task_id="kept", prompt="p", requires=("a.md#one/0", "a.md#two/0")),
+        AgentTask(task_id="partial", prompt="p", requires=("a.md#one/0", "a.md#gone/0")),
+        AgentTask(task_id="lost", prompt="p", requires=("a.md#gone/0",)),
+    )
+
+    carried, mapped, dropped, collapsed = build_ingested_cases.carry_tasks(
+        tasks, no_store(), no_store(), {}
+    )
+
+    assert [task.task_id for task in carried] == ["kept"]
+    assert carried[0].requires == ("twin.md#one/0", "twin.md#two/0")
+    assert [line.split(":")[0] for line in dropped] == ["partial", "lost"]
+    # The anchors of a dropped task are not in the receipt either: nothing claims
+    # a passage landed for a task that is not carried.
+    assert {anchor for anchor, *_ in mapped} == {"a.md#one/0", "a.md#two/0"}
+    assert collapsed == []
+
+
+def test_two_required_passages_landing_on_one_chunk_are_merged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A headingless page is one block where the Markdown had sections (5.33).
+
+    `requires` is read as a set by the suite, and a file naming an anchor twice
+    says something the harness cannot represent — so the collapse is recorded
+    rather than written out twice.
+    """
+    import build_ingested_cases
+
+    from mycelium.eval.tasks import AgentTask
+
+    monkeypatch.setattr(build_ingested_cases, "map_anchor", lambda *args: ("twin.md#/0", 0.9, 0.9))
+    task = AgentTask(task_id="t", prompt="p", requires=("a.md#one/0", "a.md#two/0"))
+
+    carried, _, dropped, collapsed = build_ingested_cases.carry_tasks(
+        (task,), no_store(), no_store(), {}
+    )
+
+    assert carried[0].requires == ("twin.md#/0",)
+    assert dropped == []
+    assert collapsed == ["t: twin.md#/0"]
+
+
+def test_the_task_receipt_explains_every_carried_task() -> None:
+    """The committed receipt and the committed suite are one run's two halves."""
+    from mycelium.eval.tasks import load_tasks
+
+    payload = json.loads((CORPUS / "eval" / "tasks-carry.json").read_text(encoding="utf-8"))
+    carried = load_tasks(CORPUS / "eval" / "tasks.jsonl")
+    source = load_tasks(TWIN / "eval" / "tasks.jsonl")
+
+    landed = {entry["twin"] for entry in payload["anchors"].values()}
+    assert {anchor for task in carried for anchor in task.requires} <= landed
+    assert payload["dropped_tasks"] == len(source) - len(carried)
+    assert all(
+        entry["coverage"] >= payload["min_coverage"] and entry["whole"] >= payload["min_whole"]
+        for entry in payload["anchors"].values()
+    )
