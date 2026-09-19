@@ -49,3 +49,4 @@ a `fixed` record names its `fixed-in`) is enforced by the consistency lint's `bu
 | [BUG-0029](2026/09/BUG-0029-a-long-emphasis-run-recurses-past-the-interpreter-limit.md) | forty kilobytes of asterisks recurse past the interpreter's limit, killing `mycelium ingest` | medium | fixed | 0.6.0 |
 | [BUG-0030](2026/09/BUG-0030-deeply-nested-json-crashes-chats-import.md) | a JSON file nested past the recursion limit crashes `mycelium chats import` instead of being refused | low | fixed | 0.6.0 |
 | [BUG-0031](2026/09/BUG-0031-writing-a-chunk-scans-the-whole-lexical-index.md) | writing a chunk scans the whole lexical index, so a build is quadratic in corpus size | high | fixed | 0.6.0 |
+| [BUG-0032](2026/09/BUG-0032-an-importable-package-changes-what-html-ingestion-projects.md) | what HTML ingestion projects depends on which unrelated packages happen to be importable | medium | fixed | 0.6.0 |

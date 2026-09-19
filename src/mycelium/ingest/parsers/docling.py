@@ -23,6 +23,14 @@ roadmap item with these constraints as its acceptance criteria (ADR-0032).
 The adapter's own job is the usual one: walk docling's tree and emit KIR in the
 shape :mod:`mycelium.ingest.parsers.builder` fixes, mapping what maps and making
 what does not into an ``opaque`` node rather than a hole.
+
+**One thing it does before handing a document over**: HTML is decoded here, by
+:mod:`mycelium.ingest.encoding`'s rule, and passed on with a byte-order mark. The
+backend parses through BeautifulSoup, which resolves an encoding detector at
+import time from whatever is installed and consults it for any document that
+declares none — so until roadmap 6.15 what an ingestion projected depended on
+which unrelated packages happened to be importable (BUG-0032, ADR-0134). DOCX is
+untouched: it is a zip, and its parts carry their own encoding.
 """
 
 import re
@@ -33,6 +41,7 @@ from io import BytesIO
 from pathlib import PurePath
 from typing import Any, Final
 
+from mycelium.ingest.encoding import decode_html
 from mycelium.ingest.errors import ParseError, PluginUnavailableError
 from mycelium.ingest.media import DOCX, HTML
 from mycelium.ingest.parsers.builder import KirBuilder
@@ -133,7 +142,15 @@ class DoclingParser:
             raise ParseError(msg)
 
         name = f"source.{_EXTENSIONS[blob.media_type]}"
-        stream = DocumentStream(name=name, stream=BytesIO(blob.data))
+        # HTML is bytes that have to become text, and docling's backend hands them
+        # to BeautifulSoup, which asks whichever encoding detector happened to be
+        # importable (roadmap 6.15, BUG-0032). The bytes are decoded here by a rule
+        # this repository owns and handed on marked, so nothing downstream guesses.
+        read = (
+            decode_html(blob.data, source_uri=blob.source_uri) if blob.media_type == HTML else None
+        )
+        data = blob.data if read is None else read.utf8_with_bom()
+        stream = DocumentStream(name=name, stream=BytesIO(data))
         try:
             result = self._converter.convert(stream, raises_on_error=False)
         except Exception as error:  # noqa: BLE001 - a third-party engine on untrusted input
@@ -147,6 +164,8 @@ class DoclingParser:
             raise ParseError(msg)
 
         builder = KirBuilder()
+        for note in read.notes if read is not None else ():
+            builder.warn(note)
         if status == "partial_success":
             builder.warn("docling converted this document only partially")
         document = result.document

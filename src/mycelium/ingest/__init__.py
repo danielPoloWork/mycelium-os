@@ -10,6 +10,9 @@ is both halves of it plus the resolution that pins which implementation runs:
   freeze at 1.0 (architecture §10).
 - :mod:`mycelium.ingest.media` — the dispatch key: what a source's extension
   claims, what its bytes say, and whether they agree.
+- :mod:`mycelium.ingest.encoding` — the rule that turns a document's bytes into
+  text, owned here rather than left to whichever detector is importable
+  (roadmap 6.15).
 - :mod:`mycelium.ingest.connectors` — acquisition under custody.
 - :mod:`mycelium.ingest.parsers` — the adapters over docling, pandoc, PDFium and
   markdown-it (D-007).
