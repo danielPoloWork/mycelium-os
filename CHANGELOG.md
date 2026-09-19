@@ -37,6 +37,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **The HTML lane decides its own encoding** (roadmap 6.15, ADR-0134, BUG-0032).
+  `mycelium.ingest.encoding` reads a document's bytes by a rule this project states — a
+  byte-order mark, then an encoding the document declares, then UTF-8, then windows-1252,
+  and a quarantine if none of them decodes it — instead of leaving the answer to whichever
+  encoding detector happens to be importable beside it. Two contributors with different
+  packages installed now ingest the same HTML into the same evidence. A reading the bytes
+  did not determine on their own — a declaration that does not decode them, a fallback, or
+  a UTF-8 decode producing the NUL characters that mean UTF-16 without a mark — is recorded
+  on the document and reaches its fidelity report.
 - **`mycelium build --rescan`** reads and digests every document instead of trusting its size
   and mtime, keeping every cache — the old incremental floor and nothing beyond it, and the
   remedy `mycelium doctor` names. `--json` reports `read` (documents whose bytes were read this
@@ -48,6 +57,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **What HTML ingestion projects no longer depends on which unrelated packages are
+  importable** ([BUG-0032](docs/bugs/2026/09/BUG-0032-an-importable-package-changes-what-html-ingestion-projects.md),
+  roadmap 6.15, ADR-0134). BeautifulSoup binds an encoding detector at import time from the
+  first of `cchardet`, `chardet` and `charset-normalizer` it can import, and asked it about
+  every document that declares no charset — which is every HTML source in the vendored
+  ingested corpus. Installing a package with nothing to do with ingestion therefore changed
+  what the compiler produced: seven of that corpus's evidence documents, replayed, and the
+  figure moves with the *version* of the detector, which is why declaring one would not have
+  fixed it. The decoded text is now handed to the backend with a byte-order mark, which
+  BeautifulSoup takes as definite, so the detector is not asked at all. The committed corpus
+  is byte-identical.
 - **Writing a chunk no longer scans the whole lexical index, so a cold build is linear in the
   corpus** ([BUG-0031](docs/bugs/2026/09/BUG-0031-writing-a-chunk-scans-the-whole-lexical-index.md),
   roadmap 6.19, ADR-0132). A `chunks_fts` row now carries the `rowid` of the `chunks` row it

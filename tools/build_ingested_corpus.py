@@ -567,6 +567,14 @@ def check(corpus: Path) -> int:
 
     No renderer runs here — the sources are the fixed input — so a difference is
     always a change in ingestion: a parser, the projector, or the fidelity budget.
+
+    That sentence was **not true until roadmap 6.15**, and it is worth saying which
+    way it failed. A difference could also be a package nobody imported on purpose:
+    BeautifulSoup binds an encoding detector from whatever is installed, the HTML
+    lane went through it, and this check was the only thing that noticed — after the
+    fact, unable to tell an environment difference from a parser change (BUG-0032).
+    The decode is now a rule this repository owns (`mycelium.ingest.encoding`), so a
+    red run here names a change somebody made.
     """
     committed = corpus / KNOWLEDGE / EVIDENCE_DIRNAME
     with tempfile.TemporaryDirectory() as temporary:

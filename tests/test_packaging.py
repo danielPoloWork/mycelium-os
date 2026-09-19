@@ -320,9 +320,12 @@ def test_the_sbom_generator_is_not_a_dependency_of_this_project(
     This began as a `sbom` dependency group, on the reasoning that 18 marginal packages
     for a once-per-release tool were worth keeping out of `dev` but fine to declare.
     Syncing that group **changed what the compiler produces**: `cyclonedx-bom` pulls
-    `chardet`, `bs4.dammit` binds to it whenever it is importable, and five HTML
+    `chardet`, `bs4.dammit` binds to it whenever it is importable, and seven HTML
     documents in the vendored ingested corpus projected differently —
-    `tools/build_ingested_corpus.py --check` is what caught it.
+    `tools/build_ingested_corpus.py --check` is what caught it. (Five, as first
+    counted at 6.6; seven when the incident was replayed at 6.15, because the count
+    moves with the detector's version — BUG-0032. The HTML lane no longer asks a
+    detector at all, ADR-0134, and this rule is not about encodings.)
 
     So the rule is stronger than "not in `dev`": a tool that is not part of this
     product must not be resolvable alongside it at all, because what is importable is

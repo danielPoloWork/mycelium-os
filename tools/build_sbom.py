@@ -42,10 +42,17 @@ not tidiness. It was first written as a `sbom` dependency group, on the reasonin
 that 18 marginal packages for a once-per-release tool were worth keeping out of
 `dev` but fine to declare — and syncing that group **changed what the compiler
 produces**: `cyclonedx-bom` pulls `chardet`, BeautifulSoup binds
-`bs4.dammit.chardet_module` to it if it is importable, and five HTML documents in
-the vendored ingested corpus projected differently. `tools/build_ingested_corpus.py
+`bs4.dammit.chardet_module` to it if it is importable, and HTML documents in the
+vendored ingested corpus projected differently. `tools/build_ingested_corpus.py
 --check` caught it. So the generator runs in an environment of its own, through
 ``uv tool run``, and cannot be seen by anything this project imports (ADR-0117).
+
+The count first recorded here was five; replayed at roadmap 6.15 it is **seven**,
+and the difference is the point rather than a correction to make quietly — the
+number is a property of the detector's *version*, not of this repository
+(BUG-0032). The decode itself no longer depends on any of them (ADR-0134); this
+rule stands anyway, because the next ambient import will not be an encoding
+detector.
 
 The cost of that isolation is named rather than hidden: the generator's version is
 resolved at run time within :data:`GENERATOR`'s range instead of being pinned by

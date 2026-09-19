@@ -165,3 +165,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0131](0131-bound-the-incumbents-read-and-publish-the-band-it-buys-evidence-along.md) | Bound the incumbent's read, and publish the band it buys evidence along | Accepted |
 | [0132](0132-address-the-lexical-index-by-rowid-and-profile-what-is-left.md) | Address the lexical index by rowid, and profile what is left before touching it | Accepted |
 | [0133](0133-raise-the-floor-off-the-contents-and-state-the-corpus-the-budget-holds-for.md) | Raise the floor off the contents, and state the corpus the budget holds for | Accepted |
+| [0134](0134-own-the-decode-and-stop-asking-whatever-is-importable.md) | Own the decode, and stop asking whatever is importable | Accepted |
