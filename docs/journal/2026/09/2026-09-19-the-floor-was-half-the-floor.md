@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.20 — the incremental build's floor was the whole corpus; decide
   between raising it and restating the budget, on a measurement.
-- **PR:** #«PR» (`perf/incremental-build-floor`). Follows #167, merged as `4ecf8a6`.
+- **PR:** #168 (`perf/incremental-build-floor`). Follows #167, merged as `4ecf8a6`.
 - **Milestone 6:** 6.20 closed; 6.32 filed from its profile.
 - **Decision it records:** [ADR-0133](../../../adr/0133-raise-the-floor-off-the-contents-and-state-the-corpus-the-budget-holds-for.md).
 
