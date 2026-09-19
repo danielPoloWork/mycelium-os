@@ -994,11 +994,61 @@ def profile_cold_build(
     }
 
 
+def _stage_notes(timings: Sequence[dict[str, int]]) -> dict[str, Any]:
+    """Median per-stage wall time across a set of builds, and each stage's share.
+
+    The compiler times its own stages into every manifest (spec 03 §7). Carrying
+    the median over the sampled builds says *where* a rebuild's time goes rather
+    than only how much of it there is — which is the question roadmap 6.20 asks
+    of the incremental floor, and costs nothing the compiler did not already pay.
+    """
+    stages = sorted({stage for row in timings for stage in row})
+    medians = {
+        stage: round(statistics.median(row.get(stage, 0) for row in timings)) for stage in stages
+    }
+    total = medians.get("total", 0)
+    return {
+        "stages_ms_p50": medians,
+        "stage_share": {
+            stage: round(100 * value / total, 1)
+            for stage, value in sorted(medians.items(), key=lambda row: -row[1])
+            if stage != "total" and total
+        },
+    }
+
+
+def measure_noop(workspace: Path, *, samples: int = INCREMENTAL_SAMPLES) -> Measurement:
+    """Time rebuilds in which nothing changed — the incremental floor (roadmap 6.20).
+
+    A single-document edit costs the floor plus one document's chain. Measuring
+    the floor on its own, beside the edit, says which of the two NFR-3's budget is
+    being spent on. It carries no budget of its own: spec 06 §Phase 1 prices the
+    edit, not the empty rebuild.
+    """
+    measurement = Measurement(
+        name="incremental rebuild, nothing edited (the floor)",
+        unit="ms",
+        budget=None,
+    )
+    timings: list[dict[str, int]] = []
+    reused = 0
+    for _ in range(samples):
+        started = time.perf_counter()
+        result = build(workspace, pin_identity=False)
+        measurement.samples.append((time.perf_counter() - started) * 1000)
+        timings.append(dict(result.manifest.timings_ms))
+        reused = result.stats.reused
+    measurement.notes.update(_stage_notes(timings))
+    measurement.notes["documents_reused"] = reused
+    return measurement
+
+
 def measure_incremental(workspace: Path, *, samples: int = INCREMENTAL_SAMPLES) -> Measurement:
     """Time single-document edits, rebuilt incrementally (NFR-3, spec 06 Phase 1).
 
     The edit is an appended sentence to a document chosen round-robin across the
-    tree, so the measurement is not one lucky file's.
+    tree, so the measurement is not one lucky file's. The compiler's own stage
+    timings ride along (roadmap 6.20), so the manifest says where the time went.
     """
     documents = sorted((workspace / "knowledge").rglob("*.md"))
     measurement = Measurement(
@@ -1008,6 +1058,8 @@ def measure_incremental(workspace: Path, *, samples: int = INCREMENTAL_SAMPLES) 
         notes={"corpus_documents": len(documents)},
     )
     step = max(1, len(documents) // samples)
+    timings: list[dict[str, int]] = []
+    rebuilt: set[int] = set()
     for index in range(samples):
         target = documents[(index * step) % len(documents)]
         target.write_text(
@@ -1017,8 +1069,14 @@ def measure_incremental(workspace: Path, *, samples: int = INCREMENTAL_SAMPLES) 
             newline="\n",
         )
         started = time.perf_counter()
-        build(workspace, pin_identity=False)
+        result = build(workspace, pin_identity=False)
         measurement.samples.append((time.perf_counter() - started) * 1000)
+        timings.append(dict(result.manifest.timings_ms))
+        rebuilt.add(result.stats.rebuilt)
+    measurement.notes.update(_stage_notes(timings))
+    # Recorded rather than asserted: a benchmark reports, and a value other than
+    # {1} here would be a finding about the dirty detector, not a crash.
+    measurement.notes["documents_rebuilt_per_edit"] = sorted(rebuilt)
     return measurement
 
 
@@ -1096,11 +1154,23 @@ def _scale(
     print(f"  file open       {disk.p50:8.3f} ms  (calibration, warm)", flush=True)
 
     samples = _incremental_samples(documents)
+    noop = measure_noop(workspace, samples=samples)
+    print(
+        f"  no-op rebuild   {noop.p95:8.0f} ms p95 ({samples} builds, the floor)",
+        flush=True,
+    )
     incremental = measure_incremental(workspace, samples=samples)
     print(
         f"  incremental     {incremental.p95:8.0f} ms p95 ({samples} edits)",
         flush=True,
     )
+    shares = incremental.notes.get("stage_share")
+    if isinstance(shares, dict):
+        print(
+            "  stages          "
+            + "  ".join(f"{stage} {share:.0f}%" for stage, share in list(shares.items())[:6]),
+            flush=True,
+        )
 
     warm, end_to_end, chunks = measure_queries(workspace, queries)
     print(
@@ -1114,7 +1184,9 @@ def _scale(
     return {
         "documents": cold.notes["documents"],
         "chunks": chunks,
-        "measurements": [item.as_dict() for item in (cold, incremental, warm, end_to_end, disk)],
+        "measurements": [
+            item.as_dict() for item in (cold, noop, incremental, warm, end_to_end, disk)
+        ],
     }
 
 

@@ -44,6 +44,12 @@ not a failure); search p95 < 150 ms on the 10⁵-chunk reference corpus.
 > is not re-opened — it shipped v0.3.0 and its other gates hold — but the record says what was
 > measured and what was assumed, because a gate closed on an assumption is how a budget stops
 > meaning anything.
+>
+> **The first gate, answered at roadmap 6.20 ([ADR-0133](../docs/adr/0133-raise-the-floor-off-the-contents-and-state-the-corpus-the-budget-holds-for.md)).**
+> The incremental floor was the whole corpus, read and digested on every build; it is now one
+> `stat` per document, and the gate's number is restated with the condition it had never
+> carried — the 1 000-document reference corpus, the same corpus the cold-build budget names.
+> The measurement, before and after, is `docs/benchmarks/2026-09-19-the-floor-was-the-whole-corpus.md`.
 
 ### Phase 2 — v0.2 "Ingestion"
 

@@ -17,7 +17,7 @@ two stores built from the same sources hold byte-identical column values.
 import re
 from typing import Final
 
-SCHEMA_VERSION: Final = "mycelium/store/v7"
+SCHEMA_VERSION: Final = "mycelium/store/v8"
 """Bumped whenever the DDL below changes. v1 migration policy is rebuild (D-016):
 a *writer* that meets a foreign version recreates the file (the store is derived
 data, D-005 — ADR-0015); a *reader* refuses and points at `mycelium build`.
@@ -41,7 +41,13 @@ mean nothing, so it has to be rebuilt — which is exactly what a version bump
 says. It is worth noticing that the statement below is byte-identical across the
 bump, and therefore that `fts_schema()` and gate G2's verdict are untouched: the
 two versions are deliberately different questions, and this is the case that
-proves it (ADR-0084)."""
+proves it (ADR-0084).
+
+v7 → v8 added `doc_state.source_size` and `doc_state.source_mtime_ns` — the stat
+memo the incremental build trusts instead of re-reading every file (roadmap 6.20,
+ADR-0133). Two nullable integer columns, and again no change to `chunks_fts`, so
+the ranking fingerprint stands. A store without them is read like one whose
+memos all miss, which is what a rebuild does anyway."""
 
 FTS_TABLE: Final = "chunks_fts"
 """The one table whose shape decides a *ranking* rather than a build.
@@ -93,6 +99,14 @@ META_SCHEMA_VERSION: Final = "schema_version"
 META_VECTORS_GENERATION: Final = "vectors_generation"
 """Bumped by every write to `vectors`; names the packed matrix (ADR-0026)."""
 META_CURRENT_SNAPSHOT: Final = "current_snapshot"
+META_PLAN_STARTED_AT_NS: Final = "plan_started_at_ns"
+"""When the last build began its plan, in nanoseconds since the epoch (roadmap 6.20).
+
+The clock the stat memo's racy-window guard compares a file's mtime against: a
+file modified within :data:`~mycelium.build.orchestrator.RACY_MTIME_WINDOW_NS`
+of this instant is read rather than trusted. Kept in `meta` and not in the
+snapshot state blob on purpose — a wall-clock reading in the blob would make two
+builds of one unchanged corpus address two different blobs."""
 
 PRAGMAS: Final = (
     # Concurrent readers during a build, which is the whole point (D-015).
@@ -259,6 +273,14 @@ CREATE TABLE IF NOT EXISTS doc_state (
     path            TEXT NOT NULL UNIQUE,
     source_digest   TEXT NOT NULL,
     source_mtime    TEXT NOT NULL,
+    -- The stat memo (roadmap 6.20, ADR-0133): the size and mtime the file had
+    -- when `source_digest` was last computed over it. A rebuild that finds both
+    -- unchanged keeps the digest without reading the file; NULL is "never
+    -- recorded" and is read like a miss. Facts about the corpus, so they travel
+    -- in the snapshot's state blob; the clock the racy-window guard compares them
+    -- against (`meta.plan_started_at_ns`) does not.
+    source_size     INTEGER,
+    source_mtime_ns INTEGER,
     env_digest      TEXT NOT NULL,
     document_digest TEXT NOT NULL,
     chunks_digest   TEXT NOT NULL,

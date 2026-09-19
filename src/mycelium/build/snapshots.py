@@ -47,7 +47,7 @@ from mycelium.build.publish import (
 )
 from mycelium.entities import entities_digest, entity_mentions, resolve_entities
 from mycelium.graph import edges_digest, merge_edges, resolve_graph
-from mycelium.sdk.identity import canonical_json, digest_json
+from mycelium.sdk.identity import digest_json
 from mycelium.sdk.types import (
     Chunk,
     Document,
@@ -99,14 +99,29 @@ def encode_snapshot_state(states: tuple[DocState, ...]) -> str:
 
     Canonical JSON in path order, so two builds that produced the same corpus
     address the identical blob and the second writes nothing.
+
+    Written with the C encoder directly rather than through
+    :func:`~mycelium.sdk.identity.canonical_json`, whose Python walk exists to
+    canonicalise floats and refuse non-string keys — and this payload has neither:
+    every value below is a string, an integer, ``None``, or a list or dict of
+    those, so the two produce identical bytes and the walk was pure cost, 213 ms
+    of a 1 000-document rebuild on the machine of record (roadmap 6.20). The test
+    suite holds the two equal on a real state so the shortcut cannot drift.
     """
-    return canonical_json(
+    return json.dumps(
         [
             {
                 "doc_id": state.doc_id,
                 "path": state.path,
                 "source_digest": state.source_digest,
                 "source_mtime": state.source_mtime,
+                # The stat memo travels with the state (roadmap 6.20): facts about
+                # the file the digest was computed over, so a restored snapshot
+                # trusts what the build it restores trusted. The racy-window clock
+                # stays out — it is a reading of *when*, and would make two builds of
+                # one unchanged corpus address two blobs.
+                "source_size": state.source_size,
+                "source_mtime_ns": state.source_mtime_ns,
                 "env_digest": state.env_digest,
                 "document": state.document_digest,
                 "chunks": state.chunks_digest,
@@ -128,7 +143,11 @@ def encode_snapshot_state(states: tuple[DocState, ...]) -> str:
                 "source": state.source,
             }
             for state in sorted(states, key=lambda state: state.path)
-        ]
+        ],
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
     )
 
 
@@ -139,6 +158,8 @@ def decode_snapshot_state(text: str) -> tuple[DocState, ...]:
             path=item["path"],
             source_digest=item["source_digest"],
             source_mtime=item["source_mtime"],
+            source_size=item.get("source_size"),
+            source_mtime_ns=item.get("source_mtime_ns"),
             env_digest=item["env_digest"],
             document_digest=item["document"],
             chunks_digest=item["chunks"],

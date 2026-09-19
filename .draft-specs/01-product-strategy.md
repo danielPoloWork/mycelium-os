@@ -127,7 +127,7 @@ Quality metrics (permanent release gates — details in document 04):
 | Citation coverage | 1.00 — every returned passage resolves to a source anchor |
 | Retrieval lift | Hybrid beats BM25-only by ≥ 5 % nDCG@10 overall, no slice regressing > 2 %; otherwise the lexical default ships |
 | Agent-task uplift | On the curated task suite, agent-with-Mycelium OS beats agent-with-grep on task success; qualitative pre-1.0, quantified at 1.0 |
-| Performance | Cold build 1k docs < 60 s; incremental single-doc rebuild < 2 s p95; search p95 < 150 ms @ 10⁵ chunks (local reference hardware) |
+| Performance | Cold build 1k docs < 60 s; incremental single-doc rebuild < 2 s p95 @ 1k docs (the same corpus, stated at roadmap 6.20 — ADR-0133); search p95 < 150 ms @ 10⁵ chunks (local reference hardware) |
 | Determinism | Byte-identical rebuild on identical inputs, verified in CI |
 
 ## 9. Naming — DECIDED (D-024, 2026-07-31)

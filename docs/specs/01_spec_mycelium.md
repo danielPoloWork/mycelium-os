@@ -33,7 +33,7 @@ product (D-001). v1 targets repo-scale, local-first, single-tenant corpora of
      target FPS, cold-start budget — each phrased so CI could prove a violation. -->
 - NFR-1 Determinism: identical (sources, config, toolchain) ⇒ byte-identical artifacts for deterministic stages; CI golden rebuild gate G6 (D-008)
 - NFR-2 Search latency: mycelium_search end-to-end p95 ≤ 150 ms (local profile, 10^5 chunks, warm store; spec 04 §1)
-- NFR-3 Incremental build: single-document edit rebuilds < 2 s p95 with output equal to a clean rebuild (spec 06 Phase-1 gate)
+- NFR-3 Incremental build: single-document edit rebuilds < 2 s p95 on the 1 000-document reference corpus (the corpus §8's cold-build budget names) on local reference hardware, with output equal to a clean rebuild; the rebuild's floor is one metadata read per discovered document and never a content read of an unchanged one (spec 06 Phase-1 gate; conditions stated at roadmap 6.20, ADR-0133 — a budget with no corpus size is met or missed by machine, not by design)
 - NFR-4 Time-to-first-value: install → agent answering with citations over MCP in < 10 min (spec 06 Phase-0 gate)
 - NFR-5 Citation integrity: citation coverage = 1.00 every release (gate G1); abstention false-answer rate ≤ 5 % on the unanswerable slice (gate G4)
 - NFR-6 Security: all source content untrusted with tested injection resistance; read-only MCP by default; secret scan at ingestion; zero network calls unless configured; no telemetry (D-017; spec 02 §8)

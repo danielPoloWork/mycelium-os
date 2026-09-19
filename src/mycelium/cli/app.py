@@ -319,6 +319,15 @@ def build(
             "either way; this is the escape hatch, not a stronger build.",
         ),
     ] = False,
+    rescan: Annotated[
+        bool,
+        typer.Option(
+            "--rescan",
+            help="Read and digest every document instead of trusting its size and "
+            "mtime, keeping every cache. The remedy `mycelium doctor` names when a "
+            "document's bytes no longer match the index.",
+        ),
+    ] = False,
     require_vectors: Annotated[
         bool,
         typer.Option(
@@ -351,12 +360,22 @@ def build(
                 "and a watch session emits one per build",
                 code=ExitCode.USAGE,
             )
-        _watch(path, clean=clean, require_vectors=require_vectors, pin_identity=not no_pin)
+        _watch(
+            path,
+            clean=clean,
+            rescan=rescan,
+            require_vectors=require_vectors,
+            pin_identity=not no_pin,
+        )
         return
 
     try:
         result = run_build(
-            path, clean=clean, require_vectors=require_vectors, pin_identity=not no_pin
+            path,
+            clean=clean,
+            rescan=rescan,
+            require_vectors=require_vectors,
+            pin_identity=not no_pin,
         )
     except EmbeddingError as error:
         # Only reachable under --require-vectors: otherwise a missing embedder
@@ -386,10 +405,12 @@ def build(
                     "reused": stats.reused,
                     "rebuilt": stats.rebuilt,
                     "removed": stats.removed,
+                    "read": stats.read,
                     "parse_cache_hits": stats.parse_hits,
                     "chunk_cache_hits": stats.chunk_hits,
                     "embedded": stats.embedded,
                     "clean": clean,
+                    "rescan": rescan,
                 },
                 "degraded": list(manifest.degraded),
                 "timings_ms": manifest.timings_ms,
@@ -441,14 +462,22 @@ def _report_build(result: BuildResult, *, clean: bool = False) -> None:
         warn(reason)
 
 
-def _watch(path: Path, *, clean: bool, require_vectors: bool, pin_identity: bool = True) -> None:
+def _watch(
+    path: Path,
+    *,
+    clean: bool,
+    require_vectors: bool,
+    pin_identity: bool = True,
+    rescan: bool = False,
+) -> None:
     """Run a watch session, reporting each build as an ordinary one."""
-    if clean or require_vectors:
-        # Both are single-shot intents: `--clean` says "distrust the cache once",
-        # `--require-vectors` says "fail this build". Neither has a meaning that
-        # survives an unattended loop, and silently ignoring them would be worse.
+    if clean or rescan or require_vectors:
+        # All three are single-shot intents: `--clean` says "distrust the cache
+        # once", `--rescan` says "distrust the stat memo once", `--require-vectors`
+        # says "fail this build". None has a meaning that survives an unattended
+        # loop, and silently ignoring them would be worse.
         raise fail(
-            "--watch cannot be combined with --clean or --require-vectors; "
+            "--watch cannot be combined with --clean, --rescan or --require-vectors; "
             "run those as a one-off build first",
             code=ExitCode.USAGE,
         )

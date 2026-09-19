@@ -24,6 +24,7 @@ from mycelium.build.publish import manifest_path, read_current
 from mycelium.config import CONFIG_FILENAME, ConfigError, load_config
 from mycelium.ingest import Custody, CustodyError, Quarantine, probe
 from mycelium.modules import statuses as module_statuses
+from mycelium.sdk.identity import digest_text
 from mycelium.store import STORE_DIRNAME, STORE_FILENAME, SqliteStore, StoreError
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
 from mycelium.symbols import EXTRA, grammar_statuses
@@ -38,6 +39,9 @@ _QUARANTINE_SHOWN: Final = 5
 """How many quarantined sources the text report names before it counts the rest.
 
 A health check is read at a glance; the full list is `--json`, or the directory."""
+
+_DRIFT_SHOWN: Final = 5
+"""How many drifted documents the index check names before it counts the rest."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +120,55 @@ def _check_snapshot(root: Path, mycelium_dir: Path, store: SqliteStore | None) -
         else:
             checks.append(Check("pointer", "ok", "the store and CURRENT agree"))
     return checks
+
+
+def _check_index(root: Path, store: SqliteStore) -> Check:
+    """Re-digest every indexed document and name the ones the index no longer matches.
+
+    The one check that pays the old incremental floor — a read of every document
+    — and it pays it here, on demand, rather than inside every build (roadmap
+    6.20, ADR-0133). A build trusts a document's size and mtime; the case that
+    trust cannot see is a same-size edit that also restored the old mtime, and
+    this is where it is seen. A document edited normally since the last build has
+    a *different* size or mtime, so it is counted as pending rather than reported
+    as drift — the next build reads it. A document that is gone is not reported
+    either: discovery notices that without reading anything.
+    """
+    drifted: list[str] = []
+    pending = checked = unreadable = 0
+    for state in store.doc_states():
+        path = root / state.path
+        try:
+            stat = path.stat()
+            text = path.read_bytes().decode("utf-8")
+        except FileNotFoundError:
+            continue
+        except (OSError, UnicodeDecodeError):
+            unreadable += 1
+            continue
+        checked += 1
+        if digest_text(text) == state.source_digest:
+            continue
+        if stat.st_size == state.source_size and stat.st_mtime_ns == state.source_mtime_ns:
+            drifted.append(state.path)
+        else:
+            pending += 1
+    if drifted:
+        shown = ", ".join(drifted[:_DRIFT_SHOWN])
+        rest = len(drifted) - _DRIFT_SHOWN
+        more = f" and {rest} more" if rest > 0 else ""
+        return Check(
+            "index",
+            "warn",
+            f"{len(drifted)} document(s) changed under an unchanged size and mtime, so the "
+            f"index still holds their old bytes: {shown}{more}; run `mycelium build --rescan`",
+        )
+    detail = f"{checked} document(s) re-digested; none changed behind the index"
+    if pending:
+        detail += f"; {pending} edited since the last build (the next build reads them)"
+    if unreadable:
+        detail += f"; {unreadable} could not be read"
+    return Check("index", "ok", detail)
 
 
 def _check_config(root: Path) -> Check:
@@ -431,6 +484,8 @@ def diagnose(root: Path, *, stale_after_s: float = DEFAULT_STALE_AFTER_S) -> lis
 
     try:
         checks.extend(_check_snapshot(root, mycelium_dir, store))
+        if store is not None:
+            checks.append(_check_index(root, store))
         checks.append(_check_lock(mycelium_dir, stale_after_s))
     finally:
         if store is not None:

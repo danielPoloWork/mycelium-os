@@ -21,6 +21,7 @@ Writes go through the same tmp-fsync-rename ritual as snapshot publication:
 a crash mid-write must never leave a blob whose name lies about its bytes.
 """
 
+import os
 from pathlib import Path
 from typing import Final
 
@@ -28,7 +29,7 @@ from mycelium.layout import CAS_DIRNAME, CUSTODY_DIRNAME, atomic_write_text
 from mycelium.sdk.identity import digest_bytes
 from mycelium.sdk.types import Sha256Digest
 
-__all__ = ["CAS_DIRNAME", "CUSTODY_DIRNAME", "cas_get", "cas_path", "cas_put"]
+__all__ = ["CAS_DIRNAME", "CUSTODY_DIRNAME", "cas_get", "cas_inventory", "cas_path", "cas_put"]
 
 
 _PREFIX: Final = "sha256:"
@@ -55,6 +56,36 @@ def cas_put(mycelium_dir: Path, text: str) -> Sha256Digest:
         path.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_text(path, text)
     return digest
+
+
+def cas_inventory(mycelium_dir: Path) -> frozenset[str]:
+    """Every blob digest the sweepable CAS holds right now, from one listing per shard.
+
+    The question a build asks of the cache on every run is "are this snapshot's
+    artifacts still here" — restorability (ADR-0016) — and asking it with
+    `exists()` costs two probes per live document, which at a thousand documents
+    cost more than reading the store did (roadmap 6.20). Two hundred and fifty-six
+    directory listings cost the same whatever the corpus size, and the set they
+    build answers every probe. Only the two-character shards are read:
+    `originals/` is tier-1 custody with its own lifecycle and its own reader
+    (ADR-0033), and a `.tmp` beside a blob is a write in flight, not a blob.
+    """
+    root = mycelium_dir / CAS_DIRNAME
+    found: set[str] = set()
+    try:
+        shards = [entry for entry in os.scandir(root) if entry.is_dir()]
+    except FileNotFoundError:
+        return frozenset()
+    for shard in shards:
+        if len(shard.name) != _SHARD_CHARS:
+            continue
+        with os.scandir(shard.path) as entries:
+            found.update(
+                f"{_PREFIX}{entry.name}"
+                for entry in entries
+                if entry.is_file() and not entry.name.endswith(".tmp")
+            )
+    return frozenset(found)
 
 
 def cas_get(mycelium_dir: Path, digest: Sha256Digest) -> str | None:

@@ -10,6 +10,42 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Changed
+
+- **An incremental build no longer reads a document whose size and mtime have not changed**
+  (roadmap 6.20, ADR-0133). `doc_state` now records the size and mtime a file had when its
+  digest was computed — a *stat memo* — and a file whose stat still matches keeps that digest
+  without being read; the digest remains the only identity anything downstream compares. Three
+  guards bound the one case the memo cannot see (a same-size edit that also restores the old
+  mtime): a file modified within two seconds of the previous build's start is read regardless,
+  `mycelium build --rescan` reads every document once, and `mycelium doctor` re-digests the
+  corpus and names the drift. The three other whole-corpus filesystem passes a rebuild made go
+  with it — restorability now costs one listing per cache shard instead of two probes per
+  document, an unresolved link's target is answered from one listing per directory instead of
+  one `exists()` per link, and discovery walks the corpus without entering directories it
+  excludes. On the 1 000-document reference corpus a rebuild in which nothing changed goes
+  **5.1 s to 1.6 s** and a single-document edit **5.8 s to 1.7 s** (p50, on the machine of
+  record while it was contended — the report says how). **The store schema version bumps to
+  `mycelium/store/v8`** for the two new columns, so an existing `.mycelium/` is rebuilt on the
+  next build (D-016); no DDL of the lexical index changed, so gate G2's recorded verdict is
+  untouched. Report:
+  [`docs/benchmarks/2026-09-19-the-floor-was-the-whole-corpus.md`](docs/benchmarks/2026-09-19-the-floor-was-the-whole-corpus.md).
+- **NFR-3 states the corpus it holds for.** The incremental budget — a single-document edit
+  rebuilds in < 2 s p95 — now names the 1 000-document reference corpus and local reference
+  hardware, the same corpus the cold-build budget names, and the curve above that size is
+  published in the report rather than promised (spec 01 NFR-3, spec 02 §4.2, spec 06 §Phase 1).
+
+### Added
+
+- **`mycelium build --rescan`** reads and digests every document instead of trusting its size
+  and mtime, keeping every cache — the old incremental floor and nothing beyond it, and the
+  remedy `mycelium doctor` names. `--json` reports `read` (documents whose bytes were read this
+  build) and `rescan` beside the other incremental counters.
+- **`mycelium doctor` gains an `index` check**: every indexed document re-digested against its
+  row, warning on the ones that changed under an unchanged size and mtime.
+- **The reference-profile tool measures the floor on its own**: a *no-op* rebuild beside the
+  single-document edit, both carrying the compiler's per-stage timings into the manifest.
+
 ### Fixed
 
 - **Writing a chunk no longer scans the whole lexical index, so a cold build is linear in the

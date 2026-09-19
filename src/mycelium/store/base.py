@@ -134,6 +134,16 @@ class DocState:
     landed in. The source URI is what maps one onto the other (roadmap 5.7,
     ADR-0079)."""
     """`authored`, `ingested`, or `synthesized` — absent frontmatter is authored."""
+    source_size: int | None = None
+    """The file's size when ``source_digest`` was computed — half of the stat memo."""
+    source_mtime_ns: int | None = None
+    """The file's mtime, in nanoseconds, when ``source_digest`` was computed.
+
+    With ``source_size`` this is the **stat memo** (roadmap 6.20, ADR-0133): a
+    build that finds a file's size and mtime unchanged keeps its recorded digest
+    without reading it, and the digest remains the only identity anything
+    downstream compares. ``None`` means the memo was never recorded — a row from
+    a snapshot state blob written before it existed — and is read like a miss."""
 
 
 @runtime_checkable

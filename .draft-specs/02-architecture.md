@@ -145,7 +145,14 @@ Guarantees:
 - **Determinism:** identical `(sources, config, toolchain)` ⇒ byte-identical artifacts
   for all deterministic stages; verified by a golden rebuild test in CI (D-008).
 - **Minimality:** a one-document edit rebuilds only that document's chain plus affected
-  global closures. Target: < 2 s p95 (document 01 §8).
+  global closures. Target: < 2 s p95 (document 01 §8). **Amended at roadmap 6.20
+  (ADR-0133):** the floor a one-document edit cannot go below is one `stat` per discovered
+  document, one listing per cache shard, and the global closures (graph, symbols, the
+  snapshot's restore state) — an unchanged document's *content* is never read, because
+  `doc_state` remembers the size and mtime its digest was computed over. The digest stays
+  the identity everything downstream compares; the memo only decides whether to recompute
+  it. The target holds at the 1 000-document condition document 01 §8 states, and the curve
+  above it is published rather than promised.
 - **No content loss in chunking:** property test — the ordered concatenation of a
   document's chunks reproduces its normalized text exactly.
 - **Crash safety:** an interrupted build leaves `CURRENT` untouched; staging is discarded

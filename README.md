@@ -85,8 +85,14 @@ into your tree, and `--no-pin` switches it off: the corpus is compiled, publishe
 searchable, your files are byte-identical afterwards, and a document with no id takes one
 derived from its path so the snapshot still reproduces exactly
 ([ADR-0046](docs/adr/0046-derive-an-identity-rather-than-mint-one-when-a-build-may-not-write.md)).
-Reach for it when you are measuring a corpus rather than authoring one. Every read command
-takes `--json`, exits 0/1/2 (ok / failed / usage), and honours `NO_COLOR`.
+Reach for it when you are measuring a corpus rather than authoring one. A rebuild reads only
+what moved: a document whose size and mtime are what the last build recorded keeps its digest
+without being opened, so editing one document in a thousand rebuilds in well under two seconds
+where it used to cost a read of every file
+([ADR-0133](docs/adr/0133-raise-the-floor-off-the-contents-and-state-the-corpus-the-budget-holds-for.md));
+`--rescan` reads everything once when you have reason to doubt that, and `mycelium doctor`
+tells you when you do. Every read command takes `--json`, exits 0/1/2 (ok / failed / usage),
+and honours `NO_COLOR`.
 
 Point an MCP-capable agent at `mycelium serve` and it gets four read-only tools —
 `mycelium_search`, `mycelium_fetch`, `mycelium_neighbors` (the typed graph your documents
