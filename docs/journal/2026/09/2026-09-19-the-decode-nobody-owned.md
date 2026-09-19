@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.15 — what an ingestion projects depended on which unrelated
   packages happened to be importable.
-- **PR:** `fix/pin-the-html-detector`. Follows #168 (6.20), merged as `b8975ee`.
+- **PR:** #169 (`fix/pin-the-html-detector`). Follows #168 (6.20), merged as `b8975ee`.
 - **Milestone 6:** 6.15 closed. Open: 6.8, 6.12, 6.23, 6.24, 6.25, 6.26, 6.27, 6.28, 6.29,
   6.30, 6.31, 6.32.
 - **Records it writes:** [ADR-0134](../../../adr/0134-own-the-decode-and-stop-asking-whatever-is-importable.md),
