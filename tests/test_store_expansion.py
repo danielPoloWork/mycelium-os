@@ -276,7 +276,10 @@ def test_the_schema_version_records_the_new_index(store: SqliteStore) -> None:
     # an invariant *between* tables — a `chunks_fts` row now carries its chunk's
     # rowid — so a store written before it holds rowids that mean nothing and has
     # to be rebuilt. The tie itself is checked by the sibling test below.
-    assert SCHEMA_VERSION == "mycelium/store/v7"
+    # v8 added two nullable columns to `doc_state` — the incremental build's stat
+    # memo (roadmap 6.20, ADR-0133) — and, once more, nothing here: the lexical
+    # index's statement is byte-identical across the bump.
+    assert SCHEMA_VERSION == "mycelium/store/v8"
     columns = {
         row[1] for row in store._connection.execute("PRAGMA table_info(chunks_fts)").fetchall()
     }

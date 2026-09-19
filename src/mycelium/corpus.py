@@ -26,13 +26,14 @@ Four tests, in order:
    how the gap was found (BUG-0007).
 """
 
+import os
 import re
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path, PurePosixPath
 from typing import Final, Self
 
-__all__ = ["DERIVED_DIRNAMES", "CorpusScope", "discover"]
+__all__ = ["DERIVED_DIRNAMES", "CorpusScope", "Discovered", "discover", "scan"]
 
 DERIVED_DIRNAMES: Final = frozenset({"export"})
 """Top-level directories this tool writes into and must therefore never read.
@@ -137,17 +138,79 @@ class CorpusScope:
         """The directory a scan starts from: the authored tree, or the repository."""
         return root / self.knowledge_dir if self.has_authored_tree(root) else root
 
+    def enters(self, relative: PurePosixPath, *, authored_tree: bool = False) -> bool:
+        """Whether a scan should descend into the directory at `relative`.
+
+        The four tests of :meth:`contains`, asked of a directory: one whose every
+        file would fail them is not entered at all. That is what lets discovery
+        skip `.git/` and `.venv/` instead of walking them to reject each file one
+        by one (roadmap 6.20), and it is safe because :meth:`excluded` already
+        matches a file through any excluded ancestor — pruning the ancestor
+        changes which directories are *read*, never which documents are found.
+        """
+        parts = relative.parts
+        if not parts or any(part.startswith(".") for part in parts):
+            return False
+        if parts[0] in DERIVED_DIRNAMES:
+            return False
+        if authored_tree and parts[0] != self.knowledge_dir:
+            return False
+        return not self.excluded(relative)
+
+
+@dataclass(frozen=True, slots=True)
+class Discovered:
+    """One document a scan found: where it is, and what the corpus calls it."""
+
+    doc_path: str
+    """Repository-relative, POSIX — the path every record and anchor carries."""
+    path: Path
+    """The filesystem path to read it from."""
+
+
+def scan(root: Path, scope: CorpusScope | None = None) -> list[Discovered]:
+    """Every document a build compiles, with its corpus path, in sorted order.
+
+    One `scandir` walk of the scope directory rather than `rglob("*.md")`
+    (roadmap 6.20). The two agree on what a document is — the same rules decide
+    it — but `rglob` descends into every directory and filters afterwards, so on a
+    repository whose corpus is its root it walked `.git/` and `.venv/` to reject
+    their files one at a time; here a directory the rules exclude is never
+    entered. The suffix match keeps `rglob`'s case rule, insensitive where the
+    filesystem is, so no document changes hands between the two.
+
+    The corpus path is carried along from the walk rather than recomputed by the
+    caller: `Path.relative_to` parses and re-joins both paths on every call, and
+    at a thousand documents that was most of what discovery and the plan step
+    cost once the reads were gone — Python's `pathlib`, not the disk.
+    """
+    settings = scope or CorpusScope()
+    authored = settings.has_authored_tree(root)
+    found: list[Discovered] = []
+    pending: list[tuple[str, str]] = [
+        (str(settings.scope_of(root)), settings.knowledge_dir if authored else "")
+    ]
+    while pending:
+        directory, prefix = pending.pop()
+        try:
+            with os.scandir(directory) as entries:
+                listing = list(entries)
+        except OSError:
+            continue  # gone, unreadable, or not a directory: nothing to compile there
+        for entry in listing:
+            doc_path = f"{prefix}/{entry.name}" if prefix else entry.name
+            relative = PurePosixPath(doc_path)
+            if entry.is_dir():
+                if settings.enters(relative, authored_tree=authored):
+                    pending.append((entry.path, doc_path))
+            elif os.path.normcase(entry.name).endswith(".md") and settings.contains(
+                relative, authored_tree=authored
+            ):
+                found.append(Discovered(doc_path=doc_path, path=Path(entry.path)))
+    found.sort(key=lambda item: item.doc_path)
+    return found
+
 
 def discover(root: Path, scope: CorpusScope | None = None) -> list[Path]:
     """Every document a build compiles, in deterministic (sorted) order."""
-    settings = scope or CorpusScope()
-    authored = settings.has_authored_tree(root)
-    found = [
-        path
-        for path in settings.scope_of(root).rglob("*.md")
-        if settings.contains(
-            PurePosixPath(path.relative_to(root).as_posix()),
-            authored_tree=authored,
-        )
-    ]
-    return sorted(found, key=lambda path: path.relative_to(root).as_posix())
+    return [item.path for item in scan(root, scope)]

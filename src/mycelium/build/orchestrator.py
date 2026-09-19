@@ -9,7 +9,7 @@ per-document artifact digests. What it inherits from v0 **unchanged** is the
 part ADR-0009 fixed forever — the publication and crash-safety semantics::
 
     acquire .mycelium/lock                 # exactly one writer (BuildLock)
-    plan: read + pin + digest every file   # per-doc source digests (spec 02 §4.2)
+    plan: stat every file; read + pin + digest the ones that moved   # (spec 02 §4.2)
     compile dirty docs                     # parse → chunk cached (CAS + build_cache),
                                            # assemble recomputed (mtime is its input),
                                            # links + symbols extracted into doc_state
@@ -22,16 +22,24 @@ part ADR-0009 fixed forever — the publication and crash-safety semantics::
     swap CURRENT (tmp → replace → fsync)   # the cross-process publish instant
     release lock
 
-Dirty detection is deliberately conservative: every discovered file is read and
-digested every build — the fast path skips *parsing, chunking, and record
-construction*, never the read. An mtime-trust shortcut would make "clean" a
-guess (renames preserve mtimes; pinned-mtime trees defeat it entirely), and a
-false "clean" is the one failure a determinism product cannot afford. Watch
-mode (roadmap 3.5) is the place where event-driven read-skipping can be argued
-safely. A document is untouched only when its source digest, its mtime (which
-ADR-0009 turns into ``created_at``), and the build environment digest all match
-its ``doc_state`` row; a matching digest under a new mtime reruns only the
-assemble stage.
+Dirty detection rests on the digest, and the digest rests on a **stat memo**
+(roadmap 6.20, ADR-0133). Until 6.20 every discovered file was read and digested
+on every build, and that read was the incremental floor: linear in the corpus,
+1.3 ms a file on the machine of record, over NFR-3's 2 s budget from ~250
+documents. Now ``doc_state`` records the size and mtime a file had when its
+digest was last computed; a file whose stat still matches keeps that digest
+without being read, and the digest stays the only identity anything downstream
+sees. What the memo cannot tell apart is a same-size edit that also restores the
+old mtime, and three guards bound that case: a file modified within
+:data:`RACY_MTIME_WINDOW_NS` of the previous build's start is read regardless
+(a coarse filesystem clock can give two contents one timestamp — Git's "racily
+clean" rule); ``rescan=True`` reads every file once, at the old floor and no
+more; and `mycelium doctor` re-digests the corpus and names a document whose
+bytes no longer match the index. Renames need none of this — a moved file is a
+new path with no row, and is read. A document is untouched only when its source
+digest, its mtime (which ADR-0009 turns into ``created_at``), and the build
+environment digest all match its ``doc_state`` row; a matching digest under a
+new mtime reruns only the assemble stage.
 
 The manifest's corpus digests are folded from per-document artifact digests
 (``digest_json`` over the path-ordered digest list) rather than from the full
@@ -43,17 +51,18 @@ ownership table (spec 03 §3). The write is textual insertion that preserves
 every other byte of the file — never a YAML re-serialization.
 """
 
+import os
 import platform
 import time
 from collections.abc import Iterable, Iterator
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Final
 
 from mycelium.__about__ import __version__
-from mycelium.build.cas import cas_get, cas_path, cas_put
+from mycelium.build.cas import cas_get, cas_inventory, cas_put
 from mycelium.build.dag import (
     BuildEnv,
     decode_chunks_artifact,
@@ -72,12 +81,11 @@ from mycelium.build.publish import (
 from mycelium.build.snapshots import record_snapshot_state
 from mycelium.chunking import ChunkingPolicy, chunk_document
 from mycelium.config import MyceliumConfig, load_config
-from mycelium.corpus import CorpusScope, discover
+from mycelium.corpus import CorpusScope, Discovered, scan
 from mycelium.embedding import Embedder, EmbedderUnavailableError, build_embedder
 from mycelium.entities import (
     EntityDeclaration,
     declare_document,
-    decode_declarations,
     encode_declarations,
     entities_digest,
     entity_mentions,
@@ -85,7 +93,6 @@ from mycelium.entities import (
 )
 from mycelium.graph import (
     LinkRef,
-    decode_links,
     edges_digest,
     encode_links,
     extract_links,
@@ -133,10 +140,9 @@ from mycelium.sdk.types import (
 )
 from mycelium.sdk.types import Synthesizer as SynthesizerRecord
 from mycelium.store import STORE_DIRNAME, DocState, SqliteStore
-from mycelium.store.schema import META_CURRENT_SNAPSHOT
+from mycelium.store.schema import META_CURRENT_SNAPSHOT, META_PLAN_STARTED_AT_NS
 from mycelium.symbols import (
     SymbolRef,
-    decode_symbols,
     describe_gaps,
     encode_symbols,
     extract_symbols,
@@ -158,6 +164,16 @@ _BOM: Final = "﻿"
 _EMBED_BATCH: Final = 64
 """Chunks per embedder call. Bounded so a large corpus does not build one giant
 tensor, and so the build lock's heartbeat is refreshed while a cold embed runs."""
+
+RACY_MTIME_WINDOW_NS: Final = 2_000_000_000
+"""How recently a file may have been modified for its stat memo to be trusted.
+
+A file whose mtime falls within this window of the *previous* build's start is
+read and digested regardless of the memo. The window covers the coarsest
+timestamp granularity in common use — FAT keeps mtimes to two seconds — so an
+edit that landed in the same tick as the one the memo recorded, and therefore
+carries the same size and the same mtime, is still seen. Git's index applies the
+same rule under the name "racily clean" (roadmap 6.20, ADR-0133)."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,6 +198,12 @@ class BuildStats:
     chunk_hits: int
     embedded: int = 0
     """Chunks sent to the embedder — 0 when vectors are off, cached, or unavailable."""
+    read: int = 0
+    """Documents whose bytes were read and digested this build (roadmap 6.20).
+
+    The rest were trusted on their stat memo. On an unchanged corpus this is
+    zero, and the difference between it and ``documents`` is the floor the memo
+    removed; on a `rescan` it equals ``documents`` by construction."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -224,6 +246,12 @@ class _Entry:
     source_digest: str = ""
     mtime: datetime | None = None
     mtime_key: str = ""
+    size: int = 0
+    mtime_ns: int = 0
+    """The stat memo this build records for the file (roadmap 6.20): the size and
+    mtime the digest was computed over, or — on a memo hit — confirmed against."""
+    read: bool = False
+    """Whether the file's bytes were read this build, or its digest trusted."""
     prev: DocState | None = None
     warnings: tuple[str, ...] = ()
     document: Document | None = None
@@ -274,14 +302,14 @@ class _Timer:
 # ---------------------------------------------------------------------------
 
 
-def _discover(root: Path, scope: CorpusScope) -> list[Path]:
-    """The documents a build compiles, in deterministic (sorted) order.
+def _discover(root: Path, scope: CorpusScope) -> list[Discovered]:
+    """The documents a build compiles, with their corpus paths, in sorted order.
 
     Delegated to :mod:`mycelium.corpus`, which watch mode reads too: the two
     must agree on what the corpus is, and agreeing by having the same rule
     written twice is agreeing by coincidence (ADR-0021).
     """
-    return discover(root, scope)
+    return scan(root, scope)
 
 
 # ---------------------------------------------------------------------------
@@ -596,6 +624,8 @@ def _state_of(entry: "_Entry", env_digest: str) -> DocState:
         path=entry.doc_path,
         source_digest=entry.source_digest,
         source_mtime=entry.mtime_key,
+        source_size=entry.size,
+        source_mtime_ns=entry.mtime_ns,
         env_digest=env_digest,
         document_digest=entry.document_digest,
         chunks_digest=entry.chunks_digest,
@@ -628,19 +658,23 @@ def _passages(store: SqliteStore, states: Iterable[DocState]) -> Iterator[tuple[
 def _restorability(mycelium_dir: Path, states: tuple[DocState, ...]) -> tuple[bool, int]:
     """Whether every live document's artifacts are still in the cache.
 
-    Two stats per document — cheap enough to run on every build, and the only
-    way to keep ``mycelium snapshots`` honest: a snapshot is recorded as
-    restorable when it *is*, not when it was expected to be. A reused document's
-    artifacts normally persist because garbage collection keeps whatever a
-    retained snapshot names; what this catches is a hand-deleted cache
-    (documented as safe, and it is — at the price of restorability until the
-    next clean build).
+    Answered from one listing of the cache — :func:`cas_inventory`, one
+    `scandir` per shard — rather than two `exists()` per document. It used to be
+    the latter, "cheap enough to run on every build", and at a thousand
+    documents it cost 376 ms of a rebuild on the machine of record: more than
+    reading the whole store (roadmap 6.20). The listing costs the same whatever
+    the corpus size. What it is for is unchanged: `mycelium snapshots` stays
+    honest, recording a snapshot as restorable when it *is*, not when it was
+    expected to be — a reused document's artifacts normally persist because
+    garbage collection keeps whatever a retained snapshot names, and what this
+    catches is a hand-deleted cache (documented as safe, and it is, at the price
+    of restorability until the next clean build).
     """
+    present = cas_inventory(mycelium_dir)
     missing = sum(
         1
         for state in states
-        if not cas_path(mycelium_dir, state.document_digest).exists()
-        or not cas_path(mycelium_dir, state.chunks_digest).exists()
+        if state.document_digest not in present or state.chunks_digest not in present
     )
     return missing == 0, missing
 
@@ -742,6 +776,7 @@ def build(
     config: MyceliumConfig | None = None,
     stale_after_s: float = DEFAULT_STALE_AFTER_S,
     clean: bool = False,
+    rescan: bool = False,
     require_vectors: bool = False,
     pin_identity: bool = True,
 ) -> BuildResult:
@@ -754,6 +789,14 @@ def build(
     tree — the property the incremental gate enforces. `clean=True` is the
     escape hatch: recompile everything and consult no cache (it still refreshes
     the cache for the builds after it).
+
+    A document whose size and mtime are unchanged since its digest was last
+    computed is not read at all (the stat memo, roadmap 6.20). `rescan=True`
+    reads and digests every document once regardless — the old incremental
+    floor, and nothing beyond it, since every cache still applies. It is the
+    remedy `mycelium doctor` names when a document's bytes no longer match the
+    index, which happens only when an edit keeps a file's size *and* restores
+    its old mtime.
 
     `config` defaults to the repository's own `mycelium.toml` (or built-in
     defaults when it has none); `namespace` overrides the configured one, which
@@ -785,7 +828,12 @@ def build(
     timer = _Timer()
     with BuildLock.acquire(mycelium_dir, stale_after_s=stale_after_s) as lock:
         append_journal(
-            mycelium_dir, "build.started", root=str(root), clean=clean, pinning=pin_identity
+            mycelium_dir,
+            "build.started",
+            root=str(root),
+            clean=clean,
+            rescan=rescan,
+            pinning=pin_identity,
         )
         try:
             result = _build_locked(
@@ -796,6 +844,7 @@ def build(
                 namespace=effective_namespace,
                 config=settings,
                 clean=clean,
+                rescan=rescan,
                 require_vectors=require_vectors,
                 pin_identity=pin_identity,
             )
@@ -813,6 +862,7 @@ def build(
             reused=stats.reused,
             rebuilt=stats.rebuilt,
             removed=stats.removed,
+            read=stats.read,
             parse_hits=stats.parse_hits,
             chunk_hits=stats.chunk_hits,
             embedded=stats.embedded,
@@ -834,34 +884,113 @@ are untrusted content too).
 """
 
 
+def _memo_holds(
+    prev: DocState | None,
+    stat: os.stat_result,
+    *,
+    env_digest: str,
+    rescan: bool,
+    pin_identity: bool,
+    trusted_before_ns: int | None,
+) -> bool:
+    """Whether a file's recorded digest may be kept without reading the file.
+
+    Five things have to hold at once, and each is a guard the stat memo rests on
+    (roadmap 6.20, ADR-0133): the operator did not ask for a rescan; the row
+    exists and its memo matches the file's size and mtime exactly; the file's
+    mtime lies *outside* the racy window — earlier than the previous build's
+    start by :data:`RACY_MTIME_WINDOW_NS`, so a coarse filesystem clock cannot
+    have given a later edit the same timestamp; the row would be reused rather
+    than recompiled, because a document about to be recompiled needs its bytes
+    anyway; and the row's id is not a derived one under a pinning build, which
+    must fall through and pin for real (roadmap 4.14).
+    """
+    if rescan or prev is None or trusted_before_ns is None:
+        return False
+    if prev.source_size != stat.st_size or prev.source_mtime_ns != stat.st_mtime_ns:
+        return False
+    if stat.st_mtime_ns >= trusted_before_ns:
+        return False
+    if prev.env_digest != env_digest:
+        return False
+    return not (pin_identity and is_derived_ulid(prev.doc_id))
+
+
+def _read_source(
+    path: Path,
+    entry: _Entry,
+    prev: DocState | None,
+    pinned: list[Path],
+    *,
+    pin_identity: bool,
+) -> bool:
+    """Read, digest and — if asked — pin one file into `entry`; returns whether it pinned.
+
+    Bytes + explicit decode preserves the file's own line endings (pinning must
+    not silently convert a CRLF file, and Path.read_text would). What *is*
+    skipped for a file whose digest matches its ``doc_state`` row is the
+    frontmatter parse: an indexed document was pinned, its pinned identity is
+    frontmatter, frontmatter is content — so an unchanged content digest proves
+    the id is still in the file, and the row already says which one it is. A
+    derived id breaks that premise: it was never written anywhere, so a pinning
+    build meeting one must fall through and actually pin, or the first `--no-pin`
+    build would silently make every later build a no-pin build too (roadmap 4.14).
+    """
+    raw = path.read_bytes().decode("utf-8")
+    digest = digest_text(raw)
+    recorded: str | None = None
+    if prev is not None and prev.source_digest == digest:
+        # `None` here means "fall through and pin it for real".
+        pin_it = pin_identity and is_derived_ulid(prev.doc_id)
+        recorded = None if pin_it else prev.doc_id
+    was_pinned = False
+    if recorded is not None:
+        doc_id = recorded
+    else:
+        raw, doc_id, was_pinned = _ensure_identity(raw, entry.doc_path, pin=pin_identity)
+        if was_pinned:
+            with path.open("w", encoding="utf-8", newline="") as handle:
+                handle.write(raw)
+            pinned.append(path)
+            digest = digest_text(raw)
+    entry.raw = raw
+    entry.doc_id = doc_id
+    entry.source_digest = digest
+    entry.read = True
+    return was_pinned
+
+
 def _plan(
     root: Path,
-    sources: list[Path],
+    sources: list[Discovered],
     lock: BuildLock,
     pinned: list[Path],
     prev_by_path: dict[str, DocState],
     *,
+    env_digest: str,
     pin_identity: bool = True,
+    rescan: bool = False,
+    trusted_before_ns: int | None = None,
 ) -> list[_Entry]:
-    """Read, pin, and digest every discovered file — the spec's `plan` step.
+    """Stat every discovered file; read, pin and digest the ones that moved.
 
-    Reading everything is the conservative dirty detector: content truth comes
-    from the digest, never from metadata. What *is* skipped for a file whose
-    digest matches its ``doc_state`` row is the frontmatter parse: an indexed
-    document was pinned, its pinned identity is frontmatter, frontmatter is
-    content — so an unchanged content digest proves the id is still in the file,
-    and the row already says which one it is. That turns the per-file plan cost
-    into read + hash, the floor an every-build scan cannot go below.
+    Content truth still comes from the digest, never from metadata: what the
+    **stat memo** changes is how the digest is *obtained* (roadmap 6.20,
+    ADR-0133). A file whose size and mtime match the ones ``doc_state`` recorded
+    when its digest was last computed keeps that digest without being read,
+    under the guards :func:`_memo_holds` spells out; every other file is read as
+    it always was. Until 6.20 every file was read on every build, and that read
+    was the incremental floor — 1.3 ms a file on the machine of record, over
+    NFR-3's 2 s budget from ~250 documents. The floor is now one `stat` a file.
 
     A file that cannot be read or whose declared frontmatter cannot be parsed is
     quarantined here, exactly as a clean build would quarantine it.
     """
     entries: list[_Entry] = []
-    for index, path in enumerate(sources):
+    for index, item in enumerate(sources):
         if index % 64 == 0:  # staleness is measured in minutes; per-file utime is waste
             lock.heartbeat()
-        relative = path.relative_to(root)
-        doc_path = relative.as_posix()
+        path, doc_path = item.path, item.doc_path
         entry = _Entry(path=path, doc_path=doc_path, outcome=_Outcome.PENDING)
         try:
             stat = path.stat()
@@ -871,37 +1000,23 @@ def _plan(
                     "authored document shares with an ingested one"
                 )
                 raise ValueError(msg)
-            # Bytes + explicit decode preserves the file's own line endings
-            # (pinning must not silently convert a CRLF file, and Path.read_text
-            # would) and is the cheapest read Python offers — this loop runs for
-            # every file on every build, and is the incremental floor.
-            raw = path.read_bytes().decode("utf-8")
-            digest = digest_text(raw)
             prev = prev_by_path.get(doc_path)
-            # The fast path rests on "an indexed document was pinned, and its
-            # pinned identity is frontmatter, so an unchanged digest proves the
-            # id is still in the file". A derived id breaks that premise: it was
-            # never written anywhere, so a pinning build meeting one must fall
-            # through and actually pin, or the first `--no-pin` build would
-            # silently make every later build a no-pin build too (roadmap 4.14).
-            recorded: str | None = None
-            if prev is not None and prev.source_digest == digest:
-                # `None` here means "fall through and pin it for real".
-                pin_it = pin_identity and is_derived_ulid(prev.doc_id)
-                recorded = None if pin_it else prev.doc_id
-            if recorded is not None:
-                doc_id = recorded
-            else:
-                raw, doc_id, was_pinned = _ensure_identity(raw, doc_path, pin=pin_identity)
-                if was_pinned:
-                    with path.open("w", encoding="utf-8", newline="") as handle:
-                        handle.write(raw)
-                    pinned.append(path)
-                    digest = digest_text(raw)
-            entry.raw = raw
-            entry.doc_id = doc_id
-            entry.source_digest = digest
-            entry.mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC)
+            if _memo_holds(
+                prev,
+                stat,
+                env_digest=env_digest,
+                rescan=rescan,
+                pin_identity=pin_identity,
+                trusted_before_ns=trusted_before_ns,
+            ):
+                assert prev is not None  # `_memo_holds` refuses a missing row
+                entry.doc_id = prev.doc_id
+                entry.source_digest = prev.source_digest
+            elif _read_source(path, entry, prev, pinned, pin_identity=pin_identity):
+                stat = path.stat()  # the pin rewrote the file: record what is there now
+            entry.size = stat.st_size
+            entry.mtime_ns = stat.st_mtime_ns
+            entry.mtime = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
             entry.mtime_key = entry.mtime.isoformat()
         except Exception as error:  # noqa: BLE001 - quarantine is the failure taxonomy
             entry.outcome = _Outcome.QUARANTINED
@@ -938,9 +1053,13 @@ def _build_locked(
     namespace: str,
     config: MyceliumConfig,
     clean: bool,
+    rescan: bool,
     require_vectors: bool,
     pin_identity: bool,
 ) -> BuildResult:
+    # Taken before anything is stat'd: a file modified after this instant is
+    # inside the next build's racy window, whichever side of our reads it landed.
+    started_ns = time.time_ns()
     snapshot_id = new_ulid()
     parent_id = read_current(mycelium_dir)
     policy = config.chunking.to_policy()
@@ -960,9 +1079,25 @@ def _build_locked(
             )
         prev_states = store.doc_states()
         prev_by_path = {state.path: state for state in prev_states}
+        # The racy-window guard's clock: a memo is trusted only for a file last
+        # modified this long before the previous build began (roadmap 6.20).
+        recorded_start = store.get_meta(META_PLAN_STARTED_AT_NS)
+        trusted_before_ns = (
+            int(recorded_start) - RACY_MTIME_WINDOW_NS if recorded_start is not None else None
+        )
 
         pinned: list[Path] = []
-        entries = _plan(root, sources, lock, pinned, prev_by_path, pin_identity=pin_identity)
+        entries = _plan(
+            root,
+            sources,
+            lock,
+            pinned,
+            prev_by_path,
+            env_digest=env_digest,
+            pin_identity=pin_identity,
+            rescan=rescan or clean,
+            trusted_before_ns=trusted_before_ns,
+        )
         timer.lap("plan")
 
         # -- dirty detection ------------------------------------------------
@@ -983,19 +1118,12 @@ def _build_locked(
                 entry.warnings = prev.warnings
                 entry.document_digest = prev.document_digest
                 entry.chunks_digest = prev.chunks_digest
-                # Its links come back too: resolution runs over the whole corpus
-                # every build, so an untouched document's references still take
-                # part in the graph (ADR-0018).
-                entry.links = decode_links(prev.links)
-                entry.aliases = prev.aliases
-                entry.supersedes = prev.supersedes
-                entry.headings = prev.headings
-                entry.entities = decode_declarations(prev.entities)
-                entry.symbols = decode_symbols(prev.symbols)
-                entry.symbol_uses = decode_symbols(prev.symbol_uses)
-                entry.symbol_gaps = prev.symbol_gaps
-                entry.origin = prev.origin
-                entry.source = prev.source
+                # Its links, symbols and declarations come back with its row:
+                # resolution runs over the whole corpus every build, so an
+                # untouched document's references still take part in the graph
+                # (ADR-0018). The row is reused as it stands, below, rather than
+                # decoded into the entry and encoded back — a round trip that
+                # cost a thousand reused documents ~80 ms a build (roadmap 6.20).
 
         # -- compile what is dirty, through the cache -------------------------
         parsed_count = parse_hits = chunked_count = chunk_hits = 0
@@ -1087,7 +1215,20 @@ def _build_locked(
         quarantined = sum(1 for e in entries if e.outcome is _Outcome.QUARANTINED)
         cache_stamp = datetime.now(tz=UTC).isoformat()
 
-        live_states = {entry.doc_path: _state_of(entry, env_digest) for entry in live}
+        live_states: dict[str, DocState] = {}
+        memo_refresh: list[DocState] = []
+        for entry in live:
+            if entry.outcome is _Outcome.REBUILT or entry.prev is None:
+                live_states[entry.doc_path] = _state_of(entry, env_digest)
+                continue
+            state = entry.prev
+            if state.source_size != entry.size or state.source_mtime_ns != entry.mtime_ns:
+                # A reused row with no memo, or one restored from a snapshot
+                # written before memos existed: it was read to get here, so the
+                # memo is written once and the next build trusts it (6.20).
+                state = replace(state, source_size=entry.size, source_mtime_ns=entry.mtime_ns)
+                memo_refresh.append(state)
+            live_states[entry.doc_path] = state
         restorable, unrestorable = _restorability(mycelium_dir, tuple(live_states.values()))
         manifest_warnings = [w for entry in entries for w in entry.warnings]
         derived = tuple(entry.path for entry in live if is_derived_ulid(entry.doc_id))
@@ -1141,6 +1282,9 @@ def _build_locked(
                 store.put_document(entry.document)
                 store.put_chunks(entry.chunks)
                 store.put_doc_state(live_states[entry.doc_path])
+            for state in memo_refresh:
+                store.put_doc_state(state)
+            store.set_meta(META_PLAN_STARTED_AT_NS, str(started_ns))
             for key, digest in cache_rows:
                 store.cache_put(key, digest, cache_stamp)
             if restorable:
@@ -1258,6 +1402,7 @@ def _build_locked(
         chunked=chunked_count,
         chunk_hits=chunk_hits,
         embedded=embedded,
+        read=sum(1 for e in entries if e.read),
     )
     return BuildResult(
         manifest=manifest,

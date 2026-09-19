@@ -761,6 +761,9 @@ def test_doctor_is_clean_after_a_build(tmp_path: Path) -> None:
         "snapshot",
         "manifest",
         "pointer",
+        # Every indexed document re-digested against its row: the detector for
+        # the one case the incremental build's stat memo cannot see (roadmap 6.20).
+        "index",
         "lock",
     }
 

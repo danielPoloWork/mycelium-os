@@ -49,8 +49,9 @@ threat model claimed was already closed: reference syntax cannot survive as a
 *text*, and the compiler re-parsed it into an authored edge.
 """
 
+import os
 from collections import deque
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Final, Protocol, runtime_checkable
@@ -437,7 +438,45 @@ def _resolve_target(
     return None, "no document matches"
 
 
-def links_to_a_non_document(root: Path | None, source_path: str, target: str) -> bool:
+class _DirectoryProbe:
+    """Answers `exists()` for many paths from one listing per directory (roadmap 6.20).
+
+    Every unresolved link asks whether its target is a file the corpus does not
+    index (BUG-0013), and a corpus of a thousand generated documents asked nearly
+    four thousand times a build, for fifteen hundred distinct paths — one `stat`
+    each, on a machine that charges for every one. The candidates cluster in a
+    handful of directories, so each directory is listed once and every question
+    about it is answered from the set. Names are compared the way the filesystem
+    compares them — case-insensitively where it does — which is what
+    `Path.exists` did. The one divergence is a dangling symlink, which a listing
+    counts and `exists()` does not: a warning withheld for a link nobody could
+    follow anyway.
+    """
+
+    def __init__(self) -> None:
+        self._listings: dict[str, frozenset[str]] = {}
+
+    def exists(self, path: str) -> bool:
+        parent, name = os.path.split(path)
+        key = os.path.normpath(parent)
+        names = self._listings.get(key)
+        if names is None:
+            try:
+                with os.scandir(key) as entries:
+                    names = frozenset(os.path.normcase(entry.name) for entry in entries)
+            except OSError:
+                names = frozenset()
+            self._listings[key] = names
+        return os.path.normcase(name) in names
+
+
+def links_to_a_non_document(
+    root: Path | None,
+    source_path: str,
+    target: str,
+    *,
+    probe: Callable[[str], bool] | None = None,
+) -> bool:
     """Whether an unresolved link points at something that exists but is not indexed.
 
     `[LICENSE](LICENSE)`, `[the template](.github/PULL_REQUEST_TEMPLATE.md)`, and a
@@ -451,14 +490,24 @@ def links_to_a_non_document(root: Path | None, source_path: str, target: str) ->
     The test is existence, not extension. A Markdown file the corpus excludes is
     as legitimately unlinked as a PNG; what still warns is a target that is not
     there at all, which is the broken link the graph exists to surface.
+
+    `probe` is how existence is asked, of a path spelled as a string;
+    :func:`resolve_edges` passes one :class:`_DirectoryProbe` for the whole
+    resolution so a directory is listed once rather than stat'd per link. Without
+    one, the filesystem is asked directly. Strings rather than `Path` objects
+    because two thousand unresolved links built four thousand `Path`s a rebuild,
+    and parsing them cost more than the probes did (roadmap 6.20).
     """
     if root is None:
         return False
     head, _ = _split_fragment(target)
     if not head:
         return False
-    candidates = (root / Path(source_path).parent / head, root / head)
-    return any(candidate.exists() for candidate in candidates)
+    exists = probe if probe is not None else os.path.exists
+    base = str(root)
+    directory = source_path.rpartition("/")[0]
+    beside = os.path.join(base, directory, head) if directory else os.path.join(base, head)
+    return exists(beside) or exists(os.path.join(base, head))
 
 
 EVIDENCE_FOLDER: Final = "evidence"
@@ -587,6 +636,8 @@ def resolve_edges(
     """
     edges: dict[Sha256Digest, Edge] = {}
     warnings: list[str] = []
+    # One listing per directory for the whole resolution, not one stat per link.
+    probe = _DirectoryProbe().exists if root is not None else None
 
     for source_path in sorted(links_by_path):
         source_uri = (sources or {}).get(source_path, "")
@@ -596,7 +647,7 @@ def resolve_edges(
                 continue
             target_path, reason = _resolve_target(index, source_path, link, source_uri)
             if target_path is None:
-                if links_to_a_non_document(root, source_path, link.target):
+                if links_to_a_non_document(root, source_path, link.target, probe=probe):
                     continue
                 warnings.append(
                     f"{source_path}: unresolved {link.kind} [[{link.target}]] - {reason}"

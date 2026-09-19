@@ -760,12 +760,13 @@ class SqliteStore:
         self._connection.execute(
             """
             INSERT INTO doc_state(
-                doc_id, path, source_digest, source_mtime, env_digest,
-                document_digest, chunks_digest, warnings_json, graph_json)
-            VALUES(?,?,?,?,?,?,?,?,?)
+                doc_id, path, source_digest, source_mtime, source_size, source_mtime_ns,
+                env_digest, document_digest, chunks_digest, warnings_json, graph_json)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(doc_id) DO UPDATE SET
                 path = excluded.path, source_digest = excluded.source_digest,
-                source_mtime = excluded.source_mtime, env_digest = excluded.env_digest,
+                source_mtime = excluded.source_mtime, source_size = excluded.source_size,
+                source_mtime_ns = excluded.source_mtime_ns, env_digest = excluded.env_digest,
                 document_digest = excluded.document_digest,
                 chunks_digest = excluded.chunks_digest,
                 warnings_json = excluded.warnings_json,
@@ -776,6 +777,8 @@ class SqliteStore:
                 state.path,
                 state.source_digest,
                 state.source_mtime,
+                state.source_size,
+                state.source_mtime_ns,
                 state.env_digest,
                 state.document_digest,
                 state.chunks_digest,
@@ -1695,6 +1698,8 @@ def _doc_state_from_row(row: sqlite3.Row) -> DocState:
         path=str(row["path"]),
         source_digest=str(row["source_digest"]),
         source_mtime=str(row["source_mtime"]),
+        source_size=None if row["source_size"] is None else int(row["source_size"]),
+        source_mtime_ns=None if row["source_mtime_ns"] is None else int(row["source_mtime_ns"]),
         env_digest=str(row["env_digest"]),
         document_digest=str(row["document_digest"]),
         chunks_digest=str(row["chunks_digest"]),
