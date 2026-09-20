@@ -350,7 +350,7 @@ the table earns its keep on a corpus that documents an API with definitions in f
 what the spec wrote it for
 ([ADR-0073](docs/adr/0073-take-the-grammars-word-for-a-definition-and-the-headings-for-a-name.md)).
 
-### A name in your query is looked up, and it took a corpus repair to earn that
+### A name in your query is looked up, and fifty-eight cases took the default back off
 
 Spec 04 §3 lists a third candidate generator beside BM25 and vectors: an *exact lookup in the
 symbol table for identifier-like tokens*. Roadmap 5.9 built it. Ask for `RetryPolicy` or
@@ -358,8 +358,8 @@ symbol table for identifier-like tokens*. Roadmap 5.9 built it. Ask for `RetryPo
 `defines sym:python:RetryPolicy` by `mycelium search --explain`, ranked by the same BM25 as
 everything else and discounted so a definition cannot outrank your best direct match.
 
-**It shipped off for three items, and now it does not** — which is the more interesting half,
-because nothing about the ranking changed. At roadmap 5.9 the leg could not reach the slice it
+**It shipped off for three items, then on for one milestone, and it is off again** — which is
+the more interesting half, because nothing about the ranking changed at any point. At roadmap 5.9 the leg could not reach the slice it
 exists for: the judged `symbol` cases ask for `uv tool install`, `uv lock --check` and nine more
 multi-word commands, and spec 04 §2's identifier test rejects every one of them on whitespace
 alone, so the lookup fired on **0 of 19**. Roadmap 5.23 gave a command a source — a phrase the
@@ -375,11 +375,19 @@ judged `symbol` cases. With the namings carried (roadmap 5.25) it fires on all f
 nothing regressing. The flag follows the measurement, because that is the rule, and CI fails if
 the two ever disagree again.
 
-The caveat is in the record rather than in a footnote: on the release sets the gain is **one
-case**, `ours/*` and `uv/release` are byte-identical with the leg on, and the set that gains is
-the twin of the set that does not. So what the leg demonstrably does is *compensate for what
-ingestion costs* — a real benefit, and a smaller claim than "the leg is good". Turn it off with
-`[retrieval] symbol_lookup = false`; re-run any of it with `python tools/measure_symbol_leg.py`,
+The caveat was in the record rather than in a footnote — on the release sets that gain was
+**one case**, and the set that gained was the twin of the set that did not — and at roadmap 6.8
+the caveat became the verdict. Authoring the judged sets took the `symbol` slice from **four
+cases to fifty-eight**, and at that size the reading inverts on the very corpus the gain was
+claimed for: `uv/release` earns it (+5.0 % on the slice, +0.7 % overall) and
+`uv-ingested/release` **regresses** (−5.8 % on the slice, −0.7 % overall). The bar is a
+release-set gain with *no overall regression on any set*, so the flag follows the measurement
+back off and the leg is opt-in again
+([ADR-0137](docs/adr/0137-let-a-gated-default-follow-its-ablation-and-narrow-the-rule-that-would-refuse-it.md)).
+Four cases could not see this; fifty-eight can, and that is what a judged set is for.
+
+Turn it on with `[retrieval] symbol_lookup = true`; re-run any of it with
+`python tools/measure_symbol_leg.py`,
 and `--coverage` to see what it can fire on
 ([ADR-0080](docs/adr/0080-look-a-name-up-exactly-and-report-that-the-table-points-at-naming-sites.md),
 [ADR-0096](docs/adr/0096-write-the-span-back-and-pin-the-arm-that-judges-it.md)).

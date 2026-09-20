@@ -12,6 +12,39 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The symbol leg ships off again, because the slice that judges it grew fourteen times**
+  (roadmap 6.8,
+  [ADR-0137](docs/adr/0137-let-a-gated-default-follow-its-ablation-and-narrow-the-rule-that-would-refuse-it.md)).
+  `[retrieval] symbol_lookup` was switched on at roadmap 5.25 on a held-out gain measured over
+  **four** judged `symbol` cases. Authoring the release sets took that slice to **58**, and at
+  that size the reading inverts on the corpus the gain was claimed for: `uv/release` earns it
+  (+5.0 % on the slice, +0.7 % overall) and `uv-ingested/release` **regresses** (−5.8 %,
+  −0.7 % overall). The bar is unchanged — a release-set gain with no overall regression on any
+  set — so the flag follows the measurement back off. Nothing about the leg changed; turn it on
+  with `[retrieval] symbol_lookup = true`. `tools/check_frozen_release_sets.py` is narrowed to
+  let a **gated default** — one an ablation runner already holds — move in the same change as
+  a release set, because the direct check is stronger than the proxy (the ADR-0056 argument,
+  applied a second time).
+
+- **The judged release sets are authored to the count their own slices need, and gate G3 can
+  enforce for the first time** (roadmap 6.8,
+  [ADR-0136](docs/adr/0136-author-the-judged-sets-to-the-count-their-own-bar-needs.md)).
+  Six hundred and forty-six new judgements, written from the documents and validated against a
+  clean build before either generator would write them: `eval/release.jsonl` **19 → 286**
+  cases, `eval/corpora/uv-docs/eval/release.jsonl` **25 → 404**, and the ingested twin
+  carried from it at **404** — every case survives, with 27 anchors dropped and printed.
+  Judging documents the rotation had never given a format meant extending
+  `format-rotation.json` and **re-rendering 25 of the third corpus's binary sources** (ADR-0056),
+  after which the evidence was re-projected and the carry re-derived. Every gated slice on every release set now
+  holds at least the count `enforceable_at` derives for it (ADR-0123), which closes the
+  consequence that ADR recorded: until now **G3 enforced nothing, on any set**. The grading
+  conventions are the ones already on the record (ADR-0062, ADR-0065, ADR-0101, ADR-0029); no
+  bar is re-cut, and the one retrieval change that travels with this is the symbol default
+  above, which these sets falsified rather than were fitted to. All three release baselines are re-blessed,
+  both arms, in a clean checkout of the merge tree. The dev sets are unchanged and filed as
+  roadmap 6.33. Spec 04 §7.6's 1.0 target of ≥ 1 000 judged cases now reads **1 158
+  committed across six sets**.
+
 - **An incremental build no longer reads a document whose size and mtime have not changed**
   (roadmap 6.20, ADR-0133). `doc_state` now records the size and mtime a file had when its
   digest was computed — a *stat memo* — and a file whose stat still matches keeps that digest

@@ -23,6 +23,7 @@ conjunction it was written to refuse sails through.
 """
 
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -35,11 +36,28 @@ import check_frozen_release_sets as guard  # noqa: E402
 
 @pytest.fixture
 def changed(monkeypatch: pytest.MonkeyPatch) -> list[str]:
-    """Drive the guard's decision without inventing a git history."""
+    """Drive the guard's decision without inventing a git history.
+
+    `gated_default_only` is stubbed to "nothing gated" as well, because it reads a
+    real diff: left live, a test's *scenario* would be decided by whatever the
+    working branch happens to have changed in `config.py` (roadmap 6.8, ADR-0137).
+    The tests that exercise the exemption set it themselves.
+    """
     files: list[str] = []
     monkeypatch.setattr(guard, "changed_files", lambda base: list(files))
+    monkeypatch.setattr(guard, "gated_default_only", lambda base, path: [])
     monkeypatch.setattr(sys, "argv", ["check_frozen_release_sets.py", "origin/main"])
     return files
+
+
+@pytest.fixture
+def gated(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None]:
+    """Say which gated defaults the `config.py` diff binds, for the exemption's tests."""
+
+    def _set(*names: str) -> None:
+        monkeypatch.setattr(guard, "gated_default_only", lambda base, path: list(names))
+
+    return _set
 
 
 def test_a_change_that_tunes_and_re_judges_is_refused(changed: list[str]) -> None:
@@ -69,6 +87,69 @@ def test_flipping_a_shipped_default_counts_as_tuning(changed: list[str]) -> None
     """
     changed.extend(["src/mycelium/config.py", "eval/corpora/uv-docs/eval/release.jsonl"])
     assert guard.main() == 1
+
+
+def test_a_gated_default_may_move_with_a_release_set(
+    changed: list[str],
+    gated: Callable[..., None],
+) -> None:
+    """The narrowing roadmap 6.8 needed, and the direct check it leans on (ADR-0137).
+
+    `symbol_lookup` only flips when `tools/measure_symbol_leg.py --check` agrees,
+    and that runner re-measures on the sets in the same tree — so a default cannot
+    be chosen to flatter a set without the runner saying so. That is the same
+    argument ADR-0056 used to retire the derived-set proxy: the direct check
+    exists, and it is stronger than a rule about which commit two files arrived in.
+    """
+    gated("symbol_lookup")
+    changed.extend(
+        [
+            "src/mycelium/config.py",
+            "eval/corpora/uv-docs/eval/release.jsonl",
+            "eval/release.jsonl",
+        ]
+    )
+    assert guard.main() == 0
+
+
+def test_a_gated_default_beside_another_binding_is_still_refused(
+    changed: list[str],
+    gated: Callable[..., None],
+) -> None:
+    """The exemption is for the flag alone, not for the file it lives in."""
+    gated()  # the diff binds something the runner does not hold
+    changed.extend(["src/mycelium/config.py", "eval/release.jsonl"])
+    assert guard.main() == 1
+
+
+def test_a_gated_default_beside_another_tuning_path_is_still_refused(
+    changed: list[str],
+    gated: Callable[..., None],
+) -> None:
+    """A flag the ablation holds says nothing about a ranker change riding with it."""
+    gated("symbol_lookup")
+    changed.extend(["src/mycelium/config.py", "src/mycelium/retrieval.py", "eval/release.jsonl"])
+    assert guard.main() == 1
+
+
+def test_every_gated_default_names_a_runner_that_exists() -> None:
+    """A guard naming a runner that moved guards nothing, silently."""
+    for flag, command in guard.GATED_DEFAULTS.items():
+        script = ROOT / command.split()[0]
+        assert script.is_file(), f"{flag} names {command}, which is not in the tree"
+
+
+def test_the_gated_defaults_are_read_from_the_diff_not_the_file() -> None:
+    """What the *change* did is the question, so the reader is line-based.
+
+    Prose is ignored on purpose — a default flip carries its reasoning in the
+    docstring beside it — and a line that binds any other name refuses.
+    """
+    assert guard._ASSIGNMENT.match("-    symbol_lookup: bool = True")
+    assert guard._ASSIGNMENT.match("+    symbol_lookup: bool = False")
+    assert guard._ASSIGNMENT.match("+    pack_atomic: bool = False")
+    assert not guard._ASSIGNMENT.match("+    off because the ablation stopped earning it")
+    assert not guard._ASSIGNMENT.match("+    # the flag follows the measurement")
 
 
 def test_a_derived_set_may_move_with_the_machinery(changed: list[str]) -> None:
