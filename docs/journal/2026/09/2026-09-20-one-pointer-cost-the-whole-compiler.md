@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.25 — take the ingestion subsystem out of the MCP server's
   import graph, the half 6.18 measured and deliberately did not fix.
-- **PR:** #PRNUM (`refactor/server-import-graph`). Follows #174, merged as `8ceaf24`.
+- **PR:** #175 (`refactor/server-import-graph`). Follows #174, merged as `8ceaf24`.
 - **Milestone 6:** 6.25 closed, 6.36 filed. Open: 6.26–6.36.
 - **Decision it records:**
   [ADR-0140](../../../adr/0140-resolve-the-build-facade-on-first-access.md).
