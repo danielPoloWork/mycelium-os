@@ -74,8 +74,15 @@ points — the end-to-end plugin-API validation before the Phase-4 freeze.
 
 **Exit gates:** graph expansion earns default-on or stays opt-in (either is a valid
 outcome — the gate is that the decision is *measured*); the `chats` module passes its
-document-08 acceptance gates using zero core patches; ≥ 10 external repos dogfooding;
-stale-anchor handling proven on a corpus with heavy refactoring.
+document-08 acceptance gates using zero core patches; **≥ 3 engaged external actors, with
+the package resolving on an index** (re-cut from *≥ 10 external repos dogfooding* by D-030
+at roadmap 6.12, ADR-0138: the original could only be asserted — there is no telemetry
+(D-016) — and the one number that resembled adoption was this repository's own CI. An
+*engaged actor* is a non-owner, non-bot login that opened an issue or pull request,
+commented on one or on a discussion, or pushed a commit of their own to a fork; clone
+traffic, stars and commit-less forks are excluded by name. Counted by
+`tools/adoption_report.py`, not by hand); stale-anchor handling proven on a corpus with
+heavy refactoring.
 
 ### Phase 4 — v1.0 "Stable"
 
@@ -85,9 +92,13 @@ docs site (tutorial, how-tos, plugin-author guide, cookiecutter); security revie
 manifests; agent-task gate quantified; brand/trademark decision (product strategy §9);
 contribution ladder (good-first-issues, CODEOWNERS, release automation).
 
-**Exit gates:** all gates G1–G6 green on the frozen release set; ≥ 3 recurring external
-contributors and ≥ 5 community plugins; zero critical findings open from security review;
-1.0 compatibility promise published.
+**Exit gates:** all gates G1–G6 green on the frozen release set; **≥ 3 external authors of
+≥ 2 merged pull requests each, and ≥ 1 `contrib/` plugin or module authored outside the
+maintainer** (re-cut from *≥ 3 recurring external contributors and ≥ 5 community plugins*
+by D-030 at roadmap 6.12, ADR-0138: *recurring* had no definition, and five community
+plugins before 1.0 asked strangers to do the thing **D-029** reserves for after the freeze.
+The five move behind the freeze with the topology that permits them); zero critical
+findings open from security review; 1.0 compatibility promise published.
 
 ### Phase 5 — v2.x "Team & platform" (separate RFC cycle; `gpt-specs/` is the blueprint)
 

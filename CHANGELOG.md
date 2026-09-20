@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The adoption gates are re-cut onto acts we can observe, and the one number that looked
+  like adoption was our own CI** (roadmap 6.12,
+  [ADR-0138](docs/adr/0138-recut-the-adoption-gates-onto-acts-we-can-observe.md), D-030).
+  Spec 06's *"≥ 10 external repos dogfooding"* could only be asserted — there is no telemetry
+  and there will be none (D-016) — while GitHub's **3 988 clones from 340 unique cloners** over
+  a fortnight sat against **1 unique visitor**, and on the two days no workflow ran the clones
+  were **8** and **14**: fourteen checkouts per CI run. Phase 3 now exits on **≥ 3 engaged
+  external actors** with the package resolving on an index, Phase 4 on **≥ 3 external authors of
+  ≥ 2 merged pull requests** and **≥ 1 `contrib/` plugin authored outside the maintainer** — the
+  last because *≥ 5 community plugins* before 1.0 asked for what **D-029** reserves for after
+  the freeze. Clone traffic, stars and commit-less forks are excluded by name.
+
 - **The symbol leg ships off again, because the slice that judges it grew fourteen times**
   (roadmap 6.8,
   [ADR-0137](docs/adr/0137-let-a-gated-default-follow-its-ablation-and-narrow-the-rule-that-would-refuse-it.md)).
@@ -69,6 +81,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   published in the report rather than promised (spec 01 NFR-3, spec 02 §4.2, spec 06 §Phase 1).
 
 ### Added
+
+- **`tools/adoption_report.py`, which counts the re-cut gates and names everybody it counts**
+  (roadmap 6.12,
+  [ADR-0138](docs/adr/0138-recut-the-adoption-gates-onto-acts-we-can-observe.md)). It asks
+  GitHub and the indexes, subtracts this repository's own CI, and reports **1 of 3** engaged
+  actors where the roadmap believed zero: `blamevlan` took a reserved `good first issue`,
+  finished it in their fork and could not open the pull request. Running it corrected it twice
+  — a default-branch comparison had hidden that contributor, and comparing every branch then
+  counted **our own** commits back to us off a fork's copy of an undeleted upstream branch.
+  `docs/workflow/adoption.md` holds the three owner actions no workflow can perform.
 
 - **The agent-task comparison now runs on documentation this project did not write**
   (roadmap 6.23, [ADR-0135](docs/adr/0135-judge-the-agent-tasks-on-a-corpus-we-did-not-write-and-carry-them-rather-than-re-judge-them.md)).

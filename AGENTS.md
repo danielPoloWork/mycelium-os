@@ -295,7 +295,8 @@ Documentation is part of the deliverable. Every PR ships its own doc updates.
   trust boundary — a new untrusted input, external service, or privilege change.
 - **Workflow docs** — `docs/workflow/` holds the git, documentation, release, and maintenance
   conventions, plus `github-setup.md` (one-time repo configuration). Distribution:
-  `docs/workflow/packaging.md`.
+  `docs/workflow/packaging.md`. Adoption: `docs/workflow/adoption.md` — how the re-cut
+  Phase-3/4 gates are counted (D-030, ADR-0138) and which owner actions they wait on.
 
 
 ## 8. Design Patterns Policy
