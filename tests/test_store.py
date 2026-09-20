@@ -36,6 +36,7 @@ from mycelium.store import (
     Store,
     StoreError,
     StoreVersionError,
+    expanded_query,
     fts_query,
 )
 from mycelium.store.schema import META_SCHEMA_VERSION
@@ -505,6 +506,38 @@ def test_fts_query_quotes_every_term() -> None:
     assert fts_query("event bus", match_all=True) == '"event" "bus"'
     assert fts_query("  ") == ""
     assert fts_query('"NEAR" OR *') == '"NEAR" OR "OR"'
+
+
+def test_a_repeated_word_keeps_its_repeated_arm() -> None:
+    """The asymmetry between the two halves is measured, not inherited
+    (roadmap 6.26, ADR-0141).
+
+    The surface half weights a word by how often the question says it, and the
+    stem half does not. It reads like an oversight and both repairs were scored:
+    deduplicating the surface costs -0.40 % on `uv/release` and regresses every
+    other set, and repeating on the stem side gains two sets and regresses the
+    third. Neither clears the bar a ranking change has to clear (ADR-0070,
+    ADR-0080), so the incumbent stays - and this test exists so that the next
+    reader who sees the two halves disagree reaches the decision instead of
+    tidying it away.
+    """
+    assert fts_query("file and file") == '"file" OR "and" OR "file"'
+    # The stem half of the same expression, deduplicated.
+    expression = expanded_query("file and file")
+    assert expression.count('"file"') == 3, "twice on the surface, once on the stems"
+
+
+def test_repetition_is_what_a_query_says_twice_not_what_shares_a_stem() -> None:
+    """Two words with one stem are two surface questions and one stem question.
+
+    The distinction the comment in `expanded_query` turns on: collapsing `build`
+    and `building` on the stem side is not the same act as collapsing a word the
+    question repeats verbatim.
+    """
+    expression = expanded_query("build building")
+    assert '"build"' in expression
+    assert '"building"' in expression
+    assert expression.count('"build"') == 2, "one surface arm, one shared stem arm"
 
 
 def test_a_query_term_the_corpus_lacks_does_not_zero_the_query(store: SqliteStore) -> None:

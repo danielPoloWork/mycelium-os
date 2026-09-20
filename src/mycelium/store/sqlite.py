@@ -285,6 +285,19 @@ def fts_query(text: str, *, prefix: bool = False, match_all: bool = False) -> st
     returns five results (BUG-0005). ``match_all=True`` restores conjunction for
     callers that genuinely want it — the query planner's precision routes
     (spec 04 §2) will.
+
+    **A repeated word gets a repeated arm, and that is a decision** (roadmap
+    6.26, ADR-0141). One `OR` arm per *occurrence* rather than per word, so
+    "constraint file and an overrides file" weights ``file`` twice — FTS5 sums
+    a duplicated arm's BM25 contribution exactly, which is the query-term
+    frequency the original Okapi formula carries and this one gets for free.
+
+    It is deliberately **not** symmetric with the stem half of
+    :func:`expanded_query`, which deduplicates. Both symmetries were measured at
+    6.26 and neither earns the change: deduplicating here costs −0.40 % on
+    `uv/release` and regresses every other set, and repeating on the stem side
+    gains two sets and regresses the third. `tools/measure_query_repetition.py`
+    re-takes the measurement.
     """
     terms = _FTS_TERM.findall(text)
     if not terms:
@@ -358,6 +371,14 @@ def expanded_query(text: str, *, prefix: bool = False, match_all: bool = False) 
     terms = _FTS_TERM.findall(text)
     # `dict.fromkeys` rather than a set: two query words can share one stem, and
     # the expression must stay deterministic for the same query.
+    #
+    # Deduplicated here while `fts_query` above repeats, and the asymmetry is
+    # measured rather than inherited (roadmap 6.26, ADR-0141): making the two
+    # halves agree loses on the release sets in *both* directions. Two surface
+    # words sharing a stem is the ordinary case here - "build" and "building"
+    # are one stem and two distinct questions of the surface columns - so
+    # collapsing them is not the same act as collapsing a word repeated
+    # verbatim, which is what the surface half declines to do.
     stems = dict.fromkeys(stem_text(terms))
     joiner = " " if match_all else " OR "
     stemmed = joiner.join(f'"{stem}"' for stem in stems)
