@@ -460,10 +460,24 @@ class RetrievalConfig(_Section):
     numbers, the discount curve, and why the mechanism has no operating point
     under RRF are in ADR-0075."""
 
-    symbol_lookup: bool = True
-    """Whether the symbol leg runs (spec 04 §3). On since roadmap 5.25, and on
-    because the ablation **earned** it — after being off for three items because
-    the same ablation refused it.
+    symbol_lookup: bool = False
+    """Whether the symbol leg runs (spec 04 §3). Off again since roadmap 6.8, and
+    off because the ablation stopped earning it once the slice that judges it was
+    large enough to say so (ADR-0137).
+
+    **What 6.8 changed was the denominator.** The leg was switched on at 5.25 on a
+    held-out gain measured over **four** judged `symbol` cases. Authoring the
+    release sets took that slice to **58**, and at that size the reading inverts on
+    the corpus the gain was claimed for: `uv/release` still earns it (+5.0 % on the
+    slice, +0.7 % overall) and `uv-ingested/release` — the twin, the very set 5.25
+    cited — **regresses** (−5.8 % on the slice, −0.7 % overall). The bar has always
+    been "a release-set gain with no overall regression on any set", so the flag
+    follows the measurement back off. Nothing about the leg changed; what changed is
+    that four cases could not see this and fifty-eight can.
+
+    The paragraphs below are 5.25's reasoning, kept because the mechanism they
+    describe is unchanged and because the record should show what the smaller
+    measurement said.
 
     Spec 04 §3 asks for an exact lookup in the `symbols` table for a query's
     identifier-like tokens, and §2 routes such a query to it first. Roadmap 5.9

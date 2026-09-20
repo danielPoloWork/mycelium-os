@@ -301,7 +301,11 @@ def test_every_committed_html_source_is_plain_utf8() -> None:
     loud rather than have it discovered in a diff.
     """
     sources = sorted(CORPUS_SOURCES.rglob("*.html"))
-    assert len(sources) >= 60, "the corpus is mostly HTML; a glob that finds none proves nothing"
+    # A floor rather than a count, so a glob that finds nothing cannot pass. It was
+    # 60 while most of the corpus was an HTML distractor; roadmap 6.8 judged 66 of
+    # the 81 documents, and a judged document rotates into DOCX or PDF (ADR-0056),
+    # which left 37. The assertion is about the loop below having something to read.
+    assert len(sources) >= 30, "a glob that finds no HTML source proves nothing"
     outcomes = {
         path.relative_to(CORPUS_SOURCES).as_posix(): read(path.read_bytes()) for path in sources
     }

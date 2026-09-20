@@ -22,11 +22,20 @@ Six of them: a **dev** and a **release** set per corpus (spec 04 §7.1, ADR-0027
 | set | cases | corpus |
 |---|---:|---|
 | [`dev.jsonl`](dev.jsonl) | 20 | this repository's documentation |
-| [`release.jsonl`](release.jsonl) | 19 | this repository's documentation |
+| [`release.jsonl`](release.jsonl) | 286 | this repository's documentation |
 | [`corpora/uv-docs/eval/dev.jsonl`](corpora/uv-docs/eval/dev.jsonl) | 22 | [`uv`'s documentation](corpora/uv-docs/README.md) |
-| [`corpora/uv-docs/eval/release.jsonl`](corpora/uv-docs/eval/release.jsonl) | 25 | the same |
+| [`corpora/uv-docs/eval/release.jsonl`](corpora/uv-docs/eval/release.jsonl) | 404 | the same |
 | [`corpora/uv-docs-ingested/eval/dev.jsonl`](corpora/uv-docs-ingested/eval/dev.jsonl) | 22 | [the same documents, ingested](corpora/uv-docs-ingested/README.md) |
-| [`corpora/uv-docs-ingested/eval/release.jsonl`](corpora/uv-docs-ingested/eval/release.jsonl) | 25 | the same |
+| [`corpora/uv-docs-ingested/eval/release.jsonl`](corpora/uv-docs-ingested/eval/release.jsonl) | 404 | the same |
+
+**The release sets were authored to the count their own slices need at roadmap 6.8**
+([ADR-0136](../docs/adr/0136-author-the-judged-sets-to-the-count-their-own-bar-needs.md)): 19,
+25 and 25 cases until then, which is why the row below about four-case slices reads the way it
+does. `enforceable_at` derives, from a slice's blessed mean and its median non-zero per-case
+score, the count at which no single case can trip its −2 % bar alone (ADR-0123) — 50 to
+97 per slice across these sets — and until the authoring landed **G3 enforced nothing, on
+any set**. The dev sets are unchanged and are roadmap 6.33's work: they are reported rather
+than gated, so their job is the overfitting gap rather than enforcement.
 
 `uv/dev` was twelve of those cases until roadmap 4.39, with one `exact` case, one `symbol`
 case and no `relationship` case at all — thin enough that a field-weight change scored
@@ -40,8 +49,14 @@ The third corpus is the second one **put through `mycelium ingest`** — the sam
 documents rendered into DOCX, HTML and PDF, and scored as the evidence documents the
 projector wrote from them (roadmap 4.10). Its cases are not judged here: every query, grade
 and slice is copied from the `uv-docs` sets and only the anchor is recomputed, so the
-document is the only thing that varies. Every case carries today; the two that once lost
-every anchor cleared the coverage floor when packing landed (roadmap 4.15).
+document is the only thing that varies. Of the 404 cases carried at roadmap 6.8, **every one survives**; 27 anchors fall through the
+coverage or `whole` floor — mostly uv's feature list, which the HTML lane shatters into a
+heading per item (ADR-0111). Every drop is printed by the generator and every surviving mapping
+is recorded in `carry.json`. The same item re-rendered 25 of the corpus's binary sources,
+because judging a document for the first time is what takes a format slot (ADR-0056): the
+assignment is now 22 DOCX, 22 PDF and 37 HTML. `docs/index.md` is left unjudged on purpose —
+it is the only document here with raw inline HTML, and the site roadmap 5.40 tests ADR-0110's
+rule on end to end.
 
 **The release set is what CI gates. The dev set is what tuning may look at.** A release run
 scores the dev set beside it and prints the gap — reported, never gated, because nobody has
@@ -200,6 +215,15 @@ Two things follow, and they are the reason neither bar is moved:
 
 The mitigation in the meantime is that every verdict now **names** the cases behind a tripped
 slice, so a reader can make the distinction the arithmetic cannot (ADR-0069).
+
+**Closed at roadmap 6.8** ([ADR-0136](../docs/adr/0136-author-the-judged-sets-to-the-count-their-own-bar-needs.md)),
+and the number above was the wrong one. `n ≥ 35` came from the median loss *observed*;
+the bar has to survive the loss a single case *can* inflict, which is its whole score when it
+leaves the top ten — so the requirement is a property of each slice's own mean and spread,
+computed by `enforceable_at`, and it runs **50 to 97** cases (ADR-0123). The three release sets
+were authored to it: 286, 404 and 404 cases, every gated slice at or above its own count. The
+section above is kept because it is the arithmetic that says why the authoring had to happen,
+and because the dev sets are still the size it describes (roadmap 6.33).
 
 ### Which sets a gate can live on
 
@@ -376,12 +400,12 @@ The verdict says so out loud — `4 of 6 slice(s) enforced; reported only: symbo
 0.0000: a relative threshold cannot fail it); …` — because a gate that reports "6 slices
 compared" while four of them cannot fail is describing its own coverage inaccurately.
 
-Every gated slice on **our own** release set now holds at least four cases; five were judged
-at 4.20 for exactly that. The `uv` sets — the ones G3 actually enforces on, since ours is
-never comparable — could not grow in the same change and read `1 of 6 slice(s) enforced`
-until roadmap 4.26 lifts them. What makes G3 a regression gate rather than a single-case
-alarm is set size, and that is spec 04 §7.6's ≥ 1 000 cases at 1.0, not a constant chosen
-here.
+What makes G3 a regression gate rather than a single-case alarm is set size, and until
+roadmap 6.8 no set had it: four cases here, five judged at 4.20, `1 of 6 slice(s) enforced` on
+the `uv` sets until 4.26 lifted them — and then, once ADR-0123 derived the count each slice
+actually needs, **none of them enforced at all**. The release sets were authored to that count
+at 6.8 (ADR-0136) and now hold 286, 404 and 404 cases; the `uv` sets remain the ones G3
+enforces on, since ours is never comparable (ADR-0053).
 
 ## Chunk or section: the judging rule
 
@@ -608,6 +632,13 @@ at the shipped 4 000-token budget:
 Three measurements, not one: different documents, different questions, one instrument. The
 third row is also the argument for the first two — it read +2 on 2026-09-18 and +1 one day
 and three merges later, with no retrieval change in between.
+
+Re-run at roadmap 6.8, after `[retrieval] symbol_lookup` went back off
+([ADR-0137](../docs/adr/0137-let-a-gated-default-follow-its-ablation-and-narrow-the-rule-that-would-refuse-it.md)),
+**every evidence count above is unchanged** — 18, 17 and 16 of 22 for us, 13, 11 and 15 for
+grep — and only the per-task cost moves, by a couple of hundred tokens on our side. The table
+stays pinned to `fa6757d` because a dated measurement is a record of what was run, not a
+running total; re-take it with `python tools/measure_agent_task_band.py`.
 
 **The incumbent's model has two numbers in it, and both are measured rather than asserted.**
 A grep hit is a line number, so the loop *reads* — and one read costs at most what one search

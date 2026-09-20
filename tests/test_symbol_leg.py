@@ -194,8 +194,15 @@ def test_the_leg_is_on_by_default_because_the_ablation_said_so() -> None:
     Flipping this in either direction without re-running
     `tools/measure_symbol_leg.py --check` is what this test exists to stop
     (ADR-0080, amended by ADR-0096).
+
+    **Off again since roadmap 6.8** (ADR-0137). The held-out gain above was
+    measured over four judged `symbol` cases; the authored release sets took that
+    slice to 58, and at that size `uv-ingested/release` — the set 5.25 cited —
+    regresses (−5.8 % on the slice, −0.7 % overall) while `uv/release` earns it
+    (+5.0 %). The bar is a release-set gain with no overall regression on any set,
+    so the flag follows the measurement back off.
     """
-    assert RetrievalConfig().symbol_lookup is True
+    assert RetrievalConfig().symbol_lookup is False
 
 
 def test_the_constants_are_the_ones_the_ablation_was_run_at() -> None:

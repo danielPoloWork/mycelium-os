@@ -18,8 +18,23 @@ One rule that used to live here has been retired: a *derived* set may now move
 with the set it is carried from, because a byte-exact regeneration check says
 more than a rule about which commit two files arrived in. See `DERIVED_SETS`
 below, which is kept empty rather than deleted (roadmap 4.26, ADR-0056).
+
+**And one narrowing, on the same argument (roadmap 6.8, ADR-0137).** A shipped
+*default* that an ablation runner already gates may move in the same change as a
+release set, because the direct check is stronger than this proxy: the runner
+fails unless the flag agrees with a measurement taken on the sets in that same
+tree, so a default cannot be chosen to flatter a set, and a set cannot be chosen
+to flatter a default without the runner saying so. Everything else in `config.py`
+— and every other tuning path — is unchanged. The narrowing exists because the
+conjunction it forbade became unavoidable: authoring the judged sets to the size
+`enforceable_at` asks for took the `symbol` slice from four cases to fifty-eight,
+and at that size the symbol leg stopped earning the default it shipped with. The
+evidence for the flip *is* the new set; refusing the pair would mean either
+landing a set that leaves a gate red, or never letting a judged set falsify a
+default.
 """
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -107,7 +122,58 @@ the algorithm does: `[chunking] pack_atomic` moves every chunk boundary, and its
 default lives in `ChunkingConfig` rather than in the chunker (roadmap 4.11,
 ADR-0042). Without this line a single change could flip that default and re-judge
 a release set unrefused, which is precisely the conjunction this script exists to
-catch."""
+catch — except for the gated defaults below, which another gate holds."""
+
+
+GATED_DEFAULTS: dict[str, str] = {
+    "symbol_lookup": "tools/measure_symbol_leg.py --check",
+    "graph_expansion": "tools/measure_graph_expansion.py --check",
+    "profile": "tools/measure_hybrid_gate.py --check",
+}
+"""Defaults whose agreement with a measurement is enforced by another runner.
+
+Each of these flips only when its ablation says so, and each ablation is run at
+`retrieval` mode and in CI on the same tree (ADR-0068, ADR-0075, ADR-0080). That
+is the direct check this script's conjunction is a proxy for, so a change that
+moves one of these *and* a release set is allowed — and only these, and only when
+nothing else in `config.py` moved with them (roadmap 6.8, ADR-0137)."""
+
+_ASSIGNMENT = re.compile(r"^[+-]\s*(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=]+)?=[^=]")
+"""A changed line that *binds a name* — the only kind that can move a default.
+
+Prose is ignored on purpose: a default flip carries its reasoning in the
+docstring beside it (that is the house rule), and a paragraph cannot change what
+a retriever returns. A line inside a docstring that happens to look like an
+assignment is read as one, which fails towards refusing."""
+
+
+def gated_default_only(base: str, path: str) -> list[str]:
+    """The gated defaults a diff of `path` binds, or `[]` if it binds anything else.
+
+    Read from the diff rather than from the file, because the question is what
+    *this change* did: a pull request that flips `symbol_lookup` and also edits a
+    weight in the same file is the conjunction the rule still refuses."""
+    result = subprocess.run(
+        ["git", "diff", "-U0", f"{base}...HEAD", "--", path],
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+        check=False,
+    )
+    if result.returncode != 0:
+        return []
+    found: list[str] = []
+    for line in result.stdout.splitlines():
+        if line.startswith(("+++", "---", "@@", "diff ", "index ")) or line[:1] not in "+-":
+            continue
+        match = _ASSIGNMENT.match(line)
+        if match is None:
+            continue  # prose, a comment, a continuation - it binds nothing
+        name = match.group("name")
+        if name not in GATED_DEFAULTS:
+            return []
+        found.append(name)
+    return sorted(set(found))
 
 
 def changed_files(base: str) -> list[str]:
@@ -146,6 +212,28 @@ def main() -> int:
         return 1
 
     if judged and tuned:
+        # A gated default is the one tuning change this rule lets through, and only
+        # when it is the *whole* of what moved in that file: another runner already
+        # fails unless the flag agrees with a measurement taken on these sets
+        # (roadmap 6.8, ADR-0137).
+        gated = {
+            path: found
+            for path in tuned
+            if path == "src/mycelium/config.py" and (found := gated_default_only(base, path))
+        }
+        if gated and set(tuned) <= set(gated):
+            for path, flags in gated.items():
+                for flag in flags:
+                    print(
+                        f"{path}: only the gated default {flag!r} moved, and "
+                        f"`{GATED_DEFAULTS[flag]}` is what holds it"
+                    )
+            print(
+                "release set(s) changed beside a gated default: allowed, because the "
+                "ablation runner refuses a flag that disagrees with the measurement on "
+                "these very sets (ADR-0137)"
+            )
+            return 0
         print("This change re-judges a frozen release set *and* tunes retrieval:")
         for path in judged:
             print(f"  judged:  {path}")
