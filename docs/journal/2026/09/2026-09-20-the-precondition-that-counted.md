@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.27 — the hybrid precondition costs three times the leg it
   guards, and the item leaves both the fix and its argument open.
-- **PR:** #PRNUM (`perf/hybrid-precondition`). Follows #176, merged as `7fa02e9`.
+- **PR:** #177 (`perf/hybrid-precondition`). Follows #176, merged as `7fa02e9`.
 - **Milestone 6:** 6.27 closed. Open: 6.28–6.36.
 - **Decision it records:**
   [ADR-0142](../../../adr/0142-probe-for-the-vector-precondition-instead-of-counting.md).

@@ -2,7 +2,7 @@
 
 - **Date:** 2026-09-20
 - **Version / commit:** v0.5.0 @ `7fa02e9` **plus the change this report is about** — the
-  manifest records the base commit, and the working tree carried roadmap 6.27's probe
+  manifest records the base commit, and the working tree carried roadmap 6.27's probe (PR #177)
 - **Environment:** see [`manifests/2026-09-20-the-precondition-that-counted.json`](manifests/2026-09-20-the-precondition-that-counted.json) — the machine of record, as in the [reference-profile report](2026-09-17-reference-profile.md)
 - **Command:** `python tools/benchmark_reference_profile.py --query-scale 100000 --vectors --no-reference`
 - **Roadmap:** 6.27 · **Decision:** [ADR-0142](../adr/0142-probe-for-the-vector-precondition-instead-of-counting.md)
