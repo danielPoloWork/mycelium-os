@@ -928,7 +928,7 @@ def search(
             )
         elif embedder is None:
             degraded.append(f"{_VECTOR}: no embedder configured")
-        elif not store.vector_counts().get(embedder.model_id):
+        elif not store.has_vectors(embedder.model_id):
             degraded.append(
                 f"{_VECTOR}: this snapshot holds no vectors for {embedder.model_id}; "
                 "run `mycelium build` to embed it"

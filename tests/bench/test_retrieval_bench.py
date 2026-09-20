@@ -242,3 +242,99 @@ def test_the_bound_is_what_makes_that_true(vector_store: SqliteStore) -> None:
 def test_the_stored_vector_is_fixed_width_float32() -> None:
     """Not a benchmark: the size assumption the scan's cost model rests on."""
     assert struct.calcsize(f"<{DIM}f") == DIM * 4
+
+
+# ---------------------------------------------------------------------------
+# The hybrid precondition (roadmap 6.27, ADR-0142)
+# ---------------------------------------------------------------------------
+
+
+def _vm_steps(store: SqliteStore, sql: str, params: tuple[object, ...] = ()) -> int:
+    """How many SQLite VM instructions one statement executes.
+
+    A *mechanism* count rather than a millisecond bar, for the reason roadmap
+    6.18 gave its own guards: a timing threshold on a shared CI runner is a
+    flake, and the claim here is not "fast" but "stops at the first row".
+    """
+    steps = 0
+
+    def tick() -> int:
+        nonlocal steps
+        steps += 1
+        return 0
+
+    store._connection.set_progress_handler(tick, 1)
+    try:
+        store._connection.execute(sql, params).fetchall()
+    finally:
+        store._connection.set_progress_handler(None, 1)
+    return steps
+
+
+def test_the_precondition_stops_at_the_first_row(vector_store: SqliteStore) -> None:
+    """`search` asks whether this snapshot holds vectors for a model, once per
+    hybrid query (ADR-0025). It used to ask by *counting* — a `GROUP BY` over the
+    whole table — which at 10⁵ vectors is 129.9 ms p50 on the reference profile,
+    three times the vector leg it guards (roadmap 6.4, 6.21).
+
+    The probe answers the same yes/no by stopping at the first matching row.
+    Counted here in VM instructions, which is the same number on every machine.
+    """
+    aggregate = _vm_steps(
+        vector_store, "SELECT model_id, count(*) FROM vectors GROUP BY model_id ORDER BY model_id"
+    )
+    probe = _vm_steps(
+        vector_store, "SELECT EXISTS(SELECT 1 FROM vectors WHERE model_id = ?)", (MODEL_ID,)
+    )
+    assert probe < 100, f"the probe walked {probe} instructions; it must stop at the first row"
+    assert aggregate > 100 * probe, (
+        f"the aggregate is {aggregate} instructions against the probe's {probe} - "
+        "if these converge, the probe is no longer a probe"
+    )
+
+
+def test_the_precondition_costs_the_scan_only_when_the_model_is_absent(
+    vector_store: SqliteStore,
+) -> None:
+    """The other half of the reason `has_vectors` caches its answer.
+
+    `vectors` is keyed `(chunk_digest, model_id)`, so nothing indexes `model_id`
+    on its own and a *miss* still walks the table. That is the degraded path —
+    a snapshot built before the embedder existed — and it is the one that would
+    otherwise pay the full scan on every query, forever, for a fact that cannot
+    change without a rebuild.
+    """
+    miss = _vm_steps(
+        vector_store, "SELECT EXISTS(SELECT 1 FROM vectors WHERE model_id = ?)", ("absent-model",)
+    )
+    hit = _vm_steps(
+        vector_store, "SELECT EXISTS(SELECT 1 FROM vectors WHERE model_id = ?)", (MODEL_ID,)
+    )
+    assert miss > 100 * hit, "a miss scans; this test exists so the cache has a stated reason"
+
+    # And the cache is what the caller actually gets: the second answer costs no
+    # statement at all.
+    assert vector_store.has_vectors("absent-model") is False
+    cached = _vm_steps(vector_store, "SELECT 1")  # a baseline statement, for scale
+    steps = 0
+
+    def tick() -> int:
+        nonlocal steps
+        steps += 1
+        return 0
+
+    vector_store._connection.set_progress_handler(tick, 1)
+    try:
+        assert vector_store.has_vectors("absent-model") is False
+    finally:
+        vector_store._connection.set_progress_handler(None, 1)
+    assert steps < miss // 100, (
+        f"the cached answer cost {steps} instructions against the scan's {miss} "
+        f"(a bare statement is {cached})"
+    )
+
+
+def test_the_hybrid_precondition(vector_store: SqliteStore, benchmark: BenchmarkFixture) -> None:
+    """The number itself, for the record."""
+    vector_store.has_vectors(MODEL_ID)  # resolve the generation and the answer
+    benchmark(vector_store.has_vectors, MODEL_ID)

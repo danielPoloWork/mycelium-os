@@ -12,6 +12,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The hybrid precondition stops counting and starts probing** (roadmap 6.27,
+  [ADR-0142](docs/adr/0142-probe-for-the-vector-precondition-instead-of-counting.md)).
+  Before running the vector leg, `search` asks whether the snapshot holds vectors for the
+  configured model (ADR-0025). It asked by `GROUP BY` over the whole `vectors` table, once
+  per query: **91 ms p50 at 10⁵ vectors**, 8.2× the warm vector leg it guards.
+  `SqliteStore.has_vectors()` answers the same yes/no with an `EXISTS` probe that stops at
+  the first row — **0.013 ms** — and caches it under the vectors generation, the key the
+  packed matrix already uses, so a write invalidates it from any process.
+  `vector_counts()` is unchanged for `doctor` and the manifest. Hybrid only: the shipped
+  lexical default never paid this.
+
 - **The MCP server no longer imports the compiler to read one pointer** (roadmap 6.25,
   [ADR-0140](docs/adr/0140-resolve-the-build-facade-on-first-access.md)). `read_current` opens
   `.mycelium/CURRENT`; reaching it ran `mycelium/build/__init__.py`, whose eager re-exports
