@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.28 — our own side of the agent-task comparison cannot spend
   the budget it is given, and the fix moves a number in our favour.
-- **PR:** #PRNUM (`feat/spend-the-budget`). Follows #177, merged as `e00d33e`.
+- **PR:** #178 (`feat/spend-the-budget`). Follows #177, merged as `e00d33e`.
 - **Milestone 6:** 6.28 closed. Open: 6.29–6.36.
 - **Decision it records:**
   [ADR-0143](../../../adr/0143-take-the-result-count-from-the-contract-and-sweep-it-like-the-incumbents.md).

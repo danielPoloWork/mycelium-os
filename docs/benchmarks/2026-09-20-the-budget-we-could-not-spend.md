@@ -1,7 +1,7 @@
 # Benchmark Report: the budget we could not spend
 
 - **Date:** 2026-09-20
-- **Version / commit:** v0.5.0 @ `e00d33e` **plus the change this report is about** (roadmap 6.28)
+- **Version / commit:** v0.5.0 @ `e00d33e` **plus the change this report is about** (roadmap 6.28, PR #178)
 - **Environment:** see the three manifests — the machine of record, as in the
   [reference-profile report](2026-09-17-reference-profile.md):
   [this repository](manifests/2026-09-20-the-budget-we-could-not-spend-this-repository.json),
