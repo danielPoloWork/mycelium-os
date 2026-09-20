@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.29 — one document takes half the slots a search returns;
   measure the alternative instead of leaving the behaviour an accident of RRF.
-- **PR:** #PRNUM (`feat/per-document-slot-cap`). Follows #178, merged as `b44d3e2`.
+- **PR:** #179 (`feat/per-document-slot-cap`). Follows #178, merged as `b44d3e2`.
 - **Milestone 6:** 6.29 closed, 6.37 filed. 6.30–6.36 remain open.
 - **Decision it records:**
   [ADR-0144](../../../adr/0144-measure-the-whole-diversity-family-and-refuse-it.md).
