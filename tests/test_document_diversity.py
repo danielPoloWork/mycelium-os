@@ -16,6 +16,8 @@ from pathlib import Path
 
 import pytest
 
+from mycelium.retrieval import RRF_K, VECTOR_CANDIDATES
+
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
@@ -25,7 +27,7 @@ import measure_document_diversity as ablation  # noqa: E402
 def pool(*documents: str) -> ablation.Pool:
     """A fused pool with this project's own RRF scores: rank r scores 1/(k+r)."""
     return [
-        (f"{document}#section/{index}", 1.0 / (ablation.RRF_K + rank))
+        (f"{document}#section/{index}", 1.0 / (RRF_K + rank))
         for rank, (document, index) in enumerate(
             ((document, position) for position, document in enumerate(documents)), start=1
         )
@@ -100,9 +102,14 @@ def test_a_decay_below_the_rrf_spread_is_round_robin() -> None:
 
 def test_the_rrf_spread_is_the_number_the_record_quotes() -> None:
     """ADR-0144 argues from this constant, so a change to `RRF_K` or to the pool
-    depth has to come past this test and re-open the argument."""
-    assert ablation.RRF_K == 60
-    assert ablation.VECTOR_CANDIDATES == 50
+    depth has to come past this test and re-open the argument.
+
+    The two inputs are read from `mycelium.retrieval`, where they live, rather
+    than through the runner that imports them: a test that reads a constant
+    second-hand cannot notice the day the runner stops tracking it.
+    """
+    assert RRF_K == 60
+    assert VECTOR_CANDIDATES == 50
     assert pytest.approx(110 / 61) == ablation.RRF_SPREAD
     assert pytest.approx(1.803, abs=0.001) == ablation.RRF_SPREAD
 
