@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.12 — the Phase-3 adoption gate M5 carried into M6 at zero:
   read it, decide whether ten is the wrong number, record the re-cut rather than assume it.
-- **PR:** #PRNUM (`feat/re-cut-the-adoption-gate`). Follows #171, merged as `a034bb9`.
+- **PR:** #172 (`feat/re-cut-the-adoption-gate`). Follows #171, merged as `a034bb9`.
 - **Milestone 6:** 6.12 closed. 6.18, 6.24 and 6.25 remain open.
 - **Decisions it records:** D-030 (owner decision, taken in session) and
   [ADR-0138](../../../adr/0138-recut-the-adoption-gates-onto-acts-we-can-observe.md).
