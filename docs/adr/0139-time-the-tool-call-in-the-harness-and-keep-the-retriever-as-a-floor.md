@@ -103,20 +103,24 @@ the grep incumbent already reads 426 ms in CI, and it must keep saying so.
 
 ## Consequences
 
-**Measured before arming** (clean worktree, 226 documents, this machine idle; sample of 100
-after a discarded warm-up):
+**Measured before arming**, then read back out of the armed gate itself (clean worktree,
+226 documents, sample of 100 after a discarded warm-up):
 
-| corpus | `mycelium_search` p50 | p95 | max |
-|---|---:|---:|---:|
-| this repository | 61 ms | **84 ms** | 95 ms |
-| `eval/corpora/uv-docs` | 38 ms | **45 ms** | — |
-| `eval/corpora/uv-docs-ingested` | 39 ms | **45 ms** | — |
+| corpus | chunks | `mycelium_search` p50 | p95 | retriever p95 |
+|---|---:|---:|---:|---:|
+| this repository | 1 670 | 58 ms | **98 ms** | 58 ms |
+| `eval/corpora/uv-docs` | 568 | 35 ms | **40 ms** | 24 ms |
+| `eval/corpora/uv-docs-ingested` | 526 | 33 ms | **37 ms** | 18 ms |
 
-All three pass, the tightest with **1.8× headroom**. The margin in CI is wider, not
-narrower: the same gate's retriever number reads **13 ms / 5 ms / 5 ms** on `ubuntu-24.04`
-against ~27 ms here, so the Linux runners are roughly twice as fast as this Windows machine
-at the work being timed. The first CI run of this change is the real measurement, and it is
-the one to quote afterwards.
+All three pass. **The number moves with the machine, and saying so is part of the record**:
+a quieter pass of the same corpora, taken before the gate ladder ran, read 84 / 45 / 45 ms
+against the 98 / 40 / 37 above. Worst observed is **98 ms**, which is 1.5× headroom — the
+honest margin to hold this gate against, not the best reading.
+
+The margin in CI is wider, not narrower. The same gate's *retriever* number reads
+**13 ms / 5 ms / 5 ms** on `ubuntu-24.04` against 58 / 24 / 18 here, so the Linux runners
+are several times faster than this Windows machine at the work being timed. The first CI
+run of this change is the real measurement, and it is the one to quote afterwards.
 
 **Cost**: about five seconds per repository and snapshot, once per process — six gated
 invocations in the ladder and in CI, each paying it once.

@@ -46,21 +46,24 @@ subject.
 
 ## Measured before arming
 
-Clean worktree, 226 documents, machine idle, a hundred calls after a discarded warm-up:
+Clean worktree, 226 documents, a hundred calls after a discarded warm-up — measured first
+by hand, then read back out of the armed gate:
 
-| corpus | p50 | p95 | max |
-|---|---:|---:|---:|
-| this repository | 61 ms | **84 ms** | 95 ms |
-| `eval/corpora/uv-docs` | 38 ms | **45 ms** | — |
-| `eval/corpora/uv-docs-ingested` | 39 ms | **45 ms** | — |
+| corpus | chunks | p50 | p95 | retriever p95 |
+|---|---:|---:|---:|---:|
+| this repository | 1 670 | 58 ms | **98 ms** | 58 ms |
+| `eval/corpora/uv-docs` | 568 | 35 ms | **40 ms** | 24 ms |
+| `eval/corpora/uv-docs-ingested` | 526 | 33 ms | **37 ms** | 18 ms |
 
-The tightest has 1.8× headroom, which is the honest number to hold against the flake risk a
-wall-clock bar in CI carries — 6.18's own guards deliberately count mechanisms rather than
+The number moves with the machine and the record says so: a quieter pass, taken before the
+ladder ran, read 84 / 45 / 45. Worst observed is **98 ms**, 1.5× headroom, and that is the
+number to hold this gate against — not the best reading. It is also the honest figure to set
+against the flake risk a wall-clock bar in CI carries — 6.18's own guards deliberately count mechanisms rather than
 milliseconds for that reason. Two things make it acceptable here. The sample is **a hundred
 rather than fifty**: at fifty the p95 is the third-slowest call, so one garbage collection
 sets the verdict, while at a hundred it takes six. And CI is *faster* than this machine, not
 slower — the same gate's retriever number reads **13 / 5 / 5 ms** on `ubuntu-24.04` against
-~27 ms here. The first CI run of this change is the real measurement.
+58 / 24 / 18 here. The first CI run of this change is the real measurement.
 
 ## What else the budget table says
 
@@ -73,5 +76,5 @@ stages on the query path or in a bench that reconstructs them, and whether four 
 is the right answer at all before that path is answered.
 
 The limit this does not lift: the budget is defined at the reference profile, and gating a
-1 662-chunk corpus at 150 ms is still a floor. It is now a floor on the right subject, which
+1 670-chunk corpus at 150 ms is still a floor. It is now a floor on the right subject, which
 is all this change claims.

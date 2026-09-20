@@ -22,8 +22,9 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   corpus. The harness now times the handler on a hundred of the run's own queries, spread by
   stride, after a discarded warm-up, and gates on it; the arm's retriever p95 is kept beside it
   as a floor, and **both** must hold. A tool call that cannot be timed fails rather than
-  passes. Measured before arming, on an idle machine: **84 ms p95** on this repository,
-  **45 ms** on each of the two `uv-docs` corpora, against the 150 ms budget.
+  passes. Measured before arming and read back out of the armed gate: **98 ms p95** on this
+  repository, **40 ms** and **37 ms** on the two `uv-docs` corpora, against the 150 ms budget
+  (a quieter pass read 84 / 45 / 45 — the worst observed is the number to hold it against).
   `EvalRunManifest.tool_call` records the calls and both percentiles — an optional field, so
   manifests written before today still load.
 
