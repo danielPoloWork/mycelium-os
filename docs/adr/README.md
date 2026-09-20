@@ -169,3 +169,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0135](0135-judge-the-agent-tasks-on-a-corpus-we-did-not-write-and-carry-them-rather-than-re-judge-them.md) | Judge the agent tasks on a corpus we did not write, and carry them rather than re-judge them | Accepted |
 | [0136](0136-author-the-judged-sets-to-the-count-their-own-bar-needs.md) | Author the judged sets to the count their own bar needs, and re-bless what that moves | Accepted |
 | [0137](0137-let-a-gated-default-follow-its-ablation-and-narrow-the-rule-that-would-refuse-it.md) | Let a gated default follow its ablation, and narrow the rule that would refuse it | Accepted |
+| [0138](0138-recut-the-adoption-gates-onto-acts-we-can-observe.md) | Re-cut the adoption gates onto acts we can observe, and count nobody twice | Accepted |
