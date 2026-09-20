@@ -1,7 +1,7 @@
 # 2026-09-20 — the box nobody ticked (roadmap 6.18)
 
 - **Session scope:** roadmap 6.18 — picked up as though it were unstarted, and it was not.
-- **PR:** #PRNUM (`docs/close-6-18`). Follows #172, merged as `54caf4b`.
+- **PR:** #173 (`docs/close-6-18`). Follows #172, merged as `54caf4b`.
 - **Milestone 6:** 6.18 closed. 6.34 filed. Open: 6.24–6.33.
 - **Decision it records:** none — the decision is
   [ADR-0128](../../../adr/0128-cache-the-environment-not-the-repository-and-declare-the-names-instead-of-importing-them.md),
