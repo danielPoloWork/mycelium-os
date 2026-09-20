@@ -1091,6 +1091,28 @@ class MetricSummary(Record):
     latency_p95_ms: NonNegativeInt = 0
 
 
+class ToolCallLatency(Record):
+    """`mycelium_search` timed as a caller experiences it (spec 04 §1, roadmap 6.24).
+
+    Distinct from :attr:`MetricSummary.latency_p95_ms`, which times the *retriever*
+    inside the harness. Spec 04 §1 states its 150 ms budget for the **end-to-end
+    tool call**, which also resolves the published snapshot, reads the
+    configuration, opens the store and packs the answer to a token budget — and
+    for five milestones nothing measured that, so gate G5 ran green over a call
+    that missed its own budget on every corpus (roadmap 6.4, ADR-0120).
+
+    A property of the repository and its snapshot rather than of the arm under
+    test: the tool call always uses the shipped configuration, so an ablation
+    running a non-default retriever does not change this number.
+    """
+
+    calls: NonNegativeInt = Field(
+        description="How many timed calls the percentiles are over, warm-up excluded."
+    )
+    p50_ms: NonNegativeInt = 0
+    p95_ms: NonNegativeInt = 0
+
+
 class GateResult(Record):
     """One CI-enforced gate's verdict (spec 04 §7.3)."""
 
@@ -1128,6 +1150,16 @@ class EvalRunManifest(Record):
     per_slice: dict[str, MetricSummary] = Field(default_factory=dict)
     results: tuple[CaseResult, ...] = ()
     gates: tuple[GateResult, ...] = ()
+    tool_call: ToolCallLatency | None = Field(
+        default=None,
+        description=(
+            "`mycelium_search` timed end to end on this run's own queries, which is "
+            "the number spec 04 §1's 150 ms budget is stated for and gate G5 now reads "
+            "(roadmap 6.24). None when the call could not be timed - an older manifest, "
+            "or a run whose snapshot the tool could not resolve - and a gate never "
+            "reads an absence as a pass."
+        ),
+    )
     companion_set: str | None = Field(
         default=None,
         description="The dev set scored beside this run, when this is a release run.",

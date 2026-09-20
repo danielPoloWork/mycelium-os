@@ -88,6 +88,7 @@ from mycelium.sdk.types import (
     GateResult,
     MetricSummary,
     Sha256Digest,
+    ToolCallLatency,
     Toolchain,
 )
 from mycelium.store import STORE_DIRNAME, SqliteStore
@@ -138,6 +139,23 @@ MAX_FALSE_ANSWER_RATE: Final = 0.05
 
 QUERY_BUDGET_P95_MS: Final = 150
 """Gate G5: the end-to-end query budget spec 04 §1 sets."""
+
+TOOL_CALL_SAMPLE: Final = 100
+"""How many of a run's own queries are replayed through `mycelium_search` to time it.
+
+A hundred rather than fifty, and the reason is flake rather than precision. At
+fifty, the p95 is the third-slowest call, so **one** hiccup — a garbage
+collection, a disk stall, a noisy neighbour on a shared runner — lands inside
+the top 5 % and sets the number the gate reads. At a hundred it takes six, and
+the ordinary failure mode of a timing bar in CI stops being a coin toss. The
+cost is about five seconds per repository and snapshot, once per process, at the
+~45 ms roadmap 6.18 left behind.
+
+The queries are spread across the case set rather than taken from the front of
+it, because cases are ordered by id and ids cluster by slice: the first fifty of
+a release set are one kind of question, and one kind of question is one kind of
+query plan.
+"""
 
 BASELINES_DIRNAME: Final = "baselines"
 """Committed per-slice scores a release is measured against (gate G3)."""
@@ -812,7 +830,91 @@ def _gate_g3(
     return GateResult(gate="G3 No regression", passed=not moved, detail=detail)
 
 
-def _gate_g5(overall: MetricSummary, chunks: int) -> GateResult:
+_TOOL_CALL_CACHE: dict[tuple[str, str], ToolCallLatency] = {}
+"""One timing per repository and snapshot, for the life of the process.
+
+The tool call is a property of the repository and its published snapshot, not of
+the arm under test: `handle_search` reads the *shipped* configuration, so running
+the symbol or hybrid arm does not change it. The ablation tools score the same
+root a dozen times in one process (`tools/measure_symbol_leg.py` and its
+siblings), and timing it a dozen times would add a dozen samples of the same
+number to the wall clock of every gate run.
+"""
+
+
+def sample_queries(cases: Sequence[EvalCase], size: int) -> list[str]:
+    """`size` queries spread evenly across the case set, in case order.
+
+    Deterministic, because a latency sample that changes between two runs of the
+    same commit is a number nobody can compare.
+    """
+    if size <= 0 or not cases:
+        return []
+    if len(cases) <= size:
+        return [case.query for case in cases]
+    stride = len(cases) / size
+    return [cases[int(index * stride)].query for index in range(size)]
+
+
+def time_tool_call(
+    root: Path, cases: Sequence[EvalCase], snapshot: str, size: int = TOOL_CALL_SAMPLE
+) -> ToolCallLatency | None:
+    """Time `mycelium_search` itself, on this run's own queries.
+
+    This is the number spec 04 §1 states its 150 ms budget for, and until roadmap
+    6.24 nothing measured it inside a gate. :func:`_evaluate_case` times the
+    *retriever*; the tool call around it also resolves the published snapshot,
+    reads the configuration, opens the store and packs the answer to a token
+    budget — **274 ms of constant** before roadmap 6.18 cached the worst of it
+    (ADR-0128), on top of every retriever number this harness has ever gated.
+
+    The handler is called the way a client calls it: default `k`, `include_text`
+    full, no filters. One warm-up call is made and discarded, because spec 04 §1
+    states the budget for a *warm store* and the first call in a process pays
+    imports and a cold page cache that no steady-state caller pays.
+
+    Returns ``None`` — never a zero — when the call cannot be made at all, so
+    that :func:`_gate_g5` can decline to read an absence as a pass.
+    """
+    key = (str(root.resolve()), snapshot)
+    cached = _TOOL_CALL_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    queries = sample_queries(cases, size)
+    if not queries:
+        return None
+
+    # Imported here rather than at module scope: the evaluation surface reaches
+    # into the serving one for exactly one purpose, and the reader of that import
+    # should be standing next to the reason (ADR-0139).
+    from mycelium.mcp.errors import McpToolError
+    from mycelium.mcp.tools import handle_search
+
+    latencies: list[int] = []
+    try:
+        handle_search(root, {"query": queries[0]})  # warm-up, discarded
+        for query in queries:
+            started = time.perf_counter()
+            handle_search(root, {"query": query})
+            latencies.append(int((time.perf_counter() - started) * 1000))
+    except McpToolError:
+        # The tool refusing to answer is not a latency measurement. It is
+        # reported as *not measured* rather than as a fast call or a slow one.
+        return None
+
+    measured = ToolCallLatency(
+        calls=len(latencies),
+        p50_ms=_percentile(latencies, 0.50),
+        p95_ms=_percentile(latencies, 0.95),
+    )
+    _TOOL_CALL_CACHE[key] = measured
+    return measured
+
+
+def _gate_g5(
+    overall: MetricSummary, chunks: int, tool_call: ToolCallLatency | None = None
+) -> GateResult:
     """Gate G5 — the query budget from spec 04 §1: p95 ≤ 150 ms.
 
     Enforced on whatever corpus was run, and *reported with its size*, because
@@ -821,26 +923,54 @@ def _gate_g5(overall: MetricSummary, chunks: int) -> GateResult:
     certainly broken, while one that meets it has proved only that it meets it
     at this size (ADR-0022).
 
-    **It does not measure end to end, and this docstring used to say it did.**
-    The latency it reads is timed around the *retriever*, inside the harness
-    (:func:`_evaluate_case`); spec 04 §1's budget is stated for `mycelium_search`,
-    the MCP tool call, which also reads the configuration, opens the store and
-    resolves the published snapshot. Those three were **274 ms of constant** until
-    roadmap 6.18 cached the worst of them, so for five milestones this gate ran
-    green over a call that missed its own budget on every corpus — the 6.4
-    reference profile is where that was finally measured, and it needed a separate
-    instrument to see it. Closing the gap means timing the handler here, which
-    needs a published snapshot inside the harness; roadmap 6.24 owns it. Until
-    then this number is a floor on a floor, and the detail line below says so.
+    **It reads the tool call, and for five milestones it did not** (roadmap 6.24).
+    Spec 04 §1 states the budget for `mycelium_search` — which resolves the
+    published snapshot, reads the configuration, opens the store and packs the
+    answer — while this gate read :func:`_evaluate_case`'s timing of the
+    *retriever* alone. Those wrappers were **274 ms of constant** until roadmap
+    6.18 cached the worst of them (ADR-0128), so the gate ran green over a call
+    that missed its own budget on every corpus measured, and it took a separate
+    instrument to see it at all (roadmap 6.4, ADR-0120).
+
+    Both numbers are now read, and **both must be within budget**:
+
+    - `tool_call` is what the NFR names, timed by :func:`time_tool_call` on this
+      run's own queries. It is a property of the repository and its snapshot, not
+      of the arm: the handler uses the shipped configuration whatever retriever
+      this run scored.
+    - the arm's retriever p95 stays a **floor**, which is what it always was. It
+      is kept because it is the only number that moves with the arm, so a change
+      that makes an *ablation* pathologically slow still trips this gate.
+
+    An unmeasurable tool call is reported as unmeasured and **fails the gate**.
+    A gate that treats "nobody could time it" as a pass is the failure this item
+    exists to correct, one level up.
+
+    Passing remains necessary and not sufficient: the budget is defined against
+    the 10^5-chunk reference profile, and at that size the warm query alone is
+    1 816 ms p95 (roadmap 6.21). On a smaller corpus this is a floor — an honest
+    one now, measured on the right subject.
     """
-    within = overall.latency_p95_ms <= QUERY_BUDGET_P95_MS
+    floor_ok = overall.latency_p95_ms <= QUERY_BUDGET_P95_MS
+    detail = (
+        f"on {chunks} chunks (the budget is stated for the 10^5-chunk reference profile, "
+        f"so this is a floor at this size); retriever p95 {overall.latency_p95_ms} ms"
+    )
+    if tool_call is None:
+        return GateResult(
+            gate="G5 Performance",
+            passed=False,
+            detail=(
+                f"`mycelium_search` could not be timed, so the number spec 04 §1 states the "
+                f"{QUERY_BUDGET_P95_MS} ms budget for is unknown; {detail}"
+            ),
+        )
     return GateResult(
         gate="G5 Performance",
-        passed=within,
+        passed=tool_call.p95_ms <= QUERY_BUDGET_P95_MS and floor_ok,
         detail=(
-            f"query p95 {overall.latency_p95_ms} ms against a {QUERY_BUDGET_P95_MS} ms budget, "
-            f"on {chunks} chunks (the budget is stated for the 10^5-chunk reference profile, "
-            f"so this is a floor, not the measurement spec 04 §1 asks for)"
+            f"`mycelium_search` p95 {tool_call.p95_ms} ms (p50 {tool_call.p50_ms} ms, "
+            f"{tool_call.calls} calls) against a {QUERY_BUDGET_P95_MS} ms budget, {detail}"
         ),
     )
 
@@ -1280,7 +1410,8 @@ def run_evaluation(
                 _slice_cases(cases, results),
             )
         )
-        gates.append(_gate_g5(overall, chunks))
+        tool_call = time_tool_call(root, cases, snapshot)
+        gates.append(_gate_g5(overall, chunks, tool_call))
         gates.append(_gate_g6())
         if retriever_name == "hybrid":
             lexical_results, lexical, lexical_slices = _score(
@@ -1332,6 +1463,7 @@ def run_evaluation(
         per_slice=per_slice,
         results=tuple(results),
         gates=tuple(gates),
+        tool_call=tool_call,
         companion_set=companion_set if companion_overall is not None else None,
         companion_overall=companion_overall,
         incumbent=against if incumbent_overall is not None else None,

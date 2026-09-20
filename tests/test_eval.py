@@ -51,6 +51,7 @@ from mycelium.sdk.types import (
     GateResult,
     MetricSummary,
     RelevantAnchor,
+    ToolCallLatency,
 )
 from mycelium.store import SqliteStore
 
@@ -1856,3 +1857,104 @@ def test_the_control_arm_is_unaffected_by_a_leg_shipping_on(corpus: Path) -> Non
     # independently, not one from the other's defaults.
     assert pinned == pinned
     assert isinstance(with_leg, list)
+
+
+# ---------------------------------------------------------------------------
+# Gate G5 reads the tool call, not the retriever (roadmap 6.24, ADR-0139)
+# ---------------------------------------------------------------------------
+
+
+def g5_summary(*, retriever_p95: int) -> MetricSummary:
+    """A metric summary carrying only the latency G5 reads as its floor."""
+    return MetricSummary(
+        cases=1,
+        ndcg_at_10=1.0,
+        recall_at_10=1.0,
+        recall_at_50=1.0,
+        mrr=1.0,
+        citation_coverage=1.0,
+        latency_p50_ms=retriever_p95,
+        latency_p95_ms=retriever_p95,
+    )
+
+
+def test_g5_reads_the_number_the_nfr_names() -> None:
+    """The item's whole subject. Spec 04 §1 states 150 ms for `mycelium_search`,
+    and for five milestones this gate read the retriever inside the harness — so
+    a tool call at 300 ms passed as long as retrieval was quick, which is exactly
+    what happened until roadmap 6.18 removed 274 ms of constant."""
+    from mycelium.eval.harness import _gate_g5
+
+    verdict = _gate_g5(g5_summary(retriever_p95=27), 1400, ToolCallLatency(calls=100, p95_ms=302))
+    assert not verdict.passed, "a tool call over budget must fail however fast the retriever is"
+    assert "302 ms" in verdict.detail
+    assert "27 ms" in verdict.detail, "and the floor is still reported beside it"
+
+
+def test_g5_keeps_the_retriever_as_a_floor() -> None:
+    """The arm's own latency is the only number that moves with the arm: the tool
+    call uses the shipped configuration whatever retriever the run scored. Keeping
+    it means an ablation that is pathologically slow still trips this gate."""
+    from mycelium.eval.harness import _gate_g5
+
+    verdict = _gate_g5(g5_summary(retriever_p95=400), 1400, ToolCallLatency(calls=100, p95_ms=40))
+    assert not verdict.passed
+
+
+def test_g5_passes_when_both_numbers_are_within_budget() -> None:
+    from mycelium.eval.harness import _gate_g5
+
+    verdict = _gate_g5(g5_summary(retriever_p95=27), 1400, ToolCallLatency(calls=100, p95_ms=82))
+    assert verdict.passed
+    assert "1400 chunks" in verdict.detail, "the size the floor was taken at is part of the claim"
+
+
+def test_g5_fails_when_the_tool_call_could_not_be_timed() -> None:
+    """A gate that reads *nobody could measure it* as a pass is the failure this
+    item exists to correct, one level up. Unmeasured is not within budget."""
+    from mycelium.eval.harness import _gate_g5
+
+    verdict = _gate_g5(g5_summary(retriever_p95=27), 1400, None)
+    assert not verdict.passed
+    assert "could not be timed" in verdict.detail
+
+
+def test_the_timed_queries_are_spread_across_the_case_set() -> None:
+    """Cases are ordered by id and ids cluster by slice, so the first hundred of a
+    release set are one kind of question — and one kind of question is one kind of
+    query plan. The sample is a stride, and it is deterministic."""
+    from mycelium.eval.harness import sample_queries
+
+    cases = load_cases(RELEASE)
+    assert len(cases) > 100, "this test is about a set larger than the sample"
+
+    sampled = sample_queries(cases, 100)
+    assert len(sampled) == 100
+    assert sampled == sample_queries(cases, 100), "a latency sample must not move between runs"
+
+    front = [case.query for case in cases[:100]]
+    assert sampled != front, "a stride, not a prefix"
+    assert sampled[-1] != front[-1]
+
+
+def test_the_sample_never_asks_for_more_cases_than_exist() -> None:
+    from mycelium.eval.harness import sample_queries
+
+    cases = load_cases(CASES)
+    assert sample_queries(cases, 10_000) == [case.query for case in cases]
+    assert sample_queries(cases, 0) == []
+    assert sample_queries([], 100) == []
+
+
+def test_a_run_records_the_tool_call_it_gated_on(corpus: Path) -> None:
+    """Spec 04 §7.5: a report without a manifest is exploratory and cannot satisfy
+    a gate. The number G5 now reads is in the manifest beside the verdict, so a
+    reader can check the gate rather than trust it."""
+    manifest = run_evaluation(corpus, load_cases(CASES))
+
+    assert manifest.tool_call is not None
+    assert manifest.tool_call.calls == manifest.overall.cases
+    assert manifest.tool_call.p95_ms >= manifest.tool_call.p50_ms
+    g5 = next(gate for gate in manifest.gates if gate.gate.startswith("G5"))
+    assert str(manifest.tool_call.p95_ms) in g5.detail
+    assert g5.passed, "the budget is met on this corpus; roadmap 6.24 armed it because it is"
