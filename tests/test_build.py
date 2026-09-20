@@ -6,6 +6,8 @@ leaves ``CURRENT`` and the store exactly as they were."""
 
 import json
 import os
+import subprocess
+import sys
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -418,3 +420,82 @@ def test_journal_records_the_build_lifecycle(tmp_path: Path) -> None:
     published = lines[-1]
     assert published["snapshot_id"] == result.manifest.snapshot_id
     assert published["documents"] == 1
+
+
+# ---------------------------------------------------------------------------
+# The façade is lazy, and the names it exports are still all there
+# (roadmap 6.25, ADR-0140)
+# ---------------------------------------------------------------------------
+
+
+def test_every_exported_name_resolves_through_the_lazy_facade() -> None:
+    """`__all__` and the origin table are two lists, and a name they disagree
+    about is an export the laziness dropped in silence. Resolving each one is the
+    check `from mycelium.build import X` would otherwise make at a call site."""
+    import mycelium.build as package
+
+    assert set(package.__all__) == set(package._ORIGIN)
+    for name in package.__all__:
+        assert getattr(package, name) is not None, name
+    assert dir(package) == sorted(package.__all__)
+
+
+def test_an_unknown_attribute_still_raises_attribute_error() -> None:
+    """A `__getattr__` that answers everything turns a typo into an import error
+    somewhere else entirely."""
+    import mycelium.build as package
+
+    with pytest.raises(AttributeError, match="no attribute 'compile_everything'"):
+        _ = package.compile_everything  # type: ignore[attr-defined]
+
+
+def test_reading_the_published_pointer_does_not_import_the_compiler() -> None:
+    """What the lazy façade buys, pinned so it cannot quietly come back.
+
+    `read_current` opens `.mycelium/CURRENT` and returns its contents. Reaching
+    it used to run `mycelium.build.__init__`, which imported the orchestrator,
+    and through it the build DAG, the Markdown adapter with `markdown_it`, the
+    symbol extractors, the embedding provider with `urllib` and `ssl`, and the
+    whole ingestion subsystem: **367 modules and 1.9 s** for a read-only query
+    path that can call none of them (roadmap 6.18 measured it, 6.25 fixed it).
+
+    A subprocess, because an in-process assertion would pass or fail on whatever
+    an earlier test in the session happened to import.
+    """
+    probe = (
+        "import sys; sys.path.insert(0, 'src');"
+        "import mycelium.mcp.tools;"
+        "print(sorted(n for n in sys.modules if n.startswith('mycelium.ingest')));"
+        "print(len([n for n in sys.modules if 'markdown_it' in n]));"
+        "print('mycelium.build.orchestrator' in sys.modules)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).parent.parent,
+    )
+    ingest, markdown_it, orchestrator = result.stdout.strip().splitlines()
+    assert ingest == "[]", "the query path must not import the ingestion subsystem"
+    assert markdown_it == "0"
+    assert orchestrator == "False", "nor the compiler it never calls"
+
+
+def test_the_compiler_is_imported_the_moment_it_is_asked_for() -> None:
+    """The other half: lazy must mean *later*, never *absent*."""
+    probe = (
+        "import sys; sys.path.insert(0, 'src');"
+        "import mycelium.build as b;"
+        "print('mycelium.build.orchestrator' in sys.modules);"
+        "b.build;"
+        "print('mycelium.build.orchestrator' in sys.modules)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", probe],
+        check=True,
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).parent.parent,
+    )
+    assert result.stdout.strip().splitlines() == ["False", "True"]

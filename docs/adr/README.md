@@ -171,3 +171,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0137](0137-let-a-gated-default-follow-its-ablation-and-narrow-the-rule-that-would-refuse-it.md) | Let a gated default follow its ablation, and narrow the rule that would refuse it | Accepted |
 | [0138](0138-recut-the-adoption-gates-onto-acts-we-can-observe.md) | Re-cut the adoption gates onto acts we can observe, and count nobody twice | Accepted |
 | [0139](0139-time-the-tool-call-in-the-harness-and-keep-the-retriever-as-a-floor.md) | Time the tool call in the harness, and keep the retriever as a floor | Accepted |
+| [0140](0140-resolve-the-build-facade-on-first-access.md) | Resolve the build façade on first access, and keep it invisible to the type checker | Accepted |

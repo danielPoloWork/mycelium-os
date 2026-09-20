@@ -12,6 +12,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The MCP server no longer imports the compiler to read one pointer** (roadmap 6.25,
+  [ADR-0140](docs/adr/0140-resolve-the-build-facade-on-first-access.md)). `read_current` opens
+  `.mycelium/CURRENT`; reaching it ran `mycelium/build/__init__.py`, whose eager re-exports
+  pulled the orchestrator, the build DAG, `markdown_it`, the symbol extractors, the embedding
+  provider with `ssl`, and the whole ingestion subsystem. `import mycelium.mcp.tools` goes from
+  **367 modules / 1 880 ms to 234 / 1 460**, with `markdown_it` and `mycelium.ingest` at
+  **zero**. The package now resolves each export on first access (PEP 562 `__getattr__`,
+  catalogued as *Lazy Initialization*): same names, same modules, same types, and deliberately
+  invisible to the type checker so an unknown attribute stays an error. Startup only — NFR-2's
+  per-call budget is untouched.
+
 - **Gate G5 now reads the number NFR-2 names, and an unmeasured call fails it** (roadmap
   6.24,
   [ADR-0139](docs/adr/0139-time-the-tool-call-in-the-harness-and-keep-the-retriever-as-a-floor.md)).
