@@ -12,6 +12,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **Spec 04 §4's diversity rule is measured and refused, and the specification now says
+  so** (roadmap 6.29,
+  [ADR-0144](docs/adr/0144-measure-the-whole-diversity-family-and-refuse-it.md)). *"MMR
+  across documents so one document cannot monopolize the result set"* was a flat
+  requirement of the pipeline that nothing implemented - the only diversity rule in the
+  code bounds the **graph leg**, which ships off. Swept across both families on six judged
+  sets, **no per-document cap and no multiplicative decay gains on any release set**: cap 1
+  costs `ours/release` −25 %, cap 5 costs it −1.1 %, and the arms that gain do so on dev
+  sets by +0.2 % to +1.6 %. The reason is arithmetic - a 50-deep RRF pool spans `110/61 =
+  1.80x`, so a discount inside it is inert or total, which is ADR-0075's *no operating
+  point under RRF* reached by a second mechanism. Nothing ships and no knob is added
+  (D-011); `_expand`'s docstring stops implying §4 is satisfied.
+
 - **The agent-task comparison can spend the budget it is given** (roadmap 6.28,
   [ADR-0143](docs/adr/0143-take-the-result-count-from-the-contract-and-sweep-it-like-the-incumbents.md)).
   Our side of the comparison asked `search` for a hard-coded **ten** results whatever budget
@@ -132,6 +145,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   published in the report rather than promised (spec 01 NFR-3, spec 02 §4.2, spec 06 §Phase 1).
 
 ### Added
+
+- **`tools/measure_document_diversity.py`, which reports the ceiling before it reports an
+  arm** (roadmap 6.29,
+  [ADR-0144](docs/adr/0144-measure-the-whole-diversity-family-and-refuse-it.md)).
+  `--concentration` takes the statistic roadmap 6.22 found on the agent tasks onto the
+  judged sets, where it is worse: one document takes half the top ten on **42 %** of
+  `ours/release`, and all ten on at least one query. `--oracle` prices the whole family
+  with hindsight (**+1.4 % to +4.2 %**) against a perfect re-ranking of the same candidates
+  (**+36 % to +86 %**), which is how the ablation concluded that concentration is not where
+  the loss is. It joins `verify.py`'s `retrieval` rung, where `--check` guards a
+  *refusal* - it fails only if an arm ever starts earning the default nothing carries.
 
 - **`tools/adoption_report.py`, which counts the re-cut gates and names everybody it counts**
   (roadmap 6.12,

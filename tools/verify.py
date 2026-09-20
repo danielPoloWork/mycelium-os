@@ -53,7 +53,7 @@ The rungs, and what each adds:
 |---|---|
 | `docs` | the congruence lint, the docs-site build |
 | `code` | format, lint, types, the suite, the two ingestion reproductions |
-| `retrieval` | the frozen-set rule, the corpora built and gated, G2, the two ablations |
+| `retrieval` | the frozen-set rule, the corpora built and gated, G2, the four ablations |
 | `full` | the benchmarks, alone rather than beside four hundred other tests |
 """
 
@@ -350,6 +350,15 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
     # rules are part of what a measured default was measured under, so a change
     # to them without a re-measurement is the mistake `--check` exists to catch.
     steps.append(("routing ablation", [python, "tools/measure_routing.py", "--check"]))
+    # Spec 04 §4's diversity rule, which this project measured and refused
+    # (roadmap 6.29, ADR-0144). It guards the opposite of what the three above
+    # guard: they watch a shipped default for a measurement that no longer
+    # supports it, and this one watches a *refusal* for a measurement that has
+    # started to. `--check` fails only when an arm earns a default nothing
+    # carries - losing is the recorded outcome and can never be red.
+    steps.append(
+        ("diversity ablation", [python, "tools/measure_document_diversity.py", "--check"])
+    )
     # `--gate` here is the suite's *integrity*, not its verdict (ADR-0120): a task
     # whose required passage the corpus no longer holds measures neither strategy,
     # and scoring it as a miss is how the rate acquired a silent ceiling at 6.4.

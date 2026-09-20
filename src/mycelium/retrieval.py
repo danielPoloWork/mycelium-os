@@ -648,10 +648,19 @@ def _expand(
     So expansion may **add** and may not **promote**. What the ranking already
     found keeps the rank the ranking gave it.
 
-    The one-per-document rule is the diversity guard spec 04 §4 asks of the
-    result set, applied where it is cheapest: without it a single adjacent
-    document with thirty chunks could fill the whole leg, which is the opposite
+    The one-per-document rule bounds *this leg*: without it a single adjacent
+    document with thirty chunks could fill the whole of it, which is the opposite
     of what an expansion is for.
+
+    It was described here as "spec 04 §4's diversity guard, applied where it is
+    cheapest", and that read as though §4 were satisfied. It is not, and roadmap
+    6.29 settled why: §4 asks for MMR across documents on the **result set**, and
+    every per-document cap and every multiplicative decay loses on every release
+    set — the RRF pool spans 1.80x, so a discount inside it is inert or total,
+    and the ceiling of the entire family is +1.4 % to +4.2 % against +36 % to
+    +86 % for re-ordering the same candidates correctly. The result set therefore
+    carries no diversity rule, by measurement (ADR-0144). This one survives
+    because it is a bound on a leg's *contribution*, which is a different claim.
     """
     if not seeds:
         return (), {}

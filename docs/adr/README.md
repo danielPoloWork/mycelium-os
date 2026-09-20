@@ -175,3 +175,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0141](0141-keep-the-repeated-arm-and-say-that-both-symmetries-lose.md) | Keep the repeated arm, and say that both symmetries lose | Accepted |
 | [0142](0142-probe-for-the-vector-precondition-instead-of-counting.md) | Probe for the vector precondition instead of counting, and key the answer to the generation | Accepted |
 | [0143](0143-take-the-result-count-from-the-contract-and-sweep-it-like-the-incumbents.md) | Take the result count from the contract, and sweep it like the incumbent's | Accepted |
+| [0144](0144-measure-the-whole-diversity-family-and-refuse-it.md) | Measure the whole diversity family, and refuse it - the spec asked for a rule the evidence will not carry | Accepted |

@@ -92,7 +92,16 @@ behavior is auditable and debuggable rather than folkloric.
 - Dedupe: near-identical chunks (digest or high lexical overlap) collapse to the highest-
   ranked instance; the duplicate set is noted in `explain`.
 - Diversity: MMR across documents so one document cannot monopolize the result set unless
-  it uniquely holds the answer.
+  it uniquely holds the answer. **Measured across both families and refused on the result
+  set** (roadmap 6.29, ADR-0144): every per-document cap and every multiplicative decay
+  loses on every release set, because RRF's 50-deep pool spans only 1.80x between its best
+  and worst candidate and a discount in that range is inert or total. The ceiling of the
+  whole family - the arm chosen per query with hindsight, which is what *"unless it
+  uniquely holds the answer"* would require - is +1.4 % to +4.2 %, against +36 % to +86 %
+  for re-ordering the same pool correctly. So concentration is not where the loss is, and
+  the result set carries no diversity rule; the one-per-document rule inside the graph leg
+  (ADR-0075) bounds what an expansion may contribute and says nothing about the result set.
+  `tools/measure_document_diversity.py --check` guards the refusal.
 - **Stitching:** when several top candidates are adjacent chunks of one section and the
   budget allows, return the coherent section once instead of shingled fragments — agents
   handle one coherent passage better than three overlapping ones.
