@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 6.26 — decide whether a repeated query word should weigh
   twice, and whether the two halves of one expression disagreeing about it is a decision or
   an oversight.
-- **PR:** #PRNUM (`perf/expression-surface-repeats`). Follows #175, merged as `433a890`.
+- **PR:** #176 (`perf/expression-surface-repeats`). Follows #175, merged as `433a890`.
 - **Milestone 6:** 6.26 closed. Open: 6.27–6.36.
 - **Decision it records:**
   [ADR-0141](../../../adr/0141-keep-the-repeated-arm-and-say-that-both-symmetries-lose.md).
