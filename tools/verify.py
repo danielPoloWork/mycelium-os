@@ -356,9 +356,7 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
     # supports it, and this one watches a *refusal* for a measurement that has
     # started to. `--check` fails only when an arm earns a default nothing
     # carries - losing is the recorded outcome and can never be red.
-    steps.append(
-        ("diversity ablation", [python, "tools/measure_document_diversity.py", "--check"])
-    )
+    steps.append(("diversity ablation", [python, "tools/measure_document_diversity.py", "--check"]))
     # `--gate` here is the suite's *integrity*, not its verdict (ADR-0120): a task
     # whose required passage the corpus no longer holds measures neither strategy,
     # and scoring it as a miss is how the rate acquired a silent ceiling at 6.4.

@@ -103,8 +103,8 @@ def test_the_rrf_spread_is_the_number_the_record_quotes() -> None:
     depth has to come past this test and re-open the argument."""
     assert ablation.RRF_K == 60
     assert ablation.VECTOR_CANDIDATES == 50
-    assert ablation.RRF_SPREAD == pytest.approx(110 / 61)
-    assert ablation.RRF_SPREAD == pytest.approx(1.803, abs=0.001)
+    assert pytest.approx(110 / 61) == ablation.RRF_SPREAD
+    assert pytest.approx(1.803, abs=0.001) == ablation.RRF_SPREAD
 
 
 # ---------------------------------------------------------------------------
