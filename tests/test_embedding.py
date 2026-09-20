@@ -211,6 +211,32 @@ def test_vectors_are_produced_recorded_and_searchable(tmp_path: Path) -> None:
         assert outcome.legs == ("lexical", "vector")
 
 
+def test_the_precondition_answers_yes_and_no_and_notices_a_write(tmp_path: Path) -> None:
+    """`has_vectors` caches per snapshot, and the cache has to end somewhere
+    (roadmap 6.27, ADR-0142).
+
+    The question the filing item asked of any cache here: what happens when
+    vectors are written under a handle that has already answered. The key is the
+    **vectors generation**, which lives in the meta table and is bumped by every
+    write path — the same mechanism the packed matrix already trusts — so the
+    answer ends when the vectors change and not before.
+    """
+    embedder = FakeEmbedder()
+    root = repo(tmp_path)
+
+    with SqliteStore.open(root) as store:
+        assert store.has_vectors(embedder.model_id) is False, "an empty store holds none"
+        assert store.has_vectors(embedder.model_id) is False, "and the cached answer agrees"
+
+    _build_with(root, embedder)
+
+    with SqliteStore.open(root, read_only=True) as store:
+        assert store.has_vectors(embedder.model_id) is True
+        assert store.has_vectors("a-model-nobody-configured") is False
+        # The counting form still answers the question it is for.
+        assert store.vector_counts()[embedder.model_id] == store.counts()["chunks"]
+
+
 def test_the_manifest_declares_the_stage_non_deterministic(tmp_path: Path) -> None:
     """Spec 02 §4.1 allows a non-deterministic stage *if it says so*."""
     embedder = FakeEmbedder()

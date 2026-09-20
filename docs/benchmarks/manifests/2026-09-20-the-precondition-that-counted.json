@@ -1,0 +1,742 @@
+{
+  "budgets": {
+    "cold_build_1k_s": 60,
+    "incremental_p95_ms": 2000,
+    "reference_chunks": 100000,
+    "search_p95_ms": 150
+  },
+  "commit": "7fa02e91076d1efa62a4f143a2e845cc1764c2f6",
+  "corpus": {
+    "generator": "tools/benchmark_reference_profile.py",
+    "kind": "generated",
+    "profile": "lexical (the shipped default, ADR-0017); compiled with the embedder off. A synthetic vector matrix was written into the finished store afterwards - see `vector_profile` (roadmap 6.21)",
+    "queries": 306,
+    "query_sets": [
+      "eval/release.jsonl",
+      "eval/dev.jsonl"
+    ],
+    "seed": 20260917,
+    "sources": [
+      "eval/corpora/uv-docs/knowledge",
+      "docs"
+    ]
+  },
+  "generated_at": "2026-09-20T16:45:02.156034Z",
+  "hardware": {
+    "logical_cpus": 20,
+    "machine": "AMD64",
+    "memory_gib": 31.7,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+  },
+  "query_profile": {
+    "chunks": 100000,
+    "documents": 20000,
+    "kind": "store populated directly (no compiler run); see populate_store()",
+    "measurements": [
+      {
+        "budget": 150,
+        "max": 1639.904,
+        "mean": 709.471,
+        "min": 0.865,
+        "name": "search, warm store (in-process)",
+        "p50": 724.358,
+        "p95": 1383.667,
+        "samples": 306,
+        "unit": "ms",
+        "within_budget": false
+      },
+      {
+        "budget": 150,
+        "max": 1506.674,
+        "mean": 655.401,
+        "min": 9.388,
+        "name": "mycelium_search, end to end (MCP handler)",
+        "p50": 676.644,
+        "p95": 1259.81,
+        "samples": 306,
+        "unit": "ms",
+        "within_budget": false
+      }
+    ]
+  },
+  "scales": [
+    {
+      "chunks": 1296,
+      "documents": 249,
+      "measurements": [
+        {
+          "budget": null,
+          "chunks": 1296,
+          "documents": 249,
+          "documents_per_second": 9.7,
+          "max": 25.733,
+          "mean": 25.733,
+          "min": 25.733,
+          "ms_per_document": 103.3,
+          "name": "cold build, 250 documents",
+          "p50": 25.733,
+          "p95": 25.733,
+          "samples": 1,
+          "stage_share": {
+            "compile": 78.8,
+            "discover": 5.0,
+            "graph": 0.6,
+            "plan": 2.5,
+            "store": 12.7,
+            "symbols": 0.2
+          },
+          "stages_ms": {
+            "compile": 19905,
+            "discover": 1266,
+            "graph": 155,
+            "plan": 641,
+            "store": 3203,
+            "symbols": 47,
+            "total": 25250
+          },
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "budget": null,
+          "documents_reused": 249,
+          "max": 647.873,
+          "mean": 477.809,
+          "min": 457.494,
+          "name": "incremental rebuild, nothing edited (the floor)",
+          "p50": 466.346,
+          "p95": 487.879,
+          "samples": 20,
+          "stage_share": {
+            "compile": 0.0,
+            "discover": 8.7,
+            "graph": 38.4,
+            "plan": 19.1,
+            "store": 16.9,
+            "symbols": 8.4
+          },
+          "stages_ms_p50": {
+            "compile": 0,
+            "discover": 32,
+            "graph": 141,
+            "plan": 70,
+            "store": 62,
+            "symbols": 31,
+            "total": 367
+          },
+          "unit": "ms",
+          "within_budget": null
+        },
+        {
+          "budget": 2000,
+          "corpus_documents": 250,
+          "documents_rebuilt_per_edit": [
+            1
+          ],
+          "max": 658.497,
+          "mean": 625.41,
+          "min": 596.533,
+          "name": "incremental rebuild, one document edited",
+          "p50": 624.308,
+          "p95": 653.283,
+          "samples": 20,
+          "stage_share": {
+            "compile": 15.1,
+            "discover": 8.9,
+            "graph": 27.3,
+            "plan": 15.1,
+            "store": 20.9,
+            "symbols": 6.0
+          },
+          "stages_ms_p50": {
+            "compile": 78,
+            "discover": 46,
+            "graph": 141,
+            "plan": 78,
+            "store": 108,
+            "symbols": 31,
+            "total": 516
+          },
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": 150,
+          "max": 28.99,
+          "mean": 13.776,
+          "min": 0.234,
+          "name": "search, warm store (in-process)",
+          "p50": 14.713,
+          "p95": 23.944,
+          "samples": 306,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": 150,
+          "max": 51.458,
+          "mean": 29.714,
+          "min": 13.621,
+          "name": "mycelium_search, end to end (MCP handler)",
+          "p50": 30.887,
+          "p95": 39.776,
+          "samples": 306,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": null,
+          "files": 250,
+          "max": 2.313,
+          "mean": 1.352,
+          "mean_bytes": 3894,
+          "min": 0.987,
+          "name": "read one small Markdown file, warm",
+          "p50": 1.309,
+          "p95": 1.76,
+          "samples": 250,
+          "unit": "ms",
+          "within_budget": null
+        }
+      ]
+    },
+    {
+      "chunks": 5005,
+      "documents": 999,
+      "measurements": [
+        {
+          "budget": 60,
+          "chunks": 5005,
+          "documents": 999,
+          "documents_per_second": 10.5,
+          "max": 95.571,
+          "mean": 95.571,
+          "min": 95.571,
+          "ms_per_document": 95.7,
+          "name": "cold build, 1000 documents",
+          "p50": 95.571,
+          "p95": 95.571,
+          "samples": 1,
+          "stage_share": {
+            "compile": 82.4,
+            "discover": 0.1,
+            "graph": 0.3,
+            "plan": 2.6,
+            "store": 14.2,
+            "symbols": 0.2
+          },
+          "stages_ms": {
+            "compile": 78281,
+            "discover": 62,
+            "graph": 296,
+            "plan": 2468,
+            "store": 13516,
+            "symbols": 187,
+            "total": 94953
+          },
+          "unit": "s",
+          "within_budget": false
+        },
+        {
+          "budget": null,
+          "documents_reused": 999,
+          "max": 1552.28,
+          "mean": 1205.405,
+          "min": 1142.025,
+          "name": "incremental rebuild, nothing edited (the floor)",
+          "p50": 1184.19,
+          "p95": 1255.56,
+          "samples": 20,
+          "stage_share": {
+            "compile": 0.0,
+            "discover": 7.7,
+            "graph": 27.8,
+            "plan": 24.6,
+            "store": 12.3,
+            "symbols": 15.3
+          },
+          "stages_ms_p50": {
+            "compile": 0,
+            "discover": 78,
+            "graph": 282,
+            "plan": 250,
+            "store": 125,
+            "symbols": 155,
+            "total": 1016
+          },
+          "unit": "ms",
+          "within_budget": null
+        },
+        {
+          "budget": 2000,
+          "corpus_documents": 1000,
+          "documents_rebuilt_per_edit": [
+            1
+          ],
+          "max": 1393.947,
+          "mean": 1317.122,
+          "min": 1273.984,
+          "name": "incremental rebuild, one document edited",
+          "p50": 1309.506,
+          "p95": 1358.622,
+          "samples": 20,
+          "stage_share": {
+            "compile": 6.8,
+            "discover": 6.8,
+            "graph": 24.5,
+            "plan": 21.9,
+            "store": 15.1,
+            "symbols": 13.0
+          },
+          "stages_ms_p50": {
+            "compile": 78,
+            "discover": 78,
+            "graph": 280,
+            "plan": 250,
+            "store": 172,
+            "symbols": 148,
+            "total": 1141
+          },
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": 150,
+          "max": 89.775,
+          "mean": 40.571,
+          "min": 0.341,
+          "name": "search, warm store (in-process)",
+          "p50": 42.213,
+          "p95": 74.979,
+          "samples": 306,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": 150,
+          "max": 104.425,
+          "mean": 55.371,
+          "min": 14.136,
+          "name": "mycelium_search, end to end (MCP handler)",
+          "p50": 57.204,
+          "p95": 86.498,
+          "samples": 306,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": null,
+          "files": 400,
+          "max": 3.269,
+          "mean": 1.303,
+          "mean_bytes": 3860,
+          "min": 0.994,
+          "name": "read one small Markdown file, warm",
+          "p50": 1.259,
+          "p95": 1.625,
+          "samples": 400,
+          "unit": "ms",
+          "within_budget": null
+        }
+      ]
+    },
+    {
+      "chunks": 12422,
+      "documents": 2498,
+      "measurements": [
+        {
+          "budget": null,
+          "chunks": 12422,
+          "documents": 2498,
+          "documents_per_second": 10.8,
+          "max": 232.183,
+          "mean": 232.183,
+          "min": 232.183,
+          "ms_per_document": 92.9,
+          "name": "cold build, 2500 documents",
+          "p50": 232.183,
+          "p95": 232.183,
+          "samples": 1,
+          "stage_share": {
+            "compile": 82.1,
+            "discover": 0.1,
+            "graph": 0.2,
+            "plan": 2.5,
+            "store": 14.8,
+            "symbols": 0.2
+          },
+          "stages_ms": {
+            "compile": 189577,
+            "discover": 141,
+            "graph": 515,
+            "plan": 5719,
+            "store": 34125,
+            "symbols": 375,
+            "total": 230797
+          },
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "budget": null,
+          "documents_reused": 2498,
+          "max": 2564.035,
+          "mean": 2351.958,
+          "min": 2272.446,
+          "name": "incremental rebuild, nothing edited (the floor)",
+          "p50": 2337.218,
+          "p95": 2431.655,
+          "samples": 20,
+          "stage_share": {
+            "compile": 0.0,
+            "discover": 5.9,
+            "graph": 23.7,
+            "plan": 23.7,
+            "store": 13.3,
+            "symbols": 17.8
+          },
+          "stages_ms_p50": {
+            "compile": 0,
+            "discover": 125,
+            "graph": 500,
+            "plan": 500,
+            "store": 280,
+            "symbols": 375,
+            "total": 2108
+          },
+          "unit": "ms",
+          "within_budget": null
+        },
+        {
+          "budget": 2000,
+          "corpus_documents": 2500,
+          "documents_rebuilt_per_edit": [
+            1
+          ],
+          "max": 3375.393,
+          "mean": 2804.718,
+          "min": 2464.537,
+          "name": "incremental rebuild, one document edited",
+          "p50": 2606.012,
+          "p95": 3342.061,
+          "samples": 20,
+          "stage_share": {
+            "compile": 3.4,
+            "discover": 6.0,
+            "graph": 23.2,
+            "plan": 22.9,
+            "store": 14.8,
+            "symbols": 17.2
+          },
+          "stages_ms_p50": {
+            "compile": 78,
+            "discover": 140,
+            "graph": 538,
+            "plan": 532,
+            "store": 344,
+            "symbols": 398,
+            "total": 2320
+          },
+          "unit": "ms",
+          "within_budget": false
+        },
+        {
+          "budget": 150,
+          "max": 208.171,
+          "mean": 90.397,
+          "min": 0.669,
+          "name": "search, warm store (in-process)",
+          "p50": 93.476,
+          "p95": 171.084,
+          "samples": 306,
+          "unit": "ms",
+          "within_budget": false
+        },
+        {
+          "budget": 150,
+          "max": 221.831,
+          "mean": 99.568,
+          "min": 9.109,
+          "name": "mycelium_search, end to end (MCP handler)",
+          "p50": 101.9,
+          "p95": 176.749,
+          "samples": 306,
+          "unit": "ms",
+          "within_budget": false
+        },
+        {
+          "budget": null,
+          "files": 400,
+          "max": 1.241,
+          "mean": 0.606,
+          "mean_bytes": 3838,
+          "min": 0.419,
+          "name": "read one small Markdown file, warm",
+          "p50": 0.59,
+          "p95": 0.805,
+          "samples": 400,
+          "unit": "ms",
+          "within_budget": null
+        }
+      ]
+    },
+    {
+      "chunks": 24758,
+      "documents": 4989,
+      "measurements": [
+        {
+          "budget": null,
+          "chunks": 24758,
+          "documents": 4989,
+          "documents_per_second": 12.1,
+          "max": 414.003,
+          "mean": 414.003,
+          "min": 414.003,
+          "ms_per_document": 83.0,
+          "name": "cold build, 5000 documents",
+          "p50": 414.003,
+          "p95": 414.003,
+          "samples": 1,
+          "stage_share": {
+            "compile": 76.8,
+            "discover": 0.1,
+            "graph": 0.3,
+            "plan": 5.8,
+            "store": 16.8,
+            "symbols": 0.2
+          },
+          "stages_ms": {
+            "compile": 315953,
+            "discover": 250,
+            "graph": 1108,
+            "plan": 23687,
+            "store": 69046,
+            "symbols": 735,
+            "total": 411594
+          },
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "budget": null,
+          "documents_reused": 4989,
+          "max": 5665.062,
+          "mean": 5169.407,
+          "min": 4671.312,
+          "name": "incremental rebuild, nothing edited (the floor)",
+          "p50": 5204.455,
+          "p95": 5462.27,
+          "samples": 8,
+          "stage_share": {
+            "compile": 0.2,
+            "discover": 5.4,
+            "graph": 22.1,
+            "plan": 27.5,
+            "store": 12.4,
+            "symbols": 17.1
+          },
+          "stages_ms_p50": {
+            "compile": 8,
+            "discover": 258,
+            "graph": 1047,
+            "plan": 1304,
+            "store": 586,
+            "symbols": 812,
+            "total": 4742
+          },
+          "unit": "ms",
+          "within_budget": null
+        },
+        {
+          "budget": 2000,
+          "corpus_documents": 5000,
+          "documents_rebuilt_per_edit": [
+            1
+          ],
+          "max": 4906.146,
+          "mean": 4810.65,
+          "min": 4719.313,
+          "name": "incremental rebuild, one document edited",
+          "p50": 4811.175,
+          "p95": 4871.131,
+          "samples": 8,
+          "stage_share": {
+            "compile": 1.4,
+            "discover": 5.3,
+            "graph": 21.8,
+            "plan": 23.3,
+            "store": 14.6,
+            "symbols": 17.7
+          },
+          "stages_ms_p50": {
+            "compile": 62,
+            "discover": 234,
+            "graph": 960,
+            "plan": 1024,
+            "store": 640,
+            "symbols": 780,
+            "total": 4398
+          },
+          "unit": "ms",
+          "within_budget": false
+        },
+        {
+          "budget": 150,
+          "max": 408.744,
+          "mean": 174.469,
+          "min": 0.642,
+          "name": "search, warm store (in-process)",
+          "p50": 178.63,
+          "p95": 333.5,
+          "samples": 306,
+          "unit": "ms",
+          "within_budget": false
+        },
+        {
+          "budget": 150,
+          "max": 386.128,
+          "mean": 173.849,
+          "min": 8.979,
+          "name": "mycelium_search, end to end (MCP handler)",
+          "p50": 180.103,
+          "p95": 322.069,
+          "samples": 306,
+          "unit": "ms",
+          "within_budget": false
+        },
+        {
+          "budget": null,
+          "files": 400,
+          "max": 1.017,
+          "mean": 0.555,
+          "mean_bytes": 3730,
+          "min": 0.426,
+          "name": "read one small Markdown file, warm",
+          "p50": 0.526,
+          "p95": 0.733,
+          "samples": 400,
+          "unit": "ms",
+          "within_budget": null
+        }
+      ]
+    }
+  ],
+  "schema": "mycelium/benchmark/v0",
+  "toolchain": {
+    "mycelium": "0.5.0",
+    "python": "3.12.10"
+  },
+  "vector_profile": {
+    "chunks": 100000,
+    "dim": 384,
+    "embedder": "synthetic unit vectors; see populate_vectors()",
+    "matrix_bytes": 153600000,
+    "measurements": [
+      {
+        "budget": 60,
+        "max": 917.655,
+        "mean": 120.05,
+        "min": 42.115,
+        "name": "vector leg, first query on a fresh handle (a CLI invocation)",
+        "p50": 46.501,
+        "p95": 57.818,
+        "samples": 12,
+        "unit": "ms",
+        "within_budget": true
+      },
+      {
+        "budget": 60,
+        "max": 13.609,
+        "mean": 11.212,
+        "min": 9.512,
+        "name": "vector leg, warm handle (the MCP server)",
+        "p50": 11.124,
+        "p95": 12.797,
+        "samples": 306,
+        "unit": "ms",
+        "within_budget": true
+      },
+      {
+        "budget": 150,
+        "max": 1830.943,
+        "mean": 760.334,
+        "min": 17.463,
+        "name": "search, hybrid, both legs ran, warm store (in-process)",
+        "p50": 761.278,
+        "p95": 1483.015,
+        "samples": 300,
+        "unit": "ms",
+        "within_budget": false
+      },
+      {
+        "budget": 150,
+        "max": 1.824,
+        "mean": 1.255,
+        "min": 0.902,
+        "name": "search, hybrid configured but the vector leg withheld (ADR-0025)",
+        "p50": 1.197,
+        "p95": 1.395,
+        "samples": 6,
+        "unit": "ms",
+        "within_budget": true
+      },
+      {
+        "budget": 150,
+        "max": 1792.188,
+        "mean": 736.128,
+        "min": 0.924,
+        "name": "search, lexical, warm store (in-process)",
+        "p50": 767.192,
+        "p95": 1424.855,
+        "samples": 306,
+        "unit": "ms",
+        "within_budget": false
+      },
+      {
+        "budget": null,
+        "max": 0.063,
+        "mean": 0.014,
+        "min": 0.012,
+        "name": "has_vectors(), the hybrid precondition `search` runs per query",
+        "p50": 0.013,
+        "p95": 0.016,
+        "samples": 306,
+        "unit": "ms",
+        "within_budget": null
+      },
+      {
+        "budget": null,
+        "max": 100.108,
+        "mean": 91.419,
+        "min": 87.108,
+        "name": "vector_counts(), what the precondition used to cost (roadmap 6.27)",
+        "p50": 91.008,
+        "p95": 96.008,
+        "samples": 306,
+        "unit": "ms",
+        "within_budget": null
+      },
+      {
+        "budget": null,
+        "dim": 384,
+        "max": 12.611,
+        "mean": 9.874,
+        "min": 7.472,
+        "model_id": "bge-small-en-v1.5",
+        "name": "embed_query, local ONNX model (excluded from the hybrid figure above)",
+        "p50": 9.879,
+        "p95": 11.666,
+        "provider": "local-onnx",
+        "samples": 306,
+        "unit": "ms",
+        "within_budget": null
+      }
+    ],
+    "packed": true,
+    "queries": 306,
+    "queries_that_ran_both_legs": 300,
+    "queries_with_the_vector_leg_withheld": 6,
+    "vectors": 100000
+  }
+}

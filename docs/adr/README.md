@@ -173,3 +173,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0139](0139-time-the-tool-call-in-the-harness-and-keep-the-retriever-as-a-floor.md) | Time the tool call in the harness, and keep the retriever as a floor | Accepted |
 | [0140](0140-resolve-the-build-facade-on-first-access.md) | Resolve the build façade on first access, and keep it invisible to the type checker | Accepted |
 | [0141](0141-keep-the-repeated-arm-and-say-that-both-symmetries-lose.md) | Keep the repeated arm, and say that both symmetries lose | Accepted |
+| [0142](0142-probe-for-the-vector-precondition-instead-of-counting.md) | Probe for the vector precondition instead of counting, and key the answer to the generation | Accepted |

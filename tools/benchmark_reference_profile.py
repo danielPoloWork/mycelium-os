@@ -777,7 +777,12 @@ def measure_vector_path(
         name="search, lexical, warm store (in-process)", unit="ms", budget=QUERY_BUDGET_MS
     )
     precondition = Measurement(
-        name="vector_counts(), the hybrid precondition `search` runs per query",
+        name="has_vectors(), the hybrid precondition `search` runs per query",
+        unit="ms",
+        budget=None,
+    )
+    counting = Measurement(
+        name="vector_counts(), what the precondition used to cost (roadmap 6.27)",
         unit="ms",
         budget=None,
     )
@@ -813,13 +818,19 @@ def measure_vector_path(
             search(store, query, limit=10, config=lexical_config)
             lexical.samples.append((time.perf_counter() - started) * 1000)
         # `search` asks this once per hybrid query, to decide whether the snapshot
-        # holds vectors for the model at all (ADR-0025's degradation path). It is a
-        # `GROUP BY` over the whole `vectors` table, so it is timed here rather
-        # than left inside the residual (roadmap 6.21).
+        # holds vectors for the model at all (ADR-0025's degradation path). It was
+        # a `GROUP BY` over the whole `vectors` table until roadmap 6.27, which is
+        # why it is timed here rather than left inside the residual (roadmap 6.21)
+        # - and why the aggregate is timed beside it, so the report keeps showing
+        # what the probe replaced rather than only what it costs (ADR-0142).
+        for _ in queries:
+            started = time.perf_counter()
+            store.has_vectors(VECTOR_MODEL_ID)
+            precondition.samples.append((time.perf_counter() - started) * 1000)
         for _ in queries:
             started = time.perf_counter()
             store.vector_counts()
-            precondition.samples.append((time.perf_counter() - started) * 1000)
+            counting.samples.append((time.perf_counter() - started) * 1000)
         vectors = store.vector_counts().get(VECTOR_MODEL_ID, 0)
         packed = store._pack_for(VECTOR_MODEL_ID) is not None
 
@@ -833,7 +844,7 @@ def measure_vector_path(
         "queries_with_the_vector_leg_withheld": len(queries) - both_legs,
         "embedder": "synthetic unit vectors; see populate_vectors()",
     }
-    measured = [fresh, warm, hybrid, lexical, precondition]
+    measured = [fresh, warm, hybrid, lexical, precondition, counting]
     if withheld.samples:
         measured.insert(3, withheld)
     return measured, notes

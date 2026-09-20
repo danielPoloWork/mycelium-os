@@ -398,6 +398,8 @@ class SqliteStore:
         self._db_path: Path | None = None
         self._packs: dict[str, VectorPack | None] = {}
         """Memory-mapped packed matrices, per model, for the life of this handle."""
+        self._has_vectors: dict[str, bool] = {}
+        """`model@generation` → whether this snapshot holds a vector for it."""
         self._vectors_touched = False
 
     # -- lifecycle ---------------------------------------------------------
@@ -1086,11 +1088,55 @@ class SqliteStore:
         return deleted
 
     def vector_counts(self) -> dict[str, int]:
-        """Vectors per model id — what `doctor` and the manifest report."""
+        """Vectors per model id — what `doctor` and the manifest report.
+
+        A `GROUP BY` over the whole table, which is what a *count* costs and what
+        these two callers need. It is **not** the hybrid precondition any more:
+        that question is a yes/no and :meth:`has_vectors` answers it without
+        counting (roadmap 6.27, ADR-0142).
+        """
         rows = self._connection.execute(
             "SELECT model_id, count(*) AS n FROM vectors GROUP BY model_id ORDER BY model_id"
         ).fetchall()
         return {str(row["model_id"]): int(row["n"]) for row in rows}
+
+    def has_vectors(self, model_id: str) -> bool:
+        """Whether this snapshot holds any vector for `model_id`.
+
+        The precondition `search` runs before the vector leg (ADR-0025): a
+        snapshot built before the embedder existed stays searchable and *says* it
+        is degraded rather than failing. The question is a yes/no, and until
+        roadmap 6.27 it was asked by counting — `vector_counts()`, a `GROUP BY`
+        over the whole table, **once per hybrid query**. At 10⁵ vectors that is
+        **84 ms** of an in-memory table and 129.9 ms p50 on the reference profile:
+        three times the vector leg it guards, and 87 % of NFR-2's entire budget
+        spent before retrieval starts (roadmap 6.4, 6.21).
+
+        `EXISTS` stops at the first matching row instead of reading every one:
+        **0.004 ms** when the model is present, which is the path a configured
+        system takes. When it is *absent* the probe still scans — the primary key
+        is `(chunk_digest, model_id)`, so nothing indexes `model_id` on its own —
+        and that costs 10.6 ms at the same scale, which is why the answer is also
+        cached.
+
+        The cache is keyed by the **vectors generation**, the same key the packed
+        matrix uses (:meth:`_pack_for`), so it answers the item's own question
+        about writing vectors under a handle that has already answered: every
+        write path calls :meth:`_bump_vectors_generation`, the generation lives in
+        the meta table rather than in this object, and a write by *another*
+        process therefore invalidates this handle's answer too. Reading the key
+        costs 0.010 ms — a read the vector leg makes anyway, one line later,
+        when it maps the pack.
+        """
+        key = f"{model_id}@{self._vectors_generation()}"
+        if key not in self._has_vectors:
+            row = self._connection.execute(
+                "SELECT EXISTS(SELECT 1 FROM vectors WHERE model_id = ?)", (model_id,)
+            ).fetchone()
+            # One generation at a time, like the pack: an older answer is dead
+            # weight and keeping it would be a second staleness question.
+            self._has_vectors = {key: bool(row[0])}
+        return self._has_vectors[key]
 
     def clear_documents(self) -> None:
         """Remove every document, chunk, and index row. Call inside a :meth:`transaction`.
