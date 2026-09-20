@@ -52,6 +52,7 @@ from mycelium.__about__ import __version__  # noqa: E402
 from mycelium.eval.tasks import (  # noqa: E402
     DEFAULT_BUDGET_TOKENS,
     MAX_GREP_FILES,
+    MAX_SEARCH_K,
     TaskSuiteReport,
     load_tasks,
     run_task_suite,
@@ -60,6 +61,9 @@ from mycelium.store import SqliteStore  # noqa: E402
 
 DEFAULT_BUDGETS: Final = (1_000, 2_000, 4_000, 8_000, 16_000)
 DEFAULT_FILES: Final = (1, 2, 3, 5)
+DEFAULT_KS: Final = (8, 10, 20, 50)
+"""The `k` a caller might ask for: the tool's default, the literal this suite
+used to carry, a middle, and the cap the contract states (roadmap 6.28)."""
 
 
 def _stats(report: TaskSuiteReport, strategy: str) -> dict[str, Any]:
@@ -142,9 +146,18 @@ def suite_of(root: Path) -> Path:
 
 
 def measure(
-    root: Path, budgets: Sequence[int], files: Sequence[int], suite: Path | None = None
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
-    """The two bands, and the shipped point they both pass through."""
+    root: Path,
+    budgets: Sequence[int],
+    files: Sequence[int],
+    ks: Sequence[int] = DEFAULT_KS,
+    suite: Path | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], dict[str, Any]]:
+    """The three bands, and the shipped point they all pass through.
+
+    Three, since roadmap 6.28: the incumbent's two constants and **ours**. Our
+    side had one too and it was a literal, which is how it went unnoticed that
+    the arm could not spend a budget larger than about 3 100 tokens (ADR-0143).
+    """
     tasks = load_tasks(suite if suite is not None else suite_of(root))
 
     by_files: list[dict[str, Any]] = []
@@ -170,7 +183,22 @@ def measure(
             by_budget.append(row)
             if budget == DEFAULT_BUDGET_TOKENS:
                 shipped[strategy] = row
-    return by_files, by_budget, shipped
+
+    # Our own constant, swept at the largest budget in the band: `k` binds before
+    # the budget does, so a caller that leaves it at the tool's default cannot
+    # spend a large budget either. That is the honest spread to publish beside
+    # the number the suite reports (roadmap 6.28).
+    widest = max(budgets)
+    by_k: list[dict[str, Any]] = []
+    for k in ks:
+        report = run_task_suite(root, tasks, budget_tokens=widest, search_k=k)
+        row = _stats(report, "mycelium")
+        row["name"] = f"mycelium, k={k}, {widest}-token budget"
+        row["budget"] = widest
+        row["search_k"] = k
+        by_k.append(row)
+
+    return by_files, by_budget, by_k, shipped
 
 
 def _table(rows: Sequence[dict[str, Any]], key: str, label: str) -> str:
@@ -202,6 +230,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="Comma-separated counts of files the grep loop opens.",
     )
     parser.add_argument(
+        "--ks",
+        default=",".join(str(size) for size in DEFAULT_KS),
+        help="Comma-separated `k` values our arm asks search for, at the widest budget.",
+    )
+    parser.add_argument(
         "--tasks",
         type=Path,
         help="The suite to run; defaults to <root>/eval/tasks.jsonl, as the CLI reads it.",
@@ -212,8 +245,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     budgets = [int(item) for item in str(args.budgets).split(",") if item.strip()]
     files = [int(item) for item in str(args.files).split(",") if item.strip()]
+    ks = [int(item) for item in str(args.ks).split(",") if item.strip()]
     suite = args.tasks if args.tasks is not None else suite_of(args.root)
-    by_files, by_budget, shipped = measure(args.root, budgets, files, suite)
+    by_files, by_budget, by_k, shipped = measure(args.root, budgets, files, ks, suite)
 
     mine, theirs = shipped["mycelium"], shipped["grep"]
     print(
@@ -228,6 +262,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(_table(by_files, "max_grep_files", "files opened"))
     print("\nBoth strategies as the caller's budget moves (it is also the read window):")
     print(_table(by_budget, "name", "arm"))
+    print(
+        f"\nOur own constant, at the widest budget ({max(budgets)} tokens) - `k` binds "
+        "before the budget does:"
+    )
+    print(_table(by_k, "search_k", "k"))
 
     document = {
         "schema": SCHEMA,
@@ -248,10 +287,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         "budgets": {
             "read_window_tokens": DEFAULT_BUDGET_TOKENS,
             "max_grep_files": MAX_GREP_FILES,
+            "search_k": MAX_SEARCH_K,
         },
         "task_profile": {
             "kind": "context each strategy puts in front of a model (spec 04 section 7.4)",
-            "measurements": by_files + by_budget,
+            "measurements": by_files + by_budget + by_k,
         },
     }
     if args.json:

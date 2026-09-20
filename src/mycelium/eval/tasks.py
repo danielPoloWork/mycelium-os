@@ -69,6 +69,7 @@ from mycelium.store import SqliteStore
 
 __all__ = [
     "DEFAULT_BUDGET_TOKENS",
+    "MAX_SEARCH_K",
     "AgentTask",
     "TaskKind",
     "TaskOutcome",
@@ -90,6 +91,39 @@ failed at construction, and only once someone type-checked the generator
 
 DEFAULT_BUDGET_TOKENS: Final = 4_000
 """The packing budget spec 04 §4 gives a caller by default."""
+
+MAX_SEARCH_K: Final = 50
+"""How many results the Mycelium arm asks `search` for.
+
+The mirror of :data:`MAX_GREP_FILES`: the incumbent's model has two constants and
+ours has one, and until roadmap 6.28 ours was **not this number**. It was a
+literal `limit=10` inside `_mycelium_context`, which models no caller at all —
+`mycelium_search` defaults `k` to **8** and caps it at **50**, so ten is neither.
+
+50 is the cap the contract states, and the reason to ask for it is that
+`budget_tokens` is what actually bounds the answer: a caller that declares a
+budget and wants it spent asks for the most the tool allows and lets the budget
+truncate. With `limit=10` the *count* bound first, so the arm saturated at about
+3 100 tokens and stopped improving from a 4 000-token budget upward while the
+incumbent went on scaling — the comparison understated us, which D-010 holds to
+a higher standard than the reverse and is why roadmap 6.22 filed it instead of
+fixing it in passing (ADR-0143).
+
+Asking for more cannot cost more than the budget: the packing loop below spends
+at most `budget`, whatever `k` says. What it changes is whether the budget can
+be spent at all.
+
+A *default* caller saturates too, and the band report says so: at `k = 8` the
+arm holds at 17/22 on this repository however large the budget, because `k`
+rather than the budget is what binds. `tools/measure_agent_task_band.py` sweeps
+this constant beside the incumbent's two, so the choice is auditable rather than
+asserted (ADR-0131's rule, applied to our own side).
+
+Pinned against `mycelium.mcp.tools._MAX_K` by `tests/test_agent_tasks.py` rather
+than imported from it: the suite must not drag the serving surface into its
+import graph to read one integer, and a declaration that can drift silently is
+the defect roadmap 6.18 fixed in the configuration path.
+"""
 
 MAX_GREP_FILES: Final = 5
 """How many matching documents a grep loop reads before it gives up.
@@ -224,17 +258,37 @@ def load_tasks(path: Path) -> tuple[AgentTask, ...]:
 
 
 def _mycelium_context(
-    store: SqliteStore, task: AgentTask, budget: int
+    store: SqliteStore, task: AgentTask, budget: int, search_k: int = MAX_SEARCH_K
 ) -> tuple[set[str], int, int]:
-    """What `mycelium_search` would hand the agent: budgeted, cited passages."""
-    outcome = search(store, task.prompt, limit=10)
+    """What `mycelium_search` would hand the agent: budgeted, cited passages.
+
+    **Two corrections at roadmap 6.28, and both are fidelity to the tool rather
+    than favour** (ADR-0143). The comparison is only worth something if this
+    function models `handle_search`, and it differed from it twice:
+
+    - it asked for a hard-coded ten results whatever the caller's budget, so the
+      arm saturated at about 3 100 tokens and stopped improving from a
+      4 000-token budget upward. Ten is neither the tool's default `k` (8) nor
+      its maximum (50): it modelled no caller. :data:`MAX_SEARCH_K` is now the
+      cap, and the budget below is what bounds the answer;
+    - it **stopped** at the first result that would not fit, where the tool
+      *skips* it and goes on packing (`omitted`, spec 05 §3.1). A single large
+      passage early in the ranking therefore cost the arm everything behind it.
+
+    Both moved the number in our favour, which is exactly why 6.22 filed them
+    rather than folding them into a pull request about something else, and why
+    the band is re-published with the change.
+    """
+    outcome = search(store, task.prompt, limit=search_k)
     anchors: set[str] = set()
     tokens = 0
     documents: set[str] = set()
     for hit in outcome.hits:
         cost = estimate_tokens(hit.hit.chunk.text)
         if tokens + cost > budget:
-            break
+            # Skipped, not stopped: `handle_search` puts an over-budget result in
+            # `omitted` and keeps filling from the rest of the ranking.
+            continue
         tokens += cost
         anchors.add(hit.hit.chunk.anchor)
         documents.add(hit.hit.path)
@@ -361,12 +415,18 @@ def run_task_suite(
     *,
     budget_tokens: int = DEFAULT_BUDGET_TOKENS,
     max_grep_files: int = MAX_GREP_FILES,
+    search_k: int = MAX_SEARCH_K,
 ) -> TaskSuiteReport:
     """Run every task through both strategies against the published snapshot.
 
     Both constants of the incumbent's model are parameters — how much one read
     costs, and how many files the loop opens — because the verdict depends on
     them and a number nobody can vary is a number nobody can check (roadmap 6.22).
+
+    **And now ours is too.** `search_k` is the one constant on our side of the
+    comparison, and it was a literal inside `_mycelium_context` while the
+    incumbent's two were swept and published — an asymmetry that let our arm
+    saturate unnoticed for five milestones (roadmap 6.28, ADR-0143).
     """
     outcomes: list[TaskOutcome] = []
     with SqliteStore.open(root, read_only=True) as store:
@@ -381,7 +441,7 @@ def run_task_suite(
             for strategy in ("mycelium", "grep"):
                 started = time.perf_counter()
                 anchors, tokens, documents = (
-                    _mycelium_context(store, task, budget_tokens)
+                    _mycelium_context(store, task, budget_tokens, search_k)
                     if strategy == "mycelium"
                     else _grep_context(store, task, budget_tokens, max_grep_files)
                 )

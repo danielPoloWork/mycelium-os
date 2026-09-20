@@ -15,7 +15,13 @@ from pathlib import Path
 import pytest
 
 from mycelium.build import build
-from mycelium.eval.tasks import AgentTask, load_tasks, run_task_suite, write_tasks
+from mycelium.eval.tasks import (
+    MAX_SEARCH_K,
+    AgentTask,
+    load_tasks,
+    run_task_suite,
+    write_tasks,
+)
 from mycelium.store import SqliteStore
 
 CORPUS = {
@@ -243,6 +249,73 @@ def test_how_many_files_the_loop_opens_is_a_parameter_the_band_can_vary(
 
     assert [outcome.documents_read for outcome in read] == [1, 2, 4]
     assert read[0].tokens < read[1].tokens < read[2].tokens
+
+
+def test_our_own_constant_is_the_one_the_tool_states() -> None:
+    """`MAX_SEARCH_K` is declared here and must equal the cap `mycelium_search`
+    enforces (roadmap 6.28, ADR-0143).
+
+    Declared rather than imported, so the suite does not drag the serving surface
+    into its import graph to read one integer — the shape roadmap 6.18 removed
+    from the configuration path. Declaring it is only safe while something checks
+    it, which is this.
+    """
+    from mycelium.mcp.tools import _MAX_K
+
+    assert MAX_SEARCH_K == _MAX_K
+
+
+def test_our_arm_can_spend_the_budget_it_is_given(lopsided: Path) -> None:
+    """The defect 6.22 filed: `_mycelium_context` asked for ten results whatever
+    the budget said, so the arm saturated and the comparison understated us while
+    the incumbent went on scaling.
+
+    What is asserted is the *shape* rather than a number: more budget must buy
+    more context, up to what the corpus holds. The `lopsided` fixture is the one
+    that can show it — the small corpus holds 41 tokens of matching text, so
+    every budget above that is trivially saturated by the documents rather than
+    by the arm.
+    """
+    task = AgentTask(task_id="t-budget", prompt="retry backoff bus licence distributed")
+    spent = [
+        run_task_suite(lopsided, [task], budget_tokens=budget).by_strategy("mycelium")[0].tokens
+        for budget in (500, 2_000, 8_000)
+    ]
+
+    assert spent[0] <= 500, "the budget still bounds the answer"
+    assert spent[0] < spent[1] < spent[2], f"the arm saturated at {spent}"
+
+
+def test_a_caller_that_asks_for_less_gets_less(lopsided: Path) -> None:
+    """`k` is a parameter the band varies, the way the incumbent's two already
+    were. It binds before the budget does, which is why the published band shows
+    both and why leaving it out let the saturation go unnoticed."""
+    task = AgentTask(task_id="t-k", prompt="retry backoff bus licence distributed")
+    small, large = (
+        run_task_suite(lopsided, [task], budget_tokens=16_000, search_k=k)
+        .by_strategy("mycelium")[0]
+        .tokens
+        for k in (1, MAX_SEARCH_K)
+    )
+
+    assert small < large, "asking for one result cannot cost what asking for fifty does"
+
+
+def test_an_oversized_passage_is_skipped_rather_than_ending_the_packing(
+    lopsided: Path,
+) -> None:
+    """The second correction, and it is fidelity to the tool: `handle_search` puts
+    a result that would not fit into `omitted` and keeps filling from the rest of
+    the ranking (spec 05 §3.1). This function used to **stop**, so one large
+    passage early in the ranking cost the arm everything behind it.
+    """
+    task = AgentTask(task_id="t-skip", prompt="retry backoff bus licence distributed")
+    outcome = run_task_suite(lopsided, [task], budget_tokens=400).by_strategy("mycelium")[0]
+
+    assert outcome.tokens <= 400, "the budget is still the bound"
+    assert outcome.documents_read >= 1, (
+        "something fitted, which a `break` at the first oversized passage would have prevented"
+    )
 
 
 def test_a_suite_round_trips_through_jsonl(tmp_path: Path) -> None:
