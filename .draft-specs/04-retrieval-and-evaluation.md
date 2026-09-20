@@ -190,6 +190,17 @@ one in a document with no headings at all are spelled identically.
 | G6 Determinism | Byte-identical rebuild check (compiler gate, runs with eval in CI) |
 | G7 Grounding (per-document promotion gate, D-021) | A synthesized doc is *eligible* for promotion only if `cites` coverage ≥ 0.95 of claim-bearing statements AND sampled entailment vs cited evidence ≥ 0.90. Below threshold it stays `candidate`. Auto-promotion is opt-in config; the default is human `mycelium promote`. |
 
+**What G5 reads, and what it read for five milestones (roadmap 6.24, ADR-0139).** The
+150 ms in §1 is stated for `mycelium_search` — the tool call, which resolves the published
+snapshot, reads the configuration, opens the store and packs the answer. Until roadmap 6.24
+the gate read the harness's timing of the *retriever* alone, and those wrappers were 274 ms
+of constant until roadmap 6.18 cached the worst of them (ADR-0128), so the gate ran green
+over a call that missed its own budget on every corpus. It now times the handler on a
+hundred of the run's own queries and enforces on that; the arm's retriever p95 is kept
+beside it as a floor, because it is the only number that moves with the arm. Both must hold,
+and a tool call that could not be timed fails rather than passes. The four *stage* budgets
+in §1 remain ungated (roadmap 6.35).
+
 Absolute quality targets (e.g. `gpt-specs`' Recall@50 ≥ 0.90, nDCG@10 ≥ 0.75) become
 **GA-phase goals** once corpora are large enough for the numbers to mean something (G-5
 in document 00); pre-GA, relative discipline is what is enforceable and honest.
