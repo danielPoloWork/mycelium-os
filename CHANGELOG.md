@@ -12,6 +12,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The agent-task comparison can spend the budget it is given** (roadmap 6.28,
+  [ADR-0143](docs/adr/0143-take-the-result-count-from-the-contract-and-sweep-it-like-the-incumbents.md)).
+  Our side of the comparison asked `search` for a hard-coded **ten** results whatever budget
+  the caller declared — neither the tool's default `k` (8) nor its cap (50) — so the arm
+  saturated at about 3 100 tokens while the incumbent went on scaling, and the comparison
+  understated us. It now asks for `MAX_SEARCH_K = 50` and lets `budget_tokens` bound the
+  answer, and the packing loop **skips** an over-budget result instead of stopping, which is
+  what `mycelium_search` does. `run_task_suite` takes `search_k`, and
+  `tools/measure_agent_task_band.py` sweeps it beside the incumbent's two constants. At the
+  shipped 4 000-token budget: 16/22 unchanged on this repository, **18→19** on `uv-docs`,
+  **17→18** on the ingested twin; at 16 000: **19/22, 22/22, 21/22**. Measurement-only —
+  no shipped behaviour changes, and no gate moves.
+
 - **The hybrid precondition stops counting and starts probing** (roadmap 6.27,
   [ADR-0142](docs/adr/0142-probe-for-the-vector-precondition-instead-of-counting.md)).
   Before running the vector leg, `search` asks whether the snapshot holds vectors for the
