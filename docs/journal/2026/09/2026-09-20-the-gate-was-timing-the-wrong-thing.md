@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.24 — arm gate G5 on the number spec 04 §1 actually states,
   now that 6.18 has removed the constant that made it unreachable.
-- **PR:** #PRNUM (`feat/gate-g5-on-the-tool-call`). Follows #173, merged as `c262269`.
+- **PR:** #174 (`feat/gate-g5-on-the-tool-call`). Follows #173, merged as `c262269`.
 - **Milestone 6:** 6.24 closed, 6.35 filed. Open: 6.25–6.35.
 - **Decision it records:**
   [ADR-0139](../../../adr/0139-time-the-tool-call-in-the-harness-and-keep-the-retriever-as-a-floor.md).
