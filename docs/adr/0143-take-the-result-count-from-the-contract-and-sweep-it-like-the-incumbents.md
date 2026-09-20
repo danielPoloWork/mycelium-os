@@ -90,6 +90,13 @@ not prejudge it.
 **The incumbent is untouched.** Nothing here changes `_grep_context`, and the file band is
 reproduced in the report as a control.
 
+**One headline number moves against us, and it should.** The suite prints *"grep spends
+N x the context to answer"*, and on this repository that falls from **5.4x to 3.8x** —
+because we now spend the budget we are given instead of leaving two thirds of it. The
+ratio was flattering for the wrong reason: an arm that cannot spend its budget looks
+frugal. Evidence found is the number that improved; the cost ratio is the price of
+improving it, and both belong in the same sentence.
+
 **What this does not do.** It does not arm anything: the agent-task *verdict* gate is still
 unarmed and still 7.3's, and `mycelium eval --tasks --gate` continues to gate the suite's
 *integrity* rather than its rate (ADR-0120). A better number that nothing gates on is a
