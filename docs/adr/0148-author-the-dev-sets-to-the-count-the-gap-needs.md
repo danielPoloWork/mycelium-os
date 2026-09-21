@@ -233,7 +233,14 @@ what a reviewer should watch.
   alone (`decision_of` filters to `/release`, because "dev rows do not vote"), so no dev
   set can change what ships.
   The re-record refreshes the digests and the reported dev columns; `lexical` remains the
-  default for exactly the reasons ADR-0136 recorded.
+  default for exactly the reasons ADR-0136 recorded. The re-record doubles as a check that
+  nothing else moved: on the two corpora this change does not touch, the release rows come
+  back **identical to ADR-0136's** — `uv/release` **+7.2 %** with the same `exact` slice
+  paying, and `uv-ingested/release` **+3.5 %**. Our own `release` row reads **+21.4 %**
+  against the +20.2 % recorded two days ago, which is this corpus documenting itself: the
+  ADR and journal entry in this change are part of it, and `ours` is a `DATED_CORPORA` for
+  that reason. The new dev rows read −1.3 % (ours), +6.7 % (`uv`) and +3.7 %
+  (`uv-ingested`); none of them votes.
 - **No baseline is re-blessed, because a dev set has none.** There is no `baselines/dev.json`
   anywhere in the tree: G3 compares release runs against frozen release baselines, and this
   change does not touch one. The two release sets are rewritten byte-for-byte by their
