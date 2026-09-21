@@ -84,6 +84,14 @@ directly removes work on any filesystem — while *batching the three artifacts 
 blob*, which would have been the bigger local win, was refused for being fitted to this
 laptop. That was the item's warning, and it is the one candidate it rules out.
 
+**And then the reading arrived, on this PR's own CI run.** On `ubuntu-24.04`: plain write
+**59.3 µs**, `cas_put` **92.4 µs**, ceremony **708.8 µs** — 208x cheaper in absolute terms
+and **12.0x** the plain write where Windows is 1.67x. The ratio is *seven times worse*
+without the scanner, because the two machines pay for different halves: a filter driver
+charges ~7 ms for a second name here, and a real disk flush charges ~650 µs for the fsync
+there. The caution resolves in favour of the change, and it retroactively justifies
+refusing the batching candidate, which pays only where per-operation overhead dominates.
+
 ## What is left
 
 94 s against a 60 s budget. 6.31 (the stemmer) and 6.32 (the symbol stage) are 6.19's other

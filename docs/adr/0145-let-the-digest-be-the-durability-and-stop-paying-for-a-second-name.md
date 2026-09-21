@@ -143,13 +143,31 @@ derive `full`, by the same rule that makes a change to the judged sets derive `r
 **the gate that would judge a change is the one it changes** (ADR-0055's principle, applied to
 a rung that had been missing it).
 
-**`tests/bench/test_cas_bench.py`** records the three numbers — `cas_put`, a plain write and
-the ceremony — so CI re-takes them on Linux. On this machine the ceremony is **1.70x** a
-plain write (22.94 ms against 13.48 ms median); a Linux reading near 1x would say the
-Windows figure is one machine's, and a reading near 2x would say the shape is portable and
-only the constant is local. Either way the decision stands, because removing work cannot
-cost time — but which of those it is decides whether 6.31 and 6.32 are worth their price.
+**The no-scanner reading arrived, and it is the opposite of the worry.**
+`tests/bench/test_cas_bench.py` ran on this change's own CI run (`ubuntu-24.04`, no filter
+driver), medians:
 
-**What is not claimed.** Nothing here makes the cold build portable, and nothing here is a
-statement about an unencumbered SSD. The Linux column arrives with this change's own CI run,
-and the budget conversation belongs to 6.19's other two children.
+| | Windows, Apex One | Linux, CI runner | |
+|---|---:|---:|---|
+| plain write | 12.36 ms | **59.3 µs** | 208x cheaper |
+| `cas_put` | 14.40 ms | **92.4 µs** | |
+| tmp + fsync + rename | 20.62 ms | **708.8 µs** | |
+| **ceremony / plain write** | **1.67x** | **12.0x** | |
+
+The absolute cost collapses by two orders of magnitude and the **ratio gets seven times
+worse**. The two machines pay for different things — Windows pays a filter driver ~7 ms for
+a second name, Linux pays a real disk flush ~650 µs for the fsync — and on Linux that flush
+is *eleven times* the write it protects. So the item's caution (*the ratio that makes this
+look decisive is this machine's*) resolves in the direction that strengthens the decision
+rather than weakening it: dropping the ceremony is worth **more**, relatively, on the
+machine without the scanner.
+
+It also says the earlier worry was aimed at the wrong candidate. What is local to this
+laptop is the *attribution* — rename-dominated here, fsync-dominated there — which is
+precisely why *batching three artifacts into one blob* was refused: that one pays only where
+per-operation overhead dominates, and Linux says it would have bought almost nothing.
+
+**What is not claimed.** Nothing here makes the cold build portable, and the 60 s budget
+conversation belongs to 6.19's other two children. Note also that the Linux `atomic_write`
+row has a 178 ms maximum against a 709 µs median — fsync latency on a shared runner is
+spiky, which is one more reason the shipped path no longer waits on it.
