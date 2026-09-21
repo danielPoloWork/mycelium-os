@@ -12,6 +12,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The three dev sets are authored to the count the dev/release gap needs** (roadmap 6.33,
+  [ADR-0148](docs/adr/0148-author-the-dev-sets-to-the-count-the-gap-needs.md)). A dev set is
+  reported and never gated, so the number it exists to produce is the *gap* against the
+  release set — and at 20, 22 and 22 cases that gap rested on two to five questions a slice.
+  Measured first: on **nine of fourteen** comparable rows a single dev case was worth more
+  than the entire gap its row printed, the worst being `uv`'s `conceptual` at **11.5×**. Each
+  dev slice is now authored to the count `enforceable_at` derives for the release slice it is
+  subtracted from — derived rather than guessed, and read from the only frozen baseline the
+  comparison has. `eval/dev.jsonl` **20 → 239**, `eval/corpora/uv-docs/eval/dev.jsonl`
+  **22 → 333**, and the twin carried at **329**. Every row now reports a gap larger than one
+  case can move (worst 0.92×, eleven of fourteen at or below 0.3×), and all three gaps are
+  positive again — ours at **+0.1271**, against the **+0.115** ADR-0027 measured before either
+  set was re-authored. No baseline is re-blessed (a dev set has none), no release set changes,
+  and gate G2's verdict is re-recorded because it digests the dev sets — though only its
+  release rows decide the default, which stays `lexical`. The committed sets now hold **1 995
+  judged cases across six sets**.
+
 - **The symbol stage decodes and hashes once instead of twice** (roadmap 6.32,
   [ADR-0147](docs/adr/0147-decode-and-hash-the-symbol-stage-once.md)). `resolve_symbols`
   and `symbol_edges` run back to back on every build and each independently decoded every
