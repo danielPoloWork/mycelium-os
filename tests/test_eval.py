@@ -41,7 +41,13 @@ from mycelium.eval import (
     write_cases,
     write_run,
 )
-from mycelium.eval.harness import _gate_g2, g2_regressions
+from mycelium.eval.harness import (
+    G3_REPORTED_SLICES,
+    TOOL_CALL_SAMPLE,
+    _gate_g2,
+    enforceable_at,
+    g2_regressions,
+)
 from mycelium.eval.retrievers import CitedPassage
 from mycelium.sdk.types import (
     CaseResult,
@@ -228,8 +234,8 @@ def test_the_two_citation_metrics_are_independent() -> None:
 
 def test_the_committed_case_set_loads_and_covers_the_slices() -> None:
     cases = load_cases(CASES)
-    assert len(cases) == 20  # the milestone's target
-    assert len({case.case_id for case in cases}) == 20
+    assert len(cases) == 239  # roadmap 6.33: the count the dev/release gap needs
+    assert len({case.case_id for case in cases}) == len(cases)
 
     slices = {slice_ for case in cases for slice_ in case.slices}
     assert {
@@ -243,6 +249,46 @@ def test_the_committed_case_set_loads_and_covers_the_slices() -> None:
     } <= slices
     assert any(not case.answerable for case in cases)
     assert all(case.note for case in cases)  # every judgment explains itself
+
+
+@pytest.mark.parametrize(
+    ("dev_set", "baseline"),
+    [
+        (CASES, EVAL / "baselines" / "release.json"),
+        (UV_CORPUS / "eval" / "dev.jsonl", UV_CORPUS / "eval" / "baselines" / "release.json"),
+        (
+            INGESTED_CORPUS / "eval" / "dev.jsonl",
+            INGESTED_CORPUS / "eval" / "baselines" / "release.json",
+        ),
+    ],
+    ids=["ours", "uv", "uv-ingested"],
+)
+def test_every_dev_slice_holds_the_count_its_release_row_needs(
+    dev_set: Path, baseline: Path
+) -> None:
+    """ADR-0148: a dev slice is sized to the release slice the gap subtracts it from.
+
+    The gap a dev set reports is a difference against a release row, so it can only
+    be read at the coarser of the two resolutions. Sizing the dev slice to the count
+    `enforceable_at` derives for that release row makes both sides equally precise.
+    Read from the *blessed* baseline, never from a run, for the reason that function
+    gives.
+    """
+    blessed = json.loads(baseline.read_text(encoding="utf-8"))["mycelium"]
+    held: dict[str, int] = {}
+    for case in load_cases(dev_set):
+        for slice_ in case.slices:
+            held[slice_.value] = held.get(slice_.value, 0) + 1
+
+    short: list[str] = []
+    for name, mean in sorted((blessed.get("per_slice") or {}).items()):
+        if name in G3_REPORTED_SLICES or not isinstance(mean, int | float) or mean <= 0:
+            continue  # reported by design, or with nothing to lose
+        scores = [float(v) for v in (blessed.get("per_case", {}).get(name) or {}).values()]
+        needs = enforceable_at(float(mean), scores)
+        if held.get(name, 0) < needs:
+            short.append(f"{name}: {held.get(name, 0)} of {needs}")
+    assert not short, f"{dev_set.name} is short of the count the gap needs - {'; '.join(short)}"
 
 
 def test_a_case_set_round_trips(tmp_path: Path) -> None:
@@ -397,13 +443,14 @@ def test_the_committed_sets_name_no_anchor_twice() -> None:
 
 
 def test_a_run_reports_metrics_gates_and_a_manifest(corpus: Path) -> None:
-    manifest = run_evaluation(corpus, load_cases(CASES))
+    cases = load_cases(CASES)
+    manifest = run_evaluation(corpus, cases)
 
     assert manifest.retriever == "mycelium"
     assert manifest.snapshot_id
-    assert manifest.overall.cases == 20
+    assert manifest.overall.cases == len(cases)
     assert 0.0 <= manifest.overall.ndcg_at_10 <= 1.0
-    assert len(manifest.results) == 20
+    assert len(manifest.results) == len(cases)
     assert {gate.gate for gate in manifest.gates} == {
         "G1 Citations",
         "G3 No regression",
@@ -1953,7 +2000,9 @@ def test_a_run_records_the_tool_call_it_gated_on(corpus: Path) -> None:
     manifest = run_evaluation(corpus, load_cases(CASES))
 
     assert manifest.tool_call is not None
-    assert manifest.tool_call.calls == manifest.overall.cases
+    # G5 times a *sample* of the run's queries, capped at TOOL_CALL_SAMPLE. That cap
+    # never engaged on this set until roadmap 6.33 grew it past a hundred cases.
+    assert manifest.tool_call.calls == min(manifest.overall.cases, TOOL_CALL_SAMPLE)
     assert manifest.tool_call.p95_ms >= manifest.tool_call.p50_ms
     g5 = next(gate for gate in manifest.gates if gate.gate.startswith("G5"))
     assert str(manifest.tool_call.p95_ms) in g5.detail

@@ -283,6 +283,18 @@ what a reviewer should watch.
   were rewritten to the chunk form, which is the same judgement and the form the committed
   sets use. Ten anchors stay section-scoped, in sections that genuinely hold several chunks
   — ADR-0029's case for the notation.
+- **Gate G5's tool-call sample started sampling, for the first time on this set.**
+  `time_tool_call` times `TOOL_CALL_SAMPLE = 100` of a run's queries, and
+  `tests/test_eval.py` asserted `tool_call.calls == overall.cases` — true only because
+  every set it ran on was smaller than the sample. At 239 cases it is 100, and the
+  assertion now states the contract it always meant, `min(cases, TOOL_CALL_SAMPLE)`.
+  Nothing about the gate changes: it was designed to sample, and ADR-0128's reasoning for a
+  hundred is about flake rather than coverage.
+- **A new test pins this decision rather than its number.**
+  `test_every_dev_slice_holds_the_count_its_release_row_needs` recomputes `enforceable_at`
+  from each corpus's blessed release baseline and fails if any dev slice has fallen below
+  it — so the rule survives the next person to edit a set, which a count written into a
+  docstring would not.
 - **The generators grow by roughly 6 200 lines of judgements**, which is data rather than
   code, and is the shape [BUG-0026] requires: a set edited by hand is invisible to its
   generator and deleted by the next run.
