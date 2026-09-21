@@ -21,8 +21,8 @@
   [ADR-0029](0029-let-a-judgment-name-a-section.md) (the grading conventions every new
   case follows),
   [ADR-0039](0039-measure-what-projection-costs.md) (the carry, unchanged),
-  [ADR-0056](0056-rotate-the-ingested-corpuss-formats-over-a-recorded-order.md) (the
-  append-only format rotation this change deliberately does not grow); D-010;
+  [ADR-0056](0056-make-the-format-assignment-append-only.md) (the append-only format
+  rotation this change deliberately does not grow); D-010;
   spec 04 §§7.1, 7.6; roadmap 6.8, 6.33
 
 ## Context
