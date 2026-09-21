@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 6.30 — three quarters of a cold build is the ceremony around
   writing three small files per document; decide what durability a derived store owes.
-- **PR:** #PRNUM (`perf/write-the-blob-once`). Follows #179, merged as `0c8a875`.
+- **PR:** #180 (`perf/write-the-blob-once`). Follows #179, merged as `0c8a875`.
 - **Milestone 6:** 6.30 closed. 6.31–6.37 remain open.
 - **Decision it records:**
   [ADR-0145](../../../adr/0145-let-the-digest-be-the-durability-and-stop-paying-for-a-second-name.md).
