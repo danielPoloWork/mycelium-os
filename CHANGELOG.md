@@ -12,6 +12,19 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The symbol stage decodes and hashes once instead of twice** (roadmap 6.32,
+  [ADR-0147](docs/adr/0147-decode-and-hash-the-symbol-stage-once.md)). `resolve_symbols`
+  and `symbol_edges` run back to back on every build and each independently decoded every
+  document's `symbols`/`symbol_uses` from `doc_state`'s stored JSON. A shared `_Facts`
+  record, built once by `_facts_of`, now threads through both passes via a new
+  `resolve_symbols_and_edges` entry point — the two production call sites use it;
+  `resolve_symbols`/`symbol_edges` stay public and independently decoding for anyone who
+  only needs one. `SqliteStore.put_edges` also stopped serializing an edge's provenance to
+  canonical JSON twice per edge, deriving the digest from the same bytes it already writes.
+  Measured on an idle machine at 1 000 documents: the no-op floor's `symbols` stage fell
+  **250 → 188 ms (−24.8 %)** against a same-code repeat of 218 ms, and the whole floor
+  fell **1 918.9 → 1 676.2 ms (−12.6 %)**. Nothing published moves.
+
 - **`tools/verify.py`'s mode derivation now genuinely takes the widest mode a diff
   touches** (roadmap 6.31, ADR-0146). It checked `retrieval`-yielding rules before
   `full`-yielding ones as a sequence of early-return loops, so a diff touching both a
@@ -186,6 +199,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   published in the report rather than promised (spec 01 NFR-3, spec 02 §4.2, spec 06 §Phase 1).
 
 ### Added
+
+- **`tests/bench/test_symbol_resolution_bench.py`, comparing the two coexisting code
+  paths directly** (roadmap 6.32,
+  [ADR-0147](docs/adr/0147-decode-and-hash-the-symbol-stage-once.md)). Rather than a
+  git-history before/after, it benchmarks `resolve_symbols_and_edges` against the old
+  `resolve_symbols` + `symbol_edges` pattern on the same synthetic corpus, plus
+  `SqliteStore.put_edges` on a batch of edges — a low-variance regression guard for both
+  halves of the fix.
 
 - **`tests/bench/test_stemming_bench.py`, cold against memoised** (roadmap 6.31,
   [ADR-0146](docs/adr/0146-memoise-the-stemmer-bounded-against-a-measured-vocabulary.md)).

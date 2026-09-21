@@ -178,3 +178,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0144](0144-measure-the-whole-diversity-family-and-refuse-it.md) | Measure the whole diversity family, and refuse it - the spec asked for a rule the evidence will not carry | Accepted |
 | [0145](0145-let-the-digest-be-the-durability-and-stop-paying-for-a-second-name.md) | Let the digest be the durability, and stop paying for a second name | Accepted |
 | [0146](0146-memoise-the-stemmer-bounded-against-a-measured-vocabulary.md) | Memoise the stemmer, bounded against a measured vocabulary | Accepted |
+| [0147](0147-decode-and-hash-the-symbol-stage-once.md) | Decode and hash the symbol stage once | Accepted |

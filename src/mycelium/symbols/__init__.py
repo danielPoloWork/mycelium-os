@@ -61,6 +61,7 @@ from mycelium.symbols.resolve import (
     SymbolState,
     describe_gaps,
     resolve_symbols,
+    resolve_symbols_and_edges,
     symbol_edges,
     symbols_digest,
 )
@@ -128,6 +129,7 @@ __all__ = [
     "read_fence",
     "read_session",
     "resolve_symbols",
+    "resolve_symbols_and_edges",
     "shell_word",
     "symbol_edges",
     "symbols_digest",

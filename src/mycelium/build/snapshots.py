@@ -60,7 +60,7 @@ from mycelium.sdk.types import (
 )
 from mycelium.store import STORE_DIRNAME, DocState, SnapshotState, SqliteStore
 from mycelium.store.schema import META_CURRENT_SNAPSHOT
-from mycelium.symbols import resolve_symbols, symbol_edges, symbols_digest
+from mycelium.symbols import resolve_symbols_and_edges, symbols_digest
 
 __all__ = [
     "DEFAULT_CACHE_MAX_AGE_DAYS",
@@ -358,8 +358,9 @@ def _restored_graph(
     """
     ordered = sorted(states, key=lambda state: state.path)
     authored, _ = resolve_graph(ordered, namespace)
-    symbols = resolve_symbols(ordered, namespace)
-    extracted = symbol_edges(ordered, symbols, namespace)
+    # One decode of each state's symbols and uses, shared by both passes
+    # (roadmap 6.32, ADR-0147) — this path is read on every rollback verify.
+    symbols, extracted = resolve_symbols_and_edges(ordered, namespace)
     entities: tuple[Entity, ...] = ()
     if "entities" in manifest.artifact_digests:
         entities = resolve_entities(ordered, namespace)
