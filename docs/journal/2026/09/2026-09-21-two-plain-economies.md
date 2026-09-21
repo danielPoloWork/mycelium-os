@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 6.32 — the symbol stage decodes every use and hashes every
   edge twice, on every rebuild; decode once and hash once, and measure on both before
   deciding how far to take it.
-- **PR:** #PRNUM (`perf/decode-and-hash-the-symbol-stage-once`). Follows #181, merged as
+- **PR:** #182 (`perf/decode-and-hash-the-symbol-stage-once`). Follows #181, merged as
   `0239e81`.
 - **Milestone 6:** 6.32 closed. 6.33–6.37 remain open.
 - **Decision it records:**
