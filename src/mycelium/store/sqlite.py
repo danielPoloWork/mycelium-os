@@ -24,7 +24,7 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, Final, Self
 
-from mycelium.sdk.identity import canonical_json, digest_json, edge_id
+from mycelium.sdk.identity import canonical_json, digest_bytes, edge_id
 from mycelium.sdk.types import (
     Chunk,
     ChunkKind,
@@ -829,10 +829,18 @@ class SqliteStore:
         The id is the digest of the assertion (spec 03 §2), so re-deriving the
         same edge is idempotent — which is what makes a rebuild converge rather
         than accumulate.
+
+        ``provenance``'s canonical form is serialized **once** and reused for
+        both the id and the storage column, rather than through two separate
+        ``canonical_json(provenance)`` calls that walk the same small tree twice
+        (roadmap 6.32, ADR-0147) — a caller's own edge count times two, on every
+        rebuild whether or not a single edge actually changed.
         """
         written = 0
         for edge in edges:
             provenance = edge.provenance.model_dump(mode="json")
+            provenance_json = canonical_json(provenance)
+            provenance_digest = digest_bytes(provenance_json.encode("utf-8"))
             self._connection.execute(
                 """
                 INSERT INTO edges(
@@ -844,13 +852,13 @@ class SqliteStore:
                     namespace = excluded.namespace
                 """,
                 (
-                    edge_id(edge.from_, edge.to, edge.type.value, digest_json(provenance)),
+                    edge_id(edge.from_, edge.to, edge.type.value, provenance_digest),
                     edge.from_,
                     edge.to,
                     edge.type.value,
                     edge.status.value,
                     edge.weight,
-                    canonical_json(provenance),
+                    provenance_json,
                     edge.namespace,
                 ),
             )

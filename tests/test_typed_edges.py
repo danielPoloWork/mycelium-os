@@ -393,6 +393,82 @@ def test_merge_edges_is_stable_and_idempotent() -> None:
 
 
 # ---------------------------------------------------------------------------
+# resolve_symbols_and_edges: the two passes, decoding once (roadmap 6.32)
+# ---------------------------------------------------------------------------
+
+
+def _mixed_states() -> list[_State]:
+    """A corpus with a definer, a resolvable use, an ambiguous one, and a
+    document that both defines and uses — every branch both passes take."""
+    return [
+        _State("a.md", symbols=_refs(("python", "One.run", "method", 1))),
+        _State("b.md", symbols=_refs(("python", "Two.run", "method", 1))),
+        _State(
+            "c.md",
+            symbols=_refs(("python", "helper", "function", 1)),
+            symbol_uses=(
+                *_refs(("python", "run", "call", 5)),  # ambiguous: One.run / Two.run
+                *_refs(("python", "helper", "call", 9)),  # defines it too: no edge
+            ),
+        ),
+        _State("d.md", symbol_uses=_refs(("python", "helper", "call", 2))),
+    ]
+
+
+def test_resolve_symbols_and_edges_matches_the_two_call_pattern() -> None:
+    """The combined entry point is the same computation, not a second one."""
+    states = _mixed_states()
+
+    from mycelium.symbols import resolve_symbols, resolve_symbols_and_edges
+
+    separately = (resolve_symbols(states), symbol_edges(states, resolve_symbols(states)))
+    combined = resolve_symbols_and_edges(states)
+    assert combined == separately
+    # Non-trivial on both counts, or the comparison above proves nothing.
+    assert combined[0]
+    assert combined[1]
+
+
+def test_resolve_symbols_and_edges_decodes_each_state_once() -> None:
+    """The point of the refactor, pinned rather than inferred from a timing.
+
+    The pattern every real caller used before roadmap 6.32 — resolve the table,
+    then derive the edges from it, as `_symbols` above does — decodes every
+    state's `symbols` and `symbol_uses` once per function, twice in total.
+    `resolve_symbols_and_edges` decodes each once and threads the result
+    through both passes (ADR-0147)."""
+    import mycelium.symbols.resolve as resolve_module
+
+    states = _mixed_states()
+    original = resolve_module.decode_symbols  # type: ignore[attr-defined]
+    calls = 0
+
+    def counting(raw: object) -> object:
+        nonlocal calls
+        calls += 1
+        return original(raw)  # type: ignore[arg-type]
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(resolve_module, "decode_symbols", counting)
+    try:
+        calls = 0
+        symbols = resolve_module.resolve_symbols(states)
+        resolve_module.symbol_edges(states, symbols)
+        two_calls = calls
+
+        calls = 0
+        resolve_module.resolve_symbols_and_edges(states)
+        combined_calls = calls
+    finally:
+        monkeypatch.undo()
+
+    # `symbols` and `symbol_uses`, once per state, per pass.
+    assert two_calls == 2 * (len(states) * 2)
+    assert combined_calls == len(states) * 2
+    assert combined_calls < two_calls
+
+
+# ---------------------------------------------------------------------------
 # derived_from: what only the origin can say
 # ---------------------------------------------------------------------------
 

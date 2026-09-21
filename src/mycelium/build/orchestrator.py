@@ -147,8 +147,7 @@ from mycelium.symbols import (
     encode_symbols,
     extract_symbols,
     grammar_fingerprint,
-    resolve_symbols,
-    symbol_edges,
+    resolve_symbols_and_edges,
     symbols_digest,
 )
 
@@ -1304,13 +1303,14 @@ def _build_locked(
             # Symbols are resolved and republished whole for the same reason: a
             # symbol is one row keyed by its id, and the document that gives it
             # `defined_in` may be one this build never recompiled (roadmap 5.1).
-            symbols = resolve_symbols(tuple(live_states.values()), namespace)
-            store.clear_symbols()
-            store.put_symbols(symbols)
             # The extracted half of the graph rides on the resolved table: a use
             # becomes an edge only when the corpus defines what it names, so the
-            # symbols must exist before the edges over them do (ADR-0074).
-            extracted = symbol_edges(tuple(live_states.values()), symbols, namespace)
+            # symbols must exist before the edges over them do (ADR-0074) — and
+            # the two passes decode each state's `symbols`/`symbol_uses` once
+            # between them rather than once each (roadmap 6.32, ADR-0147).
+            symbols, extracted = resolve_symbols_and_edges(tuple(live_states.values()), namespace)
+            store.clear_symbols()
+            store.put_symbols(symbols)
             timer.lap("symbols")
 
             # The optional stage (spec 03 §6, roadmap 5.4). Its declarations are

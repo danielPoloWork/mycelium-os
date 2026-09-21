@@ -18,6 +18,7 @@ grammar found them, nobody wrote them down — which is the first time spec 03
 """
 
 from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 from mycelium.sdk.identity import digest_json, doc_ref, symbol_id
@@ -30,6 +31,7 @@ __all__ = [
     "SymbolState",
     "describe_gaps",
     "resolve_symbols",
+    "resolve_symbols_and_edges",
     "symbol_edges",
     "symbols_digest",
 ]
@@ -54,6 +56,33 @@ class SymbolState(Protocol):
 
     @property
     def symbol_gaps(self) -> tuple[str, ...]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class _Facts:
+    """One document's `symbols` and `symbol_uses`, decoded exactly once.
+
+    `resolve_symbols` and `symbol_edges` each read both fields off every state,
+    and were always run back to back (a use becomes an edge only when the corpus
+    defines what it names, so symbols must exist before edges over them do —
+    ADR-0074). Decoding independently cost three passes over `symbols` and two
+    over `symbol_uses` per rebuild — dictionary work, but proportional to a
+    corpus's content rather than its size, and the generated prose in this one's
+    own fences names some twenty thousand uses (roadmap 6.20, ADR-0147). This is
+    the shared record both passes now read from.
+    """
+
+    path: str
+    symbols: tuple[SymbolRef, ...]
+    uses: tuple[SymbolRef, ...]
+
+
+def _facts_of(states: Iterable[SymbolState]) -> tuple[_Facts, ...]:
+    """Decode every state's `symbols` and `symbol_uses` once, order preserved."""
+    return tuple(
+        _Facts(state.path, decode_symbols(state.symbols), decode_symbols(state.symbol_uses))
+        for state in states
+    )
 
 
 def resolve_symbols(
@@ -90,12 +119,16 @@ def resolve_symbols(
     where the symbol leg ranks them by BM25 anyway, which is why *ordering* them
     would be inert even if an order could be justified.
     """
+    return _resolve_symbols(_facts_of(states), namespace)
+
+
+def _resolve_symbols(facts: Sequence[_Facts], namespace: str) -> tuple[Symbol, ...]:
     sites: dict[str, list[tuple[str, SymbolRef]]] = {}
-    for state in sorted(states, key=lambda item: item.path):
-        references = sorted(decode_symbols(state.symbols), key=lambda ref: (ref.line, ref.name))
+    for fact in sorted(facts, key=lambda item: item.path):
+        references = sorted(fact.symbols, key=lambda ref: (ref.line, ref.name))
         for reference in references:
             identity = symbol_id(reference.language, reference.name)
-            sites.setdefault(identity, []).append((state.path, reference))
+            sites.setdefault(identity, []).append((fact.path, reference))
 
     # A command is what the corpus both demonstrates and names (roadmap 5.23):
     # a prompt line offers every prefix of its command run, and the corpus's
@@ -104,7 +137,7 @@ def resolve_symbols(
     # both. The naming sites join `doc_refs`, because a section that names a
     # command in prose is where the corpus documents it as often as one that
     # runs it (ADR-0094).
-    namings = _command_namings(states)
+    namings = _command_namings(facts)
     for identity in [item for item in sites if item.startswith(f"sym:{CLI_LANGUAGE}:")]:
         if identity not in namings:
             del sites[identity]
@@ -130,11 +163,11 @@ def resolve_symbols(
     return tuple(resolved)
 
 
-def _command_namings(states: Iterable[SymbolState]) -> dict[str, set[str]]:
+def _command_namings(facts: Iterable[_Facts]) -> dict[str, set[str]]:
     """Every command the corpus names in prose, with the chunks that name it."""
     namings: dict[str, set[str]] = {}
-    for state in states:
-        for use in decode_symbols(state.symbol_uses):
+    for fact in facts:
+        for use in fact.uses:
             if use.language != CLI_LANGUAGE:
                 continue
             identity = symbol_id(use.language, use.name)
@@ -175,6 +208,31 @@ def symbol_edges(
     edge to `sym:cli:uv tool install`, one per document, at the first chunk that
     names it — the one-edge-per-document rule a fence's calls already follow.
     """
+    return _symbol_edges(_facts_of(states), symbols, namespace)
+
+
+def resolve_symbols_and_edges(
+    states: Sequence[SymbolState], namespace: str = "default"
+) -> tuple[tuple[Symbol, ...], tuple[Edge, ...]]:
+    """`resolve_symbols` then `symbol_edges`, decoding each state once (roadmap 6.32).
+
+    The two passes always run back to back — a use becomes an edge only when the
+    corpus defines what it names (ADR-0074) — so calling them separately paid
+    for `_facts_of` twice: on a 1 000-document rebuild that is three decodes of
+    `symbols` and two of `symbol_uses` where one of each would do. Both real
+    callers (the orchestrator's build, and a snapshot's restore) use this;
+    `resolve_symbols` and `symbol_edges` stay independently callable — and
+    independently decoding — for anyone who only needs one of the two.
+    """
+    facts = _facts_of(states)
+    symbols = _resolve_symbols(facts, namespace)
+    edges = _symbol_edges(facts, symbols, namespace)
+    return symbols, edges
+
+
+def _symbol_edges(
+    facts: Sequence[_Facts], symbols: Sequence[Symbol], namespace: str
+) -> tuple[Edge, ...]:
     from mycelium.graph import edge_identity
 
     by_id = {symbol.symbol: symbol for symbol in symbols}
@@ -184,11 +242,9 @@ def symbol_edges(
         by_tail.setdefault((language, name.rsplit(".", 1)[-1]), set()).add(identity)
 
     definers: dict[str, set[str]] = {}
-    for state in states:
-        for reference in decode_symbols(state.symbols):
-            definers.setdefault(symbol_id(reference.language, reference.name), set()).add(
-                state.path
-            )
+    for fact in facts:
+        for reference in fact.symbols:
+            definers.setdefault(symbol_id(reference.language, reference.name), set()).add(fact.path)
 
     edges: dict[Sha256Digest, Edge] = {}
 
@@ -210,21 +266,19 @@ def symbol_edges(
         )
         edges[edge_identity(edge)] = edge
 
-    for state in sorted(states, key=lambda item: item.path):
-        source = doc_ref(state.path)
-        for reference in sorted(
-            decode_symbols(state.symbols), key=lambda ref: (ref.line, ref.name)
-        ):
+    for fact in sorted(facts, key=lambda item: item.path):
+        source = doc_ref(fact.path)
+        for reference in sorted(fact.symbols, key=lambda ref: (ref.line, ref.name)):
             identity = symbol_id(reference.language, reference.name)
             if identity in by_id:
                 put(source, identity, EdgeType.DEFINES, reference)
 
         referenced: set[str] = set()
-        for use in sorted(decode_symbols(state.symbol_uses), key=lambda ref: (ref.line, ref.name)):
+        for use in sorted(fact.uses, key=lambda ref: (ref.line, ref.name)):
             identity_or_none = _resolve_use(use, by_id, by_tail)
             if identity_or_none is None or identity_or_none in referenced:
                 continue
-            if state.path in definers.get(identity_or_none, set()):
+            if fact.path in definers.get(identity_or_none, set()):
                 # A document that defines a symbol is not also a *user* of it:
                 # the `defines` edge already says so, at a stronger type.
                 continue
