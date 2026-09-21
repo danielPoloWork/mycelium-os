@@ -117,6 +117,31 @@ def test_a_tuning_path_outranks_an_eval_path() -> None:
     assert "retrieval.py" in reason
 
 
+def test_a_full_deriving_path_beside_a_retrieval_path_still_derives_full() -> None:
+    """The defect roadmap 6.31 found while adding its own benchmark file.
+
+    `derive` used to be a sequence of early-return loops in mode order
+    `retrieval` before `full`: a diff touching a tuning path returned
+    `retrieval` and stopped, never reaching the rule that would have widened
+    it to `full`. Live from the day `CI_PREFIXES` was added (roadmap 4.31);
+    found when `BENCH_PREFIXES` (roadmap 6.30) made it reachable by an
+    ordinary PR - a tuning-path change with its own new benchmark, which
+    silently would not have run the benchmark it was added to back.
+    """
+    mode, reason = verify.derive(["src/mycelium/retrieval.py", ".github/workflows/ci.yml"])
+    assert mode == "full"
+    assert "ci.yml" in reason
+
+    mode, reason = verify.derive(["src/mycelium/retrieval.py", "tests/bench/test_x.py"])
+    assert mode == "full"
+    assert "test_x.py" in reason
+
+    # Order in the list must not matter - this is `derive`'s own "widest wins"
+    # promise, tested for the combination that broke it.
+    mode, _ = verify.derive([".github/workflows/ci.yml", "src/mycelium/retrieval.py"])
+    assert mode == "full"
+
+
 # ---------------------------------------------------------------------------
 # Resolution: widening is a request, narrowing is refused
 # ---------------------------------------------------------------------------

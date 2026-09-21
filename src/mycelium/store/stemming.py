@@ -29,6 +29,7 @@ matters here. A stem is an index key, never shown to anyone, and its only job is
 to make two spellings of one word collide more often than two words collide.
 """
 
+from functools import lru_cache
 from typing import Final
 
 __all__ = ["stem", "stem_text"]
@@ -227,8 +228,39 @@ def _step5b(word: str) -> str:
     return word
 
 
+_VOCABULARY_CACHE_SIZE: Final = 131_072
+"""The bound on :func:`stem`'s memoisation, and the reasoning behind the number
+rather than the number alone (roadmap 6.31, ADR-0146).
+
+`stem` is a pure function of a lowercased word, so memoising it is safe by
+construction — the same input always produces the same output, and a cache
+cannot go stale. **Unbounded** is fine for a build, where the vocabulary is
+whatever the corpus contains and the process exits when it finishes: measured
+on the 1 000-document reference corpus, 620 293 word occurrences reduce to
+10 339 distinct words, a 98.3 % hit rate, and memoising is 23.6x faster (7.44 s
+→ 0.31 s, roadmap 6.19/ADR-0132). It is **not** fine for the MCP server, which
+is a long-lived stdio process: the same function runs on every query's terms
+for as long as the process runs, and an unbounded cache is a slow leak whose
+growth is a function of how many distinct words a caller has ever sent rather
+than of the corpus.
+
+The bound is therefore sized against the vocabulary, not against taste. This
+project's own corpus — 233 documents, the largest of the three this repository
+builds and gates against — indexes **11 734** distinct terms; the smaller
+`uv-docs` corpus indexes **4 592**. `_VOCABULARY_CACHE_SIZE` is roughly **11x**
+the larger of the two: generous headroom for a corpus this project has not yet
+built, at a cost measured directly — 100 000 short-string entries hold
+**~9 MB** — that is negligible next to the embedding model B8 already loads
+into the same process. A corpus whose vocabulary exceeds the bound pays an
+ordinary cache miss and recomputes; nothing about correctness depends on
+staying inside it, because the function underneath is still exactly `_step1c`
+through `_step5b`.
+"""
+
+
+@lru_cache(maxsize=_VOCABULARY_CACHE_SIZE)
 def stem(word: str) -> str:
-    """Reduce one already-lowercased word to its Porter stem.
+    """Reduce one already-lowercased word to its Porter stem, memoised.
 
     Words of two letters or fewer come back unchanged, as the algorithm
     specifies: there is nothing left to remove, and `is` → `i` would collide with
