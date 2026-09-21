@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 6.31 — the Porter stemmer re-stems the same ten thousand
   words six hundred thousand times; memoise it, and decide what a long-lived server
   owes a cache.
-- **PR:** #PRNUM (`perf/memoise-the-stemmer`). Follows #180, merged as `7d082c5`.
+- **PR:** #181 (`perf/memoise-the-stemmer`). Follows #180, merged as `7d082c5`.
 - **Milestone 6:** 6.31 closed. 6.32–6.37 remain open.
 - **Decision it records:**
   [ADR-0146](../../../adr/0146-memoise-the-stemmer-bounded-against-a-measured-vocabulary.md).
