@@ -60,6 +60,16 @@ Two tests go after the server concern directly instead of trusting the docstring
   or under the bound. That's the "slow leak" scenario, run to its conclusion rather
   than reasoned about.
 
+## The Linux reading confirmed the win travels
+
+The fix above meant the benchmark actually ran on this PR's own CI, on `ubuntu-24.04` —
+no filter driver, nothing local to discount. Cold 9.99 ms, warm 0.52 ms, **19.1×**. Close
+to both the Windows unit figure (16.7×) and ADR-0132's corpus-scale one (23.6×). Unlike
+yesterday's write-ceremony finding, where the two machines disagreed by 7× because they
+were paying for different things, memoisation's saving doesn't depend on which machine is
+doing the repeating — it is the same shape everywhere, because eliminating repeated work
+is not a property of a filter driver.
+
 ## A second defect, found because this change had to verify itself
 
 Deriving the verification mode for this PR's own diff — `stemming.py` (a tuning path)

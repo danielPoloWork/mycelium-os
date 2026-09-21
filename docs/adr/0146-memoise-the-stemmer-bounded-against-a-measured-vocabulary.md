@@ -117,6 +117,14 @@ benefit, gracefully, as ordinary cache misses — never as a wrong answer. If th
 becomes a real cost, the fix is to widen `_VOCABULARY_CACHE_SIZE` against the corpus that
 justified it, the same way this one was chosen, not to make it configurable pre-emptively.
 
+**The Linux reading arrived, and it confirms the win is the algorithm's, not the
+machine's.** `tests/bench/test_stemming_bench.py` ran on this PR's own CI (`ubuntu-24.04`,
+no filter driver): cold **9.99 ms**, warm **0.52 ms** — a **19.1×** ratio, in the same band
+as the Windows figure (16.7×) and closer to ADR-0132's own 23.6× at corpus scale. Unlike
+ADR-0145's write ceremony, where the two machines paid for different things and the ratio
+moved by 7×, memoisation's saving is the same shape on both: it removes repeated work,
+and repeated work costs roughly what it costs wherever the process runs.
+
 **What this does not touch.** `stem_text`, which lowercases and maps `stem` over a
 token list, is unchanged — the memoisation lives entirely inside the one function that
 benefits from it, so a caller iterating a list of terms gets the speed-up for free and
