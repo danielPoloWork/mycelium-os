@@ -103,6 +103,22 @@ would otherwise have skipped its own gate (roadmap 4.26). `retrieval` gates them
 now, and the exception has nothing left to except: one rule covers the judged
 sets, the baselines and the corpora alike (roadmap 4.35, ADR-0059)."""
 
+BENCH_PREFIXES = ("tests/bench/", "contrib/chats/tests/bench/")
+"""The benchmark suites, which only `full` runs.
+
+A change here derives `full` for the reason a change to the judged sets derives
+`retrieval`: **the gate that would judge it is the one it changes.** Until
+roadmap 6.30 a benchmark counted as `tests/` and therefore as `code`, so adding
+or editing one ran everything *except* the benchmarks — the PR that introduced a
+broken or a meaningless benchmark was green, and `main` went red on the next
+push, which is when `full` finally ran it.
+
+That also made AGENTS.md §10's *"performance claims backed by a reproducible
+benchmark"* unverifiable at the moment the claim is made: 6.30 could not measure
+its own change on a machine without a filter driver, because the one runner that
+has none is in the job this mode gates. Widening here is what let it (ADR-0145).
+"""
+
 CI_PREFIXES = (".github/",)
 
 CORPORA = ("eval/corpora/uv-docs", "eval/corpora/uv-docs-ingested")
@@ -212,6 +228,9 @@ def derive(paths: list[str]) -> tuple[str, str]:
     for path in paths:
         if any(path.startswith(prefix) for prefix in EVAL_DATA_PREFIXES):
             return "retrieval", f"{path} changes what the gates measure"
+    for path in paths:
+        if any(path.startswith(prefix) for prefix in BENCH_PREFIXES):
+            return "full", f"{path} is a benchmark, and only `full` runs the benchmarks"
     for path in paths:
         if any(path.startswith(prefix) for prefix in CI_PREFIXES):
             return "full", f"{path} changes the verification itself"

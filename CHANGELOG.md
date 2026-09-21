@@ -12,6 +12,26 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **A cold build is 29 % faster, because the content-addressed cache stopped paying for a
+  second name** (roadmap 6.30,
+  [ADR-0145](docs/adr/0145-let-the-digest-be-the-durability-and-stop-paying-for-a-second-name.md)).
+  `cas_put` wrote every blob through a temp file, an fsync and a rename. A blob's name *is*
+  the digest of its bytes and `cas_get` re-hashes on read, so a torn write was already
+  indistinguishable from a cache miss and the ceremony bought nothing the content addressing
+  had not (D-005). Decomposed, the fsync costs **~2.0 ms** and the second name **~6.7 ms** —
+  the opposite of where roadmap 6.19 put it. Blobs now go straight to their final name:
+  cold build **29.35 → 21.96 s at 250 documents** and **132.68 → 94.13 s at 1 000**, arms
+  alternated on an idle machine, against a +7.8 % noise floor. Snapshot publication, the
+  `CURRENT` pointer, tier-1 custody and quarantine keep the atomic write — none of them is
+  recomputable. Still short of spec 01 §8's 60 s budget on this machine.
+
+- **A change to a benchmark now runs the benchmarks** (roadmap 6.30, ADR-0145). A file under
+  `tests/bench/` counted as `tests/` and derived `code`, so `tools/verify.py` ran everything
+  *except* the suite the change belonged to: a broken benchmark landed green and `main`
+  discovered it on the next push. It derives `full` now, by the rule that already sends a
+  judged-set change to `retrieval` — the gate that would judge a change is the one it
+  changes (ADR-0055).
+
 - **Spec 04 §4's diversity rule is measured and refused, and the specification now says
   so** (roadmap 6.29,
   [ADR-0144](docs/adr/0144-measure-the-whole-diversity-family-and-refuse-it.md)). *"MMR
@@ -145,6 +165,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   published in the report rather than promised (spec 01 NFR-3, spec 02 §4.2, spec 06 §Phase 1).
 
 ### Added
+
+- **`tools/measure_cas_write.py` and `tests/bench/test_cas_bench.py`, which price a blob
+  write** (roadmap 6.30,
+  [ADR-0145](docs/adr/0145-let-the-digest-be-the-durability-and-stop-paying-for-a-second-name.md)).
+  The tool decomposes the write into nested arms — plain, +fsync, +second name — interleaved
+  so machine drift cannot land on one of them, and sweeps 4/12/64 KiB so a reader can tell a
+  per-byte cost from a per-operation one. The benchmark records the same three numbers where
+  CI re-takes them on a runner with no filter driver in the path.
 
 - **`tools/measure_document_diversity.py`, which reports the ceiling before it reports an
   arm** (roadmap 6.29,

@@ -176,3 +176,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0142](0142-probe-for-the-vector-precondition-instead-of-counting.md) | Probe for the vector precondition instead of counting, and key the answer to the generation | Accepted |
 | [0143](0143-take-the-result-count-from-the-contract-and-sweep-it-like-the-incumbents.md) | Take the result count from the contract, and sweep it like the incumbent's | Accepted |
 | [0144](0144-measure-the-whole-diversity-family-and-refuse-it.md) | Measure the whole diversity family, and refuse it - the spec asked for a rule the evidence will not carry | Accepted |
+| [0145](0145-let-the-digest-be-the-durability-and-stop-paying-for-a-second-name.md) | Let the digest be the durability, and stop paying for a second name | Accepted |

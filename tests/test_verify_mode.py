@@ -57,6 +57,12 @@ pytestmark = pytest.mark.boundary("B13")
         # alike (roadmap 4.35, ADR-0059).
         (["eval/corpora/uv-docs/eval/release.jsonl"], "retrieval"),
         (["eval/corpora/uv-docs-ingested/provenance.json"], "retrieval"),
+        # A benchmark is judged by the mode it belongs to. Until roadmap 6.30 it
+        # counted as `tests/` and therefore as `code`, so the PR that added one
+        # ran everything except it, and `main` found out on the next push
+        # (ADR-0145).
+        (["tests/bench/test_cas_bench.py"], "full"),
+        (["contrib/chats/tests/bench/test_archive_bench.py"], "full"),
         ([".github/workflows/ci.yml"], "full"),
     ],
 )
