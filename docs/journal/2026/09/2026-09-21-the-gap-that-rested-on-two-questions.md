@@ -4,7 +4,7 @@
   to be, and they are the only signal that says whether tuning fitted the set it was
   allowed to read. Author them to the count that signal needs, and measure the signal
   before deciding what the count is.
-- **PR:** #PRNUM (`feat/author-the-dev-sets-to-the-count-the-gap-needs`). Follows #182,
+- **PR:** #183 (`feat/author-the-dev-sets-to-the-count-the-gap-needs`). Follows #182,
   merged as `c26b988`.
 - **Milestone 6:** 6.33 closed. 6.34–6.37 remain open.
 - **Decision it records:**
