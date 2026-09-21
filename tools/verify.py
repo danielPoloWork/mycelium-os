@@ -212,35 +212,82 @@ def changed_files(base: str) -> list[str]:
     return sorted(path.replace("\\", "/") for path in paths if path)
 
 
+#: The rules `derive` classifies a path against, narrowest-mode-first within a
+#: mode and declared once so the ordering lives in one place. Each entry is
+#: (prefixes, mode, reason template); the template's one `{}` takes the path.
+#: Order matters only as a **tie-break** among paths that land on the same
+#: mode - `_classify` walks it top to bottom and the first prefix match wins
+#: that path's mode and reason, exactly as a flat if/elif chain would.
+#: The rules `derive` classifies a path against, in **priority order**: the
+#: first entry whose prefixes match a path wins that path's mode and reason,
+#: exactly as a flat if/elif chain would. Declared once so the ordering (and
+#: the tie-break it implies - see `derive`) lives in one place rather than in
+#: the shape of a loop.
+_RULES: Final[tuple[tuple[tuple[str, ...], str, str], ...]] = (
+    (TUNING_PATHS, "retrieval", "{} can change what a query returns"),
+    (EVAL_DATA_PREFIXES, "retrieval", "{} changes what the gates measure"),
+    (BENCH_PREFIXES, "full", "{} is a benchmark, and only `full` runs the benchmarks"),
+    (CI_PREFIXES, "full", "{} changes the verification itself"),
+    (CODE_PREFIXES, "code", "{} can change behaviour"),
+)
+
+
+def _classify(path: str) -> tuple[int, str, str] | None:
+    """One path's own (rule rank, mode, reason), or ``None`` for a file
+    `_RULES` says nothing about and :data:`DOC_SUFFIXES` admits as plain docs.
+
+    The rank is the path's *actual* matching index into `_RULES` - not
+    re-derived from the mode afterwards, which would conflate two different
+    rules that happen to yield the same mode (`TUNING_PATHS` and
+    `EVAL_DATA_PREFIXES` both yield `retrieval`) and silently lose the
+    priority between them.
+    """
+    for rank, (prefixes, mode, template) in enumerate(_RULES):
+        if any(path.startswith(prefix) for prefix in prefixes):
+            return rank, mode, template.format(path)
+    if Path(path).suffix not in DOC_SUFFIXES:
+        return len(_RULES), "full", f"{path} is not a file type this tool can classify"
+    return None
+
+
 def derive(paths: list[str]) -> tuple[str, str]:
     """The narrowest mode this diff may run under, and the path that decided it.
 
-    Widest wins: one retrieval file in a hundred documentation files is a
-    retrieval change. The reason is returned with the mode because "why am I
-    running the evals" is the question a reader has at exactly this moment.
+    **Widest wins, genuinely**: every path is classified on its own against
+    `_RULES`, and the mode reported is the widest of them - `MODES.index`,
+    maximised - rather than whichever rule's loop happened to run first. A
+    flat sequence of early-return loops looks like the same thing and is not:
+    checking the `retrieval`-yielding rules before the `full`-yielding ones
+    means a diff touching *both* a tuning path and, say, `.github/` would
+    have returned `retrieval` and stopped, never reaching the rule that
+    should have widened it. That bug was live from the day `CI_PREFIXES` was
+    added (roadmap 4.31) until roadmap 6.31 found it while adding a second
+    `full`-only rule (`BENCH_PREFIXES`, roadmap 6.30) and asking why *this*
+    PR's own new benchmark file, sitting beside a tuning-path change, derived
+    `retrieval` and would not have run.
+
+    Where two paths land on the same widest mode, the **reason** goes to
+    whichever's rule has the lower rank in `_RULES` —
+    `test_a_tuning_path_outranks_an_eval_path` pins that a tuning path
+    outranks an eval-data path for the *reported* reason even though both
+    derive `retrieval`.
     """
     if not paths:
         return "full", "nothing changed against the base - running everything rather than nothing"
 
+    widest_mode = "docs"
+    widest_reason = "every changed file is documentation"
+    widest_rank = len(_RULES) + 1
     for path in paths:
-        if any(path.startswith(prefix) for prefix in TUNING_PATHS):
-            return "retrieval", f"{path} can change what a query returns"
-    for path in paths:
-        if any(path.startswith(prefix) for prefix in EVAL_DATA_PREFIXES):
-            return "retrieval", f"{path} changes what the gates measure"
-    for path in paths:
-        if any(path.startswith(prefix) for prefix in BENCH_PREFIXES):
-            return "full", f"{path} is a benchmark, and only `full` runs the benchmarks"
-    for path in paths:
-        if any(path.startswith(prefix) for prefix in CI_PREFIXES):
-            return "full", f"{path} changes the verification itself"
-    for path in paths:
-        if any(path.startswith(prefix) for prefix in CODE_PREFIXES):
-            return "code", f"{path} can change behaviour"
-    unknown = [path for path in paths if Path(path).suffix not in DOC_SUFFIXES]
-    if unknown:
-        return "full", f"{unknown[0]} is not a file type this tool can classify"
-    return "docs", "every changed file is documentation"
+        classified = _classify(path)
+        if classified is None:
+            continue
+        rank, mode, reason = classified
+        if MODES.index(mode) > MODES.index(widest_mode) or (
+            mode == widest_mode and rank < widest_rank
+        ):
+            widest_mode, widest_reason, widest_rank = mode, reason, rank
+    return widest_mode, widest_reason
 
 
 def resolve(derived: str, asked: str | None) -> str:

@@ -187,3 +187,39 @@ def test_the_one_place_the_two_implementations_part() -> None:
     """
     assert _sqlite_stems(["μs"])["μs"] == "μ"
     assert stem("μs") == "μs"
+
+
+# ---------------------------------------------------------------------------
+# The memoisation (roadmap 6.31, ADR-0146)
+# ---------------------------------------------------------------------------
+
+
+def test_stem_is_memoised_and_correct_either_way() -> None:
+    """A cache hit and a cache miss must return the same answer.
+
+    `stem` is a pure function of its input, so this is provable rather than
+    merely likely — but a cache is exactly the kind of thing that quietly stops
+    being provable if a future edit gives it state. `cache_clear` forces a miss
+    on the second call; the two results must still agree.
+    """
+    stem.cache_clear()
+    first = stem("constraint")
+    assert stem.cache_info().misses == 1
+    second = stem("constraint")
+    assert stem.cache_info().hits == 1
+    assert first == second == "constraint"
+
+
+def test_the_cache_is_bounded() -> None:
+    """Unbounded is fine for a build and a slow leak in a long-lived server
+    (roadmap 6.19's finding, roadmap 6.31's decision). `stem` must therefore
+    evict rather than grow forever once its vocabulary is exceeded."""
+    stem.cache_clear()
+    bound = stem.cache_info().maxsize
+    assert bound is not None and bound > 0
+
+    for index in range(bound + 1000):
+        stem(f"zzz{index}notarealword")
+
+    assert stem.cache_info().currsize <= bound
+    stem.cache_clear()

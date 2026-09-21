@@ -12,6 +12,27 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **`tools/verify.py`'s mode derivation now genuinely takes the widest mode a diff
+  touches** (roadmap 6.31, ADR-0146). It checked `retrieval`-yielding rules before
+  `full`-yielding ones as a sequence of early-return loops, so a diff touching both a
+  tuning path and a full-only path (this PR's own stemmer change beside its own new
+  benchmark) derived `retrieval` and silently skipped the benchmark it was added to
+  back. Live since roadmap 4.31; found when roadmap 6.30's `BENCH_PREFIXES` made the
+  combination reachable by an ordinary PR. Each path is now classified on its own and
+  the widest wins, ties broken by declared rule priority.
+
+- **The stemmer is memoised, bounded against this project's own measured vocabulary**
+  (roadmap 6.31,
+  [ADR-0146](docs/adr/0146-memoise-the-stemmer-bounded-against-a-measured-vocabulary.md)).
+  `put_chunks` stems four fields per chunk (text, title, heading, ancestors), and roadmap
+  6.19 measured **620 293** word occurrences over **10 339** distinct words on a
+  1 000-document build — 98.3 % of the calls already answered. `stem()` is a pure function,
+  so `functools.lru_cache` is safe by construction; unbounded it is fine for a build and a
+  slow leak in the MCP server's long-lived process, so the bound (**131 072**) is sized at
+  ~11x this project's largest built corpus (11 734 distinct terms), costing **~9 MB** for
+  100 000 entries. Cold build at 250 documents: **22.50 → 19.67 s (−12.6 %)**, arms
+  alternated on an idle machine, against a same-run noise floor of +4.3 % to +9.9 %.
+
 - **A cold build is 29 % faster, because the content-addressed cache stopped paying for a
   second name** (roadmap 6.30,
   [ADR-0145](docs/adr/0145-let-the-digest-be-the-durability-and-stop-paying-for-a-second-name.md)).
@@ -165,6 +186,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   published in the report rather than promised (spec 01 NFR-3, spec 02 §4.2, spec 06 §Phase 1).
 
 ### Added
+
+- **`tests/bench/test_stemming_bench.py`, cold against memoised** (roadmap 6.31,
+  [ADR-0146](docs/adr/0146-memoise-the-stemmer-bounded-against-a-measured-vocabulary.md)).
+  Re-takes roadmap 6.19's 23.6x comparison on a real repository document rather than a
+  synthetic word list: cold (cache cleared every round) **25.0 ms**, warm **1.5 ms**, a
+  16.7x ratio.
 
 - **`tools/measure_cas_write.py` and `tests/bench/test_cas_bench.py`, which price a blob
   write** (roadmap 6.30,
