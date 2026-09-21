@@ -25,6 +25,7 @@ __all__ = [
     "QUARANTINE_DIRNAME",
     "atomic_write_bytes",
     "atomic_write_text",
+    "write_bytes",
 ]
 
 CAS_DIRNAME: Final = "cas"
@@ -48,6 +49,34 @@ Beside custody rather than inside it: a quarantine record is *about* an attempt,
 not content addressed by its own digest, and the garbage collector has to know it
 is another subtree it does not sweep. :mod:`mycelium.ingest.quarantine` owns it.
 """
+
+
+def write_bytes(path: Path, data: bytes) -> None:
+    """Write `data` straight to `path`: one name, no fsync, no rename.
+
+    The plain counterpart to :func:`atomic_write_bytes`, and the choice between
+    them is a durability decision rather than a style one:
+
+    - use **this** where the name already tells you what the bytes must be, so a
+      torn write is detectable by the reader and its remedy is to recompute. The
+      content-addressed cache is the case (`mycelium.build.cas`): a blob's name
+      is its digest, `cas_get` re-hashes, and a mismatch is a cache miss;
+    - use **`atomic_write_bytes`** everywhere else — snapshot publication, the
+      `CURRENT` pointer, tier-1 custody, quarantine — where a name appearing
+      before its content is durable is a real failure and not a miss.
+
+    The distinction is worth a second function because the ceremony is not free:
+    roadmap 6.30 measured the second name at ~7 ms per write on the machine of
+    record, against ~1 ms for the fsync, making the atomic form 2.1x this one
+    (ADR-0145). Where that buys crash-safety it is cheap; where the reader can
+    already tell, it buys nothing.
+    """
+    flags = os.O_CREAT | os.O_WRONLY | os.O_TRUNC | getattr(os, "O_BINARY", 0)
+    descriptor = os.open(path, flags)
+    try:
+        os.write(descriptor, data)
+    finally:
+        os.close(descriptor)
 
 
 def atomic_write_text(path: Path, text: str) -> None:
