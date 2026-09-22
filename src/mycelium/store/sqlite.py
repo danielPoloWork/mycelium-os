@@ -62,8 +62,9 @@ __all__ = [
     "field_weights",
 ]
 
-STORE_DIRNAME: Final = ".mycelium"
-STORE_FILENAME: Final = "store.db"
+# Defined in `mycelium.defaults` and re-exported here — see that module for why a
+# Typer default may not live behind a subsystem import (roadmap 6.36).
+from mycelium.defaults import STORE_DIRNAME, STORE_FILENAME
 
 _FTS_TERM: Final = re.compile(r"\w+", re.UNICODE)
 

@@ -95,10 +95,9 @@ __all__ = [
     "split_section_ref",
 ]
 
-MAX_DEPTH: Final = 3
-"""Traversal ceiling. Spec 04 §5 budgets graph *expansion* at one hop; the tool
-takes a depth because a human debugging a vault wants two or three, and an
-unbounded walk over a dense corpus is a denial of service with a friendly name."""
+# Defined in `mycelium.defaults` and re-exported here — see that module for why a
+# Typer default may not live behind a subsystem import (roadmap 6.36).
+from mycelium.defaults import MAX_DEPTH
 
 _EXTERNAL_SCHEMES: Final = frozenset(
     {"http", "https", "mailto", "ftp", "ftps", "data", "tel", "file"}

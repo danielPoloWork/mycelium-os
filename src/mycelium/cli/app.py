@@ -18,25 +18,16 @@ The CLI is a shell, not a layer: it parses arguments, calls one function, and
 renders. Nothing here decides anything the library does not already decide.
 """
 
+from __future__ import annotations
+
 from contextlib import suppress
 from datetime import date
 from pathlib import Path, PurePosixPath
-from typing import Annotated, Final
+from typing import TYPE_CHECKING, Annotated, Final
 
 import typer
 
 from mycelium.__about__ import __version__
-from mycelium.build import BuildResult, collect_garbage, list_snapshots, read_current
-from mycelium.build import build as run_build
-from mycelium.build import rollback as run_rollback
-from mycelium.build.lock import BuildLockedError
-from mycelium.build.snapshots import (
-    DEFAULT_CACHE_MAX_AGE_DAYS,
-    DEFAULT_KEEP,
-    SnapshotError,
-)
-from mycelium.citations import chunk_uri, citation_drift
-from mycelium.cli.doctor import diagnose, worst_status
 from mycelium.cli.output import (
     ExitCode,
     configure_streams,
@@ -46,73 +37,28 @@ from mycelium.cli.output import (
     success,
     warn,
 )
-from mycelium.config import ConfigError, MyceliumConfig, RetrievalConfig, load_config
-from mycelium.corpus import CorpusScope
-from mycelium.embedding import Embedder, EmbeddingError, build_embedder
-from mycelium.eval import (
-    EvaluationError,
-    corpus_fingerprint_of,
-    incumbent_comparison,
-    load_cases,
-    load_tasks,
-    run_evaluation,
-    run_task_suite,
-    write_baseline,
-    write_run,
-)
-from mycelium.export import DEFAULT_EXPORT_DIRNAME, ExportError, export_bundle
-from mycelium.graph import MAX_DEPTH
-from mycelium.graph import neighbours as graph_neighbours
-from mycelium.ingest import (
-    FileConnector,
-    Ingested,
-    IngestError,
-    Quarantine,
-    Registry,
-    describe_secrets,
-    ingest_source,
-    write_projection,
-)
-from mycelium.mcp import serve_stdio
-from mycelium.modules import mount as mount_modules
-from mycelium.retrieval import SearchOutcome
-from mycelium.retrieval import search as run_search
-from mycelium.sdk.identity import (
-    IdentityError,
-    anchor,
-    doc_ref,
-    new_ulid,
-    parse_anchor,
-)
-from mycelium.sdk.identity import parse_citation_uri as parse_uri
-from mycelium.sdk.types import EdgeType, TrustClass, VerificationStatus
-from mycelium.store import (
+
+# Typer evaluates a command's annotations and default values while building its
+# tree, so these two must be real imports — and both modules are dependency-free
+# for exactly that reason (roadmap 6.36, ADR-0151).
+from mycelium.defaults import (
+    DEFAULT_CACHE_MAX_AGE_DAYS,
+    DEFAULT_EXPORT_DIRNAME,
+    DEFAULT_KEEP,
+    MAX_DEPTH,
     STORE_DIRNAME,
-    SearchFilters,
-    SqliteStore,
-    StoreError,
 )
-from mycelium.synthesis import (
-    SynthesisError,
-    WikiSynthesizer,
-    build_synthesizer,
-    evidence_of,
-    synthesize_candidate,
-    write_candidate,
-)
-from mycelium.verification import (
-    VerificationError,
-    Verified,
-    author_name,
-    build_judge,
-    verify_tree,
-)
-from mycelium.verification import (
-    demote as demote_document,
-)
-from mycelium.verification import promote as promote_document
-from mycelium.watch import WatcherUnavailableError, watched_paths
-from mycelium.watch import watch as run_watch_session
+from mycelium.sdk.enums import EdgeType, TrustClass, VerificationStatus
+
+if TYPE_CHECKING:  # annotations only: `from __future__ import annotations` above
+    from mycelium.build import BuildResult
+    from mycelium.config import MyceliumConfig, RetrievalConfig
+    from mycelium.embedding import Embedder
+    from mycelium.ingest import FileConnector, Ingested
+    from mycelium.retrieval import SearchOutcome
+    from mycelium.store import SqliteStore
+    from mycelium.synthesis import WikiSynthesizer
+    from mycelium.verification import Verified
 
 __all__ = ["app", "main"]
 
@@ -350,6 +296,13 @@ def build(
     ] = False,
 ) -> None:
     """Compile the repository (incrementally) and publish a snapshot."""
+
+    from mycelium.build import build as run_build
+    from mycelium.build.lock import BuildLockedError
+    from mycelium.config import ConfigError
+    from mycelium.embedding import EmbeddingError
+    from mycelium.store import StoreError
+
     if watch_mode:
         if as_json:
             # `--json` promises exactly one document on stdout (spec 05 §1) and a
@@ -471,6 +424,10 @@ def _watch(
     rescan: bool = False,
 ) -> None:
     """Run a watch session, reporting each build as an ordinary one."""
+
+    from mycelium.watch import WatcherUnavailableError, watched_paths
+    from mycelium.watch import watch as run_watch_session
+
     if clean or rescan or require_vectors:
         # All three are single-shot intents: `--clean` says "distrust the cache
         # once", `--rescan` says "distrust the stat memo once", `--require-vectors`
@@ -568,6 +525,20 @@ def ingest(
     compiled by `mycelium build` like any other file in the authored tree — the
     lane writes Markdown only (D-020).
     """
+
+    from mycelium.config import ConfigError, load_config
+    from mycelium.corpus import CorpusScope
+    from mycelium.ingest import (
+        FileConnector,
+        IngestError,
+        Registry,
+        describe_secrets,
+        ingest_source,
+        write_projection,
+    )
+    from mycelium.sdk.identity import new_ulid
+    from mycelium.synthesis import SynthesisError, build_synthesizer
+
     try:
         settings = load_config(path)
     except ConfigError as error:
@@ -705,6 +676,9 @@ def _forget(root: Path, sources: list[Path], *, connector: FileConnector, as_jso
     A source that was not quarantined is not an error. The operator asked for it
     to be absent from the list, and it is.
     """
+
+    from mycelium.ingest import Quarantine
+
     quarantine = Quarantine(root / STORE_DIRNAME)
     results = []
     for source in sources:
@@ -741,6 +715,14 @@ def _synthesize(
     all *results* here, because the evidence lane has already delivered what
     ingestion promises and D-020 makes this the additional lane (spec 02 §5).
     """
+
+    from mycelium.synthesis import (
+        SynthesisError,
+        evidence_of,
+        synthesize_candidate,
+        write_candidate,
+    )
+
     evidence = evidence_of(
         ingested.projection.path,
         ingested.projection.text,
@@ -791,6 +773,9 @@ def snapshots(
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
     """List published snapshots, newest first."""
+
+    from mycelium.build import list_snapshots, read_current
+
     found = list_snapshots(path)
     if as_json:
         emit_json(
@@ -828,6 +813,12 @@ def rollback(
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
     """Restore a published snapshot and serve it — nothing is recompiled."""
+
+    from mycelium.build import rollback as run_rollback
+    from mycelium.build.lock import BuildLockedError
+    from mycelium.build.snapshots import SnapshotError
+    from mycelium.store import StoreError
+
     try:
         result = run_rollback(path, snapshot_id)
     except SnapshotError as error:
@@ -866,6 +857,12 @@ def gc(
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
     """Remove snapshots beyond retention, aged cache entries, and orphaned blobs."""
+
+    from mycelium.build import collect_garbage
+    from mycelium.build.lock import BuildLockedError
+    from mycelium.build.snapshots import SnapshotError
+    from mycelium.store import StoreError
+
     try:
         result = collect_garbage(path, keep=keep, cache_max_age_days=cache_max_age, dry_run=dry_run)
     except SnapshotError as error:
@@ -895,6 +892,9 @@ def gc(
 
 
 def _open_store(path: Path) -> SqliteStore:
+
+    from mycelium.store import SqliteStore, StoreError
+
     try:
         return SqliteStore.open(path, read_only=True)
     except StoreError as error:
@@ -945,6 +945,13 @@ def search(
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
     """Query the published snapshot."""
+
+    from mycelium.build import read_current
+    from mycelium.citations import chunk_uri
+    from mycelium.config import ConfigError, load_config
+    from mycelium.retrieval import search as run_search
+    from mycelium.store import SearchFilters
+
     try:
         settings = load_config(path)
     except ConfigError as error:
@@ -1070,6 +1077,9 @@ def _query_embedder(settings: MyceliumConfig, retrieval: RetrievalConfig) -> Emb
     still gets lexical results, and :func:`mycelium.retrieval.search` reports the
     missing leg. Refusing to answer would be a strictly worse trade.
     """
+
+    from mycelium.embedding import EmbeddingError, build_embedder
+
     if not retrieval.hybrid:
         return None
     try:
@@ -1099,6 +1109,9 @@ def neighbors(
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
     """Show the typed neighbourhood of a document, a section, or a symbol."""
+
+    from mycelium.graph import neighbours as graph_neighbours
+
     store = _open_store(path)
     try:
         origin = _graph_ref(store, target)
@@ -1136,6 +1149,10 @@ def _graph_ref(store: SqliteStore, target: str) -> str:
     snapshot does not hold has to be `NOT_FOUND`, because an empty neighbourhood
     reads as "nothing defines it" — a different and wrong answer.
     """
+
+    from mycelium.sdk.identity import IdentityError, doc_ref
+    from mycelium.sdk.identity import parse_citation_uri as parse_uri
+
     if target.startswith("doc:"):
         return target
     if target.startswith("sym:"):
@@ -1168,6 +1185,11 @@ def show(
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
     """Print a chunk, its section, or its whole document, with provenance."""
+
+    from mycelium.citations import chunk_uri, citation_drift
+    from mycelium.sdk.identity import IdentityError
+    from mycelium.sdk.identity import parse_citation_uri as parse_uri
+
     if context not in {"chunk", "section", "document"}:
         raise fail(
             f"unknown context {context!r}; expected chunk, section, or document",
@@ -1252,6 +1274,10 @@ def _resolve(store: SqliteStore, target: str) -> str:
     moves (D-021), so resolving one means asking the store where that document
     lives *now*.
     """
+
+    from mycelium.sdk.identity import IdentityError, anchor, parse_anchor
+    from mycelium.sdk.identity import parse_citation_uri as parse_uri
+
     if target.startswith("mycelium://"):
         citation = parse_uri(target)
         document = store.get_document(citation.doc_id)
@@ -1268,6 +1294,9 @@ def _missing_anchor_help(store: SqliteStore, target: str) -> str:
     The typed `ANCHOR_GONE` error with its nearest surviving ancestor is an MCP
     contract (roadmap 2.9); here the same information is prose.
     """
+
+    from mycelium.sdk.identity import parse_anchor
+
     parts = parse_anchor(target)
     document = store.get_document_by_path(parts.doc_path)
     if document is None:
@@ -1369,6 +1398,12 @@ def verify(
     red on every offline checkout is a gate everyone learns to ignore. Promotion
     is stricter: there, an unmeasured half needs `mycelium promote --force`.
     """
+
+    from mycelium.config import ConfigError, load_config
+    from mycelium.corpus import CorpusScope
+    from mycelium.synthesis import SynthesisError
+    from mycelium.verification import VerificationError, build_judge, verify_tree
+
     try:
         settings = load_config(path)
     except ConfigError as error:
@@ -1452,6 +1487,13 @@ def promote(
     status` shows what happened and nothing else has to be trusted. Run
     `mycelium build` afterwards to serve the new status.
     """
+
+    from mycelium.config import ConfigError, load_config
+    from mycelium.corpus import CorpusScope
+    from mycelium.synthesis import SynthesisError
+    from mycelium.verification import VerificationError, author_name, build_judge, verify_tree
+    from mycelium.verification import promote as promote_document
+
     try:
         settings = load_config(path)
     except ConfigError as error:
@@ -1541,6 +1583,11 @@ def demote(
     would be a false claim sitting in the file, which is the drift folder-encoded
     status exists to prevent.
     """
+
+    from mycelium.config import ConfigError, load_config
+    from mycelium.verification import VerificationError
+    from mycelium.verification import demote as demote_document
+
     try:
         settings = load_config(path)
     except ConfigError as error:
@@ -1566,6 +1613,9 @@ def doctor(
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
     """Check the environment, the store, the published snapshot, and the lock."""
+
+    from mycelium.cli.doctor import diagnose, worst_status
+
     checks = diagnose(path)
     overall = worst_status(checks)
 
@@ -1598,6 +1648,10 @@ def _run_task_suite(path: Path, *, as_json: bool, gate: bool) -> None:
     Mycelium beats grep is scored qualitatively until 1.0 by spec 04 §7.4
     (roadmap 6.4, ADR-0120).
     """
+
+    from mycelium.eval import load_tasks, run_task_suite
+    from mycelium.store import StoreError
+
     suite = path / "eval" / "tasks.jsonl"
     try:
         loaded = load_tasks(suite)
@@ -1693,6 +1747,17 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
     """Score a judged case set against the published snapshot."""
+
+    from mycelium.eval import (
+        EvaluationError,
+        corpus_fingerprint_of,
+        incumbent_comparison,
+        load_cases,
+        run_evaluation,
+        write_baseline,
+        write_run,
+    )
+
     if tasks:
         _run_task_suite(path, as_json=as_json, gate=gate)
         return
@@ -1814,6 +1879,10 @@ def export(
     as_json: Annotated[bool, typer.Option("--json", help="Emit JSON.")] = False,
 ) -> None:
     """Write the published snapshot as a JSONL interchange bundle."""
+
+    from mycelium.export import ExportError, export_bundle
+    from mycelium.store import StoreError
+
     try:
         result = export_bundle(path, out=out, with_markdown=with_markdown)
     except ExportError as error:
@@ -1843,6 +1912,9 @@ def serve(
     transport: Annotated[str, typer.Option("--transport", help="Only stdio in v1.")] = "stdio",
 ) -> None:
     """Start the read-only MCP server (stdio)."""
+
+    from mycelium.mcp import serve_stdio
+
     if transport != "stdio":
         raise fail(
             f"unsupported transport {transport!r}; v1 speaks stdio only", code=ExitCode.USAGE
@@ -1863,6 +1935,9 @@ def main() -> None:
     the command without a word. A module that cannot be loaded is named on stderr
     and the rest of the CLI works — `mycelium doctor` reports it as a check.
     """
+
+    from mycelium.modules import mount as mount_modules
+
     configure_streams()
     _, problems = mount_modules(app)
     for problem in problems:

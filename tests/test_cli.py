@@ -14,6 +14,8 @@ import pytest
 from typer.testing import CliRunner
 
 import mycelium.cli.app  # noqa: F401 - imported so `sys.modules` has the module below
+import mycelium.synthesis
+import mycelium.verification
 from mycelium.__about__ import __version__
 from mycelium.build import build as run_build
 from mycelium.build.lock import BuildLock
@@ -28,7 +30,12 @@ runner = CliRunner()
 
 cli_app = sys.modules["mycelium.cli.app"]
 """The command *module*, not the Typer object `mycelium.cli` re-exports under the
-same name. Tests that replace a collaborator have to patch the module."""
+same name. Tests that replace a collaborator have to patch the module.
+
+A collaborator the CLI imports *inside* a command body is patched on the module
+that **defines** it rather than here: the local import resolves the attribute
+when the command runs, so patching the definition is what the command sees, and
+patching this module would have nothing to bind to (roadmap 6.36)."""
 
 DOC = """# Retry Policy
 
@@ -969,7 +976,9 @@ def test_ingest_writes_a_candidate_when_a_provider_is_configured(
     answer = f"# Retry Behaviour\n\nDeliveries are retried five times [[{stem}#Retry Policy]].\n"
 
     monkeypatch.setattr(
-        cli_app, "build_synthesizer", lambda settings: WikiSynthesizer(ScriptedProvider(answer))
+        mycelium.synthesis,
+        "build_synthesizer",
+        lambda settings: WikiSynthesizer(ScriptedProvider(answer)),
     )
     result = invoke("ingest", str(source), "--root", str(tmp_path), "--json")
     assert result.exit_code == ExitCode.OK
@@ -992,7 +1001,7 @@ def test_no_synthesize_skips_the_lane_without_touching_the_evidence(
     def refuse(settings: object) -> object:
         raise AssertionError("the synthesizer must not be built")
 
-    monkeypatch.setattr(cli_app, "build_synthesizer", refuse)
+    monkeypatch.setattr(mycelium.synthesis, "build_synthesizer", refuse)
     result = invoke("ingest", str(source), "--root", str(tmp_path), "--json", "--no-synthesize")
     assert result.exit_code == ExitCode.OK
     payload = json.loads(result.stdout)
@@ -1081,7 +1090,7 @@ def _with_judge(monkeypatch: pytest.MonkeyPatch, *, entailed: bool = True) -> No
         def judge(self, claim: str, evidence: str) -> tuple[bool, str]:
             return entailed, "the test decided"
 
-    monkeypatch.setattr(cli_app, "build_judge", lambda *_: (Judge(), False, ""))
+    monkeypatch.setattr(mycelium.verification, "build_judge", lambda *_: (Judge(), False, ""))
 
 
 def test_verify_reports_coverage_and_says_entailment_was_not_measured(tmp_path: Path) -> None:
@@ -1147,7 +1156,7 @@ def test_no_entailment_skips_the_judge_entirely(
     def refuse(*_: object) -> object:
         raise AssertionError("no judge must be built")
 
-    monkeypatch.setattr(cli_app, "build_judge", refuse)
+    monkeypatch.setattr(mycelium.verification, "build_judge", refuse)
     result = invoke("verify", "--root", str(tmp_path), "--no-entailment", "--json")
     assert result.exit_code == ExitCode.OK
     assert json.loads(result.stdout)["documents"][0]["entailment"] is None
