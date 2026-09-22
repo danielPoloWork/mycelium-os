@@ -19,7 +19,8 @@
   [ADR-0075](0075-let-the-graph-propose-and-the-ranking-dispose-and-report-that-it-lost.md),
   [ADR-0080](0080-look-a-name-up-exactly-and-report-that-the-table-points-at-naming-sites.md)
   (the ranking changes this project has measured, none worth more than single digits);
-  D-010, D-011;
+  D-010 (the eval harness is a permanent release gate, and the baseline to beat is the
+  agent's own grep);
   spec 04 §§3-4; spec 06 §3's deferred-decision table; roadmap 6.29, 6.37, 6.38
 
 ## Context
