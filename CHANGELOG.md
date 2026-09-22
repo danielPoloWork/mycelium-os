@@ -12,6 +12,22 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The reference profile now reports each query stage against spec 04 §1's budget for it**
+  (roadmap 6.35,
+  [ADR-0150](docs/adr/0150-report-the-stage-budgets-where-they-mean-something-and-gate-the-total.md)).
+  Four of the five latency budgets had never been measured against, so the only thing
+  anybody knew was the total. The stages are read from the query path's *own* timings —
+  `SearchOutcome.timings_ms`, a seam that already existed and was already paid — so the
+  report costs nothing new and cannot drift from the path it times. **At the 10⁵-chunk
+  reference profile the warm query is 2 349.7 ms p95 against a 150 ms budget, and
+  `lexical` alone is 2 348.0 ms of it — 99.9 %, and 39× its own 60 ms candidate budget**,
+  with every other stage at zero. The whole miss is candidate generation, which is the
+  diagnosis the end-to-end number could not give. No new gate: two of the four stages name
+  work the product does not do (`boosts`, `dedupe` and `stitch` appear nowhere under
+  `src/`; diversity was measured and refused at ADR-0144), a third ships off by default,
+  and `fusion` reads 0 ms on every query of every committed corpus. G5 keeps gating the
+  150 ms call alone, and the spec-versus-product divergence is filed as roadmap 6.38.
+
 - **`tools/consistency_lint.py` now catches a merged item that still reads as open**
   (roadmap 6.34, [ADR-0149](docs/adr/0149-lint-the-delivered-checkbox-convention.md)). PR
   #163 merged on 2026-09-18 and wrote a full delivery record onto roadmap item 6.18 while

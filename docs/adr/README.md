@@ -181,3 +181,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0147](0147-decode-and-hash-the-symbol-stage-once.md) | Decode and hash the symbol stage once | Accepted |
 | [0148](0148-author-the-dev-sets-to-the-count-the-gap-needs.md) | Author the dev sets to the count the gap needs | Accepted |
 | [0149](0149-lint-the-delivered-checkbox-convention.md) | Lint the "delivered by PR #N" checkbox convention | Accepted |
+| [0150](0150-report-the-stage-budgets-where-they-mean-something-and-gate-the-total.md) | Report the stage budgets where they mean something, and keep gating the total | Accepted |
