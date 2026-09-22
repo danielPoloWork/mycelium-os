@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 6.35 — four of spec 04 §1's five latency budgets have never
   been measured against. Decide whether to time the stages on the query path or in a bench,
   and whether four more gates is the right answer at all.
-- **PR:** #PRNUM (`feat/report-the-stage-budgets-where-they-mean-something`). Follows #184,
+- **PR:** #185 (`feat/report-the-stage-budgets-where-they-mean-something`). Follows #184,
   merged as `15c59af`.
 - **Milestone 6:** 6.35 closed. 6.36, 6.37 remain open; 6.38 filed by this item.
 - **Decision it records:**
