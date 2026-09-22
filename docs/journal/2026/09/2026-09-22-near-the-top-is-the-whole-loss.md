@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 6.37 — a perfect re-ranking of the candidates we already have
   is worth +36 % to +86 %, and nothing knows which ones they are. Characterise the gap
   before proposing anything.
-- **PR:** #PRNUM (`feat/characterise-where-the-ranking-loss-lives`). Follows #186, merged
+- **PR:** #187 (`feat/characterise-where-the-ranking-loss-lives`). Follows #186, merged
   as `1d25094`.
 - **Milestone 6:** 6.37 closed. 6.38 remains open, and is now priced against this.
 - **Decision it records:** [ADR-0152](../../../adr/0152-the-ranking-loss-is-ordering-not-recall.md).
