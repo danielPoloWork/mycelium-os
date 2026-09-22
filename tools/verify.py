@@ -53,7 +53,7 @@ The rungs, and what each adds:
 |---|---|
 | `docs` | the congruence lint, the docs-site build |
 | `code` | format, lint, types, the suite, the two ingestion reproductions |
-| `retrieval` | the frozen-set rule, the corpora built and gated, G2, the four ablations, the ranking gap |
+| `retrieval` | the frozen-set rule, the corpora, G2, the four ablations, the ranking gap |
 | `full` | the benchmarks, alone rather than beside four hundred other tests |
 """
 

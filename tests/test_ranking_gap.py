@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from mycelium.eval.metrics import credit_judgments
+from mycelium.retrieval import VECTOR_CANDIDATES
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -104,4 +105,4 @@ def test_a_set_with_no_headroom_reports_no_share_rather_than_dividing_by_zero() 
 
 def test_the_probe_reaches_past_the_shipped_pool() -> None:
     """Otherwise "past the pool" and "absent" could not be told apart at all."""
-    assert gap.PROBE > gap.VECTOR_CANDIDATES > gap.DEPTH
+    assert gap.PROBE > VECTOR_CANDIDATES > gap.DEPTH

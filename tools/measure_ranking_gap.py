@@ -59,8 +59,8 @@ satisfies a section judgment with any chunk under it. An oracle that sorts by
 `judged.get(anchor, 0)` therefore scores a chunk under a judged section as
 worthless and sinks it, understating its own ceiling. Sorting by
 :func:`credited_grade` is the same rule the metric scores with, and it is worth
-between +0.0 and +3.5 points of ceiling on the four sets that carry section
-judgments (3-4 % of judgments; the two ingested sets carry none).
+between +1.6 and +3.7 points of ceiling on the four sets that carry section
+judgments (3-4 % of judgments; the two ingested sets carry none and move +0.0).
 
 **`--check` fails when re-ordering the served ten stops carrying the majority of
 the ceiling** on a release set - the one claim that decides what the next item is
