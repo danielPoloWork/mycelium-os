@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 6.36 — the CLI pays for the whole engine to print `--help`.
   Measure before choosing between ~20 local imports and a lazy command-group loader, and
   be willing to conclude the win is too small to buy the scatter.
-- **PR:** #PRNUM (`perf/stop-importing-the-engine-to-print-help`). Follows #185, merged as
+- **PR:** #186 (`perf/stop-importing-the-engine-to-print-help`). Follows #185, merged as
   `7c5bffb`.
 - **Milestone 6:** 6.36 closed. 6.37 remains open.
 - **Decision it records:**
