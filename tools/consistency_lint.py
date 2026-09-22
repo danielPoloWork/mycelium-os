@@ -34,6 +34,8 @@ contract (the "congruence checks"):
       (roadmap 5.32).
   11. benchmarks       — every published benchmark report is in the index and cites a run
       manifest that exists, and no manifest is orphaned (spec 04 §7.5, roadmap 6.4).
+  12. roadmap-delivery-checkbox — an unchecked ROADMAP item whose own text records
+      a delivery ("delivered by PR #N") is a defect: flip the checkbox (roadmap 6.34).
 
 Each check is independent; all run, then the report lists every failure. The checks are
 designed to PASS on a freshly-generated repository (empty catalogues, no releases yet).
@@ -472,6 +474,43 @@ def check_roadmap_numbering() -> None:
         fail(name, "no numbered ROADMAP items parsed")
 
 
+def check_roadmap_delivery_checkbox() -> None:
+    """An item whose text records a delivery is checked.
+
+    PR #163 merged on 2026-09-18 and wrote the full delivery record onto
+    roadmap item 6.18 — the ADR, the before-and-after numbers, the follow-ups
+    it filed — while leaving the checkbox at `- [ ]`. Nothing caught it:
+    the PR template's *ROADMAP.md checkbox flipped* is a box a human ticks,
+    and this lint had no opinion about the mismatch (roadmap 6.34).
+
+    `delivered by PR #<digits>` is the phrase every closed item since M1
+    uses, so matching on it is a lint on a convention rather than a new
+    invention. Matching only digits — never a bare `#N` — is deliberate:
+    this item's own text quotes the convention with `#N` as a placeholder,
+    and a looser pattern would fail on the item that describes the rule.
+
+    The mirror rule — a *checked* item with no delivery record — is not
+    checked here and was rejected when this item was filed: plenty of
+    checked items close on other grounds (an owner action, evidence from a
+    sibling item's run, work "delivered alongside" or "reconciled" into
+    another item) and have no `delivered by PR #N` of their own. There is
+    no unambiguous phrase to require there, so nothing is asserted.
+
+    The lint fails naming the item rather than repairing it, because a
+    ROADMAP.md edit is never a tool's to make.
+    """
+    name = "roadmap-delivery-checkbox"
+    roadmap = read("ROADMAP.md")
+    for line in roadmap.splitlines():
+        m = re.match(r"^- \[ \]\s+(\d+\.\d+)\s", line)
+        if m and re.search(r"delivered by PR #\d", line):
+            fail(
+                name,
+                f"item {m.group(1)} records a delivery ('delivered by PR #...') but its "
+                "checkbox is unchecked - flip it to '- [x]'",
+            )
+
+
 def check_threat_boundaries() -> None:
     """Every threat-model boundary id is unique, and every STRIDE row cites one that exists.
 
@@ -783,6 +822,7 @@ CHECKS: Final[tuple[Callable[[], None], ...]] = (
     check_spec_map,
     check_milestones,
     check_roadmap_numbering,
+    check_roadmap_delivery_checkbox,
     check_threat_boundaries,
     check_supersedes,
     check_amendments,

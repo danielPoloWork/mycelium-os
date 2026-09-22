@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **`tools/consistency_lint.py` now catches a merged item that still reads as open**
+  (roadmap 6.34, [ADR-0149](docs/adr/0149-lint-the-delivered-checkbox-convention.md)). PR
+  #163 merged on 2026-09-18 and wrote a full delivery record onto roadmap item 6.18 while
+  leaving its checkbox at `- [ ]`; nothing caught it for two days, because the PR
+  template's checkbox line is advisory and the lint had no opinion about the mismatch. A
+  new `roadmap-delivery-checkbox` check fails, naming the item, whenever an unchecked
+  ROADMAP entry's own text contains `delivered by PR #<digits>` — the phrase every closed
+  item since M1 already uses. The mirror rule (a checked item with no delivery record) is
+  deliberately not enforced: 31 of the roadmap's 160 checked items close on other grounds
+  (an owner action, a sibling item's evidence, work delivered or reconciled alongside
+  another item) with no unambiguous replacement phrase to require.
+
 - **The three dev sets are authored to the count the dev/release gap needs** (roadmap 6.33,
   [ADR-0148](docs/adr/0148-author-the-dev-sets-to-the-count-the-gap-needs.md)). A dev set is
   reported and never gated, so the number it exists to produce is the *gap* against the
