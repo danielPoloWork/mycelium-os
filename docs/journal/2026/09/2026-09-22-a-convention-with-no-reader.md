@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 6.34 — an item can announce a merged pull request and still
   read as open. PR #163 merged on 2026-09-18 and wrote a full delivery record onto item
   6.18 while leaving its checkbox at `- [ ]`. Nothing mechanical caught it for two days.
-- **PR:** #PRNUM (`test/lint-the-delivered-checkbox-convention`). Follows #183, merged as
+- **PR:** #184 (`test/lint-the-delivered-checkbox-convention`). Follows #183, merged as
   `ae2792e`.
 - **Milestone 6:** 6.34 closed. 6.35–6.37 remain open.
 - **Decision it records:**
