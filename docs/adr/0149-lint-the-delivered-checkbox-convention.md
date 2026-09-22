@@ -4,7 +4,8 @@
 - **Date:** 2026-09-22
 - **Deciders:** tech-lead (EADOS delivery agent), per RFC-0001 / AGENTS.md §7
 - **Related:** `tools/consistency_lint.py`, `.github/PULL_REQUEST_TEMPLATE.md`; roadmap 6.18,
-  6.34; ADR-0132 (roadmap 6.19, the item whose merged PR left 6.18 announcing it)
+  6.34; [ADR-0128](0128-cache-the-environment-not-the-repository-and-declare-the-names-instead-of-importing-them.md)
+  (roadmap 6.18 itself, whose merged PR #163 is the item this check would have caught)
 
 ## Context
 
