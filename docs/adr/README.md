@@ -179,3 +179,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0145](0145-let-the-digest-be-the-durability-and-stop-paying-for-a-second-name.md) | Let the digest be the durability, and stop paying for a second name | Accepted |
 | [0146](0146-memoise-the-stemmer-bounded-against-a-measured-vocabulary.md) | Memoise the stemmer, bounded against a measured vocabulary | Accepted |
 | [0147](0147-decode-and-hash-the-symbol-stage-once.md) | Decode and hash the symbol stage once | Accepted |
+| [0148](0148-author-the-dev-sets-to-the-count-the-gap-needs.md) | Author the dev sets to the count the gap needs | Accepted |

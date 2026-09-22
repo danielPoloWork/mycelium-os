@@ -255,6 +255,11 @@
       "twin": "knowledge/evidence/indexes-pdf-d37689d3.md#/0",
       "whole": 1.0
     },
+    "docs/concepts/indexes.md#defining-an-index/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/indexes-pdf-d37689d3.md#/0",
+      "whole": 1.0
+    },
     "docs/concepts/indexes.md#flat-indexes/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/indexes-pdf-d37689d3.md#/5",
@@ -283,6 +288,11 @@
     "docs/concepts/preview.md#/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/preview-docx-74c46018.md#/0",
+      "whole": 1.0
+    },
+    "docs/concepts/preview.md#disabling-preview-features/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/preview-docx-74c46018.md#disabling-preview-features/0",
       "whole": 1.0
     },
     "docs/concepts/preview.md#enabling-preview-features/0": {
@@ -525,6 +535,11 @@
       "twin": "knowledge/evidence/dependencies-docx-1c09b823.md#platform-specific-dependencies/0",
       "whole": 1.0
     },
+    "docs/concepts/projects/dependencies.md#project-dependencies/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/dependencies-docx-1c09b823.md#project-dependencies/0",
+      "whole": 1.0
+    },
     "docs/concepts/projects/dependencies.md#removing-dependencies/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/dependencies-docx-1c09b823.md#removing-dependencies/0",
@@ -533,6 +548,11 @@
     "docs/concepts/projects/dependencies.md#virtual-dependencies/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/dependencies-docx-1c09b823.md#virtual-dependencies/0",
+      "whole": 1.0
+    },
+    "docs/concepts/projects/export.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/export-html-36c4d40d.md#/0",
       "whole": 1.0
     },
     "docs/concepts/projects/export.md#cyclonedx-sbom-format/0": {
@@ -670,6 +690,11 @@
       "twin": "knowledge/evidence/run-pdf-b372319f.md#/0",
       "whole": 1.0
     },
+    "docs/concepts/projects/sync.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/sync-docx-5e063fa4.md#/0",
+      "whole": 1.0
+    },
     "docs/concepts/projects/sync.md#automatic-lock-and-sync/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/sync-docx-5e063fa4.md#automatic-lock-and-sync/0",
@@ -703,6 +728,11 @@
     "docs/concepts/projects/sync.md#syncing-the-environment/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/sync-docx-5e063fa4.md#syncing-the-environment/0",
+      "whole": 1.0
+    },
+    "docs/concepts/projects/sync.md#syncing-the-environment/editable-installation/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/sync-docx-5e063fa4.md#syncing-the-environment/editable-installation/0",
       "whole": 1.0
     },
     "docs/concepts/projects/sync.md#syncing-the-environment/handling-of-extraneous-packages/0": {
@@ -795,6 +825,16 @@
       "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/0",
       "whole": 1.0
     },
+    "docs/concepts/python-versions.md#managed-python-distributions/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/6",
+      "whole": 1.0
+    },
+    "docs/concepts/python-versions.md#managed-python-distributions/cpython-distributions/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/6",
+      "whole": 1.0
+    },
     "docs/concepts/python-versions.md#project-python-versions/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/3",
@@ -808,6 +848,11 @@
     "docs/concepts/python-versions.md#python-pre-releases/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/4",
+      "whole": 1.0
+    },
+    "docs/concepts/python-versions.md#registration-in-the-windows-registry/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/python-versions-pdf-bae1444d.md#/6",
       "whole": 1.0
     },
     "docs/concepts/python-versions.md#requesting-a-version/": {
@@ -855,6 +900,11 @@
       "twin": "knowledge/evidence/resolution-docx-dfb376de.md#common-marker-values/0",
       "whole": 1.0
     },
+    "docs/concepts/resolution.md#conflicting-dependencies/": {
+      "coverage": 0.9742,
+      "twin": "knowledge/evidence/resolution-docx-dfb376de.md#conflicting-dependencies/0",
+      "whole": 0.8985
+    },
     "docs/concepts/resolution.md#conflicting-dependencies/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/resolution-docx-dfb376de.md#conflicting-dependencies/0",
@@ -898,6 +948,11 @@
     "docs/concepts/resolution.md#limited-resolution-environments/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/resolution-docx-dfb376de.md#limited-resolution-environments/0",
+      "whole": 1.0
+    },
+    "docs/concepts/resolution.md#lockfile-versioning/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/resolution-docx-dfb376de.md#lockfile-versioning/0",
       "whole": 1.0
     },
     "docs/concepts/resolution.md#lower-bounds/0": {
@@ -959,6 +1014,11 @@
       "coverage": 1.0,
       "twin": "knowledge/evidence/tools-html-816d0891.md#including-additional-dependencies/0",
       "whole": 1.0
+    },
+    "docs/concepts/tools.md#installing-executables-from-additional-packages/0": {
+      "coverage": 0.8961,
+      "twin": "knowledge/evidence/tools-html-816d0891.md#installing-executables-from-additional-packages/0",
+      "whole": 0.8649
     },
     "docs/concepts/tools.md#python-versions/0": {
       "coverage": 1.0,
@@ -1045,6 +1105,11 @@
       "twin": "knowledge/evidence/installation-docx-292941e8.md#installation-methods/cargo/0",
       "whole": 1.0
     },
+    "docs/getting-started/installation.md#installation-methods/homebrew/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/installation-docx-292941e8.md#installation-methods/homebrew/0",
+      "whole": 1.0
+    },
     "docs/getting-started/installation.md#installation-methods/pypi/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/installation-docx-292941e8.md#installation-methods/pypi/0",
@@ -1070,9 +1135,24 @@
       "twin": "knowledge/evidence/installation-docx-292941e8.md#upgrading-uv/0",
       "whole": 1.0
     },
+    "docs/guides/install-python.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/install-python-html-105d4878.md#/0",
+      "whole": 1.0
+    },
     "docs/guides/install-python.md#automatic-python-downloads/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/install-python-html-105d4878.md#automatic-python-downloads/0",
+      "whole": 1.0
+    },
+    "docs/guides/install-python.md#getting-started/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/install-python-html-105d4878.md#getting-started/0",
+      "whole": 1.0
+    },
+    "docs/guides/install-python.md#installing-a-specific-version/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/install-python-html-105d4878.md#installing-a-specific-version/0",
       "whole": 1.0
     },
     "docs/guides/install-python.md#reinstalling-python/0": {
@@ -1085,10 +1165,20 @@
       "twin": "knowledge/evidence/install-python-html-105d4878.md#using-existing-python-versions/0",
       "whole": 1.0
     },
+    "docs/guides/install-python.md#viewing-python-installations/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/install-python-html-105d4878.md#viewing-python-installations/0",
+      "whole": 1.0
+    },
     "docs/guides/integration/aws-lambda.md#deploying-a-docker-image/0": {
       "coverage": 0.7598,
       "twin": "knowledge/evidence/aws-lambda-pdf-b709bc04.md#/1",
       "whole": 0.6979
+    },
+    "docs/guides/integration/aws-lambda.md#deploying-a-docker-image/workspace-support/": {
+      "coverage": 0.696,
+      "twin": "knowledge/evidence/aws-lambda-pdf-b709bc04.md#/5",
+      "whole": 0.5091
     },
     "docs/guides/integration/aws-lambda.md#deploying-a-zip-archive/0": {
       "coverage": 0.627,
@@ -1100,6 +1190,21 @@
       "twin": "knowledge/evidence/aws-lambda-pdf-b709bc04.md#/8",
       "whole": 1.0
     },
+    "docs/guides/integration/aws-lambda.md#getting-started/0": {
+      "coverage": 0.8152,
+      "twin": "knowledge/evidence/aws-lambda-pdf-b709bc04.md#/0",
+      "whole": 0.8067
+    },
+    "docs/guides/integration/aws.md#authenticate-with-an-aws-access-token/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/aws-docx-f1017037.md#aws-codeartifact/authenticate-with-an-aws-access-token/0",
+      "whole": 1.0
+    },
+    "docs/guides/integration/aws.md#authenticate-with-keyring-and-keyrings-codeartifact/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/aws-docx-f1017037.md#aws-codeartifact/authenticate-with-keyring-and-keyrings-codeartifact/0",
+      "whole": 1.0
+    },
     "docs/guides/integration/aws.md#publishing-packages/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/aws-docx-f1017037.md#aws-codeartifact/publishing-packages/0",
@@ -1108,6 +1213,16 @@
     "docs/guides/integration/azure.md#authenticate-with-an-azure-access-token/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/azure-html-fd66ed92.md#authenticate-with-an-azure-access-token/0",
+      "whole": 1.0
+    },
+    "docs/guides/integration/azure.md#authenticate-with-keyring-and-artifacts-keyring/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/azure-html-fd66ed92.md#authenticate-with-keyring-and-artifacts-keyring/0",
+      "whole": 1.0
+    },
+    "docs/guides/integration/azure.md#publishing-packages/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/azure-html-fd66ed92.md#publishing-packages/0",
       "whole": 1.0
     },
     "docs/guides/integration/bazel.md#authentication/0": {
@@ -1205,6 +1320,16 @@
       "twin": "knowledge/evidence/docker-pdf-05866935.md#/5",
       "whole": 1.0
     },
+    "docs/guides/integration/docker.md#optimizations/non-editable-installs/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/docker-pdf-05866935.md#/6",
+      "whole": 1.0
+    },
+    "docs/guides/integration/docker.md#using-the-pip-interface/installing-a-package/0": {
+      "coverage": 0.8947,
+      "twin": "knowledge/evidence/docker-pdf-05866935.md#/7",
+      "whole": 0.8319
+    },
     "docs/guides/integration/docker.md#verifying-image-provenance/0": {
       "coverage": 0.6845,
       "twin": "knowledge/evidence/docker-pdf-05866935.md#/8",
@@ -1265,14 +1390,44 @@
       "twin": "knowledge/evidence/gitlab-pdf-c69c343f.md#/0",
       "whole": 1.0
     },
+    "docs/guides/integration/gitlab.md#using-uv-pip/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/gitlab-pdf-c69c343f.md#/0",
+      "whole": 1.0
+    },
+    "docs/guides/integration/google.md#authenticate-with-a-google-access-token/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/google-docx-6e724033.md#google-artifact-registry/authenticate-with-a-google-access-token/0",
+      "whole": 1.0
+    },
     "docs/guides/integration/google.md#authenticate-with-keyring-and-keyrings-google-artifactregistry-auth/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/google-docx-6e724033.md#google-artifact-registry/authenticate-with-keyring-and-keyrings-google-artifactregistry-auth/0",
       "whole": 1.0
     },
+    "docs/guides/integration/google.md#publishing-packages/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/google-docx-6e724033.md#google-artifact-registry/publishing-packages/0",
+      "whole": 1.0
+    },
+    "docs/guides/integration/jfrog.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/jfrog-html-35dfa5fb.md#/0",
+      "whole": 1.0
+    },
     "docs/guides/integration/jfrog.md#authenticate-with-jwt-token/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/jfrog-html-35dfa5fb.md#authenticate-with-jwt-token/0",
+      "whole": 1.0
+    },
+    "docs/guides/integration/jfrog.md#publishing-packages/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/jfrog-html-35dfa5fb.md#publishing-packages/0",
+      "whole": 1.0
+    },
+    "docs/guides/integration/jupyter.md#using-jupyter-as-a-standalone-tool/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/jupyter-pdf-73ae3ffc.md#/1",
       "whole": 1.0
     },
     "docs/guides/integration/jupyter.md#using-jupyter-within-a-project/0": {
@@ -1290,14 +1445,29 @@
       "twin": "knowledge/evidence/jupyter-pdf-73ae3ffc.md#/1",
       "whole": 0.9182
     },
+    "docs/guides/integration/marimo.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/marimo-docx-12ddf9b7.md#using-uv-with-marimo/0",
+      "whole": 1.0
+    },
     "docs/guides/integration/marimo.md#running-marimo-notebooks-as-scripts/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/marimo-docx-12ddf9b7.md#using-uv-with-marimo/running-marimo-notebooks-as-scripts/0",
       "whole": 1.0
     },
+    "docs/guides/integration/marimo.md#using-marimo-as-a-standalone-tool/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/marimo-docx-12ddf9b7.md#using-uv-with-marimo/using-marimo-as-a-standalone-tool/0",
+      "whole": 1.0
+    },
     "docs/guides/integration/marimo.md#using-marimo-with-inline-script-metadata/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/marimo-docx-12ddf9b7.md#using-uv-with-marimo/using-marimo-with-inline-script-metadata/0",
+      "whole": 1.0
+    },
+    "docs/guides/integration/marimo.md#using-marimo-within-a-project/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/marimo-docx-12ddf9b7.md#using-uv-with-marimo/using-marimo-within-a-project/0",
       "whole": 1.0
     },
     "docs/guides/integration/pre-commit.md#/0": {
@@ -1310,6 +1480,16 @@
       "twin": "knowledge/evidence/pytorch-pdf-dac3b55a.md#/7",
       "whole": 1.0
     },
+    "docs/guides/integration/pytorch.md#configuring-accelerators-with-environment-markers/": {
+      "coverage": 0.8462,
+      "twin": "knowledge/evidence/pytorch-pdf-dac3b55a.md#/3",
+      "whole": 0.5534
+    },
+    "docs/guides/integration/pytorch.md#configuring-accelerators-with-optional-dependencies/0": {
+      "coverage": 0.8276,
+      "twin": "knowledge/evidence/pytorch-pdf-dac3b55a.md#/5",
+      "whole": 0.7225
+    },
     "docs/guides/integration/pytorch.md#installing-gpu-enabled-pytorch-extensions/0": {
       "coverage": 0.9406,
       "twin": "knowledge/evidence/pytorch-pdf-dac3b55a.md#/6",
@@ -1320,14 +1500,39 @@
       "twin": "knowledge/evidence/pytorch-pdf-dac3b55a.md#/0",
       "whole": 1.0
     },
+    "docs/guides/integration/pytorch.md#the-uv-pip-interface/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/pytorch-pdf-dac3b55a.md#/7",
+      "whole": 1.0
+    },
+    "docs/guides/integration/pytorch.md#using-a-pytorch-index/": {
+      "coverage": 0.6923,
+      "twin": "knowledge/evidence/pytorch-pdf-dac3b55a.md#/1",
+      "whole": 0.4674
+    },
     "docs/guides/integration/pytorch.md#using-a-pytorch-index/0": {
       "coverage": 0.8182,
       "twin": "knowledge/evidence/pytorch-pdf-dac3b55a.md#/1",
       "whole": 0.866
     },
+    "docs/guides/integration/renovate.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/renovate-docx-fa0c3cdc.md#renovate/0",
+      "whole": 1.0
+    },
+    "docs/guides/integration/renovate.md#dependency-cooldown/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/renovate-docx-fa0c3cdc.md#renovate/dependency-cooldown/0",
+      "whole": 1.0
+    },
     "docs/guides/integration/renovate.md#inline-script-metadata/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/renovate-docx-fa0c3cdc.md#renovate/inline-script-metadata/0",
+      "whole": 1.0
+    },
+    "docs/guides/integration/renovate.md#uv-lock-output/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/renovate-docx-fa0c3cdc.md#renovate/uv-lock-output/0",
       "whole": 1.0
     },
     "docs/guides/migration/pip-to-project.md#migrating-to-a-uv-project/importing-requirements-files/0": {
@@ -1340,6 +1545,11 @@
       "twin": "knowledge/evidence/pip-to-project-html-bc52f389.md#migrating-to-a-uv-project/importing-requirements-files/importing-development-dependency-files/0",
       "whole": 1.0
     },
+    "docs/guides/migration/pip-to-project.md#migrating-to-a-uv-project/importing-requirements-files/importing-platform-specific-constraints/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/pip-to-project-html-bc52f389.md#migrating-to-a-uv-project/importing-requirements-files/importing-platform-specific-constraints/0",
+      "whole": 1.0
+    },
     "docs/guides/migration/pip-to-project.md#migrating-to-a-uv-project/project-environments/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/pip-to-project-html-bc52f389.md#migrating-to-a-uv-project/project-environments/0",
@@ -1348,6 +1558,11 @@
     "docs/guides/migration/pip-to-project.md#understanding-pip-workflows/development-dependencies/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/pip-to-project-html-bc52f389.md#understanding-pip-workflows/development-dependencies/0",
+      "whole": 1.0
+    },
+    "docs/guides/migration/pip-to-project.md#understanding-pip-workflows/platform-specific-dependencies/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/pip-to-project-html-bc52f389.md#understanding-pip-workflows/platform-specific-dependencies/0",
       "whole": 1.0
     },
     "docs/guides/migration/pip-to-project.md#understanding-pip-workflows/requirements-files/0": {
@@ -1380,6 +1595,11 @@
       "twin": "knowledge/evidence/package-pdf-f3f8365d.md#/1",
       "whole": 0.7425
     },
+    "docs/guides/projects.md#building-distributions/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/projects-docx-85ca2960.md#working-on-projects/building-distributions/0",
+      "whole": 1.0
+    },
     "docs/guides/projects.md#creating-a-new-project/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/projects-docx-85ca2960.md#working-on-projects/creating-a-new-project/0",
@@ -1393,6 +1613,16 @@
     "docs/guides/projects.md#project-structure/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/projects-docx-85ca2960.md#working-on-projects/project-structure/0",
+      "whole": 1.0
+    },
+    "docs/guides/projects.md#project-structure/pyproject-toml/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/projects-docx-85ca2960.md#working-on-projects/project-structure/pyproject-toml/0",
+      "whole": 1.0
+    },
+    "docs/guides/projects.md#project-structure/python-version/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/projects-docx-85ca2960.md#working-on-projects/project-structure/python-version/0",
       "whole": 1.0
     },
     "docs/guides/projects.md#project-structure/uv-lock/0": {
@@ -1480,6 +1710,21 @@
       "twin": "knowledge/evidence/tools-docx-66994478.md#using-tools/installing-tools/0",
       "whole": 1.0
     },
+    "docs/guides/tools.md#installing-tools/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/tools-docx-66994478.md#using-tools/installing-tools/0",
+      "whole": 1.0
+    },
+    "docs/guides/tools.md#requesting-different-sources/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/tools-docx-66994478.md#using-tools/requesting-different-sources/0",
+      "whole": 1.0
+    },
+    "docs/guides/tools.md#requesting-python-versions/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/tools-docx-66994478.md#using-tools/requesting-python-versions/0",
+      "whole": 1.0
+    },
     "docs/guides/tools.md#requesting-specific-versions/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/tools-docx-66994478.md#using-tools/requesting-specific-versions/0",
@@ -1488,6 +1733,16 @@
     "docs/guides/tools.md#running-tools/": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/tools-docx-66994478.md#using-tools/running-tools/0",
+      "whole": 1.0
+    },
+    "docs/guides/tools.md#running-tools/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/tools-docx-66994478.md#using-tools/running-tools/0",
+      "whole": 1.0
+    },
+    "docs/guides/tools.md#upgrading-tools/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/tools-docx-66994478.md#using-tools/upgrading-tools/0",
       "whole": 1.0
     },
     "docs/pip/compatibility.md#/0": {
@@ -1555,6 +1810,11 @@
       "twin": "knowledge/evidence/compatibility-html-9bece5cd.md#pip-compile-defaults/0",
       "whole": 1.0
     },
+    "docs/pip/compatibility.md#pre-release-compatibility/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/compatibility-html-9bece5cd.md#pre-release-compatibility/0",
+      "whole": 1.0
+    },
     "docs/pip/compatibility.md#registry-authentication/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/compatibility-html-9bece5cd.md#registry-authentication/0",
@@ -1563,6 +1823,11 @@
     "docs/pip/compatibility.md#requires-python-specifiers/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/compatibility-html-9bece5cd.md#requires-python-specifiers/0",
+      "whole": 1.0
+    },
+    "docs/pip/compatibility.md#requires-python-upper-bounds/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/compatibility-html-9bece5cd.md#requires-python-upper-bounds/0",
       "whole": 1.0
     },
     "docs/pip/compatibility.md#transitive-url-dependencies/0": {
@@ -1633,6 +1898,11 @@
     "docs/pip/environments.md#creating-a-virtual-environment/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/environments-html-8c414191.md#creating-a-virtual-environment/0",
+      "whole": 1.0
+    },
+    "docs/pip/environments.md#deactivating-an-environment/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/environments-html-8c414191.md#deactivating-an-environment/0",
       "whole": 1.0
     },
     "docs/pip/environments.md#discovery-of-python-environments/0": {
@@ -1720,9 +1990,24 @@
       "twin": "knowledge/evidence/metadata-docx-5bb600cf.md#/0",
       "whole": 1.0
     },
+    "docs/reference/internals/metadata.md#handling-multiple-versions-of-a-package/": {
+      "coverage": 0.9094,
+      "twin": "knowledge/evidence/metadata-docx-5bb600cf.md#handling-multiple-versions-of-a-package/0",
+      "whole": 0.8698
+    },
+    "docs/reference/internals/metadata.md#schema/": {
+      "coverage": 0.978,
+      "twin": "knowledge/evidence/metadata-docx-5bb600cf.md#schema/1",
+      "whole": 0.9785
+    },
     "docs/reference/internals/resolver.md#forking/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/resolver-html-d4a337cc.md#forking/0",
+      "whole": 1.0
+    },
+    "docs/reference/internals/resolver.md#marker-and-wheel-tag-filtering/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/resolver-html-d4a337cc.md#marker-and-wheel-tag-filtering/0",
       "whole": 1.0
     },
     "docs/reference/internals/resolver.md#metadata-consistency/0": {
@@ -1735,10 +2020,20 @@
       "twin": "knowledge/evidence/resolver-html-d4a337cc.md#prioritization/0",
       "whole": 1.0
     },
+    "docs/reference/internals/resolver.md#requires-python/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/resolver-html-d4a337cc.md#requires-python/0",
+      "whole": 1.0
+    },
     "docs/reference/internals/resolver.md#resolver/0": {
       "coverage": 0.6287,
       "twin": "knowledge/evidence/resolver-html-d4a337cc.md#the-highest-priority-package-is-selected-from-the-undecided-packages-roughly-packages-with-urls-including-file-git-etc-have-the-highest-priority-then-those-with-more-exact-specifiers-such-as-then-those-with-less-strict-specifiers-inside-each-category-packages-are-ordered-by-when-they-were-first-seen-i-e-order-in-a-file-making-the-resolution-deterministic/0",
       "whole": 0.576
+    },
+    "docs/reference/internals/resolver.md#url-dependencies/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/resolver-html-d4a337cc.md#url-dependencies/0",
+      "whole": 1.0
     },
     "docs/reference/internals/resolver.md#wheel-tags/0": {
       "coverage": 1.0,
@@ -1746,6 +2041,16 @@
       "whole": 1.0
     },
     "docs/reference/policies/platforms.md#/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/platforms-pdf-d7057eca.md#/0",
+      "whole": 1.0
+    },
+    "docs/reference/policies/platforms.md#macos-versions/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/platforms-pdf-d7057eca.md#/0",
+      "whole": 1.0
+    },
+    "docs/reference/policies/platforms.md#windows-versions/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/platforms-pdf-d7057eca.md#/0",
       "whole": 1.0
@@ -1775,14 +2080,34 @@
       "twin": "knowledge/evidence/versioning-docx-45920d09.md#cache-versioning/0",
       "whole": 1.0
     },
+    "docs/reference/policies/versioning.md#crate-versioning/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/versioning-docx-45920d09.md#crate-versioning/0",
+      "whole": 1.0
+    },
+    "docs/reference/policies/versioning.md#lockfile-versioning/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/versioning-docx-45920d09.md#lockfile-versioning/0",
+      "whole": 1.0
+    },
     "docs/reference/storage.md#storage-directories/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/storage-html-ca9fb50d.md#storage-directories/0",
       "whole": 1.0
     },
+    "docs/reference/storage.md#storage-directories/executable-directory/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/storage-html-ca9fb50d.md#storage-directories/executable-directory/0",
+      "whole": 1.0
+    },
     "docs/reference/storage.md#types-of-data/dependency-cache/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/storage-html-ca9fb50d.md#types-of-data/dependency-cache/0",
+      "whole": 1.0
+    },
+    "docs/reference/storage.md#types-of-data/project-virtual-environments/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/storage-html-ca9fb50d.md#types-of-data/project-virtual-environments/0",
       "whole": 1.0
     },
     "docs/reference/storage.md#types-of-data/python-executables/0": {
@@ -1805,9 +2130,19 @@
       "twin": "knowledge/evidence/storage-html-ca9fb50d.md#types-of-data/tools/0",
       "whole": 1.0
     },
+    "docs/reference/troubleshooting/build-failures.md#common-build-failures/command-is-not-found/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/build-failures-html-6bc73393.md#common-build-failures/command-is-not-found/0",
+      "whole": 1.0
+    },
     "docs/reference/troubleshooting/build-failures.md#common-build-failures/header-or-library-is-missing/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/build-failures-html-6bc73393.md#common-build-failures/header-or-library-is-missing/0",
+      "whole": 1.0
+    },
+    "docs/reference/troubleshooting/build-failures.md#common-build-failures/module-is-missing-or-cannot-be-imported/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/build-failures-html-6bc73393.md#common-build-failures/module-is-missing-or-cannot-be-imported/0",
       "whole": 1.0
     },
     "docs/reference/troubleshooting/build-failures.md#confirming-that-a-build-failure-is-specific-to-uv/0": {
@@ -1818,6 +2153,11 @@
     "docs/reference/troubleshooting/build-failures.md#recognizing-a-build-failure/0": {
       "coverage": 1.0,
       "twin": "knowledge/evidence/build-failures-html-6bc73393.md#recognizing-a-build-failure/0",
+      "whole": 1.0
+    },
+    "docs/reference/troubleshooting/build-failures.md#why-does-uv-build-a-package/0": {
+      "coverage": 1.0,
+      "twin": "knowledge/evidence/build-failures-html-6bc73393.md#why-does-uv-build-a-package/0",
       "whole": 1.0
     },
     "docs/reference/troubleshooting/reproducible-examples.md#how-to-write-a-reproducible-example/0": {
@@ -1849,6 +2189,26 @@
         "source": "docs/concepts/build-backend.md#using-the-uv-build-backend/0"
       },
       {
+        "case": "u-0089",
+        "grade": 2,
+        "source": "docs/concepts/build-backend.md#/0"
+      },
+      {
+        "case": "u-0089",
+        "grade": 3,
+        "source": "docs/concepts/build-backend.md#choosing-a-build-backend/0"
+      },
+      {
+        "case": "u-0283",
+        "grade": 3,
+        "source": "docs/concepts/build-backend.md#bundled-build-backend/0"
+      },
+      {
+        "case": "u-0283",
+        "grade": 2,
+        "source": "docs/concepts/build-backend.md#using-the-uv-build-backend/0"
+      },
+      {
         "case": "u-1226",
         "grade": 2,
         "source": "docs/concepts/build-backend.md#/0"
@@ -1876,6 +2236,21 @@
     ],
     "knowledge/evidence/build-backend-pdf-3e359788.md#/1": [
       {
+        "case": "u-0139",
+        "grade": 3,
+        "source": "docs/concepts/build-backend.md#modules/0"
+      },
+      {
+        "case": "u-0139",
+        "grade": 2,
+        "source": "docs/concepts/build-backend.md#namespace-packages/0"
+      },
+      {
+        "case": "u-0148",
+        "grade": 3,
+        "source": "docs/concepts/build-backend.md#namespace-packages/0"
+      },
+      {
         "case": "u-1230",
         "grade": 3,
         "source": "docs/concepts/build-backend.md#modules/0"
@@ -1897,6 +2272,26 @@
       }
     ],
     "knowledge/evidence/build-backend-pdf-3e359788.md#/2": [
+      {
+        "case": "u-0091",
+        "grade": 2,
+        "source": "docs/concepts/build-backend.md#file-inclusion-and-exclusion/0"
+      },
+      {
+        "case": "u-0091",
+        "grade": 3,
+        "source": "docs/concepts/build-backend.md#file-inclusion-and-exclusion/include-and-exclude-syntax/0"
+      },
+      {
+        "case": "u-0149",
+        "grade": 3,
+        "source": "docs/concepts/build-backend.md#file-inclusion-and-exclusion/0"
+      },
+      {
+        "case": "u-0221",
+        "grade": 3,
+        "source": "docs/concepts/build-backend.md#file-inclusion-and-exclusion/0"
+      },
       {
         "case": "u-1230",
         "grade": 2,
@@ -1935,6 +2330,11 @@
         "source": "docs/concepts/cache.md#cache-directory/0"
       },
       {
+        "case": "u-0248",
+        "grade": 3,
+        "source": "docs/concepts/cache.md#cache-directory/0"
+      },
+      {
         "case": "u-1013",
         "grade": 1,
         "source": "docs/concepts/cache.md#cache-directory/"
@@ -1957,6 +2357,16 @@
     ],
     "knowledge/evidence/compile-pdf-1aa9720e.md#/1": [
       {
+        "case": "u-0233",
+        "grade": 3,
+        "source": "docs/pip/compile.md#syncing-an-environment/0"
+      },
+      {
+        "case": "u-0286",
+        "grade": 3,
+        "source": "docs/pip/compile.md#upgrading-requirements/0"
+      },
+      {
         "case": "u-1241",
         "grade": 3,
         "source": "docs/pip/compile.md#syncing-an-environment/0"
@@ -1968,6 +2378,16 @@
       }
     ],
     "knowledge/evidence/compile-pdf-1aa9720e.md#/2": [
+      {
+        "case": "u-0287",
+        "grade": 3,
+        "source": "docs/pip/compile.md#adding-constraints/0"
+      },
+      {
+        "case": "u-0288",
+        "grade": 3,
+        "source": "docs/pip/compile.md#overriding-dependency-versions/0"
+      },
       {
         "case": "u-1248",
         "grade": 3,
@@ -1991,6 +2411,31 @@
     ],
     "knowledge/evidence/config-pdf-2839f69e.md#/0": [
       {
+        "case": "u-0112",
+        "grade": 3,
+        "source": "docs/concepts/projects/config.md#python-version-requirement/0"
+      },
+      {
+        "case": "u-0113",
+        "grade": 1,
+        "source": "docs/concepts/projects/config.md#entry-points/0"
+      },
+      {
+        "case": "u-0113",
+        "grade": 3,
+        "source": "docs/concepts/projects/config.md#entry-points/command-line-interfaces/0"
+      },
+      {
+        "case": "u-0239",
+        "grade": 2,
+        "source": "docs/concepts/projects/config.md#entry-points/command-line-interfaces/0"
+      },
+      {
+        "case": "u-0239",
+        "grade": 3,
+        "source": "docs/concepts/projects/config.md#entry-points/graphical-user-interfaces/0"
+      },
+      {
         "case": "u-1061",
         "grade": 3,
         "source": "docs/concepts/projects/config.md#python-version-requirement/0"
@@ -2012,6 +2457,16 @@
       }
     ],
     "knowledge/evidence/config-pdf-2839f69e.md#/1": [
+      {
+        "case": "u-0042",
+        "grade": 3,
+        "source": "docs/concepts/projects/config.md#build-systems/0"
+      },
+      {
+        "case": "u-0046",
+        "grade": 2,
+        "source": "docs/concepts/projects/config.md#build-systems/0"
+      },
       {
         "case": "u-1064",
         "grade": 3,
@@ -2045,6 +2500,16 @@
         "source": "docs/concepts/projects/config.md#project-environment-path/"
       },
       {
+        "case": "u-0042",
+        "grade": 2,
+        "source": "docs/concepts/projects/config.md#project-packaging/0"
+      },
+      {
+        "case": "u-0176",
+        "grade": 3,
+        "source": "docs/concepts/projects/config.md#project-environment-path/0"
+      },
+      {
         "case": "u-1065",
         "grade": 2,
         "source": "docs/concepts/projects/config.md#project-packaging/0"
@@ -2076,6 +2541,11 @@
       }
     ],
     "knowledge/evidence/config-pdf-2839f69e.md#/6": [
+      {
+        "case": "u-0044",
+        "grade": 3,
+        "source": "docs/concepts/projects/config.md#build-isolation/augmenting-build-dependencies/dynamic-metadata/0"
+      },
       {
         "case": "u-1073",
         "grade": 2,
@@ -2114,6 +2584,21 @@
     ],
     "knowledge/evidence/config-pdf-2839f69e.md#/9": [
       {
+        "case": "u-0154",
+        "grade": 2,
+        "source": "docs/concepts/projects/config.md#conflicting-dependencies/0"
+      },
+      {
+        "case": "u-0246",
+        "grade": 2,
+        "source": "docs/concepts/projects/config.md#limited-resolution-environments/0"
+      },
+      {
+        "case": "u-0246",
+        "grade": 3,
+        "source": "docs/concepts/projects/config.md#required-environments/0"
+      },
+      {
         "case": "u-1080",
         "grade": 3,
         "source": "docs/concepts/projects/config.md#conflicting-dependencies/0"
@@ -2134,6 +2619,16 @@
         "case": "u-0012",
         "grade": 3,
         "source": "docs/concepts/configuration-files.md#/"
+      },
+      {
+        "case": "u-0050",
+        "grade": 3,
+        "source": "docs/concepts/configuration-files.md#/0"
+      },
+      {
+        "case": "u-0190",
+        "grade": 3,
+        "source": "docs/concepts/configuration-files.md#/0"
       },
       {
         "case": "u-1220",
@@ -2157,6 +2652,11 @@
       }
     ],
     "knowledge/evidence/dependencies-docx-1c09b823.md#adding-dependencies/0": [
+      {
+        "case": "u-0329",
+        "grade": 2,
+        "source": "docs/concepts/projects/dependencies.md#adding-dependencies/0"
+      },
       {
         "case": "u-1008",
         "grade": 3,
@@ -2241,6 +2741,11 @@
     ],
     "knowledge/evidence/docker-pdf-05866935.md#/4": [
       {
+        "case": "u-0326",
+        "grade": 3,
+        "source": "docs/guides/integration/docker.md#optimizations/compiling-bytecode/0"
+      },
+      {
         "case": "u-1276",
         "grade": 3,
         "source": "docs/guides/integration/docker.md#optimizations/compiling-bytecode/0"
@@ -2273,6 +2778,16 @@
     ],
     "knowledge/evidence/docker-pdf-05866935.md#/5": [
       {
+        "case": "u-0117",
+        "grade": 2,
+        "source": "docs/guides/integration/docker.md#optimizations/intermediate-layers/intermediate-layers-in-workspaces/0"
+      },
+      {
+        "case": "u-0253",
+        "grade": 3,
+        "source": "docs/guides/integration/docker.md#optimizations/intermediate-layers/intermediate-layers-in-workspaces/0"
+      },
+      {
         "case": "u-1278",
         "grade": 3,
         "source": "docs/guides/integration/docker.md#optimizations/intermediate-layers/0"
@@ -2295,12 +2810,57 @@
         "source": "docs/pip/environments.md#using-arbitrary-python-environments/"
       },
       {
+        "case": "u-0071",
+        "grade": 3,
+        "source": "docs/pip/environments.md#using-arbitrary-python-environments/0"
+      },
+      {
+        "case": "u-0124",
+        "grade": 3,
+        "source": "docs/pip/environments.md#using-arbitrary-python-environments/0"
+      },
+      {
+        "case": "u-0266",
+        "grade": 3,
+        "source": "docs/pip/environments.md#using-arbitrary-python-environments/0"
+      },
+      {
+        "case": "u-0310",
+        "grade": 3,
+        "source": "docs/pip/environments.md#using-arbitrary-python-environments/0"
+      },
+      {
         "case": "u-1251",
         "grade": 3,
         "source": "docs/pip/environments.md#using-arbitrary-python-environments/0"
       }
     ],
     "knowledge/evidence/git-pdf-0a2218e0.md#/0": [
+      {
+        "case": "u-0032",
+        "grade": 3,
+        "source": "docs/concepts/authentication/git.md#persistence-of-credentials/0"
+      },
+      {
+        "case": "u-0107",
+        "grade": 3,
+        "source": "docs/concepts/authentication/git.md#ssh-authentication/0"
+      },
+      {
+        "case": "u-0165",
+        "grade": 3,
+        "source": "docs/concepts/authentication/git.md#ssh-authentication/0"
+      },
+      {
+        "case": "u-0289",
+        "grade": 3,
+        "source": "docs/concepts/authentication/git.md#git-credential-helpers/0"
+      },
+      {
+        "case": "u-0290",
+        "grade": 3,
+        "source": "docs/concepts/authentication/git.md#persistence-of-credentials/0"
+      },
       {
         "case": "u-1210",
         "grade": 3,
@@ -2334,6 +2894,21 @@
     ],
     "knowledge/evidence/gitlab-pdf-c69c343f.md#/0": [
       {
+        "case": "u-0047",
+        "grade": 3,
+        "source": "docs/guides/integration/gitlab.md#caching/0"
+      },
+      {
+        "case": "u-0110",
+        "grade": 3,
+        "source": "docs/guides/integration/gitlab.md#using-uv-pip/0"
+      },
+      {
+        "case": "u-0243",
+        "grade": 3,
+        "source": "docs/guides/integration/gitlab.md#using-uv-pip/0"
+      },
+      {
         "case": "u-1309",
         "grade": 3,
         "source": "docs/guides/integration/gitlab.md#using-the-uv-image/0"
@@ -2350,6 +2925,21 @@
       }
     ],
     "knowledge/evidence/help-pdf-67c5137a.md#/0": [
+      {
+        "case": "u-0217",
+        "grade": 3,
+        "source": "docs/getting-started/help.md#displaying-verbose-output/0"
+      },
+      {
+        "case": "u-0280",
+        "grade": 3,
+        "source": "docs/getting-started/help.md#help-menus/0"
+      },
+      {
+        "case": "u-0302",
+        "grade": 3,
+        "source": "docs/getting-started/help.md#viewing-the-version/0"
+      },
       {
         "case": "u-1026",
         "grade": 3,
@@ -2377,6 +2967,41 @@
       }
     ],
     "knowledge/evidence/http-pdf-bcd8d846.md#/0": [
+      {
+        "case": "u-0029",
+        "grade": 3,
+        "source": "docs/concepts/authentication/http.md#persistence-of-credentials/0"
+      },
+      {
+        "case": "u-0031",
+        "grade": 3,
+        "source": "docs/concepts/authentication/http.md#the-uv-credentials-store/0"
+      },
+      {
+        "case": "u-0093",
+        "grade": 3,
+        "source": "docs/concepts/authentication/http.md#keyring-providers/0"
+      },
+      {
+        "case": "u-0096",
+        "grade": 3,
+        "source": "docs/concepts/authentication/http.md#netrc-files/0"
+      },
+      {
+        "case": "u-0160",
+        "grade": 3,
+        "source": "docs/concepts/authentication/http.md#the-uv-credentials-store/0"
+      },
+      {
+        "case": "u-0227",
+        "grade": 2,
+        "source": "docs/concepts/authentication/http.md#the-uv-credentials-store/0"
+      },
+      {
+        "case": "u-0230",
+        "grade": 3,
+        "source": "docs/concepts/authentication/http.md#/0"
+      },
       {
         "case": "u-1016",
         "grade": 1,
@@ -2435,6 +3060,26 @@
     ],
     "knowledge/evidence/indexes-pdf-d37689d3.md#/0": [
       {
+        "case": "u-0052",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#defining-an-index/0"
+      },
+      {
+        "case": "u-0153",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#defining-an-index/0"
+      },
+      {
+        "case": "u-0183",
+        "grade": 2,
+        "source": "docs/concepts/indexes.md#defining-an-index/0"
+      },
+      {
+        "case": "u-0249",
+        "grade": 2,
+        "source": "docs/concepts/indexes.md#defining-an-index/0"
+      },
+      {
         "case": "u-1001",
         "grade": 2,
         "source": "docs/concepts/indexes.md#/0"
@@ -2482,6 +3127,26 @@
     ],
     "knowledge/evidence/indexes-pdf-d37689d3.md#/1": [
       {
+        "case": "u-0051",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#searching-across-multiple-indexes/0"
+      },
+      {
+        "case": "u-0150",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#pinning-a-package-to-an-index/0"
+      },
+      {
+        "case": "u-0152",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#searching-across-multiple-indexes/0"
+      },
+      {
+        "case": "u-0183",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#pinning-a-package-to-an-index/0"
+      },
+      {
         "case": "u-1004",
         "grade": 3,
         "source": "docs/concepts/indexes.md#pinning-a-package-to-an-index/"
@@ -2508,6 +3173,16 @@
       }
     ],
     "knowledge/evidence/indexes-pdf-d37689d3.md#/2": [
+      {
+        "case": "u-0053",
+        "grade": 2,
+        "source": "docs/concepts/indexes.md#authentication/using-credential-providers/0"
+      },
+      {
+        "case": "u-0115",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#authentication/providing-credentials-directly/0"
+      },
       {
         "case": "u-1188",
         "grade": 3,
@@ -2545,6 +3220,16 @@
       }
     ],
     "knowledge/evidence/indexes-pdf-d37689d3.md#/3": [
+      {
+        "case": "u-0053",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#authentication/disabling-authentication/0"
+      },
+      {
+        "case": "u-0184",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#authentication/ignoring-error-codes/0"
+      },
       {
         "case": "u-1190",
         "grade": 2,
@@ -2585,6 +3270,31 @@
     ],
     "knowledge/evidence/indexes-pdf-d37689d3.md#/5": [
       {
+        "case": "u-0052",
+        "grade": 2,
+        "source": "docs/concepts/indexes.md#index-url-and-extra-index-url/0"
+      },
+      {
+        "case": "u-0150",
+        "grade": 1,
+        "source": "docs/concepts/indexes.md#flat-indexes/0"
+      },
+      {
+        "case": "u-0151",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#flat-indexes/0"
+      },
+      {
+        "case": "u-0249",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#index-url-and-extra-index-url/0"
+      },
+      {
+        "case": "u-0250",
+        "grade": 3,
+        "source": "docs/concepts/indexes.md#flat-indexes/0"
+      },
+      {
         "case": "u-1197",
         "grade": 3,
         "source": "docs/concepts/indexes.md#flat-indexes/0"
@@ -2602,6 +3312,16 @@
         "source": "docs/concepts/projects/init.md#applications/"
       },
       {
+        "case": "u-0244",
+        "grade": 2,
+        "source": "docs/concepts/projects/init.md#applications/0"
+      },
+      {
+        "case": "u-0245",
+        "grade": 2,
+        "source": "docs/concepts/projects/init.md#applications/0"
+      },
+      {
         "case": "u-1051",
         "grade": 2,
         "source": "docs/concepts/projects/init.md#applications/0"
@@ -2612,6 +3332,11 @@
         "case": "u-0022",
         "grade": 2,
         "source": "docs/concepts/projects/init.md#libraries/"
+      },
+      {
+        "case": "u-0244",
+        "grade": 2,
+        "source": "docs/concepts/projects/init.md#libraries/0"
       },
       {
         "case": "u-1042",
@@ -2635,6 +3360,11 @@
       }
     ],
     "knowledge/evidence/inspection-pdf-c1ce4418.md#/0": [
+      {
+        "case": "u-0303",
+        "grade": 3,
+        "source": "docs/pip/inspection.md#listing-installed-packages/0"
+      },
       {
         "case": "u-1237",
         "grade": 3,
@@ -2675,6 +3405,21 @@
     ],
     "knowledge/evidence/jupyter-pdf-73ae3ffc.md#/0": [
       {
+        "case": "u-0045",
+        "grade": 3,
+        "source": "docs/guides/integration/jupyter.md#using-jupyter-within-a-project/creating-a-kernel/0"
+      },
+      {
+        "case": "u-0177",
+        "grade": 3,
+        "source": "docs/guides/integration/jupyter.md#using-jupyter-within-a-project/0"
+      },
+      {
+        "case": "u-0240",
+        "grade": 2,
+        "source": "docs/guides/integration/jupyter.md#using-jupyter-within-a-project/creating-a-kernel/0"
+      },
+      {
         "case": "u-1348",
         "grade": 3,
         "source": "docs/guides/integration/jupyter.md#using-jupyter-within-a-project/0"
@@ -2685,11 +3430,33 @@
         "source": "docs/guides/integration/jupyter.md#using-jupyter-within-a-project/creating-a-kernel/0"
       }
     ],
+    "knowledge/evidence/jupyter-pdf-73ae3ffc.md#/1": [
+      {
+        "case": "u-0240",
+        "grade": 3,
+        "source": "docs/guides/integration/jupyter.md#using-jupyter-within-a-project/installing-packages-without-a-kernel/0"
+      },
+      {
+        "case": "u-0295",
+        "grade": 3,
+        "source": "docs/guides/integration/jupyter.md#using-jupyter-as-a-standalone-tool/0"
+      },
+      {
+        "case": "u-1349",
+        "grade": 3,
+        "source": "docs/guides/integration/jupyter.md#using-jupyter-within-a-project/installing-packages-without-a-kernel/0"
+      }
+    ],
     "knowledge/evidence/layout-html-ca5b0a5f.md#the-lockfile/relationship-to-pylock-toml/0": [
       {
         "case": "u-0019",
         "grade": 3,
         "source": "docs/concepts/projects/layout.md#the-lockfile/relationship-to-pylock-toml/"
+      },
+      {
+        "case": "u-0278",
+        "grade": 3,
+        "source": "docs/concepts/projects/layout.md#the-lockfile/relationship-to-pylock-toml/0"
       },
       {
         "case": "u-1048",
@@ -2703,6 +3470,11 @@
       }
     ],
     "knowledge/evidence/package-pdf-f3f8365d.md#/2": [
+      {
+        "case": "u-0138",
+        "grade": 3,
+        "source": "docs/guides/package.md#publishing-your-package/uploading-attestations-with-your-package/0"
+      },
       {
         "case": "u-1262",
         "grade": 3,
@@ -2749,7 +3521,54 @@
         "source": "docs/guides/package.md#publishing-your-package/0"
       }
     ],
+    "knowledge/evidence/platforms-pdf-d7057eca.md#/0": [
+      {
+        "case": "u-0005",
+        "grade": 3,
+        "source": "docs/reference/policies/platforms.md#/0"
+      },
+      {
+        "case": "u-0066",
+        "grade": 3,
+        "source": "docs/reference/policies/platforms.md#/0"
+      },
+      {
+        "case": "u-0196",
+        "grade": 3,
+        "source": "docs/reference/policies/platforms.md#windows-versions/0"
+      },
+      {
+        "case": "u-0197",
+        "grade": 3,
+        "source": "docs/reference/policies/platforms.md#macos-versions/0"
+      },
+      {
+        "case": "u-1374",
+        "grade": 2,
+        "source": "docs/reference/policies/platforms.md#/0"
+      }
+    ],
     "knowledge/evidence/python-pdf-f638b3a7.md#/0": [
+      {
+        "case": "u-0205",
+        "grade": 3,
+        "source": "docs/reference/policies/python.md#python-versions/0"
+      },
+      {
+        "case": "u-0269",
+        "grade": 2,
+        "source": "docs/reference/policies/python.md#python-implementations/0"
+      },
+      {
+        "case": "u-0269",
+        "grade": 3,
+        "source": "docs/reference/policies/python.md#python-versions/0"
+      },
+      {
+        "case": "u-0270",
+        "grade": 3,
+        "source": "docs/reference/policies/python.md#python-implementations/0"
+      },
       {
         "case": "u-1374",
         "grade": 3,
@@ -2762,6 +3581,21 @@
       }
     ],
     "knowledge/evidence/python-versions-pdf-bae1444d.md#/0": [
+      {
+        "case": "u-0135",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#requesting-a-version/python-version-files/0"
+      },
+      {
+        "case": "u-0215",
+        "grade": 2,
+        "source": "docs/concepts/python-versions.md#requesting-a-version/0"
+      },
+      {
+        "case": "u-0279",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#managed-and-system-python-installations/0"
+      },
       {
         "case": "u-1005",
         "grade": 3,
@@ -2805,6 +3639,11 @@
     ],
     "knowledge/evidence/python-versions-pdf-bae1444d.md#/2": [
       {
+        "case": "u-0085",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#upgrading-python-versions/0"
+      },
+      {
         "case": "u-1167",
         "grade": 3,
         "source": "docs/concepts/python-versions.md#upgrading-python-versions/0"
@@ -2842,6 +3681,26 @@
     ],
     "knowledge/evidence/python-versions-pdf-bae1444d.md#/3": [
       {
+        "case": "u-0086",
+        "grade": 2,
+        "source": "docs/concepts/python-versions.md#finding-a-python-executable/0"
+      },
+      {
+        "case": "u-0135",
+        "grade": 2,
+        "source": "docs/concepts/python-versions.md#project-python-versions/0"
+      },
+      {
+        "case": "u-0316",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#finding-a-python-executable/0"
+      },
+      {
+        "case": "u-0317",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#viewing-available-python-versions/0"
+      },
+      {
         "case": "u-1165",
         "grade": 3,
         "source": "docs/concepts/python-versions.md#viewing-available-python-versions/0"
@@ -2868,6 +3727,16 @@
       }
     ],
     "knowledge/evidence/python-versions-pdf-bae1444d.md#/4": [
+      {
+        "case": "u-0086",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#discovery-of-python-versions/0"
+      },
+      {
+        "case": "u-0215",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#free-threaded-python/0"
+      },
       {
         "case": "u-1020",
         "grade": 3,
@@ -2906,6 +3775,16 @@
     ],
     "knowledge/evidence/python-versions-pdf-bae1444d.md#/5": [
       {
+        "case": "u-0136",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#disabling-automatic-python-downloads/0"
+      },
+      {
+        "case": "u-0279",
+        "grade": 2,
+        "source": "docs/concepts/python-versions.md#requiring-or-disabling-managed-python-versions/0"
+      },
+      {
         "case": "u-1171",
         "grade": 3,
         "source": "docs/concepts/python-versions.md#adjusting-python-version-preferences/0"
@@ -2931,6 +3810,77 @@
         "source": "docs/concepts/python-versions.md#disabling-automatic-python-downloads/0"
       }
     ],
+    "knowledge/evidence/python-versions-pdf-bae1444d.md#/6": [
+      {
+        "case": "u-0087",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#managed-python-distributions/cpython-distributions/0"
+      },
+      {
+        "case": "u-0216",
+        "grade": 2,
+        "source": "docs/concepts/python-versions.md#managed-python-distributions/0"
+      },
+      {
+        "case": "u-0216",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#python-implementation-support/0"
+      },
+      {
+        "case": "u-0333",
+        "grade": 3,
+        "source": "docs/concepts/python-versions.md#registration-in-the-windows-registry/0"
+      },
+      {
+        "case": "u-1375",
+        "grade": 2,
+        "source": "docs/concepts/python-versions.md#python-implementation-support/0"
+      }
+    ],
+    "knowledge/evidence/pytorch-pdf-dac3b55a.md#/1": [
+      {
+        "case": "u-0069",
+        "grade": 3,
+        "source": "docs/guides/integration/pytorch.md#using-a-pytorch-index/"
+      },
+      {
+        "case": "u-0263",
+        "grade": 2,
+        "source": "docs/guides/integration/pytorch.md#using-a-pytorch-index/"
+      },
+      {
+        "case": "u-1091",
+        "grade": 2,
+        "source": "docs/guides/integration/pytorch.md#using-a-pytorch-index/0"
+      },
+      {
+        "case": "u-1364",
+        "grade": 3,
+        "source": "docs/guides/integration/pytorch.md#using-a-pytorch-index/0"
+      }
+    ],
+    "knowledge/evidence/pytorch-pdf-dac3b55a.md#/7": [
+      {
+        "case": "u-0130",
+        "grade": 3,
+        "source": "docs/guides/integration/pytorch.md#automatic-backend-selection/0"
+      },
+      {
+        "case": "u-0199",
+        "grade": 3,
+        "source": "docs/guides/integration/pytorch.md#automatic-backend-selection/0"
+      },
+      {
+        "case": "u-0265",
+        "grade": 3,
+        "source": "docs/guides/integration/pytorch.md#the-uv-pip-interface/0"
+      },
+      {
+        "case": "u-1365",
+        "grade": 3,
+        "source": "docs/guides/integration/pytorch.md#automatic-backend-selection/0"
+      }
+    ],
     "knowledge/evidence/reproducible-examples-pdf-3ee07d4c.md#/0": [
       {
         "case": "u-1346",
@@ -2948,7 +3898,39 @@
         "source": "docs/reference/troubleshooting/reproducible-examples.md#strategies-for-reproducible-examples/docker-image/0"
       }
     ],
+    "knowledge/evidence/resolution-docx-dfb376de.md#conflicting-dependencies/0": [
+      {
+        "case": "u-0154",
+        "grade": 3,
+        "source": "docs/concepts/resolution.md#conflicting-dependencies/"
+      },
+      {
+        "case": "u-0236",
+        "grade": 3,
+        "source": "docs/concepts/resolution.md#conflicting-dependencies/"
+      },
+      {
+        "case": "u-1123",
+        "grade": 3,
+        "source": "docs/concepts/resolution.md#conflicting-dependencies/0"
+      }
+    ],
     "knowledge/evidence/run-pdf-b372319f.md#/0": [
+      {
+        "case": "u-0166",
+        "grade": 3,
+        "source": "docs/concepts/projects/run.md#legacy-scripts-on-windows/0"
+      },
+      {
+        "case": "u-0167",
+        "grade": 3,
+        "source": "docs/concepts/projects/run.md#signal-handling/0"
+      },
+      {
+        "case": "u-0172",
+        "grade": 3,
+        "source": "docs/concepts/projects/run.md#requesting-additional-dependencies/0"
+      },
       {
         "case": "u-1022",
         "grade": 2,
@@ -3019,6 +4001,11 @@
     ],
     "knowledge/evidence/scripts-pdf-dacc9786.md#/1": [
       {
+        "case": "u-0262",
+        "grade": 3,
+        "source": "docs/guides/scripts.md#running-a-script-with-dependencies/0"
+      },
+      {
         "case": "u-1287",
         "grade": 3,
         "source": "docs/guides/scripts.md#creating-a-python-script/0"
@@ -3030,6 +4017,16 @@
       }
     ],
     "knowledge/evidence/scripts-pdf-dacc9786.md#/2": [
+      {
+        "case": "u-0065",
+        "grade": 3,
+        "source": "docs/guides/scripts.md#using-a-shebang-to-create-an-executable-file/0"
+      },
+      {
+        "case": "u-0262",
+        "grade": 2,
+        "source": "docs/guides/scripts.md#declaring-script-dependencies/0"
+      },
       {
         "case": "u-1158",
         "grade": 2,
@@ -3063,6 +4060,11 @@
     ],
     "knowledge/evidence/scripts-pdf-dacc9786.md#/3": [
       {
+        "case": "u-0123",
+        "grade": 3,
+        "source": "docs/guides/scripts.md#improving-reproducibility/0"
+      },
+      {
         "case": "u-1288",
         "grade": 3,
         "source": "docs/guides/scripts.md#locking-dependencies/0"
@@ -3090,6 +4092,11 @@
     ],
     "knowledge/evidence/scripts-pdf-dacc9786.md#/4": [
       {
+        "case": "u-0194",
+        "grade": 3,
+        "source": "docs/guides/scripts.md#using-gui-scripts/0"
+      },
+      {
         "case": "u-1294",
         "grade": 3,
         "source": "docs/guides/scripts.md#using-different-python-versions/0"
@@ -3098,6 +4105,40 @@
         "case": "u-1295",
         "grade": 3,
         "source": "docs/guides/scripts.md#using-gui-scripts/0"
+      }
+    ],
+    "knowledge/evidence/tools-docx-66994478.md#using-tools/installing-tools/0": [
+      {
+        "case": "u-0082",
+        "grade": 3,
+        "source": "docs/guides/tools.md#installing-tools/0"
+      },
+      {
+        "case": "u-1007",
+        "grade": 3,
+        "source": "docs/guides/tools.md#installing-tools/"
+      }
+    ],
+    "knowledge/evidence/tools-docx-66994478.md#using-tools/running-tools/0": [
+      {
+        "case": "u-0006",
+        "grade": 3,
+        "source": "docs/guides/tools.md#running-tools/"
+      },
+      {
+        "case": "u-0275",
+        "grade": 3,
+        "source": "docs/guides/tools.md#running-tools/0"
+      },
+      {
+        "case": "u-1297",
+        "grade": 2,
+        "source": "docs/guides/tools.md#running-tools/"
+      },
+      {
+        "case": "u-1390",
+        "grade": 2,
+        "source": "docs/guides/tools.md#running-tools/"
       }
     ]
   },

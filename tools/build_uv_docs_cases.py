@@ -272,6 +272,3268 @@ DEV: tuple[Judgment, ...] = (
         "`--lib` and always require a packaged project. Both section-scoped at "
         "364 and 432 tokens.",
     ),
+    (
+        "u-0023",
+        "why put a dependency in tool.uv.sources rather than just listing it in "
+        "project.dependencies",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/concepts/projects/dependencies.md#dependency-sources/0", 3),
+            ("docs/concepts/projects/dependencies.md#dependency-fields/0", 2),
+        ),
+        "The sources section gives the rationale: tool.uv.sources adds development-time patterns "
+        "the project.dependencies standard cannot express, such as editable installs and relative "
+        "paths, and it warns that only uv respects them. The fields section merely frames sources "
+        "as one of four dependency fields.",
+    ),
+    (
+        "u-0024",
+        "why bother with an editable install while developing a package",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/projects/dependencies.md#editable-dependencies/0", 3),),
+        "Explains the mechanism and the motivation: a normal directory install copies sources into "
+        "the environment and goes stale on edit, while an editable install writes a .pth link so "
+        "the interpreter reads the sources directly; it also names the limitations (backend "
+        "support, native modules).",
+    ),
+    (
+        "u-0025",
+        "what does it mean for a uv dependency to be virtual",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/projects/dependencies.md#virtual-dependencies/0", 3),),
+        "Defines the concept — the dependency itself is not installed as a package but its "
+        "dependencies are — and states the conditions: never virtual by default, requires package "
+        "= false on a path or workspace source, with the workspace-member example showing anyio "
+        "installed but child not.",
+    ),
+    (
+        "u-0026",
+        "what does ~= mean in a version constraint",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/projects/dependencies.md#dependency-specifiers/0", 3),),
+        "Explains the operator rather than just naming it: ~= matches where the last digit is "
+        "equal or higher, so foo ~=1.2 means >=1.2,<2 and foo ~=1.2.3 means >=1.2.3,<1.3, "
+        "alongside the other specifier rules.",
+    ),
+    (
+        "u-0027",
+        "when should i reach for uv pip instead of uv's project commands",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/getting-started/features.md#the-pip-interface/0", 3),),
+        "Gives the intended-use answer: the pip interface is for manually managing environments "
+        "and packages in legacy workflows or where the high-level commands do not give enough "
+        "control, with the caveat that behaviour diverges the further you stray from common "
+        "workflows.",
+    ),
+    (
+        "u-0028",
+        "why does uv ship python-build-standalone builds instead of official python binaries",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/guides/install-python.md#getting-started/0", 3),),
+        "The note in this section gives the reason: Python does not publish official distributable "
+        "binaries, so uv uses the Astral python-build-standalone distributions.",
+    ),
+    (
+        "u-0029",
+        "why doesn't uv write my index password into pyproject.toml when i run uv add",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/authentication/http.md#persistence-of-credentials/0", 3),),
+        "Explains the reasoning directly: pyproject.toml and uv.lock are usually committed and "
+        "distributed, so uv will not persist index credentials into them, while direct-URL "
+        "credentials are persisted because there is no other way to supply them.",
+    ),
+    (
+        "u-0030",
+        "should uv.lock be committed to git",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/guides/projects.md#project-structure/uv-lock/0", 3),),
+        "Answers and justifies: uv.lock is a cross-platform lockfile of exact resolved versions, "
+        "it should be checked into version control so installations are consistent and "
+        "reproducible across machines, and although it is readable TOML it is uv-managed and "
+        "should not be hand-edited.",
+    ),
+    (
+        "u-0031",
+        "how do i make uv keep credentials in the macos keychain instead of a plaintext file",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/authentication/http.md#the-uv-credentials-store/0", 3),),
+        "The answer is spread across this section's preview note rather than one sentence: that "
+        "native storage is still preview, that it maps to Keychain Services on macOS (Credential "
+        "Manager on Windows, Secret Service on Linux), that only credentials uv added are "
+        "searched, and that UV_PREVIEW_FEATURES=native-auth turns it on. Section-scoped for that "
+        "reason.",
+    ),
+    (
+        "u-0032",
+        "why aren't my git credentials written into uv.lock when I add a private repo",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/authentication/git.md#persistence-of-credentials/0", 3),),
+        "Gives the reasoning: pyproject.toml and uv.lock are usually committed and redistributed, "
+        "so writing credentials into them is unsafe.",
+    ),
+    (
+        "u-0033",
+        "why do markers make locking harder than installing",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/concepts/resolution.md#platform-markers/0", 3),
+            ("docs/concepts/resolution.md#universal-resolution/0", 2),
+        ),
+        "Platform markers states the asymmetry: installing can evaluate the current platform's "
+        "markers, but a lockfile built that way only works for developers on the same platform, "
+        "which is why universal resolvers exist.",
+    ),
+    (
+        "u-0034",
+        "why does uv throw away the upper bound on requires-python",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/reference/internals/resolver.md#requires-python/0", 3),
+            ("docs/concepts/resolution.md#universal-resolution/0", 2),
+        ),
+        "The internals section argues it: you cannot know compatibility with an unreleased Python, "
+        "and the bound is circumvented anyway because the resolver backtracks to an older version "
+        "that lacks it. The concepts page only states the rule.",
+    ),
+    (
+        "u-0035",
+        "why can the same requirements produce a different lockfile on a second run",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/reference/internals/resolver.md#forking/0", 3),),
+        "Explains the instability: where the resolution splits depends on the order packages are "
+        "seen, which depends on preferences from uv.lock, so uv records each fork's markers in the "
+        "lockfile to pin the split points.",
+    ),
+    (
+        "u-0036",
+        "why does uv assume every wheel of a version has identical metadata",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/reference/internals/resolver.md#metadata-consistency/0", 3),),
+        "Gives both reasons: without the assumption uv would need one network request per wheel, "
+        "and a universal resolver would have to track PEP 508 markers and wheel tags as two "
+        "dimensions at once.",
+    ),
+    (
+        "u-0037",
+        "how does uv decide which package to solve for next",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/reference/internals/resolver.md#prioritization/0", 3),
+            ("docs/reference/internals/resolver.md#resolver/0", 2),
+        ),
+        "Prioritization gives the ordering - root and URL requirements, then == singletons, then "
+        "highly-conflicting packages, then the rest, first-seen within a category - plus the five- "
+        "conflict swap heuristic. The overview sketches the same ordering in one bullet.",
+    ),
+    (
+        "u-0038",
+        "why does it matter that my library declares lower bounds on its dependencies",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/resolution.md#lower-bounds/0", 3),),
+        "Explains the failure mode: without lower bounds the resolver backtracks to ancient "
+        "versions that are slow to try, often fail to build, or silently do not work with your "
+        "code.",
+    ),
+    (
+        "u-0039",
+        "why won't uv let a package from an index point at a url",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/reference/internals/resolver.md#url-dependencies/0", 3),),
+        "States the two reasons: auditability, so a single-index install never reaches outside the "
+        "index, and the fact that URLs could add versions, breaking the incremental resolver's "
+        "static-version-set assumption.",
+    ),
+    (
+        "u-0040",
+        "why doesn't naming a package in a constraints file pull it in",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/resolution.md#dependency-constraints/0", 3),),
+        "Explains the design: a constraint narrows acceptable versions but only takes effect once "
+        "the package is already pulled in as a direct or transitive dependency, which is what "
+        "makes constraints useful for transitive pins.",
+    ),
+    (
+        "u-0041",
+        "why does uv build each package in its own isolated environment",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/projects/config.md#build-isolation/0", 3),),
+        "The section opens by explaining that uv builds packages in isolated environments "
+        "alongside their declared build dependencies as per PEP 517, and then explains the failure "
+        "modes this causes for packages like flash-attn and cchardet - the explanation, not just "
+        "the setting.",
+    ),
+    (
+        "u-0042",
+        "how does uv decide whether to install my project itself into the environment",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/concepts/projects/config.md#build-systems/0", 3),
+            ("docs/concepts/projects/config.md#project-packaging/0", 2),
+        ),
+        "Build systems explains the mechanism: uv uses the presence of a [build-system] table to "
+        "decide whether the project contains a package to install, and without one it installs "
+        "only the dependencies. Project packaging restates the rule while introducing the "
+        "override.",
+    ),
+    (
+        "u-0043",
+        "should i disable build isolation or add extra build dependencies",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/projects/config.md#build-isolation/0", 3),),
+        "Section-scoped deliberately: the recommendation only makes sense across the whole "
+        "section, which states the problem, sets out the two approaches side by side, and then "
+        "recommends augmenting because disabling requires build dependencies to be pre-installed "
+        "in the project environment.",
+    ),
+    (
+        "u-0044",
+        "why doesn't match-runtime work for packages with dynamic metadata",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/concepts/projects/config.md#build-isolation/augmenting-build-dependencies/dynamic-metadata/0",
+                3,
+            ),
+        ),
+        "This subsection is the explanation: without static metadata uv must build the package "
+        "during resolution, so it cannot yet know which version of the build dependency will end "
+        "up installed, which is exactly what match-runtime would need.",
+    ),
+    (
+        "u-0045",
+        "why should i make a dedicated jupyter kernel for my project",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/guides/integration/jupyter.md#using-jupyter-within-a-project/creating-a-kernel/0",
+                3,
+            ),
+        ),
+        "The section gives the reasoning: a kernel lets the Jupyter server run in one environment "
+        "while the notebook runs in the project's, so packages installed from inside the notebook "
+        "land in the project environment.",
+    ),
+    (
+        "u-0046",
+        "why does uv init set up a build system and a src directory by default",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/concepts/projects/init.md#/0", 3),
+            ("docs/concepts/projects/config.md#build-systems/0", 2),
+        ),
+        "The page preamble states the rationale: defining a build system enables packaging "
+        "features such as command-line entry points and avoids confusion with the Python import "
+        "system, and names --no-package and --bare as the ways out. The build systems section "
+        "frames what a build system does.",
+    ),
+    (
+        "u-0047",
+        "why cache the uv directory between ci jobs",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/guides/integration/gitlab.md#caching/0", 3),),
+        "The caching section states the reason - persisting the uv cache between runs improves "
+        "performance - and shows the keyed cache plus the prune step that keeps the cache from "
+        "growing.",
+    ),
+    (
+        "u-0048",
+        "how does inline script metadata let the same script run on a cloud machine",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/guides/integration/coiled.md#running-scripts-on-the-cloud-with-coiled/0", 3),
+            ("docs/guides/integration/coiled.md#managing-script-dependencies-with-uv/0", 2),
+        ),
+        "The cloud section opens with the explanation: inline script metadata makes the script "
+        "self-contained, carrying everything needed to run it, which is what makes it portable to "
+        "a remote machine. The earlier section frames what that metadata is.",
+    ),
+    (
+        "u-0049",
+        "why is it discouraged to keep both uv.lock and requirements.txt",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/projects/export.md#requirements-txt-format/basic-usage/0", 3),),
+        "The note in this subsection is the only place the recommendation and its reasoning "
+        "appear: uv.lock is more powerful and expresses features requirements.txt cannot, so "
+        "exporting one is a sign worth discussing upstream.",
+    ),
+    (
+        "u-0050",
+        "if the same setting is in pyproject.toml, an environment variable and on the command "
+        "line, which one wins",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/configuration-files.md#/0", 3),),
+        "The preamble states the full precedence chain: system < user < project for persistent "
+        "files, environment variables above all persistent configuration, and the command line "
+        "above both. It also explains that scalars are overridden while arrays are concatenated, "
+        "which is the part a reader gets wrong.",
+    ),
+    (
+        "u-0051",
+        "why does uv refuse to install a package from pypi once it found it on my private index",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/indexes.md#searching-across-multiple-indexes/0", 3),),
+        "The answer is the rationale for the first-index default: limiting candidates to the first "
+        "index that has the package prevents dependency-confusion attacks, with the torchtriton "
+        "incident cited. The section also lists the unsafe-first-match and unsafe-best-match opt- "
+        "outs and why they are called unsafe.",
+    ),
+    (
+        "u-0052",
+        "how does uv decide which index to consult first",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/concepts/indexes.md#defining-an-index/0", 3),
+            ("docs/concepts/indexes.md#index-url-and-extra-index-url/0", 2),
+        ),
+        "Defining an index states the ordering rule: indexes are consulted in definition order, "
+        "command-line indexes outrank configured ones, and the default index is always lowest "
+        "priority wherever it appears in the list. The pip-compat section restates the same two "
+        "rules for --index-url and --extra-index-url.",
+    ),
+    (
+        "u-0053",
+        "how do i keep uv from ever sending credentials to one of my indexes",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/concepts/indexes.md#authentication/disabling-authentication/0", 3),
+            ("docs/concepts/indexes.md#authentication/using-credential-providers/0", 2),
+        ),
+        'Disabling authentication documents authenticate = "never", which stops any credential '
+        "lookup for that index and errors if credentials are supplied anyway. Using credential "
+        'providers earns a 2 because it explains the default search behaviour that "never" is '
+        'suppressing, and the opposite "always" setting.',
+    ),
+    (
+        "u-0054",
+        "why am i warned about a preview feature when i never enabled preview",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/concepts/preview.md#using-preview-features/0", 3),
+            ("docs/concepts/preview.md#/0", 2),
+        ),
+        "This section explains the mechanism: when the behaviour change is gated by user "
+        "interaction, using the feature is itself the opt-in, so pointing uv pip install at a "
+        "pylock.toml works without configuration but prints a preview warning, which enabling the "
+        "feature silences. The page preamble frames preview features as opt-in and why they exist.",
+    ),
+    (
+        "u-0055",
+        "why does uv change my lockfile when i only wanted to run a command",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/concepts/projects/sync.md#automatic-lock-and-sync/0", 3),
+            ("docs/concepts/projects/sync.md#/0", 2),
+        ),
+        "This section explains that locking and syncing are automatic — uv run locks and syncs "
+        "before invoking the command, and lockfile readers such as uv tree update it first — and "
+        "gives the three ways out: --locked, --frozen and --no-sync. The page preamble is a 2 for "
+        "defining what locking and syncing each mean.",
+    ),
+    (
+        "u-0056",
+        "why did uv sync uninstall a package i had installed by hand",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/concepts/projects/sync.md#syncing-the-environment/handling-of-extraneous-packages/0",
+                3,
+            ),
+        ),
+        "This section explains the behaviour and its name: uv sync is exact by default and removes "
+        "anything absent from the lockfile, --inexact retains those packages, and uv run is "
+        "inexact by default with --exact to opt in.",
+    ),
+    (
+        "u-0057",
+        "why is it safe to run several uv commands at the same time",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/cache.md#cache-safety/0", 3),),
+        "This section gives the reason rather than a value: the cache is thread-safe and append- "
+        "only, so concurrent readers and writers are fine, and uv takes a file-based lock on the "
+        "target virtual environment during installation. It also carries the caveat that manual "
+        "edits to the cache are never safe.",
+    ),
+    (
+        "u-0058",
+        "why can two different uv releases share one cache directory",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/cache.md#cache-versioning/0", 3),),
+        "The explanation is the bucket versioning scheme: each bucket carries a version, a "
+        "breaking format change bumps it, and within a version changes are forwards- and "
+        "backwards-compatible, so an incompatible release simply will not read the bucket. The "
+        "0.4.12/0.4.13 example is worked through here.",
+    ),
+    (
+        "u-0059",
+        "should i install a tool or just run it with uvx",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/concepts/tools.md#execution-vs-installation/0", 3),
+            ("docs/concepts/tools.md#the-uv-tool-interface/0", 2),
+        ),
+        "This section exists to answer exactly this trade-off: execution is usually more "
+        "appropriate, and installation is for when the tool must be visible to other programs — a "
+        "script you do not control, or a Docker image. The interface section frames the two modes "
+        "without weighing them.",
+    ),
+    (
+        "u-0060",
+        "what happens to the environment uvx creates once the tool exits",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/tools.md#tool-environments/0", 3),),
+        "Explains the mechanism: the uvx environment lives in the cache directory and is treated "
+        "as disposable — kept only to avoid the overhead of repeated invocations, deleted by uv "
+        "cache clean, and recreated automatically if it is gone.",
+    ),
+    (
+        "u-0061",
+        "how does uvx decide which version of a tool to run",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/tools.md#tool-versions/0", 3),),
+        "Sets out the selection rule: latest on the first invocation, the cached version "
+        "afterwards unless a version is requested or the cache is refreshed, and the installed "
+        "version once uv tool install has been used — with @latest and --isolated as the escapes.",
+    ),
+    (
+        "u-0062",
+        "why does the lambda dockerfile use a multi-stage build",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/guides/integration/aws-lambda.md#deploying-a-docker-image/", 3),),
+        "Section-scoped deliberately: the rationale is developed across the whole section — the "
+        "two-stage plan is stated before the Dockerfile, and the payoff (minimal image size "
+        "because the uv binary never reaches the final image, maximal cache reuse because "
+        "dependencies install separately from application code) is spelled out after it with a "
+        "cached build log.",
+    ),
+    (
+        "u-0063",
+        "why put lambda dependencies in a layer instead of in the function package",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/guides/integration/aws-lambda.md#deploying-a-zip-archive/using-a-lambda-layer/0",
+                3,
+            ),
+        ),
+        "Explains the motivation before the mechanics: separating dependencies from application "
+        "code lets the dependency layer be reused across deployments, improving cold-start "
+        "performance for application updates, and it is why --prefix is used instead of --target.",
+    ),
+    (
+        "u-0064",
+        "why must keyring and keyrings.codeartifact be installed from somewhere other than "
+        "codeartifact",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/guides/integration/aws.md#authenticate-with-keyring-and-keyrings-codeartifact/0",
+                3,
+            ),
+        ),
+        "Gives the circularity argument: both packages are required in order to authenticate to "
+        "the registry, so they must be pre-installed from another source; it also explains that "
+        "the plugin wraps boto3 to mint and refresh short-lived tokens in the system keyring, and "
+        "that uv only supports keyring in subprocess mode.",
+    ),
+    (
+        "u-0065",
+        "how can i run a uv script directly without typing uv run",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/guides/scripts.md#using-a-shebang-to-create-an-executable-file/0", 3),),
+        "Explains the mechanism end to end: a '#!/usr/bin/env -S uv run --script' shebang plus "
+        "chmod +x makes the file executable from the PATH or the current folder, and inline "
+        "dependency metadata still works underneath the shebang.",
+    ),
+    (
+        "u-0066",
+        "what does uv's platform tier system mean",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/reference/policies/platforms.md#/0", 3),),
+        "Explains the scheme rather than a single value: tier 1 is 'guaranteed to work' and "
+        "continuously built, tested and developed against; tier 2 is 'guaranteed to build' and "
+        "continuously built but not tested; tier 3 is best effort, possibly unbuilt but open to "
+        "bug-fix patches. It also notes official binaries and wheels cover tiers 1 and 2.",
+    ),
+    (
+        "u-0067",
+        "why would i want uv to use my system's certificate store",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/authentication/certificates.md#system-certificates/0", 3),),
+        "Gives the reasoning, not just the switch: uv defaults to bundled Mozilla roots, and you "
+        "would want the platform store when you depend on a corporate trust root such as one "
+        "required by a mandatory proxy; verification is then delegated to the OS via rustls- "
+        "platform-verifier.",
+    ),
+    (
+        "u-0068",
+        "why do pytorch versions have a +cpu or +cu130 suffix",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/guides/integration/pytorch.md#installing-pytorch/0", 3),),
+        "Explains that PyTorch ships a distinct build per accelerator and, absent a standard "
+        "mechanism for expressing that, encodes the accelerator in the local version specifier.",
+    ),
+    (
+        "u-0069",
+        "why should a pytorch index be marked explicit",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/guides/integration/pytorch.md#using-a-pytorch-index/", 3),
+            ("docs/guides/integration/pytorch.md#installing-gpu-enabled-pytorch-extensions/0", 2),
+        ),
+        "Gives the reason: explicit = true confines the index to torch, torchvision and friends so "
+        "generic dependencies like jinja2 still come from PyPI. The GPU-extensions section "
+        "restates the rule in one clause for the Astral index.",
+    ),
+    (
+        "u-0070",
+        "why does uv insist on a virtual environment when pip does not",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/pip/environments.md#/0", 3),),
+        "The introduction gives the reasoning — installations' environments should not be "
+        "modified, especially OS-managed ones, and a virtual environment is the lightweight "
+        "isolation — then states that unlike pip, uv requires one by default.",
+    ),
+    (
+        "u-0071",
+        "why does running python -m uv pick a different environment",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/pip/environments.md#using-arbitrary-python-environments/0", 3),),
+        "Explains that when invoked as `python -m uv`, uv defaults to the parent interpreter's "
+        "environment rather than its usual discovery, and warns that this adds startup overhead.",
+    ),
+    (
+        "u-0072",
+        "what does installing a package in editable mode actually change",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/pip/packages.md#editable-packages/0", 3),),
+        "Gives the property that defines editable installs — changes to the source take effect "
+        "without reinstalling — and shows -e for the current project and for a project in another "
+        "directory.",
+    ),
+    (
+        "u-0073",
+        "why should a tool read uv workspace metadata instead of parsing uv.lock",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/reference/internals/metadata.md#/0", 3),),
+        "Gives the reason for the command's existence: lockfiles are not a stable format uv "
+        "guarantees anything about, so tools wanting lockfile information should prefer this "
+        "output.",
+    ),
+    (
+        "u-0074",
+        "why does the dependency graph contain two versions of the same package",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/reference/internals/metadata.md#handling-multiple-versions-of-a-package/", 3),),
+        "Names the two causes — platform-specific requirements that conflict, and declared "
+        "workspace conflicts — and states the guarantee that a conflict-free selection never "
+        "installs two versions.",
+    ),
+    (
+        "u-0075",
+        "why do keyring and artifacts-keyring have to come from somewhere other than azure "
+        "artifacts",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/guides/integration/azure.md#authenticate-with-keyring-and-artifacts-keyring/0",
+                3,
+            ),
+        ),
+        "Explains the bootstrap problem directly: because both packages are required in order to "
+        "authenticate to Artifacts, they must be pre-installed from another source, and shows "
+        "installing them from public PyPI.",
+    ),
+    (
+        "u-0076",
+        "why does uv build a package instead of downloading a wheel",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/reference/troubleshooting/build-failures.md#why-does-uv-build-a-package/0", 3),),
+        "Explains the two situations: during resolution uv needs metadata for every platform and "
+        "builds only after wheels and static sdist metadata both fail; during installation it "
+        "builds when no wheel matches the current platform.",
+    ),
+    (
+        "u-0077",
+        "who decides which files end up in the wheel uv builds",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/projects/build.md#/0", 3),),
+        "The opening admonition explains the division of labour: uv acts only as a build frontend, "
+        "choosing the Python version and invoking the backend, while the backend named in [build- "
+        "system] determines included files and distribution filenames.",
+    ),
+    (
+        "u-0078",
+        "when is a workspace the right way to organize my packages",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/concepts/projects/workspaces.md#when-not-to-use-workspaces/0", 3),
+            ("docs/concepts/projects/workspaces.md#/0", 2),
+        ),
+        "The section argues both directions: isolation and separation of concerns, extension- "
+        "module and plugin cases, versus conflicting requirements or a wish for per-member "
+        "environments, where path dependencies are preferable. The intro only states what a "
+        "workspace is.",
+    ),
+    (
+        "u-0079",
+        "how can I stop CI from redownloading packages on every run",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/guides/integration/github.md#caching/0", 3),),
+        "The section is about persisting uv's cache across workflow runs, via setup-uv's enable- "
+        "cache or actions/cache keyed on uv.lock with UV_CACHE_DIR, plus the self-hosted runner "
+        "caveat.",
+    ),
+    (
+        "u-0080",
+        "why does the recommended release workflow build and publish in separate jobs",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/guides/integration/github.md#publishing-to-pypi/0", 3),),
+        "The admonition explains the split: the publishing job holds the id-token: write "
+        "credential and does not share its permissions with the build step, reducing the surface "
+        "for supply chain attacks.",
+    ),
+    (
+        "u-0081",
+        "why can't keyring itself be installed from artifact registry",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/guides/integration/google.md#authenticate-with-keyring-and-keyrings-google-artifactregistry-auth/0",
+                3,
+            ),
+        ),
+        "The section states that because keyring and the plugin are what authenticate to Artifact "
+        "Registry, they must be pre-installed from another source, and explains the subprocess- "
+        "only support and the PATH requirement.",
+    ),
+    (
+        "u-0082",
+        "why does importing a package I installed as a tool fail",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/guides/tools.md#installing-tools/0", 3),),
+        "The section shows exactly this failure and explains it: unlike uv pip install, a tool "
+        "install does not make the modules available in the current environment, and that "
+        "isolation is deliberate, to reduce conflicts between tools, scripts and projects.",
+    ),
+    (
+        "u-0083",
+        "why doesn't uv pick up my pip.conf or PIP_INDEX_URL",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/pip/compatibility.md#configuration-files-and-environment-variables/0", 3),),
+        "The section states uv does not read pip-specific configuration or environment variables "
+        "and gives five reasons, then points at uv's own variables and uv.toml as the replacement.",
+    ),
+    (
+        "u-0084",
+        "why does uv ignore the upper bound on requires-python",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/pip/compatibility.md#requires-python-upper-bounds/0", 3),),
+        "The section states only lower bounds are considered, with >=3.8, <4 treated as >=3.8, and "
+        "explains why: honouring upper bounds makes resolvers backtrack to the first published "
+        "version that omits them.",
+    ),
+    (
+        "u-0085",
+        "why will uv not move me from python 3.12 to 3.13 automatically",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/python-versions.md#upgrading-python-versions/0", 3),),
+        "Gives the reason rather than a value: transparent upgrades are limited to patch releases "
+        "because changing minor versions can affect dependency resolution. It also notes upgrades "
+        "apply only to uv-managed versions.",
+    ),
+    (
+        "u-0086",
+        "how does uv decide which python interpreter to use",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/concepts/python-versions.md#discovery-of-python-versions/0", 3),
+            ("docs/concepts/python-versions.md#finding-a-python-executable/0", 2),
+        ),
+        "Explains the search order and the rules applied to it: install dir, then `PATH`, then the "
+        "Windows registry and Store; non-executables skipped, each candidate queried for metadata, "
+        "first satisfying executable used; newest preferred for managed versions but first- "
+        "compatible for system ones. The find section is where a reader can observe the outcome.",
+    ),
+    (
+        "u-0087",
+        "why does uv download prebuilt cpython instead of compiling it like pyenv",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/concepts/python-versions.md#managed-python-distributions/cpython-distributions/0",
+                3,
+            ),
+        ),
+        "Gives the explanation: Python publishes no official distributable binaries, so uv uses "
+        "python-build-standalone; building from source as pyenv does needs preinstalled system "
+        "dependencies and producing optimized PGO/LTO builds is very slow.",
+    ),
+    (
+        "u-0088",
+        "how does renovate know a repository is managed with uv",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/guides/integration/renovate.md#uv-lock-output/0", 3),
+            ("docs/guides/integration/renovate.md#/0", 2),
+        ),
+        "States the detection rule — Renovate uses the presence of a `uv.lock` file — and what "
+        "follows from it: upgrades proposed for project, optional and development dependencies, "
+        "with both `pyproject.toml` and `uv.lock` updated. The intro only frames that uv is "
+        "supported by Renovate.",
+    ),
+    (
+        "u-0089",
+        "when should i not use the uv build backend",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/concepts/build-backend.md#choosing-a-build-backend/0", 3),
+            ("docs/concepts/build-backend.md#/0", 2),
+        ),
+        "This section gives the two reasons to pick something else: the uv backend only supports "
+        "pure Python code, so extension modules need another backend, and hatchling is suggested "
+        "when build scripts or a more flexible layout are required. The intro frames the choice by "
+        "noting uv supports all PEP 517 backends.",
+    ),
+    (
+        "u-0090",
+        "why do pip-tools projects need one locked requirements file per operating system",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/guides/migration/pip-to-project.md#understanding-pip-workflows/platform-specific-dependencies/0",
+                3,
+            ),
+        ),
+        "Explains the cause with a worked example: pip-compile output is only valid on the "
+        "platform it was generated on, shown by `colorama` appearing as a `tqdm` dependency on "
+        "Windows but not Linux, so each supported platform needs its own lock file.",
+    ),
+    (
+        "u-0091",
+        "do i have to anchor include and exclude patterns to the project root",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/concepts/build-backend.md#file-inclusion-and-exclusion/include-and-exclude-syntax/0",
+                3,
+            ),
+            ("docs/concepts/build-backend.md#file-inclusion-and-exclusion/0", 2),
+        ),
+        "Explains the asymmetry a reader trips over: includes are anchored (`pyproject.toml` "
+        "matches only the root one, `src/**` recurses from the root) while excludes are not, so "
+        "`__pycache__` matches at any depth unless you prefix a `/`. The parent section supplies "
+        "the precedence rule the syntax operates under.",
+    ),
+    (
+        "u-0092",
+        "why should uv.lock be committed to version control",
+        (EvalSlice.CONCEPTUAL,),
+        (("docs/concepts/projects/layout.md#the-lockfile/0", 3),),
+        "Gives the reasoning rather than a value: the lockfile holds exact resolved versions, so "
+        "checking it in makes installs consistent and reproducible across machines and pins the "
+        "exact version set used when deploying.",
+    ),
+    (
+        "u-0093",
+        "UV_KEYRING_PROVIDER",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/authentication/http.md#keyring-providers/0", 3),),
+        "This section is where the variable is defined: it explains what a keyring provider is and "
+        "states that setting UV_KEYRING_PROVIDER=subprocess (or --keyring-provider subprocess, or "
+        "tool.uv.keyring-provider) enables the only supported provider type.",
+    ),
+    (
+        "u-0094",
+        "include-group",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/projects/dependencies.md#development-dependencies/nesting-groups/0", 3),),
+        "The nesting section is where include-group is introduced and shown in a [dependency- "
+        "groups] table, along with the constraint that an included group's dependencies cannot "
+        "conflict with the including group's.",
+    ),
+    (
+        "u-0095",
+        "tool.uv.dev-dependencies",
+        (EvalSlice.EXACT,),
+        (
+            (
+                "docs/concepts/projects/dependencies.md#development-dependencies/legacy-dev-dependencies/0",
+                3,
+            ),
+        ),
+        "Documents the legacy field itself: what it was used for before [dependency-groups] was "
+        "standardized, that its contents are combined with dependency-groups.dev, that it will "
+        "eventually be removed, and that uv add --dev reuses it when present.",
+    ),
+    (
+        "u-0096",
+        "NETRC environment variable",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/authentication/http.md#netrc-files/0", 3),),
+        "The netrc section is the only place that documents NETRC: it says the target .netrc path "
+        "is loaded from the NETRC environment variable if defined, falling back to ~/.netrc.",
+    ),
+    (
+        "u-0097",
+        "--no-managed-python",
+        (EvalSlice.EXACT,),
+        (("docs/guides/install-python.md#using-existing-python-versions/0", 3),),
+        "The section that documents the flag: it explains uv uses a satisfying system Python with "
+        "no configuration, and that --no-managed-python is how you force uv to use the system "
+        "Python.",
+    ),
+    (
+        "u-0098",
+        "--credential_helper",
+        (EvalSlice.EXACT,),
+        (("docs/guides/integration/bazel.md#authentication/0", 3),),
+        "The Bazel authentication section is the only place documenting this option: Bazel 7 and "
+        "newer supports credential helpers via --credential_helper, and it shows the .bazelrc "
+        "lines binding hosts to the uv auth helper wrapper.",
+    ),
+    (
+        "u-0099",
+        "--upgrade-package",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/guides/projects.md#managing-dependencies/0", 3),
+            ("docs/concepts/projects/dependencies.md#changing-dependencies/0", 2),
+        ),
+        "The projects guide documents the flag: uv lock --upgrade-package requests updates that "
+        "package to the latest compatible version while leaving the rest of the lockfile intact. "
+        "The changing-dependencies section only mentions it in a note as the way to force a locked "
+        "version forward.",
+    ),
+    (
+        "u-0100",
+        "UV_NO_HF_TOKEN",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/authentication/third-party.md#hugging-face-support/0", 3),),
+        "This is the section that defines the variable: setting UV_NO_HF_TOKEN=1 disables uv's "
+        "automatic Hugging Face authentication.",
+    ),
+    (
+        "u-0101",
+        "required-environments",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/concepts/resolution.md#required-environments/0", 3),
+            ("docs/concepts/resolution.md#common-marker-values/0", 2),
+        ),
+        "The required-environments section defines the setting and what it forces uv to guarantee; "
+        "common marker values only states in a clause that the setting takes PEP 508 markers.",
+    ),
+    (
+        "u-0102",
+        "exclude-newer-package",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/concepts/resolution.md#reproducible-resolutions/0", 3),
+            ("docs/concepts/resolution.md#dependency-cooldowns/0", 2),
+        ),
+        "Reproducible resolutions defines the option, its per-package syntax and the =false opt- "
+        "out; the cooldowns section only reuses the same option with a duration value.",
+    ),
+    (
+        "u-0103",
+        "tool.uv.dependency-metadata",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/resolution.md#dependency-metadata/0", 3),),
+        "This is the table's own documentation: why it exists, the chumpy and flash-attn examples, "
+        "and which Metadata 2.3 fields uv actually reads from an entry.",
+    ),
+    (
+        "u-0104",
+        "exclude-dependencies",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/resolution.md#dependency-exclusions/0", 3),),
+        "The exclusions section is where the exclude-dependencies key is defined, in both its "
+        "global form and its package-scoped inline-table form.",
+    ),
+    (
+        "u-0105",
+        "upload-time",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/resolution.md#reproducible-resolutions/0", 3),),
+        "The admonition here is what documents this index field: it names PEP 700, says a "
+        "distribution lacking upload-time is treated as unavailable, lists the three opt-outs, and "
+        "notes PyPI always provides it.",
+    ),
+    (
+        "u-0106",
+        "Splitting resolution on",
+        (EvalSlice.EXACT,),
+        (("docs/reference/internals/resolver.md#forking/0", 3),),
+        "This exact log line is documented in the forking tip as the marker to grep for in uv lock "
+        "-v output when you want to see where the resolver split.",
+    ),
+    (
+        "u-0107",
+        "git+ssh://",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/authentication/git.md#ssh-authentication/0", 3),),
+        "The SSH section is where this URL scheme is defined, with both the plain-host and the "
+        "alternate-host-alias forms and the required git username.",
+    ),
+    (
+        "u-0108",
+        "prerelease-package",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/resolution.md#pre-release-handling/0", 3),),
+        "Defines the setting in both forms, --prerelease-package foo=allow and the [tool.uv] "
+        "table, as the per-package override of the global pre-release strategy.",
+    ),
+    (
+        "u-0109",
+        "override-dependencies",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/resolution.md#dependency-overrides/0", 3),),
+        "Names tool.uv.override-dependencies as the pyproject.toml key for overrides and shows "
+        "both the plain and the package-scoped inline-table entry forms.",
+    ),
+    (
+        "u-0110",
+        "UV_SYSTEM_PYTHON",
+        (EvalSlice.EXACT,),
+        (("docs/guides/integration/gitlab.md#using-uv-pip/0", 3),),
+        "The uv pip section is where UV_SYSTEM_PYTHON is defined for this page: it is the variable "
+        "that lets uv pip install into the system environment instead of requiring a virtualenv, "
+        "with --no-system given as the opt-out.",
+    ),
+    (
+        "u-0111",
+        "UV_NO_MODIFY_PATH=1",
+        (EvalSlice.EXACT,),
+        (("docs/getting-started/installation.md#upgrading-uv/0", 3),),
+        "This section states that uv self update re-runs the installer and can modify shell "
+        "profiles, and that setting UV_NO_MODIFY_PATH=1 disables that behavior. It is the only "
+        "place the variable is documented.",
+    ),
+    (
+        "u-0112",
+        "project.requires-python",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/projects/config.md#python-version-requirement/0", 3),),
+        "This section is where the project.requires-python field is declared and explained: where "
+        "it goes in pyproject.toml, that setting it is recommended, and what it controls.",
+    ),
+    (
+        "u-0113",
+        "[project.scripts]",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/concepts/projects/config.md#entry-points/command-line-interfaces/0", 3),
+            ("docs/concepts/projects/config.md#entry-points/0", 1),
+        ),
+        "The command-line interfaces subsection is the one that documents the [project.scripts] "
+        "table, with the module:function syntax and the uv run invocation. The parent entry points "
+        "section only names command line interfaces as a bullet in a list, hence grade 1.",
+    ),
+    (
+        "u-0114",
+        "uv:package:marker",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/projects/export.md#cyclonedx-sbom-format/sbom-structure/0", 3),),
+        "This subsection lists the custom properties uv adds to SBOM components and is the only "
+        "place uv:package:marker is defined, as the environment marker property.",
+    ),
+    (
+        "u-0115",
+        "UV_INDEX_INTERNAL_PROXY_PASSWORD",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/indexes.md#authentication/providing-credentials-directly/0", 3),),
+        "This section is where that literal comes from and where the scheme behind it is defined: "
+        "UV_INDEX_<NAME>_USERNAME / _PASSWORD, with the index name uppercased and non-alphanumeric "
+        "characters replaced by underscores; internal-proxy is the example that produces this "
+        "exact name.",
+    ),
+    (
+        "u-0116",
+        "UV_PREVIEW_FEATURES",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/preview.md#enabling-preview-features/0", 3),),
+        "This section defines the variable alongside its flag: UV_PREVIEW_FEATURES takes a comma- "
+        "separated list, mirroring --preview-features, and sits next to UV_PREVIEW and the "
+        "preview-features key in uv.toml / [tool.uv] / PEP 723 metadata.",
+    ),
+    (
+        "u-0117",
+        "--no-install-workspace",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/concepts/projects/sync.md#partial-installations/0", 3),
+            (
+                "docs/guides/integration/docker.md#optimizations/intermediate-layers/intermediate-layers-in-workspaces/0",
+                2,
+            ),
+        ),
+        "Partial installations is where the flag is defined: it skips every workspace member "
+        "including the root project, while still installing their dependencies. The Docker "
+        "workspaces subsection is a 2 for showing when to reach for it and pairing it with "
+        "--frozen, but it does not define it.",
+    ),
+    (
+        "u-0118",
+        "tool.uv.cache-keys",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/cache.md#dynamic-metadata/0", 3),),
+        "This section defines the setting rather than merely mentioning it: it says cache-keys "
+        "adds file paths and Git commit hashes to a package's cache key, warns that setting it "
+        "replaces the defaults, and shows the file, git, glob, env and dir forms.",
+    ),
+    (
+        "u-0119",
+        "UV_INDEX_PRIVATE_REGISTRY_PASSWORD",
+        (EvalSlice.EXACT,),
+        (("docs/guides/integration/aws.md#authenticate-with-an-aws-access-token/0", 3),),
+        "This section is where that variable is defined and its value explained: it carries the "
+        "CodeArtifact authorization token, PRIVATE_REGISTRY must match the index name declared in "
+        "pyproject.toml, and the paired username variable must be set to aws.",
+    ),
+    (
+        "u-0120",
+        "publish-url",
+        (EvalSlice.EXACT,),
+        (("docs/guides/integration/aws.md#publishing-packages/0", 3),),
+        "The publishing section documents the key: it is added to the [[tool.uv.index]] entry so "
+        "uv publish --index can target the registry, and it explains that the UV_PUBLISH_URL "
+        "alternative is worse because uv cannot then check whether the package was already "
+        "published.",
+    ),
+    (
+        "u-0121",
+        'package-ecosystem: "uv"',
+        (EvalSlice.EXACT,),
+        (("docs/guides/integration/dependabot.md#/0", 3),),
+        "The page documents this literal: adding the uv package-ecosystem to the updates list in "
+        "dependabot.yml is what enables Dependabot to update uv.lock files, and the example shows "
+        "the exact YAML it belongs in.",
+    ),
+    (
+        "u-0122",
+        "allow-insecure-host",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/authentication/certificates.md#insecure-hosts/0", 3),),
+        "This is the section that documents the option: the pyproject.toml form, the accepted "
+        "values (hostname or hostname-port pair), that it only applies to HTTPS, and the warning "
+        "about using it outside trusted environments.",
+    ),
+    (
+        "u-0123",
+        "exclude-newer",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/guides/scripts.md#improving-reproducibility/0", 3),
+            ("docs/guides/integration/dependabot.md#dependency-cooldown/0", 1),
+        ),
+        "The scripts section defines the field: it goes in the tool.uv table of inline metadata, "
+        "limits uv to distributions released before a given RFC 3339 timestamp, and is shown in a "
+        "complete example. The Dependabot section only names the option in passing while "
+        "recommending a matching cooldown.",
+    ),
+    (
+        "u-0124",
+        "VIRTUAL_ENV",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/pip/environments.md#using-arbitrary-python-environments/0", 3),
+            ("docs/pip/environments.md#discovery-of-python-environments/0", 2),
+        ),
+        "This section defines the variable's effect — setting VIRTUAL_ENV=/path/to/venv makes uv "
+        "install there, and a directory that is not PEP 405 compliant is ignored. The discovery "
+        "section only lists it as the first place searched.",
+    ),
+    (
+        "u-0125",
+        "--group",
+        (EvalSlice.EXACT,),
+        (("docs/pip/packages.md#installing-packages-from-files/0", 3),),
+        "The section defining the flag: a bare group name from the current directory's "
+        "pyproject.toml, --project to change where groups are sourced from, and per-group "
+        "`path:group` syntax.",
+    ),
+    (
+        "u-0126",
+        "UV_PUBLISH_URL",
+        (EvalSlice.EXACT,),
+        (("docs/guides/integration/azure.md#publishing-packages/0", 3),),
+        "The publishing section introduces UV_PUBLISH_URL as the way to run uv publish without a "
+        "publish-url in pyproject.toml, and gives the caveat that uv then cannot check whether the "
+        "package is already published.",
+    ),
+    (
+        "u-0127",
+        "workspace_root",
+        (EvalSlice.EXACT,),
+        (("docs/reference/internals/metadata.md#schema/", 3),),
+        "The annotated example is where the field is defined, as the directory the uv.lock can be "
+        "found in, alongside the neighbouring top-level fields.",
+    ),
+    (
+        "u-0128",
+        "error: command 'gcc' failed: No such file or directory",
+        (EvalSlice.EXACT,),
+        (
+            (
+                "docs/reference/troubleshooting/build-failures.md#common-build-failures/command-is-not-found/0",
+                3,
+            ),
+        ),
+        "The worked example for a missing command is this exact gcc error, with the fix (install "
+        "it via the system package manager) and the tips about clang for uv-managed Pythons and "
+        "build-essential.",
+    ),
+    (
+        "u-0129",
+        "astral-sh/uv-pre-commit",
+        (EvalSlice.EXACT,),
+        (("docs/guides/integration/pre-commit.md#/0", 3),),
+        "Names astral-sh/uv-pre-commit as the official hook repository and uses it as the `repo` "
+        "value in every configuration example, including the `rev` pin.",
+    ),
+    (
+        "u-0130",
+        "UV_TORCH_BACKEND",
+        (EvalSlice.EXACT,),
+        (("docs/guides/integration/pytorch.md#automatic-backend-selection/0", 3),),
+        "Documents the variable as the environment-variable form of --torch-backend, with both the "
+        "`auto` value and a pinned value such as cu130.",
+    ),
+    (
+        "u-0131",
+        "Private :: Do Not Upload",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/projects/build.md#preventing-publish-to-pypi/0", 3),),
+        "This classifier string appears only here, together with what it does (PyPI rejects the "
+        "upload) and the limit that it does not affect alternative registries.",
+    ),
+    (
+        "u-0132",
+        "tool.uv.workspace",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/projects/workspaces.md#getting-started/0", 3),),
+        "The section documents the table: adding it creates a workspace rooted at that package, "
+        "and it takes the required members and optional exclude keys, both lists of globs.",
+    ),
+    (
+        "u-0133",
+        "--from",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/guides/tools.md#commands-with-different-package-names/0", 3),
+            ("docs/guides/tools.md#requesting-different-sources/0", 2),
+        ),
+        "The first section introduces --from as the option that runs a command from a package with "
+        "a different name (http from httpie); the sources section reuses the same option for git "
+        "URLs rather than defining it.",
+    ),
+    (
+        "u-0134",
+        "centralized-project-envs",
+        (EvalSlice.EXACT,),
+        (
+            (
+                "docs/concepts/projects/layout.md#the-project-environment/centralized-project-environments/0",
+                3,
+            ),
+            ("docs/concepts/projects/layout.md#the-project-environment/0", 2),
+        ),
+        "This subsection is where the preview feature named by that literal is documented: the "
+        "environment moves into the cache, uv tries to keep a `.venv` link, and explicit paths "
+        "such as `UV_PROJECT_ENVIRONMENT` or `--active` are exempt. The parent section documents "
+        "the default `.venv` behaviour the feature replaces.",
+    ),
+    (
+        "u-0135",
+        ".python-version",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/concepts/python-versions.md#requesting-a-version/python-version-files/0", 3),
+            ("docs/concepts/python-versions.md#project-python-versions/0", 2),
+        ),
+        "This subsection documents the file itself: how uv searches the working directory and its "
+        "parents then the user configuration directory, how `uv python pin` (and `--global`) "
+        "creates one, that `--no-config` disables discovery, and that the search stops at project "
+        "or workspace boundaries. The project section adds where the file sits relative to "
+        "`requires-python`.",
+    ),
+    (
+        "u-0136",
+        "python-downloads",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/python-versions.md#disabling-automatic-python-downloads/0", 3),),
+        "This is the section that defines the option: its default `automatic`, the `manual` value "
+        "that restricts downloads to `uv python install`, and that it can live in a persistent "
+        "configuration file or be overridden with `--no-python-downloads`.",
+    ),
+    (
+        "u-0137",
+        "--bump",
+        (EvalSlice.EXACT,),
+        (("docs/guides/package.md#updating-your-version/0", 3),),
+        "Section-scoped deliberately: the option's meaning is spread across this whole section — "
+        "the accepted components (major, minor, patch, stable, alpha, beta, rc, post, dev), the "
+        "largest-to-smallest ordering when repeated, the `--bump <component>=<value>` form, and "
+        "the worked stable-to-prerelease and prerelease-to-stable transitions. No single chunk "
+        "carries all of it.",
+    ),
+    (
+        "u-0138",
+        "--no-attestations",
+        (EvalSlice.EXACT,),
+        (
+            (
+                "docs/guides/package.md#publishing-your-package/uploading-attestations-with-your-package/0",
+                3,
+            ),
+        ),
+        "This subsection is where the flag is defined and motivated: uv uploads attestations by "
+        "default, some third-party indexes reject uploads containing them, and `--no-attestations` "
+        "or `UV_PUBLISH_NO_ATTESTATIONS` turns that default off.",
+    ),
+    (
+        "u-0139",
+        "module-name",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/concepts/build-backend.md#modules/0", 3),
+            ("docs/concepts/build-backend.md#namespace-packages/0", 2),
+        ),
+        "The Modules section is where `module-name` is defined: it states the default "
+        "(`src/<package_name>/__init__.py`), the name-normalization rule, and shows the "
+        "`[tool.uv.build-backend]` table where `module-name` and `module-root` are set. Namespace "
+        "packages extends the same setting (a `.` in `module-name`, or a list of names) without "
+        "defining it.",
+    ),
+    (
+        "u-0140",
+        "platform_machine",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/resolution.md#common-marker-values/0", 3),),
+        "Common marker values is the only place `platform_machine` is documented: the table gives "
+        "its value on Linux, macOS and Windows for both x86-64 (`'x86_64'`/`'x86_64'`/`'AMD64'`) "
+        "and ARM64 (`'aarch64'`/`'arm64'`/`'ARM64'`), and the section says where these values come "
+        "from.",
+    ),
+    (
+        "u-0141",
+        "--prerelease allow",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/concepts/resolution.md#pre-release-handling/0", 3),
+            ("docs/pip/compatibility.md#pre-release-compatibility/0", 3),
+        ),
+        "Both sections state what `--prerelease allow` does — consider pre-releases for every "
+        "package without preferring stable candidates first — against the `if-necessary` default, "
+        "and contrast it with `disallow` and `explicit`. The text is equivalent in both, so each "
+        "documents the flag.",
+    ),
+    (
+        "u-0142",
+        "--python-version",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/resolution.md#platform-specific-resolution/0", 3),),
+        "Platform-specific resolution documents `--python-version` for `uv pip compile`: it shows "
+        "it paired with `--python-platform` to compile for Python 3.10 on Linux from a Mac, and "
+        "states the semantics that matter — under platform-specific resolution the value is the "
+        "exact Python version, not a lower bound.",
+    ),
+    (
+        "u-0143",
+        "PEP 625",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/resolution.md#source-distribution/0", 3),),
+        "The Source distribution section is the passage that says what PEP 625 specifies — source "
+        "distributions must be gzip tarballs (`.tar.gz`) — and states uv's enforcement of it as of "
+        "0.12, with `.zip` still accepted for backward compatibility.",
+    ),
+    (
+        "u-0144",
+        "ModuleNotFoundError: No module named 'pip'",
+        (EvalSlice.EXACT,),
+        (
+            (
+                "docs/reference/troubleshooting/build-failures.md#common-build-failures/module-is-missing-or-cannot-be-imported/0",
+                3,
+            ),
+        ),
+        "This is the failure that section is built around: it shows the `chumpy` build emitting "
+        "exactly this traceback because the package assumes `pip` is available without declaring "
+        "it as a build dependency, and gives the fix (pre-install the build dependencies, then "
+        "`--no-build-isolation-package chumpy`).",
+    ),
+    (
+        "u-0145",
+        "ModuleNotFoundError: No module named 'distutils'",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/reference/troubleshooting/build-failures.md#recognizing-a-build-failure/0", 3),
+            (
+                "docs/reference/troubleshooting/build-failures.md#confirming-that-a-build-failure-is-specific-to-uv/0",
+                2,
+            ),
+        ),
+        "Recognizing a build failure uses this exact traceback as its worked example and carries "
+        "uv's hint explaining it — `distutils` was removed from the standard library in Python "
+        "3.12, so constrain `numpy` above 1.19.5. The next section reproduces the same error under "
+        "pip to show it is not a uv bug.",
+    ),
+    (
+        "u-0146",
+        "fatal error: graphviz/cgraph.h: No such file or directory",
+        (EvalSlice.EXACT,),
+        (
+            (
+                "docs/reference/troubleshooting/build-failures.md#common-build-failures/header-or-library-is-missing/0",
+                3,
+            ),
+        ),
+        "This is the log excerpt that section reproduces: the `pygraphviz` build failing on a "
+        "missing header, with uv's hint about needing a library that provides `graphviz/cgraph.h` "
+        "and the resolution (`apt install libgraphviz-dev`, not the `graphviz` package).",
+    ),
+    (
+        "u-0147",
+        "XDG_BIN_HOME",
+        (EvalSlice.EXACT,),
+        (("docs/reference/storage.md#storage-directories/executable-directory/0", 3),),
+        "The executable directory subsection is where `XDG_BIN_HOME` is documented: it is the "
+        "first entry in the ordered lookup for the directory that should be on the PATH, ahead of "
+        "`$XDG_DATA_HOME/../bin` and `$HOME/.local/bin`, with the Windows equivalents.",
+    ),
+    (
+        "u-0148",
+        "namespace = true",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/build-backend.md#namespace-packages/0", 3),),
+        "This is the only passage that documents the `namespace = true` option: it says it avoids "
+        "declaring each module name for complex namespaces, shows the TOML, warns that it disables "
+        "safety checks, and shows combining it with an explicit `module-name` root.",
+    ),
+    (
+        "u-0149",
+        "tool.uv.build-backend.wheel-exclude",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/build-backend.md#file-inclusion-and-exclusion/0", 3),),
+        "This section is where `wheel-exclude` is given its meaning: it lists what a wheel build "
+        "includes and then states that `source-exclude`, `wheel-exclude` and the default excludes "
+        "are removed from that set, and that exclusions take precedence over inclusions.",
+    ),
+    (
+        "u-0150",
+        "explicit = true",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/concepts/indexes.md#pinning-a-package-to-an-index/0", 3),
+            ("docs/concepts/indexes.md#flat-indexes/0", 1),
+        ),
+        "Pinning a package to an index defines `explicit = true` — it prevents installs from that "
+        "index unless a package is pinned to it via `tool.uv.sources` — and covers the `default = "
+        "true` plus `explicit = true` combination. The flat-index section only names it as an "
+        "example of a supported feature.",
+    ),
+    (
+        "u-0151",
+        'format = "flat"',
+        (EvalSlice.EXACT,),
+        (("docs/concepts/indexes.md#flat-indexes/0", 3),),
+        'The "Flat" indexes section is the only place `format = "flat"` appears: it explains '
+        "that flat indexes are local directories or HTML pages of wheels and sdists (pip's "
+        "`--find-links`) and shows the option in a `[[tool.uv.index]]` entry.",
+    ),
+    (
+        "u-0152",
+        "unsafe-best-match",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/concepts/indexes.md#searching-across-multiple-indexes/0", 3),
+            ("docs/pip/compatibility.md#packages-that-exist-on-multiple-indexes/0", 3),
+        ),
+        "Both passages enumerate the `--index-strategy` / `UV_INDEX_STRATEGY` values and define "
+        "`unsafe-best-match` as selecting the best version across the combined candidate set, "
+        "warning it exposes dependency-confusion risk; the pip-compatibility page states the same "
+        "definition in the context of pip's behavior, so both genuinely document the literal.",
+    ),
+    (
+        "u-0153",
+        "UV_DEFAULT_INDEX",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/indexes.md#defining-an-index/0", 3),),
+        "Defining an index is where `UV_DEFAULT_INDEX` is introduced, as the environment-variable "
+        "form of `--default-index`, alongside `UV_INDEX`, and it explains the accepted values (a "
+        "URL, a configured name, or `<name>=<url>`) and that the default index is always lowest "
+        "priority.",
+    ),
+    (
+        "u-0154",
+        "tool.uv.conflicts",
+        (EvalSlice.EXACT,),
+        (
+            ("docs/concepts/resolution.md#conflicting-dependencies/", 3),
+            ("docs/concepts/projects/config.md#conflicting-dependencies/0", 2),
+        ),
+        "The resolution section documents the `conflicts` key end to end and the answer is "
+        "genuinely spread over both of its chunks: the extra and group forms are in the first, the "
+        "workspace `package` key forms in the second. The projects config section frames why "
+        "conflicts must be declared without showing the full key.",
+    ),
+    (
+        "u-0155",
+        "UV_EXCLUDE_NEWER",
+        (EvalSlice.EXACT,),
+        (("docs/concepts/resolution.md#reproducible-resolutions/0", 3),),
+        "Reproducible resolutions is where `UV_EXCLUDE_NEWER` is documented: it is named as one of "
+        "the three ways to disable a cutoff inherited from a lower-priority configuration source "
+        "(`--exclude-newer false`, `UV_EXCLUDE_NEWER=false`, or `exclude-newer = false` higher "
+        "up), within the section that defines the option's accepted values.",
+    ),
+    (
+        "u-0156",
+        "how do i add a dependency that only installs on linux",
+        (EvalSlice.FACT,),
+        (("docs/concepts/projects/dependencies.md#platform-specific-dependencies/0", 3),),
+        "Answers with the exact invocation: uv add \"jax; sys_platform == 'linux'\", and shows the "
+        "resulting environment marker in the pyproject.toml dependency entry.",
+    ),
+    (
+        "u-0157",
+        "which dependency group does uv install without being asked",
+        (EvalSlice.FACT,),
+        (
+            ("docs/concepts/projects/dependencies.md#development-dependencies/default-groups/0", 3),
+            ("docs/concepts/projects/dependencies.md#development-dependencies/0", 2),
+        ),
+        "The default-groups section states the answer — uv includes the dev group during uv run "
+        "and uv sync — and shows how tool.uv.default-groups changes it. The parent section only "
+        "frames it, mentioning in a clause that the dev group is synced by default.",
+    ),
+    (
+        "u-0158",
+        "can a dependency group need a newer python than the project itself",
+        (EvalSlice.FACT,),
+        (
+            (
+                "docs/concepts/projects/dependencies.md#development-dependencies/group-requires-python/0",
+                3,
+            ),
+        ),
+        "States that groups must by default match the project's requires-python range, and that a "
+        "group needing a different range declares its own requires-python under "
+        "[tool.uv.dependency-groups], with a worked example of a project at >=3.10 and a dev group "
+        "at >=3.12.",
+    ),
+    (
+        "u-0159",
+        "which uv command prints the path to the cache directory",
+        (EvalSlice.FACT,),
+        (("docs/getting-started/features.md#utility/0", 3),),
+        "The utility section is where the state-inspection commands are enumerated with their "
+        "effects, and it is the passage that states uv cache dir shows the uv cache directory path "
+        "(next to uv tool dir and uv python dir).",
+    ),
+    (
+        "u-0160",
+        "where does uv save the credentials it stores",
+        (EvalSlice.FACT,),
+        (("docs/concepts/authentication/http.md#the-uv-credentials-store/0", 3),),
+        "Gives the one stated answer: a plaintext file in uv's state directory, e.g. "
+        "~/.local/share/uv/credentials/credentials.toml on Unix, and warns it is not meant to be "
+        "edited by hand.",
+    ),
+    (
+        "u-0161",
+        "how do i install pypy with uv",
+        (EvalSlice.FACT,),
+        (("docs/guides/install-python.md#installing-a-specific-version/0", 3),),
+        "This section gives the literal answer for an alternative implementation: uv python "
+        "install pypy@3.10, alongside the single-version and multi-version forms.",
+    ),
+    (
+        "u-0162",
+        "does uv download python by itself if none is installed",
+        (EvalSlice.FACT,),
+        (
+            ("docs/guides/install-python.md#automatic-python-downloads/0", 3),
+            ("docs/guides/install-python.md#/0", 2),
+        ),
+        "The automatic-downloads section states it outright: Python need not be installed "
+        "explicitly, uv downloads required versions by default, and even with no version requested "
+        "uv venv will install the latest before creating the environment. The page introduction "
+        "only frames the same behaviour in a clause.",
+    ),
+    (
+        "u-0163",
+        "what is the .python-version file for",
+        (EvalSlice.FACT,),
+        (("docs/guides/projects.md#project-structure/python-version/0", 3),),
+        "States the specific answer: the file holds the project's default Python version and tells "
+        "uv which Python to use when creating the project's virtual environment.",
+    ),
+    (
+        "u-0164",
+        "how do i let uv pull a private hugging face dataset script",
+        (EvalSlice.FACT,),
+        (("docs/concepts/authentication/third-party.md#hugging-face-support/0", 3),),
+        "States the specific answer: if HF_TOKEN is set, uv propagates it to requests to "
+        "huggingface.co, and shows the HF_TOKEN=hf_... uv run <dataset resolve url> invocation for "
+        "a private dataset script.",
+    ),
+    (
+        "u-0165",
+        "which username do I need in a git+ssh dependency url",
+        (EvalSlice.FACT,),
+        (("docs/concepts/authentication/git.md#ssh-authentication/0", 3),),
+        "States flatly that SSH authentication requires the username git, and shows it in every "
+        "git+ssh://git@... example.",
+    ),
+    (
+        "u-0166",
+        "do I have to type the extension to run a windows script through uv run",
+        (EvalSlice.FACT,),
+        (("docs/concepts/projects/run.md#legacy-scripts-on-windows/0", 3),),
+        "Answers no, and gives the resolution order uv tries on your behalf: .ps1, then .cmd, then "
+        ".bat, with the nuitka example shown both ways.",
+    ),
+    (
+        "u-0167",
+        "which signals does uv refuse to forward to the command it runs",
+        (EvalSlice.FACT,),
+        (("docs/concepts/projects/run.md#signal-handling/0", 3),),
+        "Lists the exceptions explicitly - SIGKILL, SIGCHLD, SIGIO and SIGPOLL are not forwarded "
+        "on Unix - and adds the separate SIGINT rule.",
+    ),
+    (
+        "u-0168",
+        "what is sys_platform on 64-bit windows",
+        (EvalSlice.FACT,),
+        (("docs/concepts/resolution.md#common-marker-values/0", 3),),
+        "The marker table gives 'win32' for Windows and the note answers the 64-bit half directly: "
+        "sys_platform is always 'win32' there.",
+    ),
+    (
+        "u-0169",
+        "which fields of a dependency-metadata entry does uv actually read",
+        (EvalSlice.FACT,),
+        (("docs/concepts/resolution.md#dependency-metadata/0", 3),),
+        "Names exactly the five fields uv reads out of the Metadata 2.3 entry - name, version, "
+        "requires-dist, requires-python, provides-extra - and says version is optional for "
+        "registry dependencies.",
+    ),
+    (
+        "u-0170",
+        "can I express a dependency cooldown in months",
+        (EvalSlice.FACT,),
+        (("docs/concepts/resolution.md#dependency-cooldowns/0", 3),),
+        "Answers no: calendar units such as months and years are not allowed because their lengths "
+        "are inherently inconsistent, unlike hours, days and weeks.",
+    ),
+    (
+        "u-0171",
+        "what causes a 401 unauthorized when publishing to artifactory with a token",
+        (EvalSlice.FACT,),
+        (("docs/guides/integration/jfrog.md#publishing-packages/0", 3),),
+        "Gives the cause and the fix: JFrog requires an empty username, but uv sends __token__ as "
+        "the username whenever --token or UV_PUBLISH_TOKEN is used.",
+    ),
+    (
+        "u-0172",
+        "does a version requested with --with beat the version my project requires",
+        (EvalSlice.FACT,),
+        (("docs/concepts/projects/run.md#requesting-additional-dependencies/0", 3),),
+        "States that the requested version is respected regardless of the project's requirements, "
+        "and spells out the httpx==0.24.0 case where the project's pin loses.",
+    ),
+    (
+        "u-0173",
+        "which solver implementation does uv build its resolver on",
+        (EvalSlice.FACT,),
+        (("docs/reference/internals/resolver.md#resolver/0", 3),),
+        "Names pubgrub-rs, the Rust implementation of PubGrub, and then walks through the steps uv "
+        "runs on top of it.",
+    ),
+    (
+        "u-0174",
+        "what rust version do i need to build uv from source",
+        (EvalSlice.FACT,),
+        (("docs/reference/policies/rust.md#/0", 3),),
+        "The Rust support policy states the answer precisely: the minimum is the rust-version key "
+        "in Cargo.toml [workspace.package], it may change in any release, and it is never newer "
+        "than N-2 stable versions.",
+    ),
+    (
+        "u-0175",
+        "which uv crates on crates.io actually promise stability",
+        (EvalSlice.FACT,),
+        (("docs/reference/policies/versioning.md#crate-versioning/0", 3),),
+        "This section names the three crates that follow the uv versioning policy (uv, uv-build, "
+        "uv-version) and says the rest give no stability guarantees and are versioned 0.0.x.",
+    ),
+    (
+        "u-0176",
+        "where does uv create the project virtual environment by default",
+        (EvalSlice.FACT,),
+        (("docs/concepts/projects/config.md#project-environment-path/0", 3),),
+        "The section states the default path is .venv and describes how a configured relative path "
+        "is resolved relative to the workspace root, which is the specific answer to where the "
+        "environment lands.",
+    ),
+    (
+        "u-0177",
+        "what address does jupyter lab listen on when started through uv run",
+        (EvalSlice.FACT,),
+        (("docs/guides/integration/jupyter.md#using-jupyter-within-a-project/0", 3),),
+        "This section gives the concrete answer: started with uv run --with jupyter jupyter lab, "
+        "the server defaults to http://localhost:8888/lab.",
+    ),
+    (
+        "u-0178",
+        "install uv with homebrew",
+        (EvalSlice.FACT,),
+        (("docs/getting-started/installation.md#installation-methods/homebrew/0", 3),),
+        "The Homebrew subsection states that uv is in the core Homebrew packages and gives the "
+        "brew install uv command - the whole answer sits here.",
+    ),
+    (
+        "u-0179",
+        "how do i install a specific older version of uv with the install script",
+        (EvalSlice.FACT,),
+        (("docs/getting-started/installation.md#installation-methods/standalone-installer/0", 3),),
+        "The standalone installer section answers this directly: include the version in the "
+        "astral.sh URL, and it shows the pinned-version form for both the sh and the PowerShell "
+        "installers.",
+    ),
+    (
+        "u-0180",
+        "what do i delete to remove uv from my machine",
+        (EvalSlice.FACT,),
+        (("docs/getting-started/installation.md#uninstallation/0", 3),),
+        "The uninstallation section lists exactly what to remove: the stored data via uv cache "
+        "clean and the python and tool directories, then the uv, uvx and uvw binaries under "
+        "~/.local/bin.",
+    ),
+    (
+        "u-0181",
+        "what happens if i run uv init in a directory that already has a pyproject.toml",
+        (EvalSlice.FACT,),
+        (("docs/concepts/projects/init.md#target-directory/0", 3),),
+        "The target directory section states the outcome: if there is already a pyproject.toml in "
+        "the target directory, uv exits with an error.",
+    ),
+    (
+        "u-0182",
+        "what formats can uv export a lockfile to",
+        (EvalSlice.FACT,),
+        (
+            ("docs/concepts/projects/export.md#overview-of-export-formats/0", 3),
+            ("docs/concepts/projects/export.md#/0", 2),
+        ),
+        "The overview enumerates the three supported formats (requirements.txt, pylock.toml, "
+        "CycloneDX) and the --format flag values for each. The page preamble only frames that uv "
+        "export supports multiple output formats.",
+    ),
+    (
+        "u-0183",
+        "how do i make torch always install from the pytorch index",
+        (EvalSlice.FACT,),
+        (
+            ("docs/concepts/indexes.md#pinning-a-package-to-an-index/0", 3),
+            ("docs/concepts/indexes.md#defining-an-index/0", 2),
+        ),
+        "The pinning section gives the exact answer with torch as its worked example: a "
+        "tool.uv.sources entry naming the index, optionally with explicit = true so nothing else "
+        "resolves there. Defining an index is a 2 because the pinned index must first exist as a "
+        "[[tool.uv.index]] entry, which that section documents.",
+    ),
+    (
+        "u-0184",
+        "what does uv do when an index answers 401 or 403 while it is looking for a package",
+        (EvalSlice.FACT,),
+        (("docs/concepts/indexes.md#authentication/ignoring-error-codes/0", 3),),
+        "The stated answer is here: under the first-index strategy uv stops searching across "
+        "indexes on 401 or 403, except that it ignores 403 from the pytorch index; ignore-error- "
+        "codes changes which codes are tolerated, and 404 always continues the search and cannot "
+        "be overridden.",
+    ),
+    (
+        "u-0185",
+        "how do i turn preview features off",
+        (EvalSlice.FACT,),
+        (("docs/concepts/preview.md#disabling-preview-features/0", 3),),
+        "The section states the single answer: the --no-preview option disables preview features.",
+    ),
+    (
+        "u-0186",
+        "does uv treat my lockfile as outdated when a dependency publishes a new release",
+        (EvalSlice.FACT,),
+        (("docs/concepts/projects/sync.md#checking-the-lockfile/0", 3),),
+        "The section answers no, in an admonition: uv does not consider a lockfile outdated "
+        "because new versions were released; it compares the lockfile against project metadata, so "
+        "only a changed dependency or a constraint that now excludes the locked version makes it "
+        "stale.",
+    ),
+    (
+        "u-0187",
+        "how do i sync every extra a project defines",
+        (EvalSlice.FACT,),
+        (
+            (
+                "docs/concepts/projects/sync.md#syncing-the-environment/syncing-optional-dependencies/0",
+                3,
+            ),
+        ),
+        "The section states that extras are not synced by default, that --extra includes one, and "
+        "that --all-extras enables them all — the specific answer asked for.",
+    ),
+    (
+        "u-0188",
+        "how do i clear the cache for a single package instead of the whole thing",
+        (EvalSlice.FACT,),
+        (
+            ("docs/concepts/cache.md#clearing-the-cache/0", 3),
+            ("docs/concepts/cache.md#dependency-caching/0", 2),
+        ),
+        "Clearing the cache states the answer with an example: `uv cache clean ruff` removes all "
+        "cache entries for that one package. The dependency-caching section repeats the same "
+        "escape hatch in a clause while listing ways out of caching trouble.",
+    ),
+    (
+        "u-0189",
+        "what does uv use as the cache key for a git dependency",
+        (EvalSlice.FACT,),
+        (("docs/concepts/cache.md#dependency-caching/0", 3),),
+        "The per-dependency-kind list answers this with one stated value: Git dependencies are "
+        "cached on the fully-resolved commit hash, which is also why uv pip compile pins them to a "
+        "commit.",
+    ),
+    (
+        "u-0190",
+        "where does uv look for its configuration file",
+        (EvalSlice.FACT,),
+        (("docs/concepts/configuration-files.md#/0", 3),),
+        "The page preamble names the search itself: pyproject.toml or uv.toml in the current "
+        "directory or nearest parent, plus the user-level (~/.config/uv/uv.toml, "
+        "%APPDATA%\\uv\\uv.toml) and system-level (/etc/uv/uv.toml, %PROGRAMDATA%\\uv\\uv.toml) "
+        "locations, and the workspace-root rule.",
+    ),
+    (
+        "u-0191",
+        "where does uv tool install put the tool",
+        (EvalSlice.FACT,),
+        (
+            ("docs/reference/storage.md#types-of-data/tools/0", 3),
+            ("docs/concepts/tools.md#tool-environments/0", 2),
+        ),
+        "The storage page gives the concrete location — a tools/ subdirectory of the persistent "
+        "data directory, e.g. ~/.local/share/uv/tools, with uv tool dir to print it and "
+        "UV_TOOL_DIR to change it. The tools concept page only says the environment is created in "
+        "the uv tools directory.",
+    ),
+    (
+        "u-0192",
+        "how large can a lambda zip archive be",
+        (EvalSlice.FACT,),
+        (("docs/guides/integration/aws-lambda.md#deploying-a-zip-archive/0", 3),),
+        "The opening of the zip section gives the number: zip archives are limited to 250 MB, "
+        "which is the constraint that decides between this path and a container image.",
+    ),
+    (
+        "u-0193",
+        "what username should i use when authenticating to aws codeartifact",
+        (EvalSlice.FACT,),
+        (
+            ("docs/guides/integration/aws.md#authenticate-with-an-aws-access-token/0", 3),
+            (
+                "docs/guides/integration/aws.md#authenticate-with-keyring-and-keyrings-codeartifact/0",
+                2,
+            ),
+        ),
+        "The token section states the specific answer — the username must be aws or authentication "
+        "will fail, with the token in the password field. The keyring section repeats the "
+        "constraint for the keyring CLI path without documenting the token scheme.",
+    ),
+    (
+        "u-0194",
+        "what happens when i run a .pyw file with uv on windows",
+        (EvalSlice.FACT,),
+        (("docs/guides/scripts.md#using-gui-scripts/0", 3),),
+        "States the specific behaviour: on Windows uv runs a script whose extension is .pyw using "
+        "pythonw, with tkinter and PyQt5 examples showing it works with and without extra "
+        "dependencies.",
+    ),
+    (
+        "u-0195",
+        "what tools is uv's performance compared against",
+        (EvalSlice.FACT,),
+        (("docs/reference/benchmarks.md#/0", 3),),
+        "The benchmarks page gives the answer in one place: uv is benchmarked continually against "
+        "its own previous releases and regularly compared with other tools in the space, naming "
+        "pip and Poetry, with the results kept in the GitHub repository.",
+    ),
+    (
+        "u-0196",
+        "what is the oldest windows version uv supports",
+        (EvalSlice.FACT,),
+        (("docs/reference/policies/platforms.md#windows-versions/0", 3),),
+        "Gives the specific minimum: Windows 10 and Windows Server 2016, following Rust's own tier "
+        "1 support.",
+    ),
+    (
+        "u-0197",
+        "which versions of macos does uv support",
+        (EvalSlice.FACT,),
+        (("docs/reference/policies/platforms.md#macos-versions/0", 3),),
+        "States the supported floor — macOS 13 (Ventura) and later — plus the caveat that macOS 12 "
+        "is known to work if a realpath executable is installed.",
+    ),
+    (
+        "u-0198",
+        "can uv read der encoded certificates",
+        (EvalSlice.FACT,),
+        (("docs/concepts/authentication/certificates.md#custom-certificates/0", 3),),
+        "The custom certificates section answers this flatly — 'DER-encoded files are not "
+        "supported' — alongside the extensions uv does read (.pem, .crt, .cer) and the fact that "
+        "unparseable files in SSL_CERT_DIR are ignored.",
+    ),
+    (
+        "u-0199",
+        "can i use --torch-backend with uv add or uv sync",
+        (EvalSlice.FACT,),
+        (("docs/guides/integration/pytorch.md#automatic-backend-selection/0", 3),),
+        "Answers no: the section closes by stating that at present --torch-backend is only "
+        "available in the uv pip interface.",
+    ),
+    (
+        "u-0200",
+        "where do i get prebuilt flash-attn wheels instead of compiling it",
+        (EvalSlice.FACT,),
+        (("docs/guides/integration/pytorch.md#installing-gpu-enabled-pytorch-extensions/0", 3),),
+        "Names the Astral GPU indexes as the source of pre-built wheels for flash-attn (and "
+        "deepspeed, vllm, others) and gives the `uv add flash-attn --index astral-cu128=...` "
+        "command.",
+    ),
+    (
+        "u-0201",
+        "which platforms get gpu wheels if i just run uv add torch",
+        (EvalSlice.FACT,),
+        (("docs/guides/integration/pytorch.md#installing-pytorch/0", 3),),
+        "States that the default PyPI-sourced configuration yields CPU-only wheels on Windows and "
+        "macOS and GPU-accelerated wheels on Linux, targeting CUDA 13.0 as of PyTorch 2.11.0.",
+    ),
+    (
+        "u-0202",
+        "what username should i use for azure artifacts when authenticating through keyring",
+        (EvalSlice.FACT,),
+        (
+            (
+                "docs/guides/integration/azure.md#authenticate-with-keyring-and-artifacts-keyring/0",
+                3,
+            ),
+        ),
+        "States that the keyring CLI requires a username in the URL and that it must be "
+        "`VssSessionToken`, and shows setting it via UV_INDEX_PRIVATE_REGISTRY_USERNAME.",
+    ),
+    (
+        "u-0203",
+        "in what order does uv look for a virtual environment",
+        (EvalSlice.FACT,),
+        (("docs/pip/environments.md#discovery-of-python-environments/0", 3),),
+        "Gives the ordered list: VIRTUAL_ENV, then CONDA_PREFIX, then a .venv in the current or "
+        "nearest parent directory, and says uv prompts to create one if none is found.",
+    ),
+    (
+        "u-0204",
+        "how do i install a package from a github branch",
+        (EvalSlice.FACT,),
+        (("docs/pip/packages.md#installing-a-package/0", 3),),
+        "Shows the git+https form with an @ reference and spells out the three variants — tag, "
+        "commit hash, and branch (`@main`).",
+    ),
+    (
+        "u-0205",
+        "which python versions does uv have tier 1 support for",
+        (EvalSlice.FACT,),
+        (("docs/reference/policies/python.md#python-versions/0", 3),),
+        "Lists 3.10 through 3.14 as Tier 1 and says uv is continuously tested against them.",
+    ),
+    (
+        "u-0206",
+        "which pre-commit hook compiles a requirements.in file",
+        (EvalSlice.FACT,),
+        (("docs/guides/integration/pre-commit.md#/0", 3),),
+        "Shows the pip-compile hook with `args: [requirements.in, -o, requirements.txt]`, plus how "
+        "to retarget it with `files` and how to declare several entries for several input files.",
+    ),
+    (
+        "u-0207",
+        "does logging out of a service invalidate the credentials on the server",
+        (EvalSlice.FACT,),
+        (("docs/concepts/authentication/cli.md#logging-out-of-a-service/0", 3),),
+        "The section's note answers exactly this: credentials are removed from local storage only, "
+        "not rendered unusable with the remote server.",
+    ),
+    (
+        "u-0208",
+        "where does uv keep the credentials I add with uv auth login",
+        (EvalSlice.FACT,),
+        (("docs/concepts/authentication/cli.md#configuring-the-storage-backend/0", 3),),
+        "The section states credentials are persisted to the uv credentials store, written to a "
+        "plaintext file by default, with an encrypted system-native backend available behind a "
+        "preview feature.",
+    ),
+    (
+        "u-0209",
+        "where do the files from uv build end up",
+        (EvalSlice.FACT,),
+        (("docs/concepts/projects/build.md#using-uv-build/0", 3),),
+        "The section states the built artifacts are placed in a dist/ subdirectory and shows the "
+        "resulting wheel and tar.gz filenames.",
+    ),
+    (
+        "u-0210",
+        "can one workspace member require a different python version than the others",
+        (EvalSlice.FACT,),
+        (("docs/concepts/projects/workspaces.md#when-not-to-use-workspaces/0", 3),),
+        "The section states workspaces enforce a single requires-python for the whole workspace, "
+        "the intersection of all members' values, and that testing a member on an unsupported "
+        "version needs uv pip in a separate environment.",
+    ),
+    (
+        "u-0211",
+        "which action should I use to install uv in a github workflow",
+        (EvalSlice.FACT,),
+        (("docs/guides/integration/github.md#installation/0", 3),),
+        "The section names the recommended action, astral-sh/setup-uv, says what it does (installs "
+        "uv, adds it to PATH, optionally persists the cache) and shows pinning a version.",
+    ),
+    (
+        "u-0212",
+        "how do I let my workflow install a dependency from a private github repository",
+        (EvalSlice.FACT,),
+        (("docs/guides/integration/github.md#private-repos/0", 3),),
+        "The section gives the procedure: create a PAT with read access, store it as a repository "
+        "secret, then use gh auth login and gh auth setup-git to configure Git's credential "
+        "helper.",
+    ),
+    (
+        "u-0213",
+        "what username does google artifact registry expect when I pass an access token",
+        (EvalSlice.FACT,),
+        (
+            ("docs/guides/integration/google.md#authenticate-with-a-google-access-token/0", 3),
+            (
+                "docs/guides/integration/google.md#authenticate-with-keyring-and-keyrings-google-artifactregistry-auth/0",
+                2,
+            ),
+        ),
+        "The access-token section states the username must be oauth2accesstoken or authentication "
+        "fails, and shows setting it via UV_INDEX_<NAME>_USERNAME. The keyring section restates "
+        "the same requirement for the keyring CLI.",
+    ),
+    (
+        "u-0214",
+        "how do I run a tool at an older version without installing it",
+        (EvalSlice.FACT,),
+        (("docs/guides/tools.md#requesting-specific-versions/0", 3),),
+        "The section gives command@version and the --from forms for pinned versions and ranges, "
+        "and notes the @ syntax accepts only an exact version.",
+    ),
+    (
+        "u-0215",
+        "how do i ask uv for a free-threaded python build",
+        (EvalSlice.FACT,),
+        (
+            ("docs/concepts/python-versions.md#free-threaded-python/0", 3),
+            ("docs/concepts/python-versions.md#requesting-a-version/0", 2),
+        ),
+        "Gives the specific request syntax `3.13t` or `3.13+freethreaded`, and states that on 3.13 "
+        "it must be explicit while 3.14+ interpreters may be used without it. The request-format "
+        "list is where those two spellings are enumerated as general formats.",
+    ),
+    (
+        "u-0216",
+        "which python implementations can uv work with",
+        (EvalSlice.FACT,),
+        (
+            ("docs/concepts/python-versions.md#python-implementation-support/0", 3),
+            ("docs/concepts/python-versions.md#managed-python-distributions/0", 2),
+        ),
+        "States the supported set — CPython, PyPy, Pyodide and GraalPy — with the long and short "
+        "request names and the note that unsupported implementations fail discovery. The "
+        "distributions section is a narrower claim (which ones uv can download) so it only frames "
+        "the answer.",
+    ),
+    (
+        "u-0217",
+        "how do i get uv to explain why it is doing something",
+        (EvalSlice.FACT,),
+        (("docs/getting-started/help.md#displaying-verbose-output/0", 3),),
+        "Answers with the mechanism: the `-v` flag, repeatable as `-vv` for more verbosity, and "
+        "states that the verbose output often includes the reason uv is behaving a certain way.",
+    ),
+    (
+        "u-0218",
+        "how do i make renovate update dependencies declared in a pep 723 script header",
+        (EvalSlice.FACT,),
+        (("docs/guides/integration/renovate.md#inline-script-metadata/0", 3),),
+        "Gives the concrete answer: Renovate cannot detect which Python files carry inline script "
+        "metadata, so their paths must be listed under `pep723.managerFilePatterns`. It also warns "
+        "that the script's lock file is not yet updated automatically.",
+    ),
+    (
+        "u-0219",
+        "how do i import requirements-dev into a dependency group",
+        (EvalSlice.FACT,),
+        (
+            (
+                "docs/guides/migration/pip-to-project.md#migrating-to-a-uv-project/importing-requirements-files/importing-development-dependency-files/0",
+                3,
+            ),
+            (
+                "docs/guides/migration/pip-to-project.md#understanding-pip-workflows/development-dependencies/0",
+                2,
+            ),
+        ),
+        "Gives the command `uv add --dev -r requirements-dev.in -c requirements-dev.txt`, the "
+        "`sed` workaround for stripping `-r` lines so base requirements do not land in `dev`, and "
+        "`--group docs` for other group names. The pip-workflow section is where those `-dev` "
+        "files were constructed.",
+    ),
+    (
+        "u-0220",
+        "how do i add environment markers to requirements files compiled per platform",
+        (EvalSlice.FACT,),
+        (
+            (
+                "docs/guides/migration/pip-to-project.md#migrating-to-a-uv-project/importing-requirements-files/importing-platform-specific-constraints/0",
+                3,
+            ),
+        ),
+        "Gives the exact recipe: platform-specific `requirements.txt` files conflict as "
+        "constraints because they carry no markers, so re-run `uv pip compile ... --python- "
+        "platform windows --no-strip-markers` (varying `--python-platform` and `-o`) before "
+        "passing each file with `-c`.",
+    ),
+    (
+        "u-0221",
+        "which files does the uv build backend skip by default when packaging",
+        (EvalSlice.FACT,),
+        (("docs/concepts/build-backend.md#file-inclusion-and-exclusion/0", 3),),
+        "States the default exclusions outright — `__pycache__`, `*.pyc` and `*.pyo` — and the "
+        "ordering rule that exclusions are applied after inclusions, so they always win.",
+    ),
+    (
+        "u-0222",
+        "where does uv create the virtual environment for my project",
+        (EvalSlice.FACT,),
+        (("docs/concepts/projects/layout.md#the-project-environment/0", 3),),
+        "Answers with the specific location: a `.venv` directory next to the `pyproject.toml`, "
+        "kept inside the project so editors can find it, and excluded from git by an internal "
+        "`.gitignore`.",
+    ),
+    (
+        "u-0223",
+        "how are dependency groups different from optional dependencies",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/dependencies.md#development-dependencies/0", 3),
+            ("docs/concepts/projects/dependencies.md#optional-dependencies/0", 2),
+        ),
+        "The development-dependencies section is written as the contrast: unlike optional "
+        "dependencies, development dependencies are local-only, excluded from published "
+        "requirements, and therefore live outside the [project] table in [dependency-groups]. The "
+        "optional-dependencies section supplies the other half — extras exist to be published and "
+        "requested with package[extra].",
+    ),
+    (
+        "u-0224",
+        "what is the difference between build-system.requires and project.dependencies",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/dependencies.md#build-dependencies/0", 3),
+            ("docs/concepts/projects/dependencies.md#project-dependencies/0", 2),
+        ),
+        "The build-dependencies section defines build requirements as needed to build but not to "
+        "run the project, placed in [build-system] requires per PEP 518. The project-dependencies "
+        "section states the other side: project.dependencies are what is used when uploading to "
+        "PyPI or building a wheel.",
+    ),
+    (
+        "u-0225",
+        "how do i install torch from a different index on macos than on linux",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/dependencies.md#dependency-sources/multiple-sources/0", 3),
+            (
+                "docs/concepts/projects/dependencies.md#dependency-sources/platform-specific-sources/0",
+                2,
+            ),
+        ),
+        "The multiple-sources section carries the exact case: a list of sources disambiguated by "
+        "markers, including the torch example selecting torch-cpu on Darwin and torch-gpu on Linux "
+        "with both indexes marked explicit. The platform-specific-sources section frames the "
+        "single-source version of the same marker mechanism.",
+    ),
+    (
+        "u-0226",
+        "which existing tools does uv's pip interface stand in for",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/getting-started/features.md#the-pip-interface/0", 3),),
+        "This section maps uv's commands onto the tools they replace: uv venv for venv and "
+        "virtualenv, uv pip for pip and pipdeptree, and uv pip compile / uv pip sync for pip- "
+        "tools.",
+    ),
+    (
+        "u-0227",
+        "how do i make bazel fetches reuse the credentials i logged into uv with",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/guides/integration/bazel.md#authentication/0", 3),
+            ("docs/concepts/authentication/http.md#the-uv-credentials-store/0", 2),
+        ),
+        "The Bazel section walks the whole bridge between the two tools: uv auth login for the "
+        "host, a .bazelrc --credential_helper entry per host, the uv auth helper wrapper script "
+        "and chmod +x. The uv credentials store section frames the other side by stating that uv "
+        "auth commands read and write that store.",
+    ),
+    (
+        "u-0228",
+        "how does uv.lock differ from pyproject.toml",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/guides/projects.md#project-structure/uv-lock/0", 3),
+            ("docs/guides/projects.md#project-structure/pyproject-toml/0", 2),
+        ),
+        "The uv.lock section draws the contrast explicitly — pyproject.toml specifies the "
+        "project's broad requirements while the lockfile records the exact resolved versions "
+        "installed in the environment. The pyproject.toml section supplies the other side: project "
+        "metadata, dependencies and [tool.uv] configuration that you edit.",
+    ),
+    (
+        "u-0229",
+        "do i still need to run uv sync if i use uv run",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/guides/projects.md#running-commands/0", 3),),
+        "This section relates the two commands: uv run re-verifies the lockfile against "
+        "pyproject.toml and the environment against the lockfile before every invocation, so "
+        "syncing by hand is unnecessary; uv sync plus activating .venv is presented as the manual "
+        "alternative for running commands without uv run.",
+    ),
+    (
+        "u-0230",
+        "i have a password in the index url and also a netrc entry, which one does uv use",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/concepts/authentication/http.md#/0", 3),),
+        "The page introduction is the only passage that ranks the credential sources against each "
+        "other: URL, then netrc, then the uv credentials store, then a keyring provider, in order "
+        "of precedence.",
+    ),
+    (
+        "u-0231",
+        "how must my project's requires-python relate to that of its dependencies",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/resolution.md#universal-resolution/0", 3),
+            ("docs/reference/internals/resolver.md#requires-python/0", 2),
+        ),
+        "Universal resolution states the rule as a subset relation and shows the >=3.8 failure it "
+        "causes; the internals page restates it as a minimum-version requirement on every "
+        "dependency.",
+    ),
+    (
+        "u-0232",
+        "what is the difference between environments and required-environments",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/resolution.md#required-environments/0", 3),
+            ("docs/concepts/resolution.md#limited-resolution-environments/0", 2),
+        ),
+        "Required environments carries the comparison itself - environments limits what uv solves "
+        "for, required-environments expands what it must support - with the darwin example of "
+        "each. The other section documents the limiting half.",
+    ),
+    (
+        "u-0233",
+        "how is uv pip sync different from uv pip install",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/pip/compile.md#syncing-an-environment/0", 3),),
+        "States that uv pip install leaves already-installed packages in place, so the environment "
+        "can drift from the lockfile, and that uv pip sync is what makes it match exactly.",
+    ),
+    (
+        "u-0234",
+        "how do wheel tags relate to environment markers when uv resolves",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/reference/internals/resolver.md#wheel-tags/0", 3),
+            ("docs/reference/internals/resolver.md#marker-and-wheel-tag-filtering/0", 2),
+        ),
+        "Wheel tags opens on exactly this: uv's resolution is universal over markers but that does "
+        "not extend to wheel tags, which is why a torch install can still fail on an uncommon "
+        "platform. The filtering section covers the partial mapping uv does maintain.",
+    ),
+    (
+        "u-0235",
+        "how does the index name in pyproject.toml determine the environment variable names",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/guides/integration/jfrog.md#authenticate-with-jwt-token/0", 3),
+            ("docs/guides/integration/jfrog.md#/0", 2),
+        ),
+        "The note in this section is what ties them together: PRIVATE_REGISTRY in "
+        "UV_INDEX_PRIVATE_REGISTRY_* stands for the index name. The page opening supplies the "
+        'matching name = "private-registry" declaration.',
+    ),
+    (
+        "u-0236",
+        "how do I declare a conflict between extras of two different workspace members",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/concepts/resolution.md#conflicting-dependencies/", 3),),
+        "Section-scoped deliberately: the workspace answer builds up across the section, from the "
+        "package key paired with extra, through the member-dependencies-versus-extra case, to the "
+        "plain member-versus-member case that falls in a later chunk.",
+    ),
+    (
+        "u-0237",
+        "how does platform-specific resolution differ from universal resolution",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/resolution.md#platform-specific-resolution/0", 3),
+            ("docs/concepts/resolution.md#universal-resolution/0", 2),
+        ),
+        "The platform-specific section draws the contrast, including that --python-version is an "
+        "exact version there rather than a lower bound, and that the project interface offers no "
+        "platform-specific mode at all.",
+    ),
+    (
+        "u-0238",
+        "if a dependency is both overridden and excluded in the same scope, which one wins",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/concepts/resolution.md#dependency-exclusions/0", 3),),
+        "Ends with the ruling - in a matching scope the exclusion takes precedence - right after "
+        "showing the combined override-plus-exclude idiom for swapping one dependency for another.",
+    ),
+    (
+        "u-0239",
+        "how are project.gui-scripts different from project.scripts",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/config.md#entry-points/graphical-user-interfaces/0", 3),
+            ("docs/concepts/projects/config.md#entry-points/command-line-interfaces/0", 2),
+        ),
+        "The GUI subsection is the passage that contrasts the two: it states that they differ only "
+        "on Windows, where GUI scripts are wrapped by a GUI executable so they start without a "
+        "console, and behave identically elsewhere.",
+    ),
+    (
+        "u-0240",
+        "in a notebook, what is the difference between !uv add and !uv pip install",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            (
+                "docs/guides/integration/jupyter.md#using-jupyter-within-a-project/installing-packages-without-a-kernel/0",
+                3,
+            ),
+            (
+                "docs/guides/integration/jupyter.md#using-jupyter-within-a-project/creating-a-kernel/0",
+                2,
+            ),
+        ),
+        "This subsection discusses both: without a kernel, !uv add still modifies the project "
+        "environment, while !uv pip install lands in Jupyter's own environment and may not survive "
+        "the next server start. The kernel subsection contrasts the two under a kernel, where both "
+        "reach the project.",
+    ),
+    (
+        "u-0241",
+        "is the uv.lock schema version bumped like the cache version",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/reference/policies/versioning.md#lockfile-versioning/0", 3),
+            ("docs/reference/policies/versioning.md#cache-versioning/0", 2),
+        ),
+        "Lockfile versioning states that the uv.lock schema version is public API and only "
+        "increments in a minor release; cache versioning states the opposite for cache versions, "
+        "which are internal and may change in a minor or patch release. The pair is the answer.",
+    ),
+    (
+        "u-0242",
+        "should i export pylock.toml or requirements.txt",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/export.md#overview-of-export-formats/0", 3),
+            ("docs/concepts/projects/export.md#requirements-txt-format/0", 2),
+            ("docs/concepts/projects/export.md#pylock-toml-format/0", 2),
+        ),
+        "The overview is the passage that places the two side by side - requirements.txt as the "
+        "traditional pip-compatible format, pylock.toml as the PEP 751 standard - which is what a "
+        "reader choosing between them needs. The two format sections each add what their own "
+        "format is good for.",
+    ),
+    (
+        "u-0243",
+        "does uv pip need a virtualenv in ci when the project interface doesn't",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/guides/integration/gitlab.md#using-uv-pip/0", 3),),
+        "This section answers exactly in those terms: when using the uv pip interface instead of "
+        "the uv project interface, uv requires a virtual environment by default, and --system or "
+        "UV_SYSTEM_PYTHON is what lifts that requirement.",
+    ),
+    (
+        "u-0244",
+        "what's the difference between a uv application project and a library project",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/init.md#/0", 3),
+            ("docs/concepts/projects/init.md#libraries/0", 2),
+            ("docs/concepts/projects/init.md#applications/0", 2),
+        ),
+        "The preamble is the passage that names both templates, says application is the default "
+        "and --lib selects the other, and states what they share. Each of the two sections then "
+        "frames its own half - applications for servers, scripts and CLIs; libraries for code "
+        "others consume and always packaged.",
+    ),
+    (
+        "u-0245",
+        "how does uv init --no-package change what gets created",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/init.md#creating-a-project-without-a-build-system/0", 3),
+            ("docs/concepts/projects/init.md#applications/0", 2),
+        ),
+        "The no-build-system section spells out the difference against the default: a top-level "
+        "main.py instead of a src module, a pyproject.toml with no [build-system] table, and a "
+        "project that is not a package and is not installed into the environment. The applications "
+        "section supplies the default layout being departed from.",
+    ),
+    (
+        "u-0246",
+        "how is required-environments different from environments",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/config.md#required-environments/0", 3),
+            ("docs/concepts/projects/config.md#limited-resolution-environments/0", 2),
+        ),
+        "Required environments is the section that distinguishes them: it marks a platform as one "
+        "the project must support and explains this only matters for packages that publish no "
+        "source distribution. The other section defines environments as the setting that narrows "
+        "the solved platform set instead.",
+    ),
+    (
+        "u-0247",
+        "do settings under tool.uv.pip affect uv sync and uv lock too",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/concepts/configuration-files.md#configuring-the-pip-interface/0", 3),),
+        "This section is about exactly that relation: [tool.uv.pip] applies only inside the uv pip "
+        "namespace, while many top-level settings do reach uv pip unless a uv.pip value overrides "
+        "them. The index-url example spells out that it would not affect uv sync, uv lock or uv "
+        "run.",
+    ),
+    (
+        "u-0248",
+        "should i use --refresh or --no-cache",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/cache.md#cache-directory/0", 3),
+            ("docs/concepts/cache.md#dependency-caching/0", 2),
+        ),
+        "The note in the cache-directory section states the comparison outright: --no-cache still "
+        "uses a temporary cache for the single invocation, and --refresh should be preferred in "
+        "most cases because it updates the cache for later operations without reading from it. The "
+        "dependency-caching section supplies the other half by documenting what --refresh actually "
+        "revalidates.",
+    ),
+    (
+        "u-0249",
+        "is --index-url the same thing as --default-index",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/indexes.md#index-url-and-extra-index-url/0", 3),
+            ("docs/concepts/indexes.md#defining-an-index/0", 2),
+        ),
+        "This section maps the two onto each other explicitly: the pip-style flags behave as "
+        "unnamed [[tool.uv.index]] entries, --index-url maps to --default-index and --extra-index- "
+        "url to --index, under the same priority rules. Defining an index is a 2 for documenting "
+        "--default-index and the default = true entry it corresponds to.",
+    ),
+    (
+        "u-0250",
+        "how is a flat index different from a normal pypi style index",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/concepts/indexes.md#flat-indexes/0", 3),),
+        "This section draws the contrast: ordinary entries are assumed to be PEP 503 Simple "
+        "Repository API registries, while a flat index is a local directory or HTML page listing "
+        'wheels and sdists, declared with format = "flat" and equivalent to pip\'s --find-links. '
+        "It also states that flat indexes support the same features, including pinning.",
+    ),
+    (
+        "u-0251",
+        "what is the difference between --locked and --frozen",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/concepts/projects/sync.md#automatic-lock-and-sync/0", 3),),
+        "Both flags are defined in the same passage and contrasted: --locked errors when the "
+        "lockfile is out of date instead of updating it, while --frozen uses the lockfile without "
+        "checking it at all. --no-sync is given alongside for the environment-side equivalent.",
+    ),
+    (
+        "u-0252",
+        "how does --only-group differ from --only-dev",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            (
+                "docs/concepts/projects/sync.md#syncing-the-environment/syncing-development-dependencies/0",
+                3,
+            ),
+        ),
+        "The passage compares them directly: --only-group has the same semantics as --only-dev in "
+        "excluding the project, but additionally excludes default groups. It also states that "
+        "exclusions beat inclusions when both --group and --no-group name the same group.",
+    ),
+    (
+        "u-0253",
+        "why use --frozen instead of --locked for the first sync in a workspace",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            (
+                "docs/guides/integration/docker.md#optimizations/intermediate-layers/intermediate-layers-in-workspaces/0",
+                3,
+            ),
+            ("docs/concepts/projects/sync.md#automatic-lock-and-sync/0", 2),
+        ),
+        "The workspaces subsection gives the reason the two flags are not interchangeable here: uv "
+        "cannot assert the lockfile is current without every member's pyproject.toml, which are "
+        "not yet copied, so the first sync skips the check with --frozen and the later one "
+        "validates with --locked. The sync concept page is a 2 for defining both flags.",
+    ),
+    (
+        "u-0254",
+        "what is the difference between running a notebook with uv run marimo edit and uv run "
+        "--with marimo",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/guides/integration/marimo.md#using-marimo-within-a-project/0", 3),),
+        "The section contrasts the two cases in the same passage: with marimo as a project "
+        "dependency, uv run marimo edit gives the notebook the project environment; with --with "
+        "marimo you can still import project modules, but packages installed from marimo's UI are "
+        "not added to the project and may vanish on the next run.",
+    ),
+    (
+        "u-0255",
+        "how is uvx different from uv run --with",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/tools.md#relationship-to-uv-run/0", 3),
+            ("docs/concepts/tools.md#the-uv-tool-interface/0", 2),
+        ),
+        "This section states the near-equivalence explicitly and then lists the differences: "
+        "--with is inferred from the command name, --no-project is unnecessary because tools are "
+        "always isolated, the temporary environment is cached in a dedicated place, and uv tool "
+        "run picks up an installed tool where uv run does not.",
+    ),
+    (
+        "u-0256",
+        "what is the difference between --with and --with-executables-from",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/tools.md#installing-executables-from-additional-packages/0", 3),
+            ("docs/concepts/tools.md#including-additional-dependencies/0", 2),
+        ),
+        "The --with-executables-from section contrasts the two directly: --with adds packages as "
+        "dependencies only, while --with-executables-from also installs their executables into the "
+        "tool environment. The --with section documents the option being contrasted against.",
+    ),
+    (
+        "u-0257",
+        "does a tool environment respect my project's .python-version file",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/concepts/tools.md#python-versions/0", 3),),
+        "Answers the interaction directly: tool environments use the same discovery logic as other "
+        "uv virtual environments but deliberately ignore non-global requests such as .python- "
+        "version files and requires-python, leaving --python as the way to pin one.",
+    ),
+    (
+        "u-0258",
+        "how does a fastapi app get adapted to an aws lambda handler",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/guides/integration/aws-lambda.md#getting-started/0", 3),),
+        "The starting example is where the two are joined: Mangum is described as the library that "
+        "adapts ASGI applications to AWS Lambda and API Gateway, and the sample main.py wraps the "
+        "FastAPI app as handler = Mangum(app), which is the entrypoint the later deployment steps "
+        "reference.",
+    ),
+    (
+        "u-0259",
+        "what changes in the deployment package when the project is a uv workspace",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/guides/integration/aws-lambda.md#deploying-a-docker-image/workspace-support/", 3),),
+        "Section-scoped deliberately: the requirement is stated at the top (local workspace "
+        "dependencies must also be included in the deployment package) but the actual answer — a "
+        "second RUN that omits --no-emit-workspace and bind-mounts the library so it is copied "
+        "into the task root — only appears in the revised Dockerfile at the end.",
+    ),
+    (
+        "u-0260",
+        "when should i deploy a lambda as a zip instead of a container image",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/guides/integration/aws-lambda.md#deploying-a-zip-archive/0", 3),
+            ("docs/guides/integration/aws-lambda.md#deploying-a-docker-image/0", 2),
+        ),
+        "The zip section opens by comparing the two: for simple applications zip archives are more "
+        "straightforward and efficient than Docker images, at the cost of a 250 MB ceiling. The "
+        "Docker section states the case for the image path it is being compared against.",
+    ),
+    (
+        "u-0261",
+        "how does dependabot's cooldown setting relate to exclude-newer",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/guides/integration/dependabot.md#dependency-cooldown/0", 3),),
+        "This section exists to connect the two: if exclude-newer is set, Dependabot's cooldown "
+        "should be set to match, or Dependabot will open pull requests whose dependencies uv then "
+        "refuses to lock — with the worked example of exclude-newer of 1 week against default- "
+        "days: 7.",
+    ),
+    (
+        "u-0262",
+        "should i request a script's dependencies with --with or declare them in the script",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/guides/scripts.md#running-a-script-with-dependencies/0", 3),
+            ("docs/guides/scripts.md#declaring-script-dependencies/0", 2),
+        ),
+        "This section weighs the two approaches in the same breath — a project or inline metadata "
+        "is generally recommended, but per-invocation --with is supported — and documents --with "
+        "with version constraints. The declaring section documents the inline alternative being "
+        "compared.",
+    ),
+    (
+        "u-0263",
+        "how do i get cuda builds on linux but cpu-only wheels on macos and windows",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            (
+                "docs/guides/integration/pytorch.md#configuring-accelerators-with-environment-markers/",
+                3,
+            ),
+            ("docs/guides/integration/pytorch.md#using-a-pytorch-index/", 2),
+        ),
+        "The environment-markers section gives the complete pyproject.toml pairing pytorch-cpu "
+        "under `sys_platform != 'linux'` with pytorch-cu130 under `sys_platform == 'linux'`. The "
+        "index section supplies the per-accelerator index definitions that configuration depends "
+        "on.",
+    ),
+    (
+        "u-0264",
+        "how do i let an extra decide whether torch comes from the cpu or the cuda index",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            (
+                "docs/guides/integration/pytorch.md#configuring-accelerators-with-optional-dependencies/0",
+                3,
+            ),
+        ),
+        "Shows the cpu and cu130 optional-dependency groups, the `tool.uv.conflicts` entry that "
+        "makes them mutually exclusive, and sources keyed by `extra`, which is exactly the extra- "
+        "to-index link asked about.",
+    ),
+    (
+        "u-0265",
+        "how do i translate pytorch's recommended pip3 install command into uv",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/guides/integration/pytorch.md#the-uv-pip-interface/0", 3),),
+        "Sets the pip3 install --index-url command beside its uv form and states the rule "
+        "connecting them: replace pip3 with uv pip to get the same workflow.",
+    ),
+    (
+        "u-0266",
+        "how is uv pip install --system different from passing --python $(which python)",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/pip/environments.md#using-arbitrary-python-environments/0", 3),),
+        "States the equivalence and the exception in one place: --system is roughly the same as "
+        "--python $(which python), except executables linked to virtual environments are skipped, "
+        "and --system makes uv ignore interpreters that are in virtual environments.",
+    ),
+    (
+        "u-0267",
+        "does --group read the pyproject.toml i passed to -r",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/pip/packages.md#installing-packages-from-files/0", 3),),
+        "The note at the end answers exactly this: --group flags do not apply to sources given "
+        "with -r or -e, so `-r some/path/pyproject.toml --group foo` sources foo from "
+        "./pyproject.toml instead.",
+    ),
+    (
+        "u-0268",
+        "how does the node for mypackage[myextra] relate to the node for mypackage",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/reference/internals/metadata.md#/0", 3),
+            ("docs/reference/internals/metadata.md#schema/", 2),
+        ),
+        "States that an extra node always depends on the package node, while a group node does "
+        "not, because groups are lists of things you want while working on the package. The "
+        "annotated schema repeats the distinction in the commentary on `resolution`.",
+    ),
+    (
+        "u-0269",
+        "what does tier 2 support mean compared to tier 1",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/reference/policies/python.md#python-versions/0", 3),
+            ("docs/reference/policies/python.md#python-implementations/0", 2),
+        ),
+        "The versions section defines both terms in contrast — Tier 1 is 'guaranteed to work' and "
+        "continuously tested, Tier 2 is 'expected to work' and, for versions, past end-of-life. "
+        "The implementations section restates the pair and adds Tier 3, 'should work'.",
+    ),
+    (
+        "u-0270",
+        "who builds the python interpreters uv installs for pypy versus cpython",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/reference/policies/python.md#python-implementations/0", 3),),
+        "Ties the tier to the build provenance: managed CPython builds are maintained by Astral, "
+        "while managed builds for the Tier 2 implementations (PyPy, GraalPy, Pyodide) are not.",
+    ),
+    (
+        "u-0271",
+        "does uv build the wheel from the source distribution or straight from my project",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/concepts/projects/build.md#using-uv-build/0", 3),),
+        "The section states uv build first builds a source distribution and then builds the wheel "
+        "from that sdist, and gives --sdist --wheel as the way to build both from source.",
+    ),
+    (
+        "u-0272",
+        "what do the members of a workspace have in common",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/workspaces.md#/0", 3),
+            ("docs/concepts/projects/workspaces.md#workspace-sources/0", 2),
+        ),
+        "The intro states the relation directly: each package keeps its own pyproject.toml but the "
+        "workspace shares one lockfile, and uv lock operates on the whole workspace. The sources "
+        "section adds that root-level tool.uv.sources apply to all members.",
+    ),
+    (
+        "u-0273",
+        "if a member and the workspace root both declare a source for the same dependency which "
+        "one applies",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/concepts/projects/workspaces.md#workspace-sources/0", 3),),
+        "The section states root definitions apply to all members unless overridden, and its note "
+        "adds that a member's tool.uv.sources ignores the root entry for that dependency even when "
+        "the member's source is limited by a non-matching marker.",
+    ),
+    (
+        "u-0274",
+        "should I set up python with actions/setup-python or uv python install",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/guides/integration/github.md#setting-up-python/0", 3),),
+        "The section puts the two side by side: uv python install respects the project's pin, "
+        "while setup-python can be faster because GitHub caches versions alongside the runner, and "
+        "shows python-version-file pointing at .python-version or pyproject.toml.",
+    ),
+    (
+        "u-0275",
+        "should I run pytest with uvx or with uv run",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/guides/tools.md#running-tools/0", 3),),
+        "The section's note compares them for exactly this case: tools that need your project "
+        "installed, such as pytest or mypy, want uv run, because uvx runs in an environment "
+        "isolated from the project; a flat-layout project is the exception.",
+    ),
+    (
+        "u-0276",
+        "why does uv install into .venv when pip installs into the system python",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/pip/compatibility.md#virtual-environments-by-default/0", 3),),
+        "The section contrasts the two defaults: uv always targets the active or discovered .venv, "
+        "pip falls back to a global environment, and uv inverts the default so installing into the "
+        "system Python requires --system or --python.",
+    ),
+    (
+        "u-0277",
+        "why do package names look different in uv pip list than in pip list",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/pip/compatibility.md#package-name-normalization/0", 3),),
+        "The section explains the difference and shows it: uv normalizes names to their PEP 503 "
+        "forms in all output, while pip preserves the verbatim name from the registry, with a "
+        "side-by-side diff of the two listings.",
+    ),
+    (
+        "u-0278",
+        "can i use pylock.toml in place of uv.lock",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/layout.md#the-lockfile/relationship-to-pylock-toml/0", 3),
+            ("docs/concepts/projects/layout.md#the-lockfile/0", 2),
+        ),
+        "This subsection is the only place that relates the two formats: some of uv's "
+        "functionality cannot be expressed in `pylock.toml`, so the project interface keeps "
+        "`uv.lock`, while `pylock.toml` is supported as an export target and in the `uv pip` CLI. "
+        "The parent section says what `uv.lock` itself is.",
+    ),
+    (
+        "u-0279",
+        "what is the difference between a managed and a system python in uv",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/python-versions.md#managed-and-system-python-installations/0", 3),
+            (
+                "docs/concepts/python-versions.md#requiring-or-disabling-managed-python-versions/0",
+                2,
+            ),
+        ),
+        "Defines the distinction directly — versions uv installed are managed, everything else is "
+        "system — and closes the common misreading by saying a pyenv-managed interpreter still "
+        "counts as system. The second anchor shows the distinction in use via `--managed-python` "
+        "and `--no-managed-python`.",
+    ),
+    (
+        "u-0280",
+        "what is the difference between --help and uv help",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/getting-started/help.md#help-menus/0", 3),),
+        "Contrasts the two directly: `--help` prints a condensed menu while `uv help` prints the "
+        "long one, shows both the bare and per-command forms, and notes the long menu is paged "
+        "through `less` or `more` and exited with `q`.",
+    ),
+    (
+        "u-0281",
+        "what renovate setting should i pair with exclude-newer",
+        (EvalSlice.RELATIONSHIP,),
+        (("docs/guides/integration/renovate.md#dependency-cooldown/0", 3),),
+        "This section exists to relate the two: it recommends setting Renovate's "
+        "`minimumReleaseAge` to match uv's `exclude-newer`, otherwise Renovate opens pull requests "
+        "uv cannot lock, and shows a `1 week` setting matching a `1 week` `exclude-newer`.",
+    ),
+    (
+        "u-0282",
+        "how do i keep my existing pinned versions when importing requirements into uv",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            (
+                "docs/guides/migration/pip-to-project.md#migrating-to-a-uv-project/importing-requirements-files/0",
+                3,
+            ),
+        ),
+        "Names the trap and the fix: importing `requirements.in` with `uv add -r` lets uv resolve "
+        "fresh versions, so the locked `requirements.txt` must be passed as constraints with `-c` "
+        "for the existing versions to be retained in `uv.lock`.",
+    ),
+    (
+        "u-0283",
+        "is the build backend inside the uv executable the same as the uv_build package",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/build-backend.md#bundled-build-backend/0", 3),
+            ("docs/concepts/build-backend.md#using-the-uv-build-backend/0", 2),
+        ),
+        "This is the only passage that relates the two: the `uv` executable carries a copy of the "
+        "backend and uses it when its version satisfies the `uv_build` requirement, otherwise it "
+        "falls back to the package; other frontends such as `python -m build` always use the "
+        "package. The second anchor is where that `uv_build` version requirement is declared.",
+    ),
+    (
+        "u-0284",
+        "what does uv.lock record that pyproject.toml does not",
+        (EvalSlice.RELATIONSHIP,),
+        (
+            ("docs/concepts/projects/layout.md#the-lockfile/0", 3),
+            ("docs/concepts/projects/layout.md#the-pyproject-toml/0", 2),
+        ),
+        "The lockfile section draws the contrast explicitly — the `pyproject.toml` specifies broad "
+        "requirements, the lockfile the exact resolved versions installed in the environment — and "
+        "adds that `uv.lock` is uv-specific and not to be hand-edited. The `pyproject.toml` "
+        "section supplies the other half: what that file is for.",
+    ),
+    (
+        "u-0285",
+        "uv pip compile --group",
+        (EvalSlice.SYMBOL,),
+        (("docs/pip/compile.md#locking-requirements/0", 3),),
+        "This section introduces the --group flag, its path:group syntax, the --project variant, "
+        "and the note that --group always sources from ./pyproject.toml rather than a passed file.",
+    ),
+    (
+        "u-0286",
+        "uv pip compile --upgrade-package",
+        (EvalSlice.SYMBOL,),
+        (("docs/pip/compile.md#upgrading-requirements/0", 3),),
+        "The upgrading section is where --upgrade-package is introduced, alongside the pinning "
+        "behaviour it exists to defeat and the broader --upgrade flag.",
+    ),
+    (
+        "u-0287",
+        "uv pip compile --constraint",
+        (EvalSlice.SYMBOL,),
+        (("docs/pip/compile.md#adding-constraints/0", 3),),
+        "Documents the flag: what a constraints file is, the --constraint invocation, and that uv "
+        "also appends constraint-dependencies from the workspace root.",
+    ),
+    (
+        "u-0288",
+        "uv pip compile --override",
+        (EvalSlice.SYMBOL,),
+        (("docs/pip/compile.md#overriding-dependency-versions/0", 3),),
+        "Defines overrides files and gives the --override invocation with the worked a/b/c upper- "
+        "bound example; no other section in this page documents that flag.",
+    ),
+    (
+        "u-0289",
+        "gh auth setup-git",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/authentication/git.md#git-credential-helpers/0", 3),),
+        "The credential-helpers section is the only place that says when this command is needed: "
+        "after gh auth login --with-token, since the non-interactive login does not configure the "
+        "helper itself.",
+    ),
+    (
+        "u-0290",
+        "uv add --raw",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/authentication/git.md#persistence-of-credentials/0", 3),),
+        "States what --raw does on uv add - it forces uv to persist Git credentials - together "
+        "with the recommendation to configure a credential helper instead.",
+    ),
+    (
+        "u-0291",
+        "uv run fastapi dev",
+        (EvalSlice.SYMBOL,),
+        (("docs/guides/integration/fastapi.md#migrating-an-existing-fastapi-project/0", 3),),
+        "The migration walkthrough gives this invocation and states its effect: uv resolves and "
+        "locks dependencies, creates the virtual environment, then runs the command in it.",
+    ),
+    (
+        "u-0292",
+        "uv init --build-backend maturin",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/projects/init.md#projects-with-extension-modules/0", 3),),
+        "This section documents --build-backend for extension modules: it names maturin and "
+        "scikit-build-core as the supported backends, shows the exact invocation, and notes that "
+        "--build-backend implies --package.",
+    ),
+    (
+        "u-0293",
+        "uv export --format cyclonedx1.5",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/concepts/projects/export.md#cyclonedx-sbom-format/basic-usage/0", 3),
+            ("docs/concepts/projects/export.md#cyclonedx-sbom-format/0", 2),
+        ),
+        "Basic usage gives the exact command and says it emits a JSON-encoded CycloneDX v1.5 "
+        "document of the project and its dependencies. The parent section states what the format "
+        "is for and that support is in preview.",
+    ),
+    (
+        "u-0294",
+        "uv generate-shell-completion",
+        (EvalSlice.SYMBOL,),
+        (("docs/getting-started/installation.md#shell-autocompletion/0", 3),),
+        "The shell autocompletion section is where this subcommand appears and is documented, with "
+        "the per-shell eval lines for bash, zsh, fish, elvish and PowerShell.",
+    ),
+    (
+        "u-0295",
+        "uv tool run jupyter lab",
+        (EvalSlice.SYMBOL,),
+        (("docs/guides/integration/jupyter.md#using-jupyter-as-a-standalone-tool/0", 3),),
+        "This short section is the one that documents the command, as the way to get an ad hoc "
+        "notebook server running in an isolated environment rather than against a project.",
+    ),
+    (
+        "u-0296",
+        "uv pip install --system",
+        (EvalSlice.SYMBOL,),
+        (("docs/guides/integration/docker.md#using-the-pip-interface/installing-a-package/0", 3),),
+        "This section documents that invocation: --system installs into the system Python "
+        "environment, which is safe in a container, with UV_SYSTEM_PYTHON as the persistent form "
+        "and the note that --system must be dropped once a virtual environment is used instead.",
+    ),
+    (
+        "u-0297",
+        "uvx marimo edit",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/guides/integration/marimo.md#using-marimo-as-a-standalone-tool/0", 3),
+            ("docs/guides/integration/marimo.md#/0", 1),
+        ),
+        "The standalone-tool section documents this invocation: it starts a marimo server in an "
+        "isolated environment for ad-hoc use, with or without a notebook path. The page preamble "
+        "is only a 1 — it names standalone use in a list of four modes without describing the "
+        "command.",
+    ),
+    (
+        "u-0298",
+        "uv python dir --bin",
+        (EvalSlice.SYMBOL,),
+        (("docs/reference/storage.md#types-of-data/python-executables/0", 3),),
+        "The Python executables entry documents this exact invocation: it shows the directory "
+        "holding the installed Python executables (as opposed to plain uv python dir, which shows "
+        "the installation directory), with UV_PYTHON_BIN_DIR to override it.",
+    ),
+    (
+        "u-0299",
+        "deactivate",
+        (EvalSlice.SYMBOL,),
+        (("docs/pip/environments.md#deactivating-an-environment/0", 3),),
+        "The section that documents the `deactivate` command as the way to exit a virtual "
+        "environment.",
+    ),
+    (
+        "u-0300",
+        "uv-lock hook",
+        (EvalSlice.SYMBOL,),
+        (("docs/guides/integration/pre-commit.md#/0", 3),),
+        "Gives the .pre-commit-config.yaml entry with `id: uv-lock` and says what it is for: "
+        "keeping uv.lock up to date when pyproject.toml changes.",
+    ),
+    (
+        "u-0301",
+        "uv publish --index",
+        (EvalSlice.SYMBOL,),
+        (("docs/guides/integration/google.md#publishing-packages/0", 3),),
+        "This section shows `uv publish --index private-registry` and the publish-url entry that "
+        "makes a named index publishable, which is what the --index form refers to.",
+    ),
+    (
+        "u-0302",
+        "uv self version",
+        (EvalSlice.SYMBOL,),
+        (("docs/getting-started/help.md#viewing-the-version/0", 3),),
+        "Documents the command and its neighbours: `uv --version` prints the same output, `uv -V` "
+        "omits the build commit and date, and before uv 0.7.0 the command was spelled `uv "
+        "version`.",
+    ),
+    (
+        "u-0303",
+        "uv pip list --format json",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/pip/inspection.md#listing-installed-packages/0", 3),
+            ("docs/getting-started/features.md#the-pip-interface/0", 1),
+        ),
+        "The listing section gives the exact invocation `uv pip list --format json` as the way to "
+        "get the installed packages in JSON; the features page only names `uv pip list` in a "
+        "bullet.",
+    ),
+    (
+        "u-0304",
+        "uv run --no-sync",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/projects/sync.md#automatic-lock-and-sync/0", 3),),
+        "The automatic lock-and-sync section is where --no-sync is introduced: it shows `uv run "
+        "--no-sync ...` and states that it runs the command without checking whether the "
+        "environment is up to date.",
+    ),
+    (
+        "u-0305",
+        "uv run --exact",
+        (EvalSlice.SYMBOL,),
+        (
+            (
+                "docs/concepts/projects/sync.md#syncing-the-environment/handling-of-extraneous-packages/0",
+                3,
+            ),
+        ),
+        "This section explains that `uv run` syncs inexactly by default and gives `uv run --exact` "
+        "as the way to make it remove packages that are not in the lockfile.",
+    ),
+    (
+        "u-0306",
+        "uv sync --no-group",
+        (EvalSlice.SYMBOL,),
+        (
+            (
+                "docs/concepts/projects/sync.md#syncing-the-environment/syncing-development-dependencies/0",
+                3,
+            ),
+        ),
+        "The development dependencies section lists --no-group among the group options and shows "
+        "`uv sync --no-group foo --group foo`, stating that the exclusion wins.",
+    ),
+    (
+        "u-0307",
+        "uv sync --extra",
+        (EvalSlice.SYMBOL,),
+        (
+            (
+                "docs/concepts/projects/sync.md#syncing-the-environment/syncing-optional-dependencies/0",
+                3,
+            ),
+            ("docs/concepts/projects/dependencies.md#optional-dependencies/0", 2),
+        ),
+        "The optional dependencies sync section states that extras are not synced by default and "
+        "shows `uv sync --extra foo` as the way to include one; the dependencies page explains "
+        "what extras are but not this flag.",
+    ),
+    (
+        "u-0308",
+        "uv sync --refresh-package",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/cache.md#dependency-caching/0", 3),),
+        "The caching escape hatches in this section give `uv sync --refresh-package ruff` and "
+        "state that it forces revalidation of cached data for one named dependency rather than all "
+        "of them.",
+    ),
+    (
+        "u-0309",
+        "uv pip install --group",
+        (EvalSlice.SYMBOL,),
+        (("docs/pip/packages.md#installing-packages-from-files/0", 3),),
+        "This section documents the flag: `uv pip install --group foo` for the current project, "
+        "the per-path `pyproject.toml:group` form, and the note that --group does not apply to "
+        "sources given with -r or -e.",
+    ),
+    (
+        "u-0310",
+        "uv pip install --python",
+        (EvalSlice.SYMBOL,),
+        (("docs/pip/environments.md#using-arbitrary-python-environments/0", 3),),
+        "This section states that `uv pip install --python /path/to/python` installs into the "
+        "environment linked to that interpreter, that the option also accepts a virtual "
+        "environment root, and when --system is additionally required.",
+    ),
+    (
+        "u-0311",
+        "uv init --bare",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/projects/init.md#creating-a-minimal-project/0", 3),),
+        "The minimal-project section is the documentation of --bare: it shows `uv init example- "
+        "bare --bare` and enumerates what is skipped (version pin, README, source files, git, "
+        "extra metadata).",
+    ),
+    (
+        "u-0312",
+        "uv tool upgrade --all",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/guides/tools.md#upgrading-tools/0", 3),
+            ("docs/concepts/tools.md#upgrading-tools/0", 2),
+        ),
+        "The guide's upgrade section is the only place that shows `uv tool upgrade --all` and says "
+        "it upgrades all tools rather than one; the concept section documents `uv tool upgrade` "
+        "itself without the --all form.",
+    ),
+    (
+        "u-0313",
+        "uv tool install --python",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/guides/tools.md#requesting-python-versions/0", 3),
+            ("docs/concepts/tools.md#python-versions/0", 2),
+        ),
+        "That section states the --python option selects the interpreter for tool commands and "
+        "shows `uv tool install --python 3.10 ruff`; the concept section only explains that a tool "
+        "environment is bound to a Python version.",
+    ),
+    (
+        "u-0314",
+        "uv tool install --with-executables-from",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/tools.md#installing-executables-from-additional-packages/0", 3),),
+        "This section is the documentation of the option: it gives the invocation, an ansible "
+        "example, and states how it differs from --with (it also installs the extra packages' "
+        "executables).",
+    ),
+    (
+        "u-0315",
+        "uvx --isolated",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/tools.md#tool-versions/0", 3),),
+        "The tool versions section introduces `uvx --isolated ruff` and states what it does: "
+        "ignore an installed version of the tool without refreshing the cache.",
+    ),
+    (
+        "u-0316",
+        "uv python find --system",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/concepts/python-versions.md#finding-a-python-executable/0", 3),
+            ("docs/getting-started/features.md#python-versions/0", 1),
+        ),
+        "The section documents `uv python find` and then states that the --system flag makes it "
+        "ignore virtual environments, which otherwise take precedence; the features list only "
+        "names `uv python find`.",
+    ),
+    (
+        "u-0317",
+        "uv python list --all-versions",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/concepts/python-versions.md#viewing-available-python-versions/0", 3),
+            ("docs/guides/install-python.md#viewing-python-installations/0", 2),
+        ),
+        "That section says downloads for old patch versions are hidden by default and gives `uv "
+        "python list --all-versions` as the way to see them all; the guide only shows the bare `uv "
+        "python list`.",
+    ),
+    (
+        "u-0318",
+        "uv python install --reinstall",
+        (EvalSlice.SYMBOL,),
+        (("docs/guides/install-python.md#reinstalling-python/0", 3),),
+        "This section exists to document the flag: it shows `uv python install --reinstall`, says "
+        "it reinstalls every previously installed version, and explains why that can help even at "
+        "the same version.",
+    ),
+    (
+        "u-0319",
+        "uv build --sdist",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/concepts/projects/build.md#using-uv-build/0", 3),
+            ("docs/guides/projects.md#building-distributions/0", 2),
+            ("docs/getting-started/features.md#projects/0", 1),
+        ),
+        "The build concept section states that `uv build --sdist` limits the build to a source "
+        "distribution (against --wheel and the default of both); the guide describes `uv build` "
+        "without the flags, and the features list only names the command.",
+    ),
+    (
+        "u-0320",
+        "uvx --from",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/guides/tools.md#commands-with-different-package-names/0", 3),
+            ("docs/guides/tools.md#requesting-different-sources/0", 2),
+        ),
+        "The 'Commands with different package names' section introduces --from as the way to run a "
+        "command from a differently-named package, with the httpie/http example. 'Requesting "
+        "different sources' shows the same option pointed at Git URLs, framing its wider use.",
+    ),
+    (
+        "u-0321",
+        "uv add --optional",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/projects/dependencies.md#optional-dependencies/0", 3),),
+        "The optional dependencies section documents '--optional <extra>' as the flag that adds a "
+        "requirement to a named extra under [project.optional-dependencies], with the 'uv add "
+        "httpx --optional network' example.",
+    ),
+    (
+        "u-0322",
+        "uv add --lfs",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/projects/dependencies.md#dependency-sources/git/0", 3),),
+        "The Git source section states that Git LFS objects are not fetched by default and shows "
+        "'uv add --lfs' writing lfs = true into the tool.uv.sources entry, which is what the flag "
+        "does.",
+    ),
+    (
+        "u-0323",
+        "uv lock --upgrade",
+        (EvalSlice.SYMBOL,),
+        (("docs/concepts/projects/sync.md#upgrading-locked-package-versions/0", 3),),
+        "This section documents --upgrade as the flag that re-resolves every locked package to the "
+        "newest version the project's constraints allow, and notes it also overrides the "
+        "preference for a locked Git commit SHA.",
+    ),
+    (
+        "u-0324",
+        "uv version --short",
+        (EvalSlice.SYMBOL,),
+        (("docs/guides/projects.md#viewing-your-version/0", 3),),
+        "The 'Viewing your version' section documents --short as the option that prints the bare "
+        "version without the package name, contrasting it with plain uv version and --output- "
+        "format json.",
+    ),
+    (
+        "u-0325",
+        "uvx --with",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/concepts/tools.md#including-additional-dependencies/0", 3),
+            ("docs/guides/tools.md#commands-with-plugins/0", 2),
+        ),
+        "The concepts section documents --with for tool execution: repetition, version specifiers, "
+        "the -w shorthand, and what happens on conflict. The guide's plugin section only shows one "
+        "mkdocs-material invocation.",
+    ),
+    (
+        "u-0326",
+        "uv sync --compile-bytecode",
+        (EvalSlice.SYMBOL,),
+        (("docs/guides/integration/docker.md#optimizations/compiling-bytecode/0", 3),),
+        "This section documents --compile-bytecode: it compiles installed sources to .pyc for "
+        "faster startup at the cost of install time and image size, and names UV_COMPILE_BYTECODE "
+        "as the equivalent environment variable.",
+    ),
+    (
+        "u-0327",
+        "uv sync --no-editable",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/guides/integration/docker.md#optimizations/non-editable-installs/0", 3),
+            ("docs/concepts/projects/sync.md#syncing-the-environment/editable-installation/0", 2),
+        ),
+        "The Docker section documents --no-editable on uv sync and uv run: it installs the project "
+        "without a dependency on the source tree, so a multi-stage build can copy only the virtual "
+        "environment. The sync concepts page states the flag opts out of the editable default.",
+    ),
+    (
+        "u-0328",
+        "uv tool install --force",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/concepts/tools.md#tool-executables/overwriting-executables/0", 3),
+            ("docs/concepts/tools.md#tool-executables/0", 2),
+        ),
+        "The 'Overwriting executables' subsection is the only place --force is documented: "
+        "installs normally refuse to replace an executable uv did not install (e.g. one from "
+        "pipx), and --force overrides that. The parent section explains what the executable "
+        "directory holds.",
+    ),
+    (
+        "u-0329",
+        "uv add --dev",
+        (EvalSlice.SYMBOL,),
+        (
+            ("docs/concepts/projects/dependencies.md#development-dependencies/0", 3),
+            ("docs/concepts/projects/dependencies.md#adding-dependencies/0", 2),
+        ),
+        "The development dependencies section documents --dev: it writes the requirement into the "
+        "dev group of [dependency-groups], and --dev is equivalent to --group dev. The adding- "
+        "dependencies section only lists --dev among the flags that target an alternative table.",
+    ),
+    (
+        "u-0330",
+        "uv add --group",
+        (EvalSlice.SYMBOL,),
+        (
+            (
+                "docs/concepts/projects/dependencies.md#development-dependencies/dependency-groups/0",
+                3,
+            ),
+        ),
+        "This subsection documents --group as the way to put a development dependency into a named "
+        "group other than dev, showing 'uv add --group lint ruff' and the resulting [dependency- "
+        "groups] table.",
+    ),
+    (
+        "u-0331",
+        "what happens when uv finds a lockfile with a newer schema version",
+        (EvalSlice.FACT,),
+        (("docs/concepts/resolution.md#lockfile-versioning/0", 3),),
+        "States the rule directly: a uv that supports schema v1 errors on an existing v1 "
+        "lockfile of a greater schema version, and reading an older schema is only "
+        "possible when the update was backwards-compatible rather than guaranteed.",
+    ),
+    (
+        "u-0332",
+        "where does uv create a project's virtual environment by default",
+        (EvalSlice.FACT,),
+        (("docs/reference/storage.md#types-of-data/project-virtual-environments/0", 3),),
+        "Names the location and the override in one place: `.venv` in the project or "
+        "workspace root beside `pyproject.toml`, with `UV_PROJECT_ENVIRONMENT` as the way "
+        "to move it.",
+    ),
+    (
+        "u-0333",
+        "does uv register managed python installations with the windows registry",
+        (EvalSlice.FACT,),
+        (("docs/concepts/python-versions.md#registration-in-the-windows-registry/0", 3),),
+        "Answers yes and says under which standard - managed installations are registered "
+        "as PEP 514 defines, which is what makes them selectable with the `py` launcher.",
+    ),
 )
 
 RELEASE: tuple[Judgment, ...] = (
