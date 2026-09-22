@@ -189,4 +189,5 @@ binding constraint instead, this characterisation is stale and should be re-read
 than rediscovered.
 
 **Cost.** About one minute across six sets: one search per case, and every arm is
-arithmetic on the one pool. It is the cheapest runner on the rung.
+arithmetic on the one pool — against the roughly five minutes ADR-0144 records for the
+diversity runner it sits beside.
