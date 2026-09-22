@@ -60,16 +60,18 @@ takes; choosing their eventual *shape* is the one it refuses, for the reason the
 paragraph above refuses three extension mechanisms (ADR-0086).
 """
 
+from __future__ import annotations
+
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from importlib.metadata import EntryPoint, entry_points
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Final
 
-from mycelium.sdk.protocols import MYCELIUM_API_VERSION, Module
-
 if TYPE_CHECKING:
     import typer
+
+    from mycelium.sdk.protocols import Module
 
 __all__ = [
     "MODULE_ENTRY_POINT_GROUP",
@@ -246,6 +248,12 @@ def load_module(name: str) -> Module:
     :func:`mycelium.ingest.registry._load_parser` makes, because a module is
     installed code held to the same contract discipline (D-012).
     """
+    # Local, because `mycelium.sdk.protocols` reaches the pydantic records and this
+    # module is imported by `main()` on every invocation to discover whether any
+    # module is installed at all. Nothing is validated until one actually is
+    # (roadmap 6.36, ADR-0151).
+    from mycelium.sdk.protocols import MYCELIUM_API_VERSION, Module
+
     point = _points().get(name)
     if point is None:
         known = ", ".join(installed_ids()) or "(none installed)"
@@ -312,7 +320,7 @@ def statuses(enabled: Sequence[str] = ()) -> tuple[ModuleStatus, ...]:
     return tuple(reported)
 
 
-def mount(app: "typer.Typer") -> tuple[tuple[str, ...], tuple[str, ...]]:
+def mount(app: typer.Typer) -> tuple[tuple[str, ...], tuple[str, ...]]:
     """Mount every installed module's sub-app on `app`. Returns ``(mounted, problems)``.
 
     Installed rather than enabled, because a command tree is built before argv

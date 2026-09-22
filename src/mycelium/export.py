@@ -51,13 +51,9 @@ __all__ = [
     "export_bundle",
 ]
 
-DEFAULT_EXPORT_DIRNAME: Final = "export"
-"""Where bundles land under the repository root, per spec 03 §9's own tree.
-
-``mycelium init`` gitignores it: D-006 says bundles are not committed by default,
-and a directory the tool writes into the repository *is* committed by default
-unless something says otherwise.
-"""
+# Defined in `mycelium.defaults` and re-exported here — see that module for why a
+# Typer default may not live behind a subsystem import (roadmap 6.36).
+from mycelium.defaults import DEFAULT_EXPORT_DIRNAME
 
 RECORDS_DIRNAME: Final = "records"
 MANIFEST_FILENAME: Final = "manifest.json"

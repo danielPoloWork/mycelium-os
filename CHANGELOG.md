@@ -12,6 +12,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **`mycelium --version` no longer imports the ingestion subsystem and the embedder**
+  (roadmap 6.36, [ADR-0151](docs/adr/0151-let-the-command-line-import-what-it-parses-with.md)).
+  `import mycelium.cli.app` loaded **481 modules in ~1.9 s**, because the CLI is the front
+  door to every subsystem and reached them all at module scope. Three things were paying for
+  that and none was the one the item predicted: Typer needs three `StrEnum`s while building
+  its command tree and they were defined beside twenty-five pydantic models (954 ms for
+  18 ms of enums, now `mycelium.sdk.enums`); Typer also evaluates *default values*, and five
+  literals imported from four subsystems cost 1 229 ms and 253 modules (now
+  `mycelium.defaults`, a module with no imports); and twelve imports that looked stuck in
+  signatures belonged to private helpers nothing introspects (now `TYPE_CHECKING`). Both new
+  modules are re-exported by their previous homes, so **no documented import changes**.
+  Measured: `import mycelium.cli.app` **1 894 → 420 ms / 481 → 164 modules**, and end to end
+  `mycelium --version` **2 454 → 1 057 ms (−56.9 %)** with no module installed — with a
+  module installed the gain is ~11 %, because `mount()` imports every installed module so
+  that `--help` stays complete (ADR-0077), and that cost is the module's. `--help` output is
+  byte-identical for the top level and all seventeen commands.
+
 - **The reference profile now reports each query stage against spec 04 §1's budget for it**
   (roadmap 6.35,
   [ADR-0150](docs/adr/0150-report-the-stage-budgets-where-they-mean-something-and-gate-the-total.md)).

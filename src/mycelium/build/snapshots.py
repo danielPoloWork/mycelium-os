@@ -76,11 +76,10 @@ __all__ = [
     "rollback",
 ]
 
-DEFAULT_KEEP: Final = 10
-"""Snapshots retained by `mycelium gc`, newest first. `CURRENT` is always kept."""
-
-DEFAULT_CACHE_MAX_AGE_DAYS: Final = 30
-"""How long an unreferenced cached artifact survives before it is collectable."""
+# Defined in `mycelium.defaults` and re-exported here, because Typer evaluates a
+# command's defaults while building its tree: importing them from this module put
+# the whole build subsystem on the path of `mycelium --version` (roadmap 6.36).
+from mycelium.defaults import DEFAULT_CACHE_MAX_AGE_DAYS, DEFAULT_KEEP
 
 _DIGEST_FILENAME: Final = re.compile(r"^[0-9a-f]{64}$")
 
