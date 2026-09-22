@@ -171,8 +171,43 @@ REFERENCE_CHUNKS: Final = 100_000
 QUERY_BUDGET_MS: Final = 150
 CANDIDATE_BUDGET_MS: Final = 60
 """Spec 04 §1's budget for plan + candidate generation, the stage the vector leg is."""
+FUSION_BUDGET_MS: Final = 20
+"""Spec 04 §1's budget for fusion + boosts + dedupe."""
+GRAPH_BUDGET_MS: Final = 30
+"""Spec 04 §1's budget for graph expansion, *when active*."""
+STITCH_PACK_BUDGET_MS: Final = 40
+"""Spec 04 §1's budget for stitch + pack."""
 INCREMENTAL_BUDGET_MS: Final = 2_000
 COLD_BUILD_BUDGET_S: Final = 60
+
+SPEC_STAGES: Final[dict[str, tuple[str, int]]] = {
+    "lexical": ("plan + candidates", CANDIDATE_BUDGET_MS),
+    "embed_query": ("plan + candidates", CANDIDATE_BUDGET_MS),
+    "vector": ("plan + candidates", CANDIDATE_BUDGET_MS),
+    "symbol": ("plan + candidates", CANDIDATE_BUDGET_MS),
+    "fusion": ("fusion + boosts + dedupe", FUSION_BUDGET_MS),
+    "graph": ("graph expansion", GRAPH_BUDGET_MS),
+}
+"""Which of spec 04 §1's stage budgets each label `search` already times belongs to.
+
+The query path times itself (`SearchOutcome.timings_ms`, a published `explain`
+field), so reading its own numbers costs nothing it did not already pay and
+cannot drift from the path it claims to time — the two failure modes roadmap
+6.35 had to choose between before noticing the seam was already there.
+
+`terms` is deliberately absent: it is `explain`'s per-term report (ADR-0050), not
+a pipeline stage, and folding it into a stage would price a budget against work
+the spec's pipeline does not contain."""
+
+UNTIMED_STAGES: Final[tuple[tuple[str, int, str], ...]] = (
+    (
+        "stitch + pack",
+        STITCH_PACK_BUDGET_MS,
+        "pack runs in `handle_search`, outside the seam; stitch is unimplemented "
+        "(spec 04 §4 describes it, nothing in src/ does it)",
+    ),
+)
+"""Spec 04 §1 stages with no label to read, and why. Reported, never silently dropped."""
 
 VECTOR_FRESH_SAMPLES: Final = 12
 """Fresh-handle vector samples. Each opens a store and maps a 154 MB file, so this
@@ -1005,6 +1040,75 @@ def profile_cold_build(
     }
 
 
+def _query_stage_notes(timings: Sequence[dict[str, int]]) -> dict[str, Any]:
+    """Each query stage's p50/p95 against the spec 04 §1 budget it belongs to.
+
+    Read from `SearchOutcome.timings_ms` — the path's own numbers, which
+    `explain` already publishes — so this costs nothing the query did not
+    already pay, and there is no reconstruction to drift (roadmap 6.35).
+
+    **Reported, never gated, and the reason is in the numbers.** A stage budget
+    is stated for the reference profile: 10⁵ chunks, warm store. Below that
+    scale the stages are smaller than the millisecond the path records them in —
+    `fusion` reads 0 ms on every query of this repository's own 1 683-chunk
+    corpus — so a gate would be reading resolution rather than latency. The
+    total is what CI gates (G5, roadmap 6.24), and it is gated on the call spec
+    04 §1 actually names.
+
+    Stages that did not run are reported with `samples: 0` rather than omitted:
+    a stage absent from a report reads as a stage that cost nothing, and the
+    graph leg ships off by default (ADR-0075) rather than free.
+    """
+    seen = sorted({stage for row in timings for stage in row if stage in SPEC_STAGES})
+    stages: dict[str, Any] = {}
+    for label in sorted(SPEC_STAGES):
+        spec_stage, budget = SPEC_STAGES[label]
+        samples = [row[label] for row in timings if label in row]
+        entry: dict[str, Any] = {
+            "spec_stage": spec_stage,
+            "budget_ms": budget,
+            "samples": len(samples),
+        }
+        if samples:
+            ordered = sorted(samples)
+            entry["p50"] = round(statistics.median(ordered), 3)
+            entry["p95"] = ordered[max(0, min(len(ordered) - 1, int(0.95 * (len(ordered) - 1))))]
+        else:
+            entry["note"] = "this leg did not run under the configuration measured"
+        stages[label] = entry
+    return {
+        "query_stages": stages,
+        "query_stages_timed": seen,
+        "query_stages_untimed": [
+            {"spec_stage": stage, "budget_ms": budget, "why": why}
+            for stage, budget, why in UNTIMED_STAGES
+        ],
+        "query_stages_are_reported_not_gated": (
+            "spec 04 §1 states each stage budget for the 10^5-chunk reference profile; "
+            "CI gates the end-to-end total only (G5, roadmap 6.24, ADR-0150)"
+        ),
+    }
+
+
+def _print_query_stages(warm: Measurement) -> None:
+    """Print each query stage against its spec budget, and name the ones with no number."""
+    stages = warm.notes.get("query_stages")
+    if not isinstance(stages, dict):
+        return
+    ran = [(label, row) for label, row in stages.items() if row.get("samples")]
+    if ran:
+        print(
+            "  query stages    "
+            + "  ".join(f"{label} {row['p95']}/{row['budget_ms']}ms" for label, row in sorted(ran)),
+            flush=True,
+        )
+    idle = sorted(label for label, row in stages.items() if not row.get("samples"))
+    if idle:
+        print(f"  {'':<15} not run under this configuration: {', '.join(idle)}", flush=True)
+    for entry in warm.notes.get("query_stages_untimed", []):
+        print(f"  {'':<15} no number for {entry['spec_stage']}: {entry['why']}", flush=True)
+
+
 def _stage_notes(timings: Sequence[dict[str, int]]) -> dict[str, Any]:
     """Median per-stage wall time across a set of builds, and each stage's share.
 
@@ -1107,14 +1211,20 @@ def measure_queries(
     end_to_end = Measurement(
         name="mycelium_search, end to end (MCP handler)", unit="ms", budget=QUERY_BUDGET_MS
     )
+    stage_timings: list[dict[str, int]] = []
     with SqliteStore.open(workspace, read_only=True) as store:
         chunks = store.counts()["chunks"]
         for query in queries:  # one pass to warm the page cache
             search(store, query, limit=10)
         for query in queries:
             started = time.perf_counter()
-            search(store, query, limit=10)
+            outcome = search(store, query, limit=10)
             warm.samples.append((time.perf_counter() - started) * 1000)
+            # The path's own per-stage numbers, carried out of the same call the
+            # wall clock above timed — not a second run, and not a reconstruction
+            # (roadmap 6.35).
+            stage_timings.append(dict(outcome.timings_ms))
+    warm.notes.update(_query_stage_notes(stage_timings))
     for query in queries:
         started = time.perf_counter()
         handle_search(workspace, {"query": query})
@@ -1188,6 +1298,7 @@ def _scale(
         f"  search warm     {warm.p95:8.1f} ms p95   end-to-end {end_to_end.p95:.1f} ms p95",
         flush=True,
     )
+    _print_query_stages(warm)
 
     # The corpus is the expensive part and there may be several more sizes to go.
     shutil.rmtree(workspace, ignore_errors=True)
@@ -1254,6 +1365,14 @@ def run(
             "cold_build_1k_s": COLD_BUILD_BUDGET_S,
             "incremental_p95_ms": INCREMENTAL_BUDGET_MS,
             "search_p95_ms": QUERY_BUDGET_MS,
+            # Spec 04 §1's per-stage budgets, declared beside the total they sum
+            # into. Reported against, never gated: ADR-0150 says why, and the
+            # `query_stages` notes on every warm-search measurement carry the
+            # numbers (roadmap 6.35).
+            "stage_plan_candidates_p95_ms": CANDIDATE_BUDGET_MS,
+            "stage_fusion_p95_ms": FUSION_BUDGET_MS,
+            "stage_graph_expansion_p95_ms": GRAPH_BUDGET_MS,
+            "stage_stitch_pack_p95_ms": STITCH_PACK_BUDGET_MS,
             "reference_chunks": REFERENCE_CHUNKS,
         },
         "scales": [],
@@ -1304,6 +1423,7 @@ def run(
                 f"end-to-end p95 {end_to_end.p95:6.1f} ms",
                 flush=True,
             )
+            _print_query_stages(warm)
             rows.append(
                 {
                     "corpus": str(relative).replace("\\", "/"),
@@ -1328,6 +1448,7 @@ def run(
             f"  search warm     {warm.p95:8.1f} ms p95   end-to-end {end_to_end.p95:.1f} ms p95",
             flush=True,
         )
+        _print_query_stages(warm)
         manifest["query_profile"] = {
             "chunks": chunks,
             "documents": max(1, query_scale // 5),
