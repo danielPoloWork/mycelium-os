@@ -144,6 +144,14 @@ ceiling by **−1.7 to +4.4 points**, and it moves *up* on `ours/dev` (+58.5 % �
 The headroom is the same size when only the passages that answer outright are allowed to
 count. That was this item's first hypothesis and the measurement refused it.
 
+**By corpus, in level but not in shape.** This repository is the hardest of the three by a
+wide margin — `ours/release` scores 0.4767 against 0.6903 and 0.6477 — and it is also the
+one where candidate generation misses most (7.0 % of judgments against 0.2–2.5 %), which is
+what a corpus of prose about its own source looks like against two corpora of product
+documentation. But the *decomposition* barely moves with it: the share of the ceiling
+sitting inside the served ten is 58.4 % on the hardest set and 72.1 % on the easiest. The
+conclusion is not an artefact of one corpus.
+
 **By slice, meaningfully, and it is the slice 6.29 predicted.** `relationship` is the worst
 served on five of six sets (50.0 % on `ours/release` against 78.7 % for `conceptual`), which
 is the same mechanism ADR-0144 found when a diversity cap cost that slice −65.2 %: a
