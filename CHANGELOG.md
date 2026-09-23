@@ -12,6 +12,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **Six more `conceptual` cases in `ours`' dev set** (release prep for v0.6.0, the rule from
+  [ADR-0148](docs/adr/0148-author-the-dev-sets-to-the-count-the-gap-needs.md)). Re-blessing
+  `ours/release` for the cut raised what the `conceptual` row needs from 44 cases to 50,
+  because the median answered case in that slice rose 0.4307 -> 0.4966 and `enforceable_at`
+  derives the count from it: a slice where a typical case is worth more needs more cases
+  before a -2 % bar survives one of them dropping out. `q-0240`-`q-0245` are authored inside
+  ADR-0112, 0118, 0123, 0128, 0135 and 0139. The dev set goes 239 -> 245 cases; the frozen
+  release set is untouched.
+
 - **`tools/measure_result_rules.py`, which decides the result-set rules spec 04 §4 described
   but never had** (roadmap 6.38,
   [ADR-0153](docs/adr/0153-decide-spec-04-s4s-result-set-rules-on-evidence.md)). §4 names

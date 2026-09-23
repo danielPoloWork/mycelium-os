@@ -3238,8 +3238,109 @@ DEV: tuple[Judgment, ...] = (
         "doc_state JSON. The Decode once subsection describes threading one decoded record through "
         "both passes.",
     ),
+    (
+        "q-0240",
+        "why does an accepted risk have to say what would end it",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            ("docs/adr/0118-make-a-deferral-name-the-condition-that-ends-it.md#decision/0", 3),
+            ("docs/adr/0118-make-a-deferral-name-the-condition-that-ends-it.md#context/0", 2),
+        ),
+        "Decision states the rule itself - a deferral names its ending condition in a form a "
+        "machine can evaluate - which is the answer. Context supplies the reason it was needed: "
+        "two accepted risks had rested on a premise that went void and nothing was watching.",
+    ),
+    (
+        "q-0241",
+        "why is the release baseline re-blessed once per release instead of whenever it drifts",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/adr/0112-date-the-baseline-to-a-release-because-the-drift-is-the-incumbents.md#decision/0",
+                3,
+            ),
+            (
+                "docs/adr/0112-date-the-baseline-to-a-release-because-the-drift-is-the-incumbents.md#context/what-the-drift-actually-is/0",
+                2,
+            ),
+        ),
+        "Decision gives the rule and the reason for its cadence: dating the bless to a release is "
+        "what keeps the reported delta meaningful. The drift subsection carries the measurement "
+        "underneath it - what moved, and that most of the movement is the incumbent's.",
+    ),
+    (
+        "q-0242",
+        "why is the number of cases a slice needs derived rather than chosen",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/adr/0123-derive-the-count-a-slice-needs-instead-of-guessing-it.md#decision/0",
+                3,
+            ),
+            (
+                "docs/adr/0123-derive-the-count-a-slice-needs-instead-of-guessing-it.md#what-the-measurement-said/0",
+                2,
+            ),
+        ),
+        "Decision states the principle: a slice is enforced when no single case can trip it on "
+        "its own, so the count follows from the blessed mean and a typical case rather than from "
+        "a round number. The measurement section shows the derived requirement against the guess.",
+    ),
+    (
+        "q-0243",
+        "why is the entry point scan cached for the whole process but the config file not",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/adr/0128-cache-the-environment-not-the-repository-and-declare-the-names-instead-of-importing-them.md#decision/0",
+                3,
+            ),
+            (
+                "docs/adr/0128-cache-the-environment-not-the-repository-and-declare-the-names-instead-of-importing-them.md#alternatives-considered/0",
+                2,
+            ),
+        ),
+        "Decision answers it directly - the environment is cached and the repository is not, "
+        "because a running process cannot honour a change to what is installed while a build may "
+        "rewrite mycelium.toml. Alternatives records the second cache being refused on its cost.",
+    ),
+    (
+        "q-0244",
+        "why are the agent tasks judged on documentation this project did not write",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/adr/0135-judge-the-agent-tasks-on-a-corpus-we-did-not-write-and-carry-them-rather-than-re-judge-them.md#decision/0",
+                3,
+            ),
+            (
+                "docs/adr/0135-judge-the-agent-tasks-on-a-corpus-we-did-not-write-and-carry-them-rather-than-re-judge-them.md#context/0",
+                2,
+            ),
+        ),
+        "Decision describes the second suite authored over a corpus we do not control, which is "
+        "the answer. Context names the principle it inherits: a verdict read on a corpus we wrote "
+        "measures the author as much as the retriever.",
+    ),
+    (
+        "q-0245",
+        "why does the performance gate time the tool call rather than the retriever",
+        (EvalSlice.CONCEPTUAL,),
+        (
+            (
+                "docs/adr/0139-time-the-tool-call-in-the-harness-and-keep-the-retriever-as-a-floor.md#decision/0",
+                3,
+            ),
+            (
+                "docs/adr/0139-time-the-tool-call-in-the-harness-and-keep-the-retriever-as-a-floor.md#context/0",
+                2,
+            ),
+        ),
+        "Decision states what the harness times and what the gate reads, keeping the retriever as "
+        "a floor beside it. Context explains why it had to change: the spec states one end-to-end "
+        "budget and the gate had been timing the part inside the harness instead.",
+    ),
 )
-
 
 RELEASE: tuple[Judgment, ...] = (
     (

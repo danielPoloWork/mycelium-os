@@ -234,7 +234,7 @@ def test_the_two_citation_metrics_are_independent() -> None:
 
 def test_the_committed_case_set_loads_and_covers_the_slices() -> None:
     cases = load_cases(CASES)
-    assert len(cases) == 239  # roadmap 6.33: the count the dev/release gap needs
+    assert len(cases) == 245  # the count the dev/release gap needs (6.33; +6 at the v0.6.0 bless)
     assert len({case.case_id for case in cases}) == len(cases)
 
     slices = {slice_ for case in cases for slice_ in case.slices}
