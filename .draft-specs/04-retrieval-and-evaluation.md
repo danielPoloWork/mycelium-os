@@ -85,12 +85,35 @@ behavior is auditable and debuggable rather than folkloric.
 - Boosts (multiplicative on fused rank score, each individually ablated): heading-level
   proximity (H1/H2 sections over deep fragments), `trust_class` (authored ≥ curated ≥
   ingested ≥ external), verification (default weights: `verified` 1.0 > `evidence` 0.85 >
-  `candidate` 0.7 — D-021; defaults are ablatable config, and every `candidate`/`evidence`
-  result is explicitly labeled so the agent knows what it is quoting; a
-  `trust: verified` filter excludes candidates entirely), recency (**only** when the
-  query asks for it — no global recency prior in a knowledge base).
+  `candidate` 0.7 — D-021), recency (**only** when the query asks for it — no global
+  recency prior in a knowledge base).
+  **Measured and refused; no boost ships** (roadmap 6.38, ADR-0153). Three of the four are
+  refused by arithmetic rather than by an arm: a multiplicative factor applied to every
+  candidate alike is order-preserving exactly, and every corpus here holds **one value** of
+  `trust_class`, of `verification_status` and of `curated`, so those boosts cannot reorder
+  anything that exists to be reordered. Recency has no judged query asking for it and no
+  field to read — `updated_at` is a build timestamp (uv's 81 documents span 0.7 seconds),
+  not an editorial date. Heading proximity is the one field that varies, and it was swept
+  across eight weights **in both directions**, pool-wide and confined to the served ten:
+  **none of the 96 arms gains on any set**, the best is −0.69 %, and the family's optimum
+  is the shipped ranking reached from both sides. A permutation control — the same
+  multipliers dealt to the wrong candidates — shows why: any perturbation of that size
+  costs 8–25 %, and heading depth beats the control on the three ingested-or-uv sets while
+  losing to it on the two authored ones. `tools/measure_result_rules.py --check` guards the
+  refusal, and would re-open it for a corpus that mixes trust classes.
+  Trust and verification remain **contracts, not weights**: every `candidate`/`evidence`
+  result is explicitly labeled so the agent knows what it is quoting, and a
+  `trust: verified` filter excludes candidates entirely (`RetrievalConfig.include_candidate`
+  / `served_statuses`). A filter that removes a class is a different mechanism from a boost
+  that reweights one, and it is the mechanism that ships.
 - Dedupe: near-identical chunks (digest or high lexical overlap) collapse to the highest-
   ranked instance; the duplicate set is noted in `explain`.
+  **Measured and refused; nothing collapses** (roadmap 6.38, ADR-0153). Across all six
+  judged sets the shipped ten contains **zero** same-digest pairs, and under the looser
+  half of the rule's own test — token-set Jaccard ≥ 0.8 — 0.4 % to 5.2 % of cases hold one.
+  A rule whose strict form never fires and whose loose form fires on one case in fifty is
+  not carrying its own weight in the query path. RRF over a chunked corpus already spends
+  its slots on distinct chunks; this rule was written for a pool that does not occur.
 - Diversity: MMR across documents so one document cannot monopolize the result set unless
   it uniquely holds the answer. **Measured across both families and refused on the result
   set** (roadmap 6.29, ADR-0144): every per-document cap and every multiplicative decay
@@ -105,6 +128,16 @@ behavior is auditable and debuggable rather than folkloric.
 - **Stitching:** when several top candidates are adjacent chunks of one section and the
   budget allows, return the coherent section once instead of shingled fragments — agents
   handle one coherent passage better than three overlapping ones.
+  **Unbuilt, and the only §4 rule not refused** (roadmap 6.38, ADR-0153). It has real
+  occasions — the shipped ten holds adjacent chunks of one section on **5.7 %–10.6 %** of
+  cases on the authored corpora and **29.6 %–32.1 %** on the ingested twin, where
+  projection flattens headings and splits sections further. What it does not have is a
+  measurement: stitching *removes* a slot, so nDCG@10 punishes it on principle regardless
+  of whether the agent reads better, and the claim it rests on — *"agents handle one
+  coherent passage better than three overlapping ones"* — is about comprehension, not
+  ranking. It is therefore neither shipped nor refused here; it is **deferred to the
+  agent-task suite** (§7.4), which measures evidence-found and tokens-spent and is the only
+  instrument in this project that could settle it. Filed rather than guessed at.
 - Packing: fill the caller's `budget_tokens` (default 4 000) in rank order with verbatim
   text + citations; truncation is explicit (`truncated: true`, `omitted: [anchors…]`).
   Callers choose the text payload via `include_text`: `full` (default, budgeted verbatim

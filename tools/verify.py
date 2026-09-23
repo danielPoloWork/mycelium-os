@@ -53,7 +53,7 @@ The rungs, and what each adds:
 |---|---|
 | `docs` | the congruence lint, the docs-site build |
 | `code` | format, lint, types, the suite, the two ingestion reproductions |
-| `retrieval` | the frozen-set rule, the corpora, G2, the four ablations, the ranking gap |
+| `retrieval` | the frozen-set rule, the corpora, G2, the ablations, the result-set rules |
 | `full` | the benchmarks, alone rather than beside four hundred other tests |
 """
 
@@ -430,6 +430,12 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
     # filed on that conclusion is filed on this number, and `--check` fails the
     # day it stops being true rather than letting the premise rot in a document.
     steps.append(("ranking gap", [python, "tools/measure_ranking_gap.py", "--check"]))
+    # Spec 04 §4's remaining result-set rules, measured and refused (roadmap 6.38,
+    # ADR-0153). Like the diversity runner it guards a refusal rather than a default,
+    # and for the same reason: three of §4's boosts are inert only because every
+    # corpus here is single-valued in the field they read, so a corpus that mixes
+    # trust classes would make this decision worth re-opening rather than assuming.
+    steps.append(("result rules", [python, "tools/measure_result_rules.py", "--check"]))
     # `--gate` here is the suite's *integrity*, not its verdict (ADR-0120): a task
     # whose required passage the corpus no longer holds measures neither strategy,
     # and scoring it as a miss is how the rate acquired a silent ceiling at 6.4.
