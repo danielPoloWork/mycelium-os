@@ -10,6 +10,27 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ## [Unreleased]
 
+### Added
+
+- **`tools/measure_ranking_gap.py`, which says where the ranking's remaining headroom
+  actually is** (roadmap 6.37,
+  [ADR-0152](docs/adr/0152-the-ranking-loss-is-ordering-not-recall.md)). Roadmap 6.29
+  measured that re-ordering the same 50 fused candidates by their judged grade is worth
+  **+36 % to +86 %** and filed the shape of that number as a follow-up. The shape: **the
+  pool almost always holds the answer** — candidate generation finds **93.0 %–99.8 %** of
+  the judged passages, and a pool four times deeper than anything ships adds only
+  **+3.8 %–13.7 %** of the ceiling — so the loss is neither BM25 nor recall depth.
+  **Between 58.4 % and 72.1 % of the entire ceiling is reachable by permuting the ten
+  chunks already returned**, worth **+23.8 % to +53.7 %** on its own with no new leg and no
+  additional retrieval. A case's best-graded judgment sits at median rank 1 on four of six
+  sets but is *first* on only 35.5 %–59.1 % of the cases that serve it. Two candidate
+  explanations were measured and refused: document length shows no consistent signal, and
+  restricting the measurement to the passages that answer outright moves the ceiling by
+  −1.7 to +4.4 points. The runner joins `verify.py`'s `retrieval` rung, where `--check`
+  guards the conclusion rather than a default. **Nothing about retrieval changes**; spec
+  06 §3's learned-reranker trigger is explicitly **not** met, because no deterministic
+  re-ordering of the served set has ever been tried.
+
 ### Changed
 
 - **`mycelium --version` no longer imports the ingestion subsystem and the embedder**

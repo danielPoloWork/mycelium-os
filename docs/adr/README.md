@@ -183,3 +183,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0149](0149-lint-the-delivered-checkbox-convention.md) | Lint the "delivered by PR #N" checkbox convention | Accepted |
 | [0150](0150-report-the-stage-budgets-where-they-mean-something-and-gate-the-total.md) | Report the stage budgets where they mean something, and keep gating the total | Accepted |
 | [0151](0151-let-the-command-line-import-what-it-parses-with.md) | Let the command line import what it parses with, and nothing else | Accepted |
+| [0152](0152-the-ranking-loss-is-ordering-not-recall.md) | The ranking loss is ordering, not recall | Accepted |
