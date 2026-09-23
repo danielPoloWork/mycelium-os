@@ -20,6 +20,16 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **The release workflow can attest the SBOM it builds**
+  ([BUG-0033](docs/bugs/2026/09/BUG-0033-the-release-sbom-is-refused-by-the-attestation-it-feeds.md)).
+  `v0.6.0`'s first release run failed at the SBOM attestation, so no draft was created:
+  `actions/attest` recognises CycloneDX only when `serialNumber` is present, the schema
+  makes it optional, and `--output-reproducible` omits it on purpose. A workflow step now
+  stamps a deterministic `urn:uuid` serial - a UUIDv5 over the wheel's digest, so two runs
+  over one wheel still agree - between the generator and the attestation. It is a workflow
+  step rather than a change to `tools/build_sbom.py` because re-drafting an existing tag
+  runs the default branch's workflow against the tag's tree (BUG-0006).
+
 ### Security
 
 ## Released versions
