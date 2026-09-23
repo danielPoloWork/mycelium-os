@@ -112,6 +112,40 @@ jobs:
             --wheel "$(ls dist/*.whl)" \
             --out sbom
 
+      - name: Give the SBOM the serial number actions/attest requires
+        # `actions/attest` recognises a CycloneDX document only when `bomFormat`,
+        # `specVersion` *and* `serialNumber` are all present (its `checkIsCycloneDX`).
+        # The schema makes `serialNumber` optional, and `--output-reproducible` omits it
+        # on purpose, so the SBOM above validates and is still refused: v0.6.0's first
+        # run failed exactly here (BUG-0033). The serial is a UUIDv5 over the wheel's
+        # digest, so it names these bytes and two runs over one wheel still agree.
+        #
+        # Here, not in tools/build_sbom.py, because a re-draft of an existing tag runs
+        # this file from the default branch against the *tag's* tree (BUG-0006) - only a
+        # step in the workflow reaches a tag cut before the fix. An SBOM that already
+        # carries a serial is left alone.
+        shell: python
+        run: |
+          import hashlib
+          import json
+          import os
+          import uuid
+          from pathlib import Path
+
+          version = os.environ["EXPECTED_VERSION"]
+          wheels = sorted(Path("dist").glob("*.whl"))
+          if len(wheels) != 1:
+              raise SystemExit(f"expected exactly one wheel in dist/, found {len(wheels)}")
+          digest = hashlib.sha256(wheels[0].read_bytes()).hexdigest()
+          path = Path("sbom") / f"mycelium_os-{version}.all-extras.cdx.json"
+          document = json.loads(path.read_text(encoding="utf-8"))
+          if not document.get("serialNumber"):
+              name = f"pkg:pypi/mycelium-os@{version}?checksum=sha256:{digest}"
+              document["serialNumber"] = uuid.uuid5(uuid.NAMESPACE_URL, name).urn
+              text = json.dumps(document, indent=2, sort_keys=True, ensure_ascii=False)
+              path.write_text(text + "\n", encoding="utf-8", newline="\n")
+          print(f"serialNumber: {document['serialNumber']}")
+
       - name: Attest the build provenance of the artifacts
         # SLSA provenance, signed through Sigstore with a short-lived OIDC identity and
         # recorded in GitHub's attestation store: it says these exact bytes were built by

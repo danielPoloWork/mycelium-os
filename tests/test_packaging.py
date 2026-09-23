@@ -17,7 +17,11 @@ artifact cannot show:
   than a promise in a document.
 """
 
+import hashlib
+import json
+import re
 import tomllib
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -310,6 +314,97 @@ def test_the_release_attaches_the_sbom_beside_the_archives(release: dict[str, An
     files = str(draft["with"]["files"])
     assert "dist/*" in files
     assert ".cdx.json" in files
+
+
+SERIAL_STEP = "Give the SBOM the serial number actions/attest requires"
+UUID5_URN = re.compile(
+    r"^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+)
+
+
+def _serial_step(release: dict[str, Any]) -> dict[str, Any]:
+    return next(step for step in release_steps(release) if step.get("name") == SERIAL_STEP)
+
+
+def _stamp(
+    release: dict[str, Any],
+    root: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    wheel: bytes,
+    serial: str | None = None,
+) -> dict[str, Any]:
+    """Run the workflow step's own code against a fixture, and read back what it wrote."""
+    (root / "dist").mkdir(parents=True, exist_ok=True)
+    (root / "sbom").mkdir(parents=True, exist_ok=True)
+    (root / "dist" / "mycelium_os-0.6.0-py3-none-any.whl").write_bytes(wheel)
+    document: dict[str, Any] = {"bomFormat": "CycloneDX", "specVersion": "1.6", "version": 1}
+    if serial is not None:
+        document["serialNumber"] = serial
+    sbom = root / "sbom" / "mycelium_os-0.6.0.all-extras.cdx.json"
+    sbom.write_text(json.dumps(document), encoding="utf-8")
+    monkeypatch.chdir(root)
+    monkeypatch.setenv("EXPECTED_VERSION", "0.6.0")
+    exec(compile(str(_serial_step(release)["run"]), SERIAL_STEP, "exec"), {"__name__": "__main__"})
+    loaded = json.loads(sbom.read_text(encoding="utf-8"))
+    assert isinstance(loaded, dict)
+    return loaded
+
+
+def test_the_sbom_gets_its_serial_between_being_built_and_being_attested(
+    release: dict[str, Any],
+) -> None:
+    """BUG-0033: v0.6.0's first release run failed at the SBOM attestation.
+
+    The step has to sit after the generator and before `actions/attest-sbom`, and it has
+    to be a workflow step rather than a change to `tools/build_sbom.py`: a re-draft of an
+    existing tag runs this file from the default branch against the tag's tree
+    (BUG-0006), so only the workflow reaches a tag cut before the fix.
+    """
+    steps = release_steps(release)
+    names = [str(step.get("name", "")) for step in steps]
+    built = next(i for i, s in enumerate(steps) if "tools/build_sbom.py" in str(s.get("run", "")))
+    attested = next(
+        i for i, s in enumerate(steps) if str(s.get("uses", "")).startswith("actions/attest-sbom@")
+    )
+    assert built < names.index(SERIAL_STEP) < attested
+    assert _serial_step(release)["shell"] == "python"
+
+
+def test_the_stamped_sbom_is_one_actions_attest_recognises(
+    release: dict[str, Any], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`actions/attest`'s `checkIsCycloneDX` wants `bomFormat`, `serialNumber` and
+    `specVersion` all present; the CycloneDX schema makes the middle one optional, and
+    `--output-reproducible` omits it, which is the whole defect."""
+    stamped = _stamp(release, tmp_path, monkeypatch, wheel=b"wheel bytes")
+    assert stamped["bomFormat"] and stamped["specVersion"] and stamped["serialNumber"]
+    assert UUID5_URN.match(stamped["serialNumber"]), stamped["serialNumber"]
+
+
+def test_the_serial_names_the_wheel_and_survives_a_rerun(
+    release: dict[str, Any], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reproducibility is why `--output-reproducible` is on: two runs over one wheel must
+    still write identical bytes, so the serial is derived rather than random - and derived
+    from the wheel's digest, so a different artifact cannot share it."""
+    first = _stamp(release, tmp_path / "a", monkeypatch, wheel=b"wheel bytes")
+    again = _stamp(release, tmp_path / "b", monkeypatch, wheel=b"wheel bytes")
+    other = _stamp(release, tmp_path / "c", monkeypatch, wheel=b"different bytes")
+    assert first["serialNumber"] == again["serialNumber"]
+    assert first["serialNumber"] != other["serialNumber"]
+    digest = hashlib.sha256(b"wheel bytes").hexdigest()
+    name = f"pkg:pypi/mycelium-os@0.6.0?checksum=sha256:{digest}"
+    assert first["serialNumber"] == uuid.uuid5(uuid.NAMESPACE_URL, name).urn
+
+
+def test_an_sbom_that_already_carries_a_serial_is_left_alone(
+    release: dict[str, Any], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """If the generator ever starts writing one, the workflow must not overwrite it."""
+    existing = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79"
+    stamped = _stamp(release, tmp_path, monkeypatch, wheel=b"wheel bytes", serial=existing)
+    assert stamped["serialNumber"] == existing
 
 
 def test_the_sbom_generator_is_not_a_dependency_of_this_project(
