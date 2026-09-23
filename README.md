@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![Status](https://img.shields.io/badge/Status-v0.5.0-blue)
+![Status](https://img.shields.io/badge/Status-v0.6.0-blue)
 [![CI](https://github.com/danielPoloWork/mycelium-os/actions/workflows/ci.yml/badge.svg)](https://github.com/danielPoloWork/mycelium-os/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/danielPoloWork/mycelium-os?include_prereleases)](https://github.com/danielPoloWork/mycelium-os/releases)
 [![License](https://img.shields.io/github/license/danielPoloWork/mycelium-os)](LICENSE)
@@ -42,13 +42,13 @@ the maintainer's to make (roadmap [6.11](ROADMAP.md), [ADR-0116](docs/adr/0116-p
 Until then it installs from the tag, which is the same artifact CI builds:
 
 ```bash
-pip install "mycelium-os @ git+https://github.com/danielPoloWork/mycelium-os@v0.5.0"
+pip install "mycelium-os @ git+https://github.com/danielPoloWork/mycelium-os@v0.6.0"
 mycelium --version
 ```
 
 Every extra named below — `embeddings`, `symbols`, `ingest`, `synthesis`, `watch` — goes
 inside the brackets the same way:
-`pip install "mycelium-os[embeddings] @ git+https://github.com/danielPoloWork/mycelium-os@v0.5.0"`.
+`pip install "mycelium-os[embeddings] @ git+https://github.com/danielPoloWork/mycelium-os@v0.6.0"`.
 Once the first release is published this collapses to `pip install mycelium-os[embeddings]`,
 which is how the rest of this page writes it.
 
@@ -878,21 +878,30 @@ setup.
 
 ## Status
 
-Pre-1.0 and milestone-driven. **Milestone 5 is complete**: what the compiler produces now has
-*structure*. A symbol table says where a thing is defined and which sections document it, built
-from each language's own tree-sitter tags query and from the definition syntax documentation
-actually uses. Wikilinks and cross-references compile to a typed edge vocabulary that
-`mycelium_neighbors` traverses in both directions. The first contrib module, `chats`, ships on
-the public extension points and passes all six of its acceptance gates. And a citation whose
-passage has moved now says so: every `mycelium://` URI carries the lines it was minted against,
-so a refactored heading returns the passage *with* a stale marker instead of silently returning a
-different one.
+Pre-1.0 and milestone-driven. **Milestone 6 is complete**: the thing is now *stable, packaged
+and honest about itself*. The five contracts — identity, KIR, the snapshot manifest, the MCP
+tools and the plugin protocols — are frozen behind goldens, and the 1.0 compatibility promise
+says what is promised and how a change to it is made. The package builds, signs and inventories
+its artifact, and publishes through a workflow that runs only by hand and re-checks the version
+against the tag before it uploads. A security pass turned the threat model into a test suite. The
+docs site is built, checked and deployed.
 
-Milestone 4's ingestion lane is unchanged underneath it, and the evaluation still spans three
-corpora, two of them documentation this project did not write, with a frozen dev/release split
-gating CI. The five stable contracts are pinned: each has a golden of its shape and a test that
-fails when it moves, and what is promised — from which version, and how a change to it is made —
-is written down in [`docs/compatibility.md`](docs/compatibility.md).
+Underneath that, most of this milestone is **measurement** — and a good deal of it is measurement
+that said no. The performance work removed real constants (a cold build, an incremental floor, a
+stemmer re-stemming the same words six hundred thousand times, a CLI that imported the whole
+engine to print `--help`), while the retrieval work mostly *refused* what it measured: every
+per-document diversity policy, every heading-proximity boost, and near-duplicate collapse. Each
+refusal is an ADR with the arithmetic written down and a runner on CI that fails the day the
+refusal stops being true.
+
+Milestone 5's structure and Milestone 4's ingestion lane are unchanged underneath it. The
+evaluation still spans three corpora, two of them documentation this project did not write, and
+the judged sets now hold **2 001 cases across six sets** with a frozen dev/release split gating
+CI. What is promised — from which version, and how a change to it is made — is written down in
+[`docs/compatibility.md`](docs/compatibility.md).
+
+**What is not done:** the package is not on a public index yet, so the external-adoption exit
+gate stands at zero and is carried by name rather than waived (roadmap 6.11, 6.12; ADR-0138).
 
 Three candidate retrieval legs were built and ablated this milestone, and **two of them ship
 switched off** — graph expansion because it lost, hybrid because it cannot clear gate G2's bar on
@@ -978,7 +987,7 @@ anchor space — instead of by diffing two runs and hoping nothing else changed.
 | 3 | v0.3.0 — The compiler (spec Phase 1) | ✅ done |
 | 4 | v0.4.0 — Ingestion (spec Phase 2) | ✅ done |
 | 5 | v0.5.0 — Structure (spec Phase 3) | ✅ done |
-| 6 | v0.6.0 — Stable (spec Phase 4) | ⏳ planned |
+| 6 | v0.6.0 — Stable (spec Phase 4) | ✅ done |
 | 7 | v1.0.0 — Team & platform (spec Phase 5; separate RFC cycle) | ⏳ planned |
 
 The numbered plan, with what each item delivered, is [`ROADMAP.md`](ROADMAP.md).
