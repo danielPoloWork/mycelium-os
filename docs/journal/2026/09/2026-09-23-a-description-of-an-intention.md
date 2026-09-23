@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 6.38 — spec 04 §4 describes four ranking behaviours the
   product does not have, and one it measured and refused. Decide each, and never by
   deleting a sentence.
-- **PR:** #PRNUM (`feat/decide-spec-04-s4s-unbuilt-behaviours`). Follows #187, merged as
+- **PR:** #188 (`feat/decide-spec-04-s4s-unbuilt-behaviours`). Follows #187, merged as
   `6b6c6cf`.
 - **Milestone 6:** 6.38 closed.
 - **Decision it records:**
