@@ -12,6 +12,26 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`tools/measure_result_rules.py`, which decides the result-set rules spec 04 §4 described
+  but never had** (roadmap 6.38,
+  [ADR-0153](docs/adr/0153-decide-spec-04-s4s-result-set-rules-on-evidence.md)). §4 names
+  five behaviours; diversity was measured and refused at 6.29, packing exists, and boosts,
+  dedupe and stitching did not exist anywhere under `src/`. **Three of the four boosts are
+  refused by arithmetic**: a multiplicative boost is order-preserving when the field it
+  reads holds one value, and every corpus here is single-valued in `trust_class`,
+  `verification_status` and `curated`. Recency has no judged query asking for it and no
+  field to read — `updated_at` is a build timestamp spanning 0.7 seconds across uv's 81
+  documents. **Heading proximity was swept across eight weights in both directions,
+  pool-wide and confined to the served ten: none of the 96 arms gains on any set**, the best
+  is −0.69 %, and the family's optimum is the shipped ranking. A permutation control shows
+  any perturbation of that size costs 8–25 %, while heading depth beats the control by
+  +15.2 points on the ingested twin and loses to it on the authored corpus. **Dedupe never
+  fires** (zero same-digest pairs; 0.4–5.2 % under a Jaccard ≥ 0.8 test). **Stitching is
+  deferred rather than refused** — it has occasions (5.7–10.6 % authored, 29.6–32.1 %
+  ingested) but nDCG punishes collapsing a slot on principle, so it goes to the agent-task
+  suite. **Nothing about retrieval changes**; spec 04 §4 is amended so each rule records
+  what was measured and what ships.
+
 - **`tools/measure_ranking_gap.py`, which says where the ranking's remaining headroom
   actually is** (roadmap 6.37,
   [ADR-0152](docs/adr/0152-the-ranking-loss-is-ordering-not-recall.md)). Roadmap 6.29
