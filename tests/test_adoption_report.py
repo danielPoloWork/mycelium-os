@@ -263,6 +263,24 @@ def test_a_saving_inside_the_noise_is_not_pain() -> None:
     assert "the saving is noise" in trigger.evidence[0]
 
 
+def test_a_report_whose_cache_saved_nothing_is_a_report_and_not_pain() -> None:
+    """A negative saving is a measurement - the seeded build was slower - not a
+    malformed block. Refusing it made the reader drop exactly the report that says
+    *no pain*, and made a timing-dependent test of the round trip (BUG-0036)."""
+    nothing = _report(
+        cold_s={"p50": 0.61, "min": 0.58, "max": 0.66},
+        seeded_s={"p50": 0.63, "min": 0.60, "max": 0.70},
+        ceiling_s=-0.02,
+    )
+    reports = report.cache_reports([_issue(11, "a-team-lead", _body(nothing))], [], OWNER)
+    assert len(reports) == 1
+    assert reports[0].is_pain is False
+    trigger = report.remote_cache_trigger(reports)
+    assert trigger.fired is False
+    assert "saved nothing" in trigger.evidence[0]
+    assert "the saving is noise" in trigger.evidence[0]
+
+
 def test_closing_the_issue_as_not_planned_withdraws_its_reports() -> None:
     """The owner's lever against a fabricated report, with no code change: GitHub's own
     record of the decision. It withdraws the comments on that issue too."""
@@ -294,6 +312,7 @@ def test_closing_the_issue_as_not_planned_withdraws_its_reports() -> None:
         pytest.param(_body(_report(cold_builds_per_week=10**400)), id="absurd-count"),
         pytest.param(_body(_report(people=10**9)), id="count-at-the-bound"),
         pytest.param(_body(_report(ceiling_s=1e308)), id="absurd-duration"),
+        pytest.param(_body(_report(ceiling_s=-1e308)), id="absurd-negative-saving"),
         # A cache cannot save more than the build it replaces.
         pytest.param(_body(_report(ceiling_s=400.0)), id="saving-above-the-build"),
         pytest.param(_body(_report(schema="mycelium/cache-ceiling/v1")), id="other-schema"),

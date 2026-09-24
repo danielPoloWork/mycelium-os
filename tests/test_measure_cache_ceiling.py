@@ -151,13 +151,19 @@ def test_the_report_is_what_the_trigger_reads_and_carries_no_path(
 
     And it is meant for a public issue, so no string in it may name a file or a
     directory of the corpus it measured.
+
+    The report is built from real timings of a four-document corpus, and on a fast
+    disk the seeded build can come out *slower* than the cold one — the saving is
+    then negative. That report must still parse: the round trip is a property of
+    the schema, not of this machine's clock, and the first version of this test
+    failed on one CI cell for exactly that reason (BUG-0036).
     """
     report = ceiling.pain_report(measured, people=4, cold_builds_per_week=30)
 
     assert report["schema"] == adoption_report.CACHE_REPORT_SCHEMA
     body = "Our numbers:\n\n```json\n" + json.dumps(report, indent=2) + "\n```\n"
     parsed = adoption_report.reports_in(body, login="someone", issue=7)
-    assert len(parsed) == 1
+    assert len(parsed) == 1, "a report parses whatever its saving's sign"
     assert parsed[0].people == 4
     assert parsed[0].documents == len(DOCUMENTS)
     assert parsed[0].cold_builds_per_week == 30
