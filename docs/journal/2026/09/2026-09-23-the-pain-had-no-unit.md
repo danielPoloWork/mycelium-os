@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 7.1, the remote build cache, was asked for. Its entry trigger
   had not fired and could not have, so the maintainer chose to measure what a cache could buy
   and to make the trigger evaluable instead — filed and delivered as 7.4.
-- **PR:** #N (`feat/measure-the-remote-cache-ceiling`). Follows #192, merged as `9b8d8cc`.
+- **PR:** #194 (`feat/measure-the-remote-cache-ceiling`). Follows #192, merged as `9b8d8cc`.
 - **Milestone 7:** 7.4 closed; 7.1 held at its trigger; 7.5, 7.6 and 7.7 filed.
 - **Decision it records:**
   [ADR-0154](../../../adr/0154-price-the-remote-cache-before-its-trigger-and-give-the-trigger-a-reading.md).
@@ -68,6 +68,9 @@ clean export read 5 874 blocks where the working tree reads 5 935.
 - **7.3 is the only M7 item with no trigger**, and it must be armed before the v1.0.0 tag.
   7.5 asks 7.2's triggers the question 7.4 asked 7.1's.
 - **`tools/verify.py` derives `full` in this working tree** because of the maintainer's
-  untracked `.claudeignore`; this change was verified from a clean worktree of the branch.
+  untracked `.claudeignore`, so this change was verified from a clean worktree of the
+  branch — where it derives `full` as well, for its own reason: a benchmark manifest is
+  JSON, and the tool classifies only Markdown, text and images as documentation. A PR that
+  publishes a benchmark runs the whole ladder.
 - **Measure with the maintainer's files out of the harvest.** `--harvest-root` takes a clean
   export; the manifest records its commit and a digest of each generated corpus.
