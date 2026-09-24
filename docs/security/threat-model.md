@@ -154,6 +154,22 @@ maintainer is already authenticated. It is deliberately **not** a scheduled work
 these settings unattended would need a long-lived token, which is the one thing the
 supply-chain design has removed everywhere else (ADR-0116, ADR-0117).
 
+### A product deferral reads what strangers post (roadmap 7.4, [ADR-0154](../adr/0154-price-the-remote-cache-before-its-trigger-and-give-the-trigger-a-reading.md))
+
+The same rule, applied to one row of spec 06 §3, gave `tools/adoption_report.py` an input it
+did not have: the **bodies** of issues and issue comments, where a team pastes a
+`tools/measure_cache_ceiling.py` report to fire the remote-cache trigger. That text is
+written by anyone with a GitHub account and read on the maintainer's machine, so it is held
+to what D-017 asks of any untrusted content. A block is parsed only if it names the report
+schema; JSON that does not parse, carries the wrong types, admits NaN or an integer too large
+for a float, or nests past the parser's limit (BUG-0030's shape) is skipped rather than
+fatal; only numbers are kept, and nothing a reporter typed is ever printed, so no escape
+sequence reaches a terminal. The one thing a fabricated report can do is **fire the trigger**,
+and a fired trigger decides nothing — it puts a decision in front of the owner, who withdraws
+the report by closing its issue as *not planned*. `tests/test_adoption_report.py` pins each
+of these. No boundary row is added: the tool runs by hand, reads nothing it acts on, and
+holds no credential beyond the maintainer's own `gh`.
+
 ## 4. Controls and the tests that hold them (roadmap 6.3, [ADR-0119](../adr/0119-derive-the-suite-from-the-threat-model-and-bound-what-a-document-may-cost-to-read.md))
 
 Every control in §2 is a sentence, and until 6.3 whether a test stood behind one was a matter

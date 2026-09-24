@@ -20,8 +20,8 @@ Needs `gh`, authenticated. It takes about two minutes, because it compares every
 every fork. `--json` for a machine, `--no-network` to skip the index lookups (they are then
 reported *unreadable*, not absent), `--repo owner/name` to point it elsewhere.
 
-Exit **0** when nothing in scope is failing, **1** when a condition is not met, **2** when
-GitHub could not be asked.
+Exit **0** when nothing in scope is failing, **1** when a condition is not met or a deferred
+decision's trigger has fired (below), **2** when GitHub could not be asked.
 
 It is **not** in `tools/verify.py` and not on a schedule, for ADR-0118's reason: this is a
 property of the world rather than of a diff, and an unattended caller would need a
@@ -66,6 +66,40 @@ No interaction limit or ruleset is active as of 2026-09-20, and branch protectio
 is still absent (`check_repo_settings.py` has reported that since roadmap 6.6). Whatever
 blocked the pull request on 2026-09-15 is not visible in today's settings, so **verify
 before announcing anything**: the cheapest check is to ask the contributor to try again.
+
+## The deferred decision it also watches
+
+Spec 06 §3 defers the **remote build cache** (roadmap 7.1) until *"≥ 1 team dogfooding with
+measured duplicate-build pain"*. Until roadmap 7.4 that trigger was the same kind of
+sentence the adoption gates were before D-030: nothing could measure the pain, so nothing
+could ever say it had fired. It has an instrument now, and the report above reads it
+([ADR-0154](../adr/0154-price-the-remote-cache-before-its-trigger-and-give-the-trigger-a-reading.md)).
+
+**If you are a team building one corpus and cold builds cost you**, measure it on your own
+repository — nothing inside it is written; the documents are copied into scratch:
+
+```bash
+python tools/measure_cache_ceiling.py --corpus /path/to/your/repo --out /tmp/ceiling \
+    --people 5 --cold-builds-per-week 40 --rounds 1
+```
+
+It prints a fenced JSON block. Paste it, fence and all, into an issue on this repository.
+`--people` and `--cold-builds-per-week` are your own figures; the tool cannot know them and
+does not guess. The report carries numbers only — no path, no document name.
+
+What the report does with it, and what it does not:
+
+- **It fires on one report** from an external login (not the owner, not a bot) on a corpus
+  **two or more people** build, whose saving is **outside the measurement's own noise** —
+  every seeded build faster than every cold one. *≥ 1 team* is the spec's number, unmoved;
+  7.4 gave its words a reading.
+- **A fired trigger is a decision owed, not a decision taken.** How much pain justifies an L-sized
+  feature with a new trust boundary is the call the trigger defers, and it is the owner's.
+  The report exits non-zero while a trigger has fired, and the trigger leaves the tool in
+  the change that records the decision — ADR-0118's shape for a deferral.
+- **To withdraw a report** — fabricated, mistaken, or retracted by its author — close its
+  issue as *not planned*. The trigger reads GitHub's own record of that, so no code
+  changes.
 
 ## When the numbers move
 

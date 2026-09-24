@@ -1532,6 +1532,7 @@ MEASUREMENT_SECTIONS: Final = (
     "vector_profile",
     "real_corpora",
     "task_profile",
+    "cache_profile",
 )
 """(`build_profile` is deliberately absent: it holds a profiler's shares rather than
 timings, so it has no `p95` and cannot make a manifest evidence on its own.)"""
@@ -1542,7 +1543,13 @@ that timed nothing is a note about a machine.
 the first section here whose measurements are not milliseconds: it reports the
 *context* each strategy puts in front of a model, in tokens. The `p95` every
 measurement must carry still means what it means — a distribution's tail over the
-suite's tasks — which is why it needed no exception."""
+suite's tasks — which is why it needed no exception.
+
+`cache_profile` is `tools/measure_cache_ceiling.py`'s (roadmap 7.4): one block per
+corpus, holding the build of a fresh checkout under each thing a cache could hand it —
+nothing, every stage artifact, a whole `.mycelium/` — beside the in-memory compute a
+miss and a hit run. Its `p95` is over rounds, and the rounds are few, so a reader wants
+`min` and `max` beside it; the report prints all three."""
 
 
 def _measurement_blocks(section: Any) -> list[list[Any]]:
