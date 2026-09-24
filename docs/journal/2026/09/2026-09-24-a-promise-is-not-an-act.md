@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 7.5 — give 7.2's three spec 06 §3 triggers a reading, as 7.4
   gave 7.1's, and where a row cannot be read, say so and put the re-cut to the owner.
-- **PR:** #N (`feat/give-7-2s-triggers-a-reading`). Follows #195, merged as `9b5c0e9`.
+- **PR:** #196 (`feat/give-7-2s-triggers-a-reading`). Follows #195, merged as `9b5c0e9`.
 - **Milestone 7:** 7.5 closed. 7.1 and 7.2 remain held at their triggers; 7.3, 7.6, 7.7 open.
 - **Decision it records:**
   [ADR-0155](../../../adr/0155-read-7-2s-three-triggers-and-say-which-one-cannot-be-read.md).
