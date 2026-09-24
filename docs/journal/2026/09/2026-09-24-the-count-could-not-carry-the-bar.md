@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 7.3 — settle the agent-task verdict rule, then arm it before the
   v1.0.0 tag. Three questions: which corpus the rule is read on, one comparison or two, and
   whether twenty-two tasks can carry a two-task bar.
-- **PR:** #N (`feat/settle-the-agent-task-verdict-rule`). Follows #196, merged as `6334571`.
+- **PR:** #197 (`feat/settle-the-agent-task-verdict-rule`). Follows #196, merged as `6334571`.
 - **Milestone 7:** 7.3 closed.
 - **Decisions it records:** D-031;
   [ADR-0156](../../../adr/0156-read-the-agent-task-verdict-where-we-did-not-write-and-ask-it-for-significance.md).
