@@ -255,6 +255,13 @@ class CacheReport:
         return self.seeded_max_s < self.cold_min_s
 
     def describe(self) -> str:
+        head = (
+            f"{self.login} on #{self.issue}: {self.documents} documents, {self.people} "
+            f"people; a cold build {self.cold_p50_s:.1f} s"
+        )
+        if self.ceiling_s <= 0:
+            # The seeded build was no faster: the instrument found nothing to save.
+            return f"{head}, and a stage cache saved nothing on it"
         share = self.ceiling_s / self.cold_p50_s if self.cold_p50_s else 0.0
         weekly = (
             "no cold-build rate given"
@@ -263,9 +270,8 @@ class CacheReport:
             f"{self.ceiling_s * self.cold_builds_per_week / 60:.1f} min a week at the ceiling"
         )
         return (
-            f"{self.login} on #{self.issue}: {self.documents} documents, {self.people} "
-            f"people; a cold build {self.cold_p50_s:.1f} s, of which a stage cache could "
-            f"save at most {self.ceiling_s:.1f} s ({share:.0%}); {weekly}"
+            f"{head}, of which a stage cache could save at most {self.ceiling_s:.1f} s "
+            f"({share:.0%}); {weekly}"
         )
 
 
@@ -737,6 +743,24 @@ def _seconds(value: object) -> float | None:
     return number if math.isfinite(number) and 0 <= number < _MAX_SECONDS else None
 
 
+def _saving(value: object) -> float | None:
+    """A finite JSON number of either sign, below :data:`_MAX_SECONDS` in magnitude.
+
+    A saving is a difference of two durations, and it may be **negative**: a corpus
+    small enough that the cache's writes cost more than the stages it skipped, or a
+    run inside its own noise, reports a cache that saved nothing. That is a
+    measurement, and the honest one — refusing it as malformed made the reader
+    reject exactly the report that says *no pain* (BUG-0036).
+    """
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        return None
+    try:
+        number = float(value)
+    except OverflowError:
+        return None
+    return number if math.isfinite(number) and abs(number) < _MAX_SECONDS else None
+
+
 def read_cache_report(payload: object, *, login: str, issue: int) -> CacheReport | None:
     """One report's numbers, or ``None`` when the block is not a well-formed report.
 
@@ -755,11 +779,11 @@ def read_cache_report(payload: object, *, login: str, issue: int) -> CacheReport
         return None
     cold_p50, cold_min = _seconds(cold.get("p50")), _seconds(cold.get("min"))
     seeded_p50, seeded_max = _seconds(seeded.get("p50")), _seconds(seeded.get("max"))
-    ceiling = _seconds(payload.get("ceiling_s"))
+    ceiling = _saving(payload.get("ceiling_s"))
     if cold_p50 is None or cold_min is None or seeded_p50 is None or seeded_max is None:
         return None
     # A cache cannot save more than the build it replaces: a report that says so is not
-    # a measurement, whatever else is right about it.
+    # a measurement, whatever else is right about it. Less than nothing it can save.
     if ceiling is None or ceiling > cold_p50:
         return None
     return CacheReport(

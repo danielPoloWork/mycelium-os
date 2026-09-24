@@ -42,6 +42,14 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **A cache report whose saving is negative is a report, not a malformed block**
+  ([BUG-0036](docs/bugs/2026/09/BUG-0036-a-report-of-no-saving-is-refused-as-malformed.md)).
+  `tools/adoption_report.py` validated `ceiling_s` as a duration, so a report whose seeded
+  build was no faster than its cold one — *this cache saved nothing* — was read as no report,
+  and the test that round-trips a real four-document report failed on the one CI cell fast
+  enough to produce that sign. A saving is a signed difference now; a non-positive one is shown
+  as *saved nothing* and never counts as pain.
+
 - **The release workflow can attest the SBOM it builds**
   ([BUG-0033](docs/bugs/2026/09/BUG-0033-the-release-sbom-is-refused-by-the-attestation-it-feeds.md)).
   `v0.6.0`'s first release run failed at the SBOM attestation, so no draft was created:
