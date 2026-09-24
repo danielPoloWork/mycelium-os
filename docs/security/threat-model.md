@@ -170,6 +170,18 @@ the report by closing its issue as *not planned*. `tests/test_adoption_report.py
 of these. No boundary row is added: the tool runs by hand, reads nothing it acts on, and
 holds no credential beyond the maintainer's own `gh`.
 
+Roadmap 7.5 ([ADR-0155](../adr/0155-read-7-2s-three-triggers-and-say-which-one-cannot-be-read.md))
+added two inputs under the same rule. **Issue bodies matched on the headings of the *I cannot
+use MCP or the CLI* form**: a body is a stranger's text, the match is a substring test on three
+fixed headings, nothing from the body is printed — the login and the number are GitHub's —
+and the form's label is deliberately not consulted, because a label is a triage act anyone
+with rights can perform. **GitHub code-search results** for the plugin entry-point groups: what
+is read is `repository.full_name`, `repository.fork` and `path`, what is printed is the slug,
+and the repository's own issues and comments are then read only to *count* engaged logins,
+never to quote them. Both inputs can be produced on purpose by anyone with an account — a
+filled form, a public repository — and both can therefore fire a trigger; a fired trigger is a
+decision put in front of the owner and nothing else, which is the design, not a gap.
+
 ## 4. Controls and the tests that hold them (roadmap 6.3, [ADR-0119](../adr/0119-derive-the-suite-from-the-threat-model-and-bound-what-a-document-may-cost-to-read.md))
 
 Every control in §2 is a sentence, and until 6.3 whether a test stood behind one was a matter

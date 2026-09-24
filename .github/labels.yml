@@ -51,3 +51,13 @@
 - name: help wanted
   color: "008672"
   description: "Open for anyone to pick up; the maintainer is not working on it"
+
+# The trigger label (roadmap 7.5, ADR-0155). Applied by the *I cannot use MCP or the
+# CLI* issue form and by nothing else on purpose: spec 06 §3 defers an HTTP API until
+# "a consumer that cannot use MCP/CLI actually appears", and the form is how one
+# appears. `tools/adoption_report.py` recognises the form by its field headings, not by
+# this label - a label is one click for anyone with triage rights - so the label is for
+# the humans reading the tracker, and the form is the evidence.
+- name: surface-request
+  color: "e99695"
+  description: "A consumer that cannot use MCP or the CLI, filed through the form (spec 06 §3)"

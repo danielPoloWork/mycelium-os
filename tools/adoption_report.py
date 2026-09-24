@@ -68,6 +68,24 @@ rather than fatal. What a fabricated report can do is fire a trigger, and a fire
 trigger decides nothing — it puts a decision in front of the owner, who can withdraw
 the report by closing its issue as *not planned*.
 
+Roadmap 7.5 gave the three rows that gate the server profile (roadmap 7.2) the same
+treatment (ADR-0155), and one of them the honest answer that it has no reading:
+
+- **HTTP API + SDKs** — *"a consumer that cannot use MCP/CLI actually appears"*. A
+  consumer appears by filing the *I cannot use MCP or the CLI* issue form; the form's
+  own field headings are what this tool recognises, never the label alone, and only
+  the login and the issue number are ever printed.
+- **Multi-tenancy, policy engine, RBAC** — *"an organization commits to deploying the
+  server profile"*. Not evaluable as written and reported so: a commitment is a
+  promise, and there is no server profile to deploy until 7.2 exists. The row is
+  read as a condition inside 7.2's own RFC, which names its deployer.
+- **Plugin sandboxing + signed registry** — *"≥ 1 third-party plugin with meaningful
+  adoption exists"*. *Exists* is a repository that is not this one and not a fork of
+  it declaring one of the plugin entry-point groups, found by GitHub code search;
+  *adoption* is the D-030 definition turned on that repository — one engaged actor
+  who is not its owner. *Meaningful* stays the owner's judgement at the moment the
+  trigger fires.
+
 ## Exit codes
 
 0 when every gate in scope is met and no deferral's trigger has fired, 1 when a
@@ -123,6 +141,29 @@ TEAM_PEOPLE_BAR: Final[int] = 2
 #: *≥ 1 team*, as spec 06 §3 writes it. Not re-cut: 7.4 made the trigger evaluable
 #: and left its number where the spec put it.
 TEAM_REPORTS_BAR: Final[int] = 1
+
+#: The issue form a consumer that cannot use MCP or the CLI files (roadmap 7.5,
+#: ADR-0155): the label it applies, and the field labels GitHub renders as `###`
+#: headings in the body. The headings are what is recognised — a label can be added
+#: or removed by anyone with triage rights, the form's own rendering cannot — and a
+#: test holds this tuple to `.github/ISSUE_TEMPLATE/surface_request.yml`.
+SURFACE_REQUEST_LABEL: Final[str] = "surface-request"
+SURFACE_REQUEST_FIELDS: Final[tuple[str, ...]] = (
+    "Which client cannot use MCP or the CLI",
+    "Why MCP (stdio) does not fit it",
+    "Why the CLI does not fit it",
+)
+#: *A consumer appears*: one is enough, as the spec's indefinite article says.
+SURFACE_REQUESTS_BAR: Final[int] = 1
+
+#: The entry-point groups a plugin or a module declares to be found (D-012, D-025);
+#: `mycelium.sdk` owns their meaning, this tool only searches for their names.
+PLUGIN_ENTRY_POINT_GROUPS: Final[tuple[str, ...]] = ("mycelium.plugins", "mycelium.modules")
+#: *≥ 1 third-party plugin*, the spec's number; *with meaningful adoption* read as at
+#: least this many engaged actors, under D-030's definition, on the plugin's repository
+#: who are not its owner.
+THIRD_PARTY_PLUGINS_BAR: Final[int] = 1
+PLUGIN_ADOPTERS_BAR: Final[int] = 1
 
 INDEXES: Final[dict[str, str]] = {
     "PyPI": "https://pypi.org/pypi/{name}/json",
@@ -891,16 +932,240 @@ def remote_cache_trigger(reports: Sequence[CacheReport]) -> Trigger:
     )
 
 
-def collect(
-    slug: str, owner: str, *, offline: bool
-) -> tuple[list[Signal], list[Trigger], list[Actor], list[str]]:
+# ---------------------------------------------------------------------------
+# The three deferrals that gate the server profile (roadmap 7.2, 7.5; ADR-0155)
+# ---------------------------------------------------------------------------
+
+
+def is_surface_request(body: object) -> bool:
+    """Whether an issue body is the *I cannot use MCP or the CLI* form, filled in.
+
+    GitHub renders each form field as a `### <label>` heading over the answer, so the
+    three required fields' headings are the form's signature. The label the form
+    applies is not consulted: anyone with triage rights can add or remove a label,
+    and a request filed by hand under the label would be a claim, not a form.
+    """
+    return isinstance(body, str) and all(f"### {field}" in body for field in SURFACE_REQUEST_FIELDS)
+
+
+def surface_requests(issues: Sequence[dict[str, Any]], owner: str) -> list[tuple[str, int]]:
+    """`(login, number)` for every surface request an external login filed and nobody withdrew.
+
+    A pull request is never one (`/issues` returns both), and closing the issue as
+    *not planned* withdraws it - the same lever :func:`cache_reports` honours.
+    """
+    found: list[tuple[str, int]] = []
+    for item in issues:
+        login = (item.get("user") or {}).get("login")
+        number = item.get("number")
+        if "pull_request" in item or login is None or not is_external(login, owner):
+            continue
+        if not isinstance(number, int) or item.get("state_reason") == "not_planned":
+            continue
+        if is_surface_request(item.get("body")):
+            found.append((login, number))
+    return found
+
+
+def surface_trigger(requests: Sequence[tuple[str, int]]) -> Trigger:
+    """Spec 06 §3's trigger for the HTTP API and SDKs, read off the issue forms.
+
+    *A consumer that cannot use MCP/CLI actually appears* - it appears by saying so,
+    in the form, and the form asks it to say why each surface does not fit. Whether
+    the reason holds is the owner's reading of the issue; the trigger fires on the
+    filing and puts that reading in front of them. Nothing the filer typed is
+    printed here: the login and the number are GitHub's, the body is theirs.
+    """
+    return Trigger(
+        key="http-api-trigger",
+        item="roadmap 7.2 (HTTP API + SDKs)",
+        decision="an HTTP API and SDKs beside the CLI and MCP (D-011; spec 06 section 3, Phase 5)",
+        condition=(
+            f">= {SURFACE_REQUESTS_BAR} issue by an external login filed through the "
+            "'I cannot use MCP or the CLI' form, not closed as not planned"
+        ),
+        fired=len(requests) >= SURFACE_REQUESTS_BAR,
+        observed=f"{len(requests)} request(s) of {SURFACE_REQUESTS_BAR}",
+        evidence=[f"{login} on #{number}" for login, number in requests]
+        or ["no consumer has filed the form; the issue chooser offers it"],
+    )
+
+
+def server_profile_trigger() -> Trigger:
+    """The row that cannot be read as written, reported as such rather than guessed.
+
+    *An organization commits to deploying the server profile*: a commitment is a
+    promise, which no endpoint reports, and the thing to be deployed does not exist
+    until roadmap 7.2 does - so as an *entry* trigger the sentence can never fire
+    before the item it gates. The owner read it, on 2026-09-24, as a condition inside
+    7.2's own RFC, which must name its deployer (ADR-0155). ``fired`` is ``None`` for
+    ADR-0118's reason: *could not evaluate* is neither a pass nor a finding.
+    """
+    return Trigger(
+        key="server-profile-trigger",
+        item="roadmap 7.2 (multi-tenancy, policy engine, RBAC)",
+        decision="tenancy, a policy engine and RBAC in the server profile (spec 06 section 3)",
+        condition="an organization commits to deploying the server profile",
+        fired=None,
+        observed=(
+            "not evaluable as written: a commitment is a promise, and the profile does not "
+            "exist to deploy"
+        ),
+        evidence=[
+            "read as a condition inside roadmap 7.2's RFC, which names its deployer (ADR-0155)",
+            "the HTTP API trigger above is the door a deployer would come through first",
+        ],
+    )
+
+
+@dataclass(frozen=True)
+class PluginRepository:
+    """A repository outside this one that declares a plugin or module entry point."""
+
+    slug: str
+    owner: str
+    path: str
+    adopters: tuple[Actor, ...] = ()
+
+    @property
+    def adopted(self) -> bool:
+        return len(self.adopters) >= PLUGIN_ADOPTERS_BAR
+
+
+def plugin_candidates(items: Iterable[Any], owner: str) -> list[PluginRepository]:
+    """The code-search hits that are somebody else's plugin, one per repository.
+
+    Excluded, and executably: this repository, whose `contrib/chats` and plugin
+    cookiecutter declare both groups; and **every fork**, because a fork of this
+    repository carries those declarations back to us - the mirror of the mistake
+    ADR-0138 found when a fork's copy of our own branch counted as a contribution.
+    """
+    found: dict[str, PluginRepository] = {}
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        repository = item.get("repository") or {}
+        slug = str(repository.get("full_name") or "")
+        repo_owner = str((repository.get("owner") or {}).get("login") or slug.partition("/")[0])
+        if not slug or repository.get("fork") or repo_owner.casefold() == owner.casefold():
+            continue
+        found.setdefault(
+            slug, PluginRepository(slug=slug, owner=repo_owner, path=str(item.get("path") or ""))
+        )
+    return [found[slug] for slug in sorted(found, key=str.casefold)]
+
+
+def search_plugin_declarations() -> list[Any]:
+    """Every `pyproject.toml` GitHub's code search finds naming one of the groups."""
+    items: list[Any] = []
+    for group in PLUGIN_ENTRY_POINT_GROUPS:
+        payload = gh(
+            "search/code",
+            "-X",
+            "GET",
+            "-f",
+            f'q="{group}" filename:pyproject.toml',
+            "-f",
+            "per_page=100",
+        )
+        if isinstance(payload, dict):
+            items.extend(payload.get("items") or [])
+    return items
+
+
+def engaged_actors(slug: str, owner: str) -> tuple[list[Actor], list[str], list[Any], list[Any]]:
+    """D-030's tally for one repository: its actors, its bookmark forks, and the raw
+    issues and comments the tally read, so a caller can read them once more."""
     issues = listed(f"repos/{slug}/issues", "-f", "state=all")
     issue_comments = listed(f"repos/{slug}/issues/comments")
     acts = issue_and_pr_acts(issues) + comment_acts(slug, issue_comments) + discussion_acts(slug)
     fork_engagement, bookmarks = fork_acts(slug, owner)
-    actors = tally(acts + fork_engagement, owner)
+    return tally(acts + fork_engagement, owner), bookmarks, issues, issue_comments
+
+
+def third_party_plugins(owner: str) -> list[PluginRepository]:
+    """Somebody else's plugin repositories, each with its own engaged actors counted."""
+    plugins: list[PluginRepository] = []
+    for candidate in plugin_candidates(search_plugin_declarations(), owner):
+        adopters, _bookmarks, _issues, _comments = engaged_actors(candidate.slug, candidate.owner)
+        plugins.append(
+            PluginRepository(
+                slug=candidate.slug,
+                owner=candidate.owner,
+                path=candidate.path,
+                adopters=tuple(adopters),
+            )
+        )
+    return plugins
+
+
+def plugin_trigger(
+    plugins: Sequence[PluginRepository] | None, *, unreadable: str | None = None
+) -> Trigger:
+    """Spec 06 §3's trigger for plugin sandboxing and a signed registry.
+
+    *≥ 1 third-party plugin with meaningful adoption exists.* The number is the
+    spec's; *exists* and *adoption* are given readings a command can check, and
+    *meaningful* is left where only a person can weigh it - the trigger fires on one
+    adopted plugin and the owner decides whether that adoption is meaningful. A
+    plugin nobody but its author has touched is listed and not counted.
+    """
+    condition = (
+        f">= {THIRD_PARTY_PLUGINS_BAR} repository outside this one, not a fork of it, declaring "
+        f"a `{'` or `'.join(PLUGIN_ENTRY_POINT_GROUPS)}` entry point, with "
+        f">= {PLUGIN_ADOPTERS_BAR} engaged actor (D-030) who is not its owner"
+    )
+    item = "roadmap 7.2 (out-of-process plugin isolation: sandboxing + signed registry)"
+    decision = "plugin sandboxing and a signed registry (D-012; spec 06 section 3)"
+    if plugins is None:
+        return Trigger(
+            key="plugin-sandbox-trigger",
+            item=item,
+            decision=decision,
+            condition=condition,
+            fired=None,
+            observed=unreadable or "GitHub code search could not be asked",
+        )
+    adopted = [plugin for plugin in plugins if plugin.adopted]
+    evidence = [
+        f"{plugin.slug}: {len(plugin.adopters)} engaged actor(s) - "
+        + ", ".join(actor.login for actor in plugin.adopters)
+        for plugin in adopted
+    ]
+    evidence += [
+        f"not counted (nobody but its owner has engaged with it) - {plugin.slug}"
+        for plugin in plugins
+        if not plugin.adopted
+    ]
+    return Trigger(
+        key="plugin-sandbox-trigger",
+        item=item,
+        decision=decision,
+        condition=condition,
+        fired=len(adopted) >= THIRD_PARTY_PLUGINS_BAR,
+        observed=f"{len(adopted)} adopted of {len(plugins)} third-party plugin repositor(y/ies)",
+        evidence=evidence
+        or ["code search finds no pyproject.toml outside this repository naming either group"],
+    )
+
+
+def collect(
+    slug: str, owner: str, *, offline: bool
+) -> tuple[list[Signal], list[Trigger], list[Actor], list[str]]:
+    actors, bookmarks, issues, issue_comments = engaged_actors(slug, owner)
     recurring = recurring_contributors(slug, owner)
-    triggers = [remote_cache_trigger(cache_reports(issues, issue_comments, owner))]
+    try:
+        plugins = plugin_trigger(third_party_plugins(owner))
+    except (GitHubUnavailableError, PermissionDeniedError) as error:
+        # Code search has its own rate limit and its own permissions; a refusal there
+        # is an unreadable trigger, not a failed report (ADR-0118's three values).
+        plugins = plugin_trigger(None, unreadable=f"GitHub code search refused: {error}"[:200])
+    triggers = [
+        remote_cache_trigger(cache_reports(issues, issue_comments, owner)),
+        surface_trigger(surface_requests(issues, owner)),
+        server_profile_trigger(),
+        plugins,
+    ]
 
     signals = [
         index_presence(DISTRIBUTION, offline=offline),

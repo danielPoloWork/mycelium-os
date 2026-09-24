@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
@@ -370,3 +371,143 @@ def test_the_trigger_is_the_one_spec_06_wrote_given_readings() -> None:
     assert report.TEAM_REPORTS_BAR == 1
     assert report.TEAM_PEOPLE_BAR == 2
     assert report.CACHE_REPORT_SCHEMA == "mycelium/cache-ceiling/v0"
+
+
+# ---------------------------------------------------------------------------
+# The three deferrals that gate the server profile (roadmap 7.5, ADR-0155)
+# ---------------------------------------------------------------------------
+
+FORM = ROOT / ".github" / "ISSUE_TEMPLATE" / "surface_request.yml"
+
+
+def _form_body(**answers: str) -> str:
+    """An issue body as GitHub renders a filled-in issue form: `### <label>` per field."""
+    filled = {
+        "Which client cannot use MCP or the CLI": "a browser extension",
+        "Why MCP (stdio) does not fit it": "no process to spawn",
+        "Why the CLI does not fit it": "no shell either",
+        **answers,
+    }
+    return "\n\n".join(f"### {label}\n\n{answer}" for label, answer in filled.items()) + "\n"
+
+
+def test_the_form_and_the_reader_agree_on_the_fields_and_the_label() -> None:
+    """The reader recognises the form by its headings, so the two are one list held
+    together here: rename a field in the YAML and this is how the code finds out."""
+    form = yaml.safe_load(FORM.read_text(encoding="utf-8"))
+    labels = [field["attributes"]["label"] for field in form["body"] if field["type"] != "markdown"]
+    for expected in report.SURFACE_REQUEST_FIELDS:
+        assert expected in labels
+    required = [
+        field["attributes"]["label"]
+        for field in form["body"]
+        if field["type"] != "markdown" and field.get("validations", {}).get("required")
+    ]
+    for expected in report.SURFACE_REQUEST_FIELDS:
+        assert expected in required, f"{expected!r} must be required, or a request can omit it"
+    assert report.SURFACE_REQUEST_LABEL in form["labels"]
+    declared = yaml.safe_load((ROOT / ".github" / "labels.yml").read_text(encoding="utf-8"))
+    assert report.SURFACE_REQUEST_LABEL in {entry["name"] for entry in declared}
+
+
+def test_a_consumer_that_files_the_form_fires_the_http_api_trigger() -> None:
+    requests = report.surface_requests([_issue(40, "a-consumer", _form_body())], OWNER)
+    trigger = report.surface_trigger(requests)
+    assert trigger.fired is True
+    assert trigger.item.startswith("roadmap 7.2")
+    assert trigger.evidence == ["a-consumer on #40"]
+
+
+def test_what_the_consumer_typed_is_never_printed() -> None:
+    hostile = _form_body(**{"Which client cannot use MCP or the CLI": "\x1b]0;owned\x07"})
+    trigger = report.surface_trigger(report.surface_requests([_issue(41, "x", hostile)], OWNER))
+    assert "\x1b" not in " ".join([trigger.observed, *trigger.evidence])
+
+
+@pytest.mark.parametrize(
+    "issue",
+    [
+        pytest.param(_issue(1, OWNER, _form_body()), id="our-own"),
+        pytest.param(_issue(2, "dependabot[bot]", _form_body()), id="a-bot"),
+        pytest.param(_issue(3, "x", _form_body(), state_reason="not_planned"), id="withdrawn"),
+        pytest.param(
+            _issue(4, "x", "### Problem\n\nI want REST\n\n### Proposed solution\n\nadd it\n"),
+            id="a-feature-request",
+        ),
+        pytest.param(
+            _issue(5, "x", _form_body().replace("### Why the CLI does not fit it", "### Why not")),
+            id="a-field-missing",
+        ),
+        pytest.param({**_issue(6, "x", _form_body()), "pull_request": {}}, id="a-pull-request"),
+        pytest.param(_issue(7, "x", "surface-request " + _form_body()[:20]), id="the-label-alone"),
+    ],
+)
+def test_what_is_not_a_consumer_appearing(issue: dict[str, Any]) -> None:
+    """Ours, a bot's, a withdrawn one, a feature request, a form with a field missing,
+    a pull request, and the label's name typed by hand: none is a consumer appearing."""
+    assert report.surface_requests([issue], OWNER) == []
+    assert report.surface_trigger([]).fired is False
+
+
+def test_the_server_profile_row_is_unreadable_and_never_fires() -> None:
+    """A commitment is a promise and the profile does not exist: `None`, by decision
+    (2026-09-24), and `None` never fails the report (ADR-0118)."""
+    trigger = report.server_profile_trigger()
+    assert trigger.fired is None
+    assert "7.2" in trigger.item
+    met = [report.Signal(key="a", condition="a", phase="3", met=True, observed="")]
+    assert report.verdict(met, [trigger]) is True
+
+
+def _hit(slug: str, *, fork: bool = False, path: str = "pyproject.toml") -> dict[str, Any]:
+    owner = slug.partition("/")[0]
+    return {
+        "path": path,
+        "repository": {"full_name": slug, "fork": fork, "owner": {"login": owner}},
+    }
+
+
+def test_only_somebody_elses_repository_is_a_third_party_plugin() -> None:
+    """Ours is excluded by owner, every fork by flag - a fork of this repository
+    carries `contrib/chats` and the cookiecutter back to us - and one repository
+    declaring both groups is one plugin, not two."""
+    hits = [
+        _hit(f"{OWNER}/mycelium-os", path="contrib/chats/pyproject.toml"),
+        _hit("someone/mycelium-os", fork=True),
+        _hit("acme/mycelium-jira"),
+        _hit("acme/mycelium-jira"),
+        _hit("Zed/mycelium-notion", path="plugin/pyproject.toml"),
+        "not a dict",
+    ]
+    found = report.plugin_candidates(hits, OWNER)
+    assert [plugin.slug for plugin in found] == ["acme/mycelium-jira", "Zed/mycelium-notion"]
+    assert found[0].owner == "acme"
+
+
+def test_a_plugin_fires_the_trigger_only_when_somebody_else_engaged_with_it() -> None:
+    adopter = report.Actor(login="a-user", acts=("opened issue #1",))
+    adopted = report.PluginRepository("acme/mycelium-jira", "acme", "pyproject.toml", (adopter,))
+    lonely = report.PluginRepository("solo/mycelium-x", "solo", "pyproject.toml", ())
+    holding = report.plugin_trigger([lonely])
+    assert holding.fired is False
+    assert holding.evidence == [
+        "not counted (nobody but its owner has engaged with it) - solo/mycelium-x"
+    ]
+    fired = report.plugin_trigger([adopted, lonely])
+    assert fired.fired is True
+    assert fired.observed == "1 adopted of 2 third-party plugin repositor(y/ies)"
+    assert fired.evidence[0] == "acme/mycelium-jira: 1 engaged actor(s) - a-user"
+
+
+def test_a_refused_code_search_is_unreadable_not_a_verdict() -> None:
+    trigger = report.plugin_trigger(None, unreadable="GitHub code search refused: 403")
+    assert trigger.fired is None
+    assert "403" in trigger.observed
+    assert report.plugin_trigger([]).fired is False
+
+
+def test_the_readings_are_the_ones_the_owner_took_on_2026_09_24() -> None:
+    assert report.SURFACE_REQUESTS_BAR == 1
+    assert report.THIRD_PARTY_PLUGINS_BAR == 1
+    assert report.PLUGIN_ADOPTERS_BAR == 1
+    assert report.PLUGIN_ENTRY_POINT_GROUPS == ("mycelium.plugins", "mycelium.modules")

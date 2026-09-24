@@ -186,3 +186,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0152](0152-the-ranking-loss-is-ordering-not-recall.md) | The ranking loss is ordering, not recall | Accepted |
 | [0153](0153-decide-spec-04-s4s-result-set-rules-on-evidence.md) | Decide spec 04 §4's result-set rules on evidence, and record each one | Accepted |
 | [0154](0154-price-the-remote-cache-before-its-trigger-and-give-the-trigger-a-reading.md) | Price the remote cache before its trigger fires, and give the trigger a reading | Accepted |
+| [0155](0155-read-7-2s-three-triggers-and-say-which-one-cannot-be-read.md) | Read 7.2's three triggers, and say which one cannot be read | Accepted |

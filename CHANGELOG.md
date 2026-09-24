@@ -12,6 +12,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`tools/adoption_report.py` evaluates the three triggers that gate the server profile**
+  (roadmap 7.5,
+  [ADR-0155](docs/adr/0155-read-7-2s-three-triggers-and-say-which-one-cannot-be-read.md)).
+  Spec 06 §3 defers roadmap 7.2's parts behind three sentences nothing could evaluate. Two get
+  a reading and an instrument: an HTTP API's *consumer that cannot use MCP/CLI* appears by
+  filing the new **I cannot use MCP or the CLI** issue form (recognised by its field headings,
+  never by its `surface-request` label); a *third-party plugin with meaningful adoption* is a
+  public repository outside this one — never a fork of it — declaring a `mycelium.plugins` or
+  `mycelium.modules` entry point, found by GitHub code search, with one D-030 engaged actor who
+  is not its owner. The third — *an organization commits to deploying the server profile* — is
+  reported **unreadable** by decision: a commitment is a promise and the profile does not exist
+  to deploy, so it is read as a condition inside 7.2's own RFC. A fired trigger is a decision
+  owed to the owner, never one taken; today all three hold.
+
 - **`tools/measure_cache_ceiling.py`, which prices a remote build cache before anybody builds
   one** (roadmap 7.4,
   [ADR-0154](docs/adr/0154-price-the-remote-cache-before-its-trigger-and-give-the-trigger-a-reading.md)).
