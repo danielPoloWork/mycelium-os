@@ -68,6 +68,12 @@ digest, mtime, *and* environment digest (stage versions, record schema versions,
 slices, namespace) all match its `doc_state` row. mtime cannot make a document clean; it
 can only make one dirty — a digest-equal file with a new mtime reruns exactly the
 assemble stage, because mtime is that stage's input (ADR-0009: mtime → `created_at`).
+
+> **Amended by [ADR-0157](0157-take-the-timestamps-out-of-the-document-record.md) (roadmap
+> 7.7, D-032, 2026-09-25):** mtime is no longer an input at all. The record stopped carrying
+> it, so a digest-equal file under a new mtime is *reused*: dirty detection compares the
+> source digest and the environment digest, and the mtime's only role is the stat memo that
+> decides whether the digest has to be recomputed (ADR-0133).
 What the unchanged-file fast path *does* skip is the frontmatter parse: an indexed
 document was pinned, its pinned identity is frontmatter, and frontmatter is content — so
 an unchanged digest proves the id is still in the file, and the row says which one.

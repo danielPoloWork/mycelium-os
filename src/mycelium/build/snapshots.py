@@ -113,7 +113,6 @@ def encode_snapshot_state(states: tuple[DocState, ...]) -> str:
                 "doc_id": state.doc_id,
                 "path": state.path,
                 "source_digest": state.source_digest,
-                "source_mtime": state.source_mtime,
                 # The stat memo travels with the state (roadmap 6.20): facts about
                 # the file the digest was computed over, so a restored snapshot
                 # trusts what the build it restores trusted. The racy-window clock
@@ -156,7 +155,6 @@ def decode_snapshot_state(text: str) -> tuple[DocState, ...]:
             doc_id=item["doc_id"],
             path=item["path"],
             source_digest=item["source_digest"],
-            source_mtime=item["source_mtime"],
             source_size=item.get("source_size"),
             source_mtime_ns=item.get("source_mtime_ns"),
             env_digest=item["env_digest"],

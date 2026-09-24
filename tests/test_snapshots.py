@@ -298,7 +298,6 @@ def test_snapshot_state_round_trips_and_is_stable(tmp_path: Path) -> None:
             doc_id=_IDS["api"],
             path="knowledge/api.md",
             source_digest="sha256:aa",
-            source_mtime="2026-01-01T00:00:00+00:00",
             env_digest="sha256:bb",
             document_digest="sha256:cc",
             chunks_digest="sha256:dd",

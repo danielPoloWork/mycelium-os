@@ -17,7 +17,7 @@ two stores built from the same sources hold byte-identical column values.
 import re
 from typing import Final
 
-SCHEMA_VERSION: Final = "mycelium/store/v8"
+SCHEMA_VERSION: Final = "mycelium/store/v9"
 """Bumped whenever the DDL below changes. v1 migration policy is rebuild (D-016):
 a *writer* that meets a foreign version recreates the file (the store is derived
 data, D-005 — ADR-0015); a *reader* refuses and points at `mycelium build`.
@@ -140,9 +140,7 @@ CREATE TABLE IF NOT EXISTS documents (
     provenance_json     TEXT NOT NULL,
     fidelity_report     TEXT,
     secret_flags_json   TEXT NOT NULL,
-    stats_json          TEXT NOT NULL,
-    created_at          TEXT NOT NULL,
-    updated_at          TEXT NOT NULL
+    stats_json          TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS documents_namespace ON documents(namespace);
 CREATE INDEX IF NOT EXISTS documents_collection ON documents(collection);
@@ -272,7 +270,6 @@ CREATE TABLE IF NOT EXISTS doc_state (
     doc_id          TEXT PRIMARY KEY REFERENCES documents(doc_id) ON DELETE CASCADE,
     path            TEXT NOT NULL UNIQUE,
     source_digest   TEXT NOT NULL,
-    source_mtime    TEXT NOT NULL,
     -- The stat memo (roadmap 6.20, ADR-0133): the size and mtime the file had
     -- when `source_digest` was last computed over it. A rebuild that finds both
     -- unchanged keeps the digest without reading the file; NULL is "never

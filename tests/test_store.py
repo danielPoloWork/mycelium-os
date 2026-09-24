@@ -61,8 +61,6 @@ def make_document(
         "verification_status": VerificationStatus.VERIFIED,
         "provenance": Provenance(),
         "stats": DocumentStats(tokens=100, headings=2, chunks=3, links_out=1),
-        "created_at": datetime(2026, 7, 31, 10, 0, tzinfo=UTC),
-        "updated_at": datetime(2026, 7, 31, 10, 0, tzinfo=UTC),
     }
     fields.update(overrides)
     return Document.model_validate(fields)

@@ -67,9 +67,9 @@ def test_document_schema_pins_required_contract_fields() -> None:
         "verification_status",
         "provenance",
         "stats",
-        "created_at",
-        "updated_at",
     } <= required
+    # No timestamp is required, or present: the record carries none (roadmap 7.7, D-032).
+    assert not {"created_at", "updated_at"} & set(schema["properties"])
     # The controlled vocabularies export as named $defs with exact values.
     assert schema["$defs"]["TrustClass"]["enum"] == [
         "authored",

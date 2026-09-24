@@ -1,7 +1,7 @@
 {
   "artifact_digests": {
     "chunks": "sha256:fb8c39e7a0c8d1ab1f8818d73005af0dcd09c66d2f6804a18245d2c0711fb1f6",
-    "documents": "sha256:fc6a5f837c9d0d073a562f25c6455194b16db2677ceb05759ab3b228220fb740",
+    "documents": "sha256:3d0737ccf10b1cc5d8e8649d0aa86e751ef679665f3e590861682ecad0fc244a",
     "edges": "sha256:8fa9be81da2875f751cbeec17646bd6485a104aa5cffbca61b1cb26a2c006ad7",
     "entities": "sha256:8d775164de12dff80bd40111e148e81ea53f423d2d899fc724b0258aeff9f467",
     "symbols": "sha256:ba330df78022a49312a2f08e95b998f1db1f6abfc6ba86a4e4c61441e15ebefd"
@@ -460,7 +460,6 @@
   "documents": [
     {
       "content_digest": "sha256:3a71f1239556901a877a61899bb0ab78c5bd6798881b185078c98f698062fc2a",
-      "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/candidate/synthesis.md",
       "stats": {
         "chunks": 2,
@@ -473,12 +472,10 @@
       ],
       "title": "Delivery Semantics (draft)",
       "trust_class": "authored",
-      "updated_at": "2026-01-01T00:00:00Z",
       "verification_status": "candidate"
     },
     {
       "content_digest": "sha256:0b8e0dab45ae6ad9096be1e2362f05899fe6427f180c803b4b604cd8fd68ba43",
-      "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/evidence/extract.md",
       "stats": {
         "chunks": 3,
@@ -491,12 +488,10 @@
       ],
       "title": "Delivery Guarantees (extract)",
       "trust_class": "ingested",
-      "updated_at": "2026-01-01T00:00:00Z",
       "verification_status": "evidence"
     },
     {
       "content_digest": "sha256:06bd276b784df4e1d7435f54bf595a76d62561961f72d382af75b5b87525b862",
-      "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/verified/api.md",
       "stats": {
         "chunks": 5,
@@ -510,12 +505,10 @@
       ],
       "title": "API Reference",
       "trust_class": "authored",
-      "updated_at": "2026-01-01T00:00:00Z",
       "verification_status": "verified"
     },
     {
       "content_digest": "sha256:f6674f588fb44f9d97d98fddb6d8b14fbb3d5810124668718a2a92b2bc918fb6",
-      "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/verified/architecture.md",
       "stats": {
         "chunks": 5,
@@ -529,12 +522,10 @@
       ],
       "title": "Architecture",
       "trust_class": "authored",
-      "updated_at": "2026-01-01T00:00:00Z",
       "verification_status": "verified"
     },
     {
       "content_digest": "sha256:6c044749ef1744e36551be12ca83dd5fe84925b8174eec3b577e60adafeb8e00",
-      "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/verified/build-keys.md",
       "stats": {
         "chunks": 4,
@@ -548,12 +539,10 @@
       ],
       "title": "Build Keys",
       "trust_class": "authored",
-      "updated_at": "2026-01-01T00:00:00Z",
       "verification_status": "verified"
     },
     {
       "content_digest": "sha256:18e0452e5b4444207e2f7b0e9ae77416278e9442d9d45da5c292c17ed945ab93",
-      "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/verified/multilingual.md",
       "stats": {
         "chunks": 4,
@@ -567,12 +556,10 @@
       ],
       "title": "設計ノート",
       "trust_class": "authored",
-      "updated_at": "2026-01-01T00:00:00Z",
       "verification_status": "verified"
     },
     {
       "content_digest": "sha256:d4fd85c93ade67420513bc987c3f62865511d39e8ca4e0559a37a0e70cbe689c",
-      "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/verified/retries-v0.md",
       "stats": {
         "chunks": 2,
@@ -586,12 +573,10 @@
       ],
       "title": "Delivery Guarantees (v0)",
       "trust_class": "authored",
-      "updated_at": "2026-01-01T00:00:00Z",
       "verification_status": "verified"
     },
     {
       "content_digest": "sha256:49dc8b4b881fec0d508d64a46856ac0f8ad74a40a969be0d098572c30c6bf9c5",
-      "created_at": "2026-01-01T00:00:00Z",
       "path": "knowledge/verified/retries.md",
       "stats": {
         "chunks": 7,
@@ -605,7 +590,6 @@
       ],
       "title": "Retry Policy",
       "trust_class": "authored",
-      "updated_at": "2026-01-01T00:00:00Z",
       "verification_status": "verified"
     }
   ],

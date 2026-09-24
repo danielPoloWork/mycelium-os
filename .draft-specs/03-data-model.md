@@ -67,11 +67,18 @@ nearest ancestor rather than silently wrong content (architecture §11).
   },
   "fidelity_report": null,
   "secret_flags": [],
-  "stats": { "tokens": 4180, "headings": 12, "chunks": 9, "links_out": 14 },
-  "created_at": "2026-07-31T10:00:00Z",
-  "updated_at": "2026-07-31T10:00:00Z"
+  "stats": { "tokens": 4180, "headings": 12, "chunks": 9, "links_out": 14 }
 }
 ```
+
+> **Amended by [ADR-0157](../docs/adr/0157-take-the-timestamps-out-of-the-document-record.md)
+> (roadmap 7.7, D-032, 2026-09-25):** the record carries no `created_at`/`updated_at`. Both
+> were the source file's mtime (ADR-0009) — process metadata of one checkout, which made
+> every fresh clone recompile every record whatever its cache held (ADR-0154). A date a
+> document *has* is declared by its author or, for an ingested document, is
+> `provenance.ingested_at`; nothing is inferred from the filesystem or from Git. The tag
+> stays `mycelium/document/v0`: the record is not one of the five frozen contracts and
+> changes at a MINOR (`docs/compatibility.md`).
 
 - `trust_class` enum (v1): `authored` | `curated` | `ingested` | `external`. Retrieval
   exposes it on every result; ranking may weight it (document 04 §4).
@@ -265,7 +272,7 @@ document text (property-tested).
 
 ```sql
 documents(doc_id PK, path, title, namespace, collection, trust_class, curated,
-          content_digest, provenance_json, stats_json, updated_at)
+          content_digest, provenance_json, stats_json)      -- no timestamp (D-032)
 chunks(anchor PK, doc_id→documents, chunk_digest, heading_path_json, text,
        tokens, kind, lines_json)
 chunks_fts        -- FTS5(content=chunks.text, title, heading_path) BM25, field-weighted

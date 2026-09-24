@@ -39,7 +39,6 @@ import random
 import struct
 import time
 from collections.abc import Iterator
-from datetime import UTC, datetime
 
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
@@ -84,7 +83,6 @@ def vector_store(tmp_path_factory: pytest.TempPathFactory) -> Iterator[SqliteSto
     """A store holding `CHUNKS` chunks and one vector each."""
     root = tmp_path_factory.mktemp("bench-vectors")
     rng = random.Random(20260830)
-    now = datetime.now(tz=UTC)
 
     with SqliteStore.open(root) as writer, writer.transaction():
         for doc_index in range(CHUNKS // PER_DOC):
@@ -99,8 +97,6 @@ def vector_store(tmp_path_factory: pytest.TempPathFactory) -> Iterator[SqliteSto
                     verification_status=VerificationStatus.VERIFIED,
                     provenance=Provenance(origin=ProvenanceOrigin.AUTHORED),
                     stats=DocumentStats(tokens=1, headings=1, chunks=PER_DOC, links_out=0),
-                    created_at=now,
-                    updated_at=now,
                 )
             )
             writer.put_chunks(

@@ -18,18 +18,19 @@ fields are deliberately excluded because they are not outputs of compilation —
 equal would be asserting something false and would have to be suppressed, which
 is how gates become decoration.
 
-**What counts as an input.** File mtime is one: it becomes ``created_at`` and
-``updated_at`` on every document record (ADR-0009). A fresh checkout has fresh
-mtimes, so the observation is taken against pinned timestamps — otherwise the
-golden would encode the moment the repository was cloned rather than the content
-it holds.
+**What counts as an input, and what no longer does.** Until roadmap 7.7 the file
+mtime was one: it became ``created_at`` and ``updated_at`` on every document
+record (ADR-0009), so a fresh checkout — fresh mtimes — would have produced a
+different golden, and the observation pinned every mtime to one constant before
+building. D-032 removed the timestamps from the record, so the observation is
+now taken over the checkout as it is, and a test touches every file and asserts
+the golden holds: the pin that used to be a workaround is now the claim itself.
 
 This module is shared by the gate and by the re-bless tool, so a golden file can
 never be produced by different code than the code that checks it.
 """
 
 import json
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Final
@@ -41,15 +42,11 @@ from mycelium.store import SqliteStore
 from mycelium.symbols import EXTRA, missing_grammars
 
 __all__ = [
-    "PINNED_MTIME",
     "DeterminismObservation",
     "observe_build",
     "read_golden",
     "write_golden",
 ]
-
-PINNED_MTIME: Final = 1_767_225_600.0
-"""2026-01-01T00:00:00Z — a fixed mtime, so the observation records content, not checkout time."""
 
 _VOLATILE_MANIFEST_FIELDS: Final = ("snapshot_id", "created_at", "timings_ms", "parent_id")
 """Manifest fields that legitimately differ between two correct builds."""
@@ -85,13 +82,7 @@ class DeterminismObservation:
         }
 
 
-def pin_mtimes(root: Path, *, mtime: float = PINNED_MTIME) -> None:
-    """Give every source file the same timestamp, so mtime stops being a variable."""
-    for path in sorted(root.rglob("*.md")):
-        os.utime(path, (mtime, mtime))
-
-
-def observe_build(root: Path, *, pin: bool = True) -> DeterminismObservation:
+def observe_build(root: Path) -> DeterminismObservation:
     """Build `root` with the deterministic stages only, and record the result.
 
     The vector stage is switched off explicitly (``provider = "none"``), not left
@@ -117,8 +108,6 @@ def observe_build(root: Path, *, pin: bool = True) -> DeterminismObservation:
             f"install {EXTRA} (`uv sync --all-extras --dev`) and run again"
         )
         raise RuntimeError(msg)
-    if pin:
-        pin_mtimes(root)
     config = load_config(root)
     deterministic_only = config.model_copy(
         update={"embedding": config.embedding.model_copy(update={"provider": "none"})}
@@ -144,11 +133,6 @@ def _observe(root: Path, manifest: SnapshotManifest) -> DeterminismObservation:
                     "verification_status": document.verification_status.value,
                     "tags": list(document.tags),
                     "stats": document.stats.model_dump(),
-                    # Recorded because `artifact_digests["documents"]` covers them:
-                    # without these the golden could fail on a timestamp and show
-                    # nothing but an unexplained digest mismatch.
-                    "created_at": document.created_at.isoformat().replace("+00:00", "Z"),
-                    "updated_at": document.updated_at.isoformat().replace("+00:00", "Z"),
                 }
             )
             for chunk in store.chunks_of(doc_id):

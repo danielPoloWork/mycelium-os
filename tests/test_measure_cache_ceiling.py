@@ -80,37 +80,38 @@ def test_each_arm_measured_what_it_names(measured: dict[str, object]) -> None:
     arms = _by_arm(block)
     documents = len(DOCUMENTS)
     assert block["documents"] == documents
-    # A cold build hits nothing; a seeded or restored one hits every stage it runs.
+    # A cold build hits nothing; a seeded one hits every stage it runs.
     assert arms["cold"]["parse_hits"] == [0]
     assert arms["cold"]["chunk_hits"] == [0]
-    for arm in ("seeded", "restored"):
-        assert arms[arm]["rebuilt"] == [documents], arm
-        assert arms[arm]["parse_hits"] == [documents], arm
-        assert arms[arm]["chunk_hits"] == [documents], arm
+    assert arms["seeded"]["rebuilt"] == [documents]
+    assert arms["seeded"]["parse_hits"] == [documents]
+    assert arms["seeded"]["chunk_hits"] == [documents]
     # Two stage artifacts per document, each with the row that names it.
     assert arms["seeding"]["rows"] == [2 * documents]
 
     result = block["ceiling"]
     assert isinstance(result, dict)
     assert result["outputs_identical"] is True
-    # A document record carries its file's mtime, and a fresh checkout's are new:
-    # expected, and the reason a cached checkout still re-assembles every document.
-    assert result["documents_digest_varies_by_checkout"] is True
+    # The document record carries no timestamp since roadmap 7.7 (D-032), so the
+    # documents digest is a function of the tree, like every other.
+    assert result["documents_digest_varies_by_checkout"] is False
 
 
-def test_the_mtime_is_the_whole_reason_a_restored_checkout_recompiles(
+def test_a_restored_checkout_rebuilds_nothing_whatever_its_mtimes(
     measured: dict[str, object],
 ) -> None:
-    """Give the restored checkout its cache's mtimes and nothing is rebuilt at all.
+    """The same `.mycelium/`, the same bytes, new mtimes: nothing is rebuilt.
 
-    The same `.mycelium/`, the same bytes: the only difference between this arm and
-    `restored` is the mtime of each document, and it is the difference between every
-    document re-assembled and re-stored and none. The published documents digest comes
-    back identical, because the records now carry the timestamps they were built with.
+    Until roadmap 7.7 this was the largest number the instrument measured — a
+    restored checkout re-assembled every document because the record carried the
+    file's mtime, and only the `restored-mtimes` control rebuilt nothing. D-032
+    removed the timestamps; the two arms coincide now, and a gap between them
+    would be the mtime finding its way back into the record.
     """
     arms = _by_arm(measured)
-    assert arms["restored-mtimes"]["rebuilt"] == [0]
-    assert arms["restored-mtimes"]["parse_hits"] == [0]
+    for arm in ("restored", "restored-mtimes"):
+        assert arms[arm]["rebuilt"] == [0], arm
+        assert arms[arm]["parse_hits"] == [0], arm
     result = measured["ceiling"]
     assert isinstance(result, dict)
     assert result["documents_digest_kept_with_mtimes"] is True

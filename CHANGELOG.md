@@ -62,9 +62,36 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **A touch is not an edit, and a fresh clone with a restored `.mycelium/` is incremental**
+  (roadmap 7.7, D-032,
+  [ADR-0157](docs/adr/0157-take-the-timestamps-out-of-the-document-record.md)). Dirty
+  detection compares the source digest and the environment digest; the file's mtime is kept
+  only as the stat memo that decides whether the digest must be recomputed, and a file with
+  the same bytes under a new mtime is reused. Roadmap 7.4 had measured the mtime as what
+  kept every clone cold — a restored checkout re-assembled every document, 40 s against
+  1.6 s at 1 000 documents. Measured after the change
+  (`docs/benchmarks/2026-09-25-a-restored-checkout-rebuilds-nothing.md`): **5.4 s, with 0
+  documents rebuilt**, the rest being the memo reading every file once. Watch mode no
+  longer builds for a touch, and gate G6 no longer pins mtimes before building — a test
+  touches every file and asserts the golden holds.
+- **The store schema is `mycelium/store/v9`** (roadmap 7.7). `documents.created_at`,
+  `documents.updated_at` and `doc_state.source_mtime` are gone; an existing store is
+  recreated on its next build (D-016).
+
 ### Deprecated
 
 ### Removed
+
+- **`created_at` and `updated_at` from the Document record** (roadmap 7.7, D-032,
+  [ADR-0157](docs/adr/0157-take-the-timestamps-out-of-the-document-record.md)). Both were
+  the source file's mtime — process metadata of one checkout, set from the same stat on
+  every build, so the two never differed and reached no surface: not `mycelium show`, not
+  `mycelium_fetch`, not retrieval. They are gone from the record, the store, the export
+  bundle's `documents.jsonl` and the G6 golden. The tag stays `mycelium/document/v0`: the
+  record is not one of the five frozen contracts and changes at a MINOR with this line
+  (`docs/compatibility.md`). `provenance.ingested_at` is unchanged; a document's date, if a
+  surface ever needs one, will be declared by its author, never inferred from the
+  filesystem or from Git.
 
 ### Fixed
 
