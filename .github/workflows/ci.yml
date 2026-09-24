@@ -512,13 +512,16 @@ jobs:
       # (roadmap 6.23, ADR-0053). Same gate as the one on this repository below,
       # and the reason for running it on a vendored corpus is that a chunker
       # change moves an anchor there too - and there, no one can re-judge the
-      # document to make the failure go away.
-      - name: Agent-task suite is still anchored — the second corpus
+      # document to make the failure go away. `--verdict` arms spec 04 §7.4's 1.0
+      # comparison here, on these two corpora only: the verdict is read on
+      # documentation we did not write, as ADR-0053 reads the judged sets
+      # (roadmap 7.3, D-031, ADR-0156).
+      - name: Agent-task suite is anchored, and beats grep — the second corpus
         shell: bash
-        run: uv run mycelium eval eval/corpora/uv-docs --tasks --gate
-      - name: Agent-task suite is still anchored — the ingested corpus
+        run: uv run mycelium eval eval/corpora/uv-docs --tasks --gate --verdict
+      - name: Agent-task suite is anchored, and beats grep — the ingested corpus
         shell: bash
-        run: uv run mycelium eval eval/corpora/uv-docs-ingested --tasks --gate
+        run: uv run mycelium eval eval/corpora/uv-docs-ingested --tasks --gate --verdict
       # Gate G2's runner, and the first one it has ever had (roadmap 4.40). CI
       # cannot *re-measure* G2 — the hybrid arm needs the 133 MB embedding model
       # and D-013 downloads nothing unless configured — so what it checks is that

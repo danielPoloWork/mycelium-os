@@ -390,7 +390,13 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
             # one on the corpus we did: the chunker moves anchors in a vendored
             # corpus exactly as it moves them in ours, and here nobody can
             # re-judge the documents to make it stop (roadmap 6.23, ADR-0053).
-            (f"agent tasks {corpus}", [*MYCELIUM, "eval", corpus, "--tasks", "--gate"]),
+            # And its *verdict*, armed here and only here: spec 04 §7.4's 1.0
+            # comparison is read on the corpora we did not write, as ADR-0053
+            # reads the judged sets (roadmap 7.3, D-031, ADR-0156).
+            (
+                f"agent tasks {corpus}",
+                [*MYCELIUM, "eval", corpus, "--tasks", "--gate", "--verdict"],
+            ),
         ]
     # Gate G2, which until now had no runner at all (roadmap 4.40). It goes after
     # the corpora because it fingerprints them, and it does not need the embedding

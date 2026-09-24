@@ -279,11 +279,17 @@ and is two, and only the second waits:
   chunker had merged away, and both strategies had been scoring them as misses ever since, so
   the rate had a silent ceiling of 18/22. Such a task is now *unresolved*: reported, and
   excluded from the denominator.
-- The **verdict** — does Mycelium beat grep? — stays qualitative here and arms at the **v1.0.0
-  tag**, which Milestone 7 cuts. Its rule and its margin are quantified in
-  `docs/benchmarks/2026-09-17-reference-profile.md` ahead of arming, together with what has to
-  hold first: a green integrity gate, a denominator that does not move under it, and a corpus
-  that is not only our own.
+- The **verdict** — does Mycelium beat grep? — was quantified in
+  `docs/benchmarks/2026-09-17-reference-profile.md` ahead of arming, and is **armed** since
+  roadmap 7.3, before the v1.0.0 tag rather than discovered at it (D-031, ADR-0156). It
+  holds when the suite is sound (no unresolved anchor) and both conditions pass: **(a)**
+  Mycelium finds the evidence on **more than two** tasks beyond grep *and* a one-sided exact
+  **sign test** over the tasks exactly one strategy found gives **p < 0.05** — a lead the
+  suite can tell from chance, which a count alone cannot say on twenty-two tasks; **(b)**
+  Mycelium's **median** context is at most **half** grep's. It is gated on the corpora we did
+  not write — `uv-docs` and its ingested twin, both — by
+  `mycelium eval <corpus> --tasks --gate --verdict` in CI and `tools/verify.py`, and reported,
+  never gated, on this repository's own.
 
 **What the incumbent is, precisely (roadmap 6.22, ADR-0131).** A grep loop is modelled by two
 numbers — how much one read costs, and how many files it opens — and both are now measured
@@ -305,10 +311,12 @@ conjunction and a shorter `requires` list is an easier task rather than the same
 integrity gate runs on all three corpora. This matters for the *verdict* rule rather than for
 the metric: measured at `fa6757d`, the lead on evidence is **+5 tasks** on `uv-docs` and **+6**
 on its twin against **+1** on this repository's own corpus, so which corpus the rule is read on
-decides whether its first condition passes — the decision roadmap 7.3 takes before the tag,
-with `docs/benchmarks/2026-09-19-the-suite-on-a-corpus-we-did-not-write.md` in front of it.
-§7.1's own answer for the judged sets is ADR-0053's: report on the corpus we author, gate on
-the one we do not.
+decides whether its first condition passes. Roadmap 7.3 took that decision the way §7.1
+takes it for the judged sets — ADR-0053's rule, report on the corpus we author, gate on the
+one we do not (D-031, ADR-0156). Re-measured at `6334571`: **+6** (7 to 1 where the
+strategies disagree, p = 0.035) on `uv-docs`, **+7** (8 to 1, p = 0.020) on its twin, and
+**+2** (6 to 4, p = 0.38) on this repository, at a median context of about **3.8×** less than
+grep's on all three.
 
 ### 7.5 Run manifests
 

@@ -239,6 +239,13 @@ ADR-0113 places at Milestone 7. The rule, stated now so it can be argued before 
 > (a) Mycelium's evidence rate exceeds grep's by more than **two tasks** (2/n of the suite);
 > and (b) Mycelium's **median** context is at most **half** grep's median.
 
+> **Settled and armed at roadmap 7.3** (D-031,
+> [ADR-0156](../adr/0156-read-the-agent-task-verdict-where-we-did-not-write-and-ask-it-for-significance.md)).
+> Condition (a) gained a second half — a one-sided exact sign test over the tasks only one
+> strategy found, p < 0.05 — because a count alone passes a 3-to-0 lead at p = 0.125; the
+> verdict is gated on `uv-docs` and its ingested twin and reported on this repository. The
+> text below is the record of how the rule was reached and is left as it was written.
+
 Two tasks rather than one because one task is the suite's granularity — at n = 22 that is
 4.5 points — and a bar a single task can flip is a coin toss, which is the arithmetic
 roadmap 6.8 applied to the per-slice conditions. **Median** rather than mean because the mean
