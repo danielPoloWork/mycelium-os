@@ -68,6 +68,23 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **The reference profile generates the corpus it names** (roadmap 7.6,
+  [BUG-0034](docs/bugs/2026/09/BUG-0034-the-reference-profile-harvests-one-of-the-two-corpora-it-names.md),
+  [BUG-0035](docs/bugs/2026/09/BUG-0035-a-generated-reference-title-can-be-yaml-the-parser-refuses.md)).
+  `tools/benchmark_reference_profile.py` named a source directory that never existed and
+  skipped it in silence, so every generated corpus since roadmap 6.4 was this repository's own
+  prose under a docstring claiming two sources; it now harvests `eval/corpora/uv-docs/docs` and
+  refuses a missing source by name. A harvested heading could also become a title YAML refuses,
+  quarantining the document and compiling the thousand-document corpus at 998; titles are
+  written as YAML strings, and a run whose build compiled fewer documents than it generated is
+  refused rather than reported (`compiled_all`, called by the cold-build, profile and
+  cache-ceiling measurements). `--harvest-root` takes a clean export for a published run.
+  The before and after at one commit are published
+  (`docs/benchmarks/2026-09-24-the-corpus-the-profile-names.md`): the harvest grows from
+  5 998 to 8 767 blocks, and reading every earlier manifest found that **no published
+  reference-profile run had compiled the size it named** — 998 of 1 000, 249 of 250 — so the
+  1 000-document cold-build budget is measured at 1 000 for the first time.
+
 - **A cache report whose saving is negative is a report, not a malformed block**
   ([BUG-0036](docs/bugs/2026/09/BUG-0036-a-report-of-no-saving-is-refused-as-malformed.md)).
   `tools/adoption_report.py` validated `ceiling_s` as a duration, so a report whose seeded

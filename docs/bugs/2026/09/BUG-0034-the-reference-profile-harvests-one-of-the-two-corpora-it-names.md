@@ -1,12 +1,12 @@
 ---
 id: BUG-0034
 title: the reference profile harvests one of the two corpora it names, and says it harvests both
-status: open
+status: fixed
 severity: low
 reporter: internal
 discovered: 2026-09-23
 affected-versions: ">=0.6.0"
-fixed-in:
+fixed-in: "1.0.0"
 ---
 
 # BUG-0034: the reference profile harvests one of the two corpora it names, and says it harvests both
@@ -74,15 +74,18 @@ generates today, on purpose, and says so.
 
 ## Fix / workaround
 
-Point `SOURCE_CORPORA` at `eval/corpora/uv-docs/docs`, and make `harvest()` refuse a
-source that does not exist instead of skipping it — filed as roadmap 7.6. Until then, a
-reader of any reference-profile report should take the prose to be this repository's
-`docs/` at the report's commit.
+Fixed at roadmap 7.6: `SOURCE_CORPORA` names `eval/corpora/uv-docs/docs`, and `harvest()`
+refuses a source that is not a directory instead of skipping it (`SystemExit`, naming the
+path). `tests/test_reference_profile_generator.py` pins both, and pins that every source the
+constant names holds documents in this checkout. A reader of any reference-profile report
+whose manifest lists `eval/corpora/uv-docs/knowledge` under `corpus.sources` should take the
+prose to be this repository's `docs/` at the report's commit; the manifests that list
+`eval/corpora/uv-docs/docs` were generated from both.
 
 ## References
 
-- Fixing PR: — (open; roadmap 7.6)
-- `CHANGELOG` entry: —
+- Fixing PR: #198 (roadmap 7.6)
+- `CHANGELOG` entry: [Unreleased] › Fixed
 - Related: roadmap 6.4 ([ADR-0120](../../../adr/0120-build-the-reference-profile-publish-what-it-says-and-gate-the-instrument-not-the-verdict.md)),
   roadmap 7.4 ([ADR-0154](../../../adr/0154-price-the-remote-cache-before-its-trigger-and-give-the-trigger-a-reading.md)),
   `docs/benchmarks/README.md`

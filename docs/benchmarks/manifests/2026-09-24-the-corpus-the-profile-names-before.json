@@ -1,0 +1,427 @@
+{
+  "budgets": {
+    "cold_build_1k_s": 60,
+    "incremental_p95_ms": 2000,
+    "reference_chunks": 100000,
+    "search_p95_ms": 150,
+    "stage_fusion_p95_ms": 20,
+    "stage_graph_expansion_p95_ms": 30,
+    "stage_plan_candidates_p95_ms": 60,
+    "stage_stitch_pack_p95_ms": 40
+  },
+  "commit": "df43af82198e4269bb020383cc5f0c9012df8ee9",
+  "corpus": {
+    "generator": "tools/benchmark_reference_profile.py",
+    "kind": "generated",
+    "profile": "lexical (the shipped default, ADR-0017); compiled with the embedder off, and no vectors were written",
+    "queries": 531,
+    "query_sets": [
+      "eval/release.jsonl",
+      "eval/dev.jsonl"
+    ],
+    "seed": 20260917,
+    "sources": [
+      "eval/corpora/uv-docs/knowledge",
+      "docs"
+    ]
+  },
+  "generated_at": "2026-09-24T14:28:52.327430Z",
+  "hardware": {
+    "logical_cpus": 20,
+    "machine": "AMD64",
+    "memory_gib": 31.7,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+  },
+  "scales": [
+    {
+      "chunks": 1253,
+      "documents": 249,
+      "measurements": [
+        {
+          "budget": null,
+          "chunks": 1253,
+          "documents": 249,
+          "documents_per_second": 12.2,
+          "max": 20.409,
+          "mean": 20.409,
+          "min": 20.409,
+          "ms_per_document": 82.0,
+          "name": "cold build, 250 documents",
+          "p50": 20.409,
+          "p95": 20.409,
+          "samples": 1,
+          "stage_share": {
+            "compile": 79.9,
+            "discover": 7.6,
+            "graph": 0.3,
+            "plan": 3.5,
+            "store": 8.3,
+            "symbols": 0.2
+          },
+          "stages_ms": {
+            "compile": 15875,
+            "discover": 1514,
+            "graph": 62,
+            "plan": 688,
+            "store": 1656,
+            "symbols": 31,
+            "total": 19859
+          },
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "budget": null,
+          "documents_reused": 249,
+          "max": 1616.518,
+          "mean": 555.443,
+          "min": 421.978,
+          "name": "incremental rebuild, nothing edited (the floor)",
+          "p50": 461.269,
+          "p95": 803.243,
+          "samples": 20,
+          "stage_share": {
+            "compile": 0.0,
+            "discover": 13.5,
+            "graph": 18.1,
+            "plan": 27.5,
+            "store": 22.8,
+            "symbols": 9.1
+          },
+          "stages_ms_p50": {
+            "compile": 0,
+            "discover": 46,
+            "graph": 62,
+            "plan": 94,
+            "store": 78,
+            "symbols": 31,
+            "total": 342
+          },
+          "unit": "ms",
+          "within_budget": null
+        },
+        {
+          "budget": 2000,
+          "corpus_documents": 250,
+          "documents_rebuilt_per_edit": [
+            1
+          ],
+          "max": 1421.343,
+          "mean": 654.205,
+          "min": 507.779,
+          "name": "incremental rebuild, one document edited",
+          "p50": 557.834,
+          "p95": 849.634,
+          "samples": 20,
+          "stage_share": {
+            "compile": 14.4,
+            "discover": 10.9,
+            "graph": 14.4,
+            "plan": 25.1,
+            "store": 25.1,
+            "symbols": 7.2
+          },
+          "stages_ms_p50": {
+            "compile": 62,
+            "discover": 47,
+            "graph": 62,
+            "plan": 108,
+            "store": 108,
+            "symbols": 31,
+            "total": 430
+          },
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": 150,
+          "max": 31.279,
+          "mean": 14.959,
+          "min": 0.202,
+          "name": "search, warm store (in-process)",
+          "p50": 16.047,
+          "p95": 26.316,
+          "query_stages": {
+            "embed_query": {
+              "budget_ms": 60,
+              "note": "this leg did not run under the configuration measured",
+              "samples": 0,
+              "spec_stage": "plan + candidates"
+            },
+            "fusion": {
+              "budget_ms": 20,
+              "p50": 0,
+              "p95": 0,
+              "samples": 531,
+              "spec_stage": "fusion + boosts + dedupe"
+            },
+            "graph": {
+              "budget_ms": 30,
+              "note": "this leg did not run under the configuration measured",
+              "samples": 0,
+              "spec_stage": "graph expansion"
+            },
+            "lexical": {
+              "budget_ms": 60,
+              "p50": 15,
+              "p95": 25,
+              "samples": 531,
+              "spec_stage": "plan + candidates"
+            },
+            "symbol": {
+              "budget_ms": 60,
+              "note": "this leg did not run under the configuration measured",
+              "samples": 0,
+              "spec_stage": "plan + candidates"
+            },
+            "vector": {
+              "budget_ms": 60,
+              "note": "this leg did not run under the configuration measured",
+              "samples": 0,
+              "spec_stage": "plan + candidates"
+            }
+          },
+          "query_stages_are_reported_not_gated": "spec 04 \u00a71 states each stage budget for the 10^5-chunk reference profile; CI gates the end-to-end total only (G5, roadmap 6.24, ADR-0150)",
+          "query_stages_timed": [
+            "fusion",
+            "lexical"
+          ],
+          "query_stages_untimed": [
+            {
+              "budget_ms": 40,
+              "spec_stage": "stitch + pack",
+              "why": "pack runs in `handle_search`, outside the seam; stitch is unimplemented (spec 04 \u00a74 describes it, nothing in src/ does it)"
+            }
+          ],
+          "samples": 531,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": 150,
+          "max": 71.915,
+          "mean": 32.358,
+          "min": 14.781,
+          "name": "mycelium_search, end to end (MCP handler)",
+          "p50": 33.334,
+          "p95": 43.435,
+          "samples": 531,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": null,
+          "files": 250,
+          "max": 2.214,
+          "mean": 1.475,
+          "mean_bytes": 3862,
+          "min": 1.26,
+          "name": "read one small Markdown file, warm",
+          "p50": 1.445,
+          "p95": 1.738,
+          "samples": 250,
+          "unit": "ms",
+          "within_budget": null
+        }
+      ]
+    },
+    {
+      "chunks": 4966,
+      "documents": 1000,
+      "measurements": [
+        {
+          "budget": 60,
+          "chunks": 4966,
+          "documents": 1000,
+          "documents_per_second": 14.9,
+          "max": 67.181,
+          "mean": 67.181,
+          "min": 67.181,
+          "ms_per_document": 67.2,
+          "name": "cold build, 1000 documents",
+          "p50": 67.181,
+          "p95": 67.181,
+          "samples": 1,
+          "stage_share": {
+            "compile": 85.7,
+            "discover": 0.1,
+            "graph": 0.3,
+            "plan": 4.0,
+            "store": 9.5,
+            "symbols": 0.3
+          },
+          "stages_ms": {
+            "compile": 57108,
+            "discover": 78,
+            "graph": 172,
+            "plan": 2687,
+            "store": 6360,
+            "symbols": 171,
+            "total": 66672
+          },
+          "unit": "s",
+          "within_budget": false
+        },
+        {
+          "budget": null,
+          "documents_reused": 1000,
+          "max": 1972.798,
+          "mean": 1306.042,
+          "min": 1006.526,
+          "name": "incremental rebuild, nothing edited (the floor)",
+          "p50": 1331.59,
+          "p95": 1455.365,
+          "samples": 20,
+          "stage_share": {
+            "compile": 0.0,
+            "discover": 8.2,
+            "graph": 19.8,
+            "plan": 27.3,
+            "store": 14.4,
+            "symbols": 13.0
+          },
+          "stages_ms_p50": {
+            "compile": 0,
+            "discover": 93,
+            "graph": 226,
+            "plan": 312,
+            "store": 164,
+            "symbols": 148,
+            "total": 1141
+          },
+          "unit": "ms",
+          "within_budget": null
+        },
+        {
+          "budget": 2000,
+          "corpus_documents": 1000,
+          "documents_rebuilt_per_edit": [
+            1
+          ],
+          "max": 1392.836,
+          "mean": 1211.933,
+          "min": 1092.686,
+          "name": "incremental rebuild, one document edited",
+          "p50": 1177.463,
+          "p95": 1390.425,
+          "samples": 20,
+          "stage_share": {
+            "compile": 6.2,
+            "discover": 7.9,
+            "graph": 18.8,
+            "plan": 26.7,
+            "store": 17.2,
+            "symbols": 12.6
+          },
+          "stages_ms_p50": {
+            "compile": 62,
+            "discover": 78,
+            "graph": 186,
+            "plan": 265,
+            "store": 171,
+            "symbols": 125,
+            "total": 992
+          },
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": 150,
+          "max": 129.852,
+          "mean": 52.411,
+          "min": 0.905,
+          "name": "search, warm store (in-process)",
+          "p50": 55.258,
+          "p95": 98.173,
+          "query_stages": {
+            "embed_query": {
+              "budget_ms": 60,
+              "note": "this leg did not run under the configuration measured",
+              "samples": 0,
+              "spec_stage": "plan + candidates"
+            },
+            "fusion": {
+              "budget_ms": 20,
+              "p50": 0,
+              "p95": 0,
+              "samples": 531,
+              "spec_stage": "fusion + boosts + dedupe"
+            },
+            "graph": {
+              "budget_ms": 30,
+              "note": "this leg did not run under the configuration measured",
+              "samples": 0,
+              "spec_stage": "graph expansion"
+            },
+            "lexical": {
+              "budget_ms": 60,
+              "p50": 54,
+              "p95": 97,
+              "samples": 531,
+              "spec_stage": "plan + candidates"
+            },
+            "symbol": {
+              "budget_ms": 60,
+              "note": "this leg did not run under the configuration measured",
+              "samples": 0,
+              "spec_stage": "plan + candidates"
+            },
+            "vector": {
+              "budget_ms": 60,
+              "note": "this leg did not run under the configuration measured",
+              "samples": 0,
+              "spec_stage": "plan + candidates"
+            }
+          },
+          "query_stages_are_reported_not_gated": "spec 04 \u00a71 states each stage budget for the 10^5-chunk reference profile; CI gates the end-to-end total only (G5, roadmap 6.24, ADR-0150)",
+          "query_stages_timed": [
+            "fusion",
+            "lexical"
+          ],
+          "query_stages_untimed": [
+            {
+              "budget_ms": 40,
+              "spec_stage": "stitch + pack",
+              "why": "pack runs in `handle_search`, outside the seam; stitch is unimplemented (spec 04 \u00a74 describes it, nothing in src/ does it)"
+            }
+          ],
+          "samples": 531,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": 150,
+          "max": 144.313,
+          "mean": 63.31,
+          "min": 16.257,
+          "name": "mycelium_search, end to end (MCP handler)",
+          "p50": 64.976,
+          "p95": 101.525,
+          "samples": 531,
+          "unit": "ms",
+          "within_budget": true
+        },
+        {
+          "budget": null,
+          "files": 400,
+          "max": 2.262,
+          "mean": 1.348,
+          "mean_bytes": 3778,
+          "min": 1.054,
+          "name": "read one small Markdown file, warm",
+          "p50": 1.334,
+          "p95": 1.563,
+          "samples": 400,
+          "unit": "ms",
+          "within_budget": null
+        }
+      ]
+    }
+  ],
+  "schema": "mycelium/benchmark/v0",
+  "toolchain": {
+    "mycelium": "0.6.0",
+    "python": "3.12.10"
+  }
+}
