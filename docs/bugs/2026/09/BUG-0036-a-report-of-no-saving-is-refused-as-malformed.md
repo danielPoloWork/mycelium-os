@@ -85,7 +85,7 @@ parses, is not pain, and is shown as not counted.
 
 ## References
 
-- Fixing PR: <#NNN>
+- Fixing PR: #195
 - `CHANGELOG` entry: `[Unreleased]` → Fixed
 - Related: roadmap 7.4
   ([ADR-0154](../../../adr/0154-price-the-remote-cache-before-its-trigger-and-give-the-trigger-a-reading.md));
