@@ -1,12 +1,12 @@
 ---
 id: BUG-0035
 title: a reference-profile document can carry a title YAML refuses, so the corpus compiles short of its stated size
-status: open
+status: fixed
 severity: low
 reporter: internal
 discovered: 2026-09-23
 affected-versions: ">=0.6.0"
-fixed-in:
+fixed-in: "1.0.0"
 ---
 
 # BUG-0035: a reference-profile document can carry a title YAML refuses, so the corpus compiles short of its stated size
@@ -60,18 +60,26 @@ Low. Every arm of a measurement sees the same corpus, so a comparison inside one
 unaffected, and a count that is two short is two tenths of a percent. What it undermines is
 the claim a report makes when it says *at the stated conditions*: the cold-build budget is
 stated at 1 000 documents, and a run that compiles 998 is reporting a neighbouring size.
-Roadmap 7.4's report says 998 wherever it matters.
+Roadmap 7.4's report says 998 wherever it matters. **Wider than first thought**: reading
+every published manifest's `scales[].documents` at the fix found that no reference-profile
+run had ever compiled the size it named — 998 of 1 000 on 2026-09-17, 998 / 2 493 / 4 988 on
+2026-09-19, 249 / 999 / 2 498 / 4 989 on 2026-09-20, and 249 of 250 in 7.6's own before run
+— so the cold-build budget spec 01 §8 states at 1 000 documents had never been measured at
+1 000 until the after run.
 
 ## Fix / workaround
 
-Escape the title as a YAML string, and refuse to publish a run whose compiled document count
-differs from the generated one — filed with BUG-0034 as roadmap 7.6, since both are the
-generator producing a corpus other than the one it names, and both change every corpus it
-generates afterwards.
+Fixed at roadmap 7.6, with BUG-0034. `_document()` writes the title as a JSON string, which
+YAML reads as a double-quoted scalar, so a heading opening with a backtick, a quote, a dash or
+a hash survives as the title it is; `tests/test_reference_profile_generator.py` parses six
+such shapes through the adapter. And `compiled_all()` refuses a run whose build compiled
+fewer documents than were generated — `benchmark_reference_profile.py`'s cold-build and
+profile measurements and `measure_cache_ceiling.py`'s generated scales all call it — so a
+corpus that quarantined a document can no longer be reported at the size it names.
 
 ## References
 
-- Fixing PR: — (open; roadmap 7.6)
-- `CHANGELOG` entry: —
+- Fixing PR: #N (roadmap 7.6)
+- `CHANGELOG` entry: [Unreleased] › Fixed
 - Related: [BUG-0034](BUG-0034-the-reference-profile-harvests-one-of-the-two-corpora-it-names.md),
   roadmap 7.4 ([ADR-0154](../../../adr/0154-price-the-remote-cache-before-its-trigger-and-give-the-trigger-a-reading.md))

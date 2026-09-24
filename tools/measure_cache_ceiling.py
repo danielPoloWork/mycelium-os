@@ -102,6 +102,7 @@ from benchmark_reference_profile import (  # noqa: E402
     harvest,
     measure_file_io,
 )
+from benchmark_reference_profile import SOURCE_CORPORA as HARVEST_SOURCES  # noqa: E402
 
 from mycelium.__about__ import __version__  # noqa: E402
 from mycelium.build import BuildResult, build  # noqa: E402
@@ -615,18 +616,25 @@ def _profile(args: argparse.Namespace) -> dict[str, Any]:
         template = args.out / f"template-{documents:06d}"
         # One seed per scale, the reference profile's convention: the sizes are
         # different corpora, not prefixes of one.
-        generate(template, prose, documents, seed=args.seed + index)
+        generated = generate(template, prose, documents, seed=args.seed + index)
         digests[str(documents)] = corpus_digest(template)
         if calibration is None:
             calibration = measure_file_io(template).as_dict()
-        blocks.append(
-            measure(
-                template,
-                args.out / f"scale-{documents:06d}",
-                rounds=args.rounds,
-                label=f"reference profile, {documents} documents",
-            )
+        block = measure(
+            template,
+            args.out / f"scale-{documents:06d}",
+            rounds=args.rounds,
+            label=f"reference profile, {documents} documents",
         )
+        if int(block["documents"]) != generated:
+            # The same refusal `benchmark_reference_profile.compiled_all` makes: a
+            # corpus that compiled short is not at the size it names (BUG-0035).
+            msg = (
+                f"generated {generated} documents but the builds compiled "
+                f"{block['documents']} - the run is not at the size it names"
+            )
+            raise SystemExit(msg)
+        blocks.append(block)
         _remove(template)
     return {
         "corpus": {
@@ -634,6 +642,7 @@ def _profile(args: argparse.Namespace) -> dict[str, Any]:
             "generator": "tools/measure_cache_ceiling.py",
             "seed": args.seed,
             "scales": scales,
+            "sources": [path.as_posix() for path in HARVEST_SOURCES],
             "harvested_from": _commit_of(harvest_root),
             "corpus_digests": digests,
         },

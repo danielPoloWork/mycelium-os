@@ -44,10 +44,16 @@ python tools/benchmark_reference_profile.py --out <scratch-dir> \
     --manifest docs/benchmarks/manifests/<date>-reference-profile.json
 ```
 
-Same seed, same corpus, on any machine. The prose is harvested from the corpora this
-repository already vendors, so the term distribution is real documentation rather than
-random words; what it cannot reproduce is a real vault's link structure, and the report
-states that limit beside the numbers.
+Same seed, same corpus, on any machine. The prose is harvested from two corpora this
+repository already holds — the vendored uv documentation and its own `docs/` — so the term
+distribution is real documentation rather than random words; what it cannot reproduce is a
+real vault's link structure, and the report states that limit beside the numbers. Each
+manifest names the sources under `corpus.sources`: until roadmap 7.6 the first path did not
+exist and was skipped in silence, so every corpus generated before it came from `docs/`
+alone (BUG-0034), and the two series are not the same corpus. For a published run pass
+`--harvest-root` a clean export of the commit (`git archive <sha> docs
+eval/corpora/uv-docs/docs`), so nothing outside that commit — the report being written, an
+untracked note — enters the corpus.
 
 ## Results
 
@@ -55,6 +61,7 @@ One report per measured scenario, from [`template.md`](template.md). Keep the in
 
 | Date | Scenario | Version | Headline result | Report |
 |------|----------|---------|-----------------|--------|
+| 2026-09-24 | The corpus the profile names: the generated curve before and after roadmap 7.6, same commit, same seed | v0.6.0 | The series breaks here — every earlier manifest was harvested from `docs/` alone, and **no published run had compiled the size it named** (998 of 1 000, 249 of 250); the after run is the first at 1 000 that is 1 000. The compiler did not change, and the table says so | [2026-09-24-the-corpus-the-profile-names.md](2026-09-24-the-corpus-the-profile-names.md) |
 | 2026-09-23 | The ceiling a remote cache could buy: fresh checkouts built with nothing, every stage artifact, and a whole `.mycelium/` in the cache, at 250 and 1 000 documents | v0.6.0 | The ideal remote cache takes **35 %** off a thousand-document cold build, **9 ms a document** of it computation, and one that keeps its hits here is **20 s slower** than building; the same checkout given its cache's mtimes rebuilds **nothing**, in 1.6 s | [2026-09-23-the-ceiling-a-remote-cache-could-buy.md](2026-09-23-the-ceiling-a-remote-cache-could-buy.md) |
 | 2026-09-20 | The budget we could not spend: the agent-task band with our own constant swept beside the incumbent's two | v0.5.0 | At 16 000 tokens **19/22, 22/22 and 21/22** where the arm saturated at ten results before — and a caller at the tool's *default* `k` saturates too | [2026-09-20-the-budget-we-could-not-spend.md](2026-09-20-the-budget-we-could-not-spend.md) |
 | 2026-09-20 | The precondition that counted: the hybrid yes/no `search` asks per query, before and after roadmap 6.27 | v0.5.0 | **91.0 ms p50 to 0.013 ms** at 10⁵ vectors — the aggregate read every row to answer a yes/no, and it was **8.2× the vector leg it guards** | [2026-09-20-the-precondition-that-counted.md](2026-09-20-the-precondition-that-counted.md) |

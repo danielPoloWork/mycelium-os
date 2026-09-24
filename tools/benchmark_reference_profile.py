@@ -138,12 +138,19 @@ REPORTS: Final = ROOT / "docs" / "benchmarks"
 MANIFESTS: Final = REPORTS / "manifests"
 
 SOURCE_CORPORA: Final = (
-    Path("eval/corpora/uv-docs/knowledge"),
+    Path("eval/corpora/uv-docs/docs"),
     Path("docs"),
 )
 """Where the prose comes from: the vendored documentation corpus, and this
 repository's own. Two sources rather than one so the vocabulary is not a single
-project's."""
+project's.
+
+The first path was `eval/corpora/uv-docs/knowledge` until roadmap 7.6, a directory
+that has never existed - the uv corpus keeps its documents under `docs/`
+(`knowledge_dir = "docs"`, PR #43) - and :func:`harvest` skipped it in silence, so
+every corpus generated between roadmap 6.4 and 7.6 was this repository's own prose
+alone, under a docstring claiming two sources (BUG-0034). A manifest's
+`corpus.sources` says which list generated it."""
 
 REAL_CORPORA: Final = (
     Path("."),
@@ -409,7 +416,15 @@ def harvest(root: Path, sources: Sequence[Path] = SOURCE_CORPORA) -> Prose:
     for relative in sources:
         directory = root / relative
         if not directory.is_dir():
-            continue
+            # A refusal, not a skip: the one guard below is a floor on the *total*,
+            # which one source clears fifty times over, so a missing source could
+            # never be noticed there - and was not, for nineteen days (BUG-0034).
+            msg = (
+                f"source corpus {relative.as_posix()} is not a directory under {root} - "
+                "the profile names it, so the corpus generated without it is not the "
+                "one the manifest would claim"
+            )
+            raise SystemExit(msg)
         for path in sorted(directory.rglob("*.md")):
             try:
                 text = path.read_text(encoding="utf-8")
@@ -450,7 +465,12 @@ def _document(rng: random.Random, prose: Prose, index: int) -> str:
     lines = [
         "---",
         f"mycelium_id: {identity}",
-        f"title: {title.replace(':', ' -')}",
+        # A JSON string is a YAML double-quoted scalar, so a harvested heading that
+        # opens with a backtick or a quote - both YAML the adapter refuses as a
+        # plain scalar - survives as the title it is. Until roadmap 7.6 only the
+        # colon was escaped, and two of a thousand documents were quarantined for
+        # it, so the corpus the cold-build budget names compiled 998 (BUG-0035).
+        f"title: {json.dumps(title, ensure_ascii=False)}",
         "---",
         "",
         f"# {title}",
@@ -953,6 +973,24 @@ def _queries(root: Path) -> tuple[str, ...]:
     return tuple(found)
 
 
+def compiled_all(result: Any, generated: int) -> None:
+    """Refuse a run whose build compiled fewer documents than were generated.
+
+    The budgets are stated *at* a size, and a corpus that quarantined two of its
+    thousand documents is a measurement of a neighbouring size wearing the stated
+    one's name (BUG-0035). `result` is a :class:`~mycelium.build.BuildResult`; it
+    is typed loosely so a caller can hand it what it has.
+    """
+    compiled = int(result.manifest.counts.documents)
+    if compiled != generated:
+        msg = (
+            f"generated {generated} documents but the build compiled {compiled} "
+            f"({result.stats.quarantined} quarantined) - the run is not at the size it "
+            "names, and is not reported"
+        )
+        raise SystemExit(msg)
+
+
 def measure_cold_build(workspace: Path, prose: Prose, documents: int, *, seed: int) -> Measurement:
     """Time one clean build of `documents` generated documents (spec 01 §8).
 
@@ -961,10 +999,11 @@ def measure_cold_build(workspace: Path, prose: Prose, documents: int, *, seed: i
     look at, and carrying them costs nothing because the compiler already
     measured them — `timings_ms` is in every snapshot manifest (spec 03 §7).
     """
-    generate(workspace, prose, documents, seed=seed)
+    generated = generate(workspace, prose, documents, seed=seed)
     started = time.perf_counter()
     result = build(workspace, clean=True, pin_identity=False)
     elapsed = time.perf_counter() - started
+    compiled_all(result, generated)
     timings = dict(result.manifest.timings_ms)
     return Measurement(
         name=f"cold build, {documents} documents",
@@ -1002,11 +1041,12 @@ def profile_cold_build(
     the line, because a function high in one and low in the other is a caller
     rather than a cost.
     """
-    generate(workspace, prose, documents, seed=seed)
+    generated = generate(workspace, prose, documents, seed=seed)
     profiler = cProfile.Profile()
     profiler.enable()
-    build(workspace, clean=True, pin_identity=False)
+    result = build(workspace, clean=True, pin_identity=False)
     profiler.disable()
+    compiled_all(result, generated)
 
     stats = pstats.Stats(profiler)
     entries: list[tuple[str, int, float, float]] = [
@@ -1324,9 +1364,16 @@ def run(
     real_corpora: bool = False,
     profile: int = 0,
     manifest_path: Path | None = None,
+    harvest_root: Path = ROOT,
 ) -> dict[str, Any]:
-    """Measure every claim across the curve, and return the manifest."""
-    prose = harvest(ROOT)
+    """Measure every claim across the curve, and return the manifest.
+
+    `harvest_root` is where the prose comes from - this checkout by default, or a
+    clean export of a commit, because a working tree's `docs/` holds whatever is
+    on disk (the report being written, a maintainer's untracked notes) and all of
+    it would enter the corpus (roadmap 7.4).
+    """
+    prose = harvest(harvest_root)
     queries = _queries(ROOT)
     print(
         f"harvested {len(prose.blocks)} blocks ({prose.words} words), "
@@ -1678,6 +1725,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
     )
     parser.add_argument("--manifest", type=Path, help="Write the manifest here.")
+    parser.add_argument(
+        "--harvest-root",
+        type=Path,
+        default=ROOT,
+        help=(
+            "Where the generator harvests its prose: a clean export of a commit for a "
+            "published run, so nothing outside that commit enters the corpus."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if args.check:
@@ -1696,6 +1752,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         real_corpora=args.real_corpora,
         profile=args.profile,
         manifest_path=args.manifest,
+        harvest_root=args.harvest_root.resolve(),
     )
     if args.manifest:
         print(f"\nmanifest: {args.manifest}")
