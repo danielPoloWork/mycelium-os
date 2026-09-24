@@ -140,7 +140,7 @@ verbatim — on top of contracts that have not changed since Phase 1.
 | Formal ontology / entity acceptance workflow | Post-1.0 | Controlled vocabulary demonstrably limiting on a real corpus; a named owner exists |
 | Plugin sandboxing + signed registry | Ecosystem phase | ≥ 1 third-party plugin with meaningful adoption exists |
 | HTTP API + SDKs | Phase 5 | A consumer that cannot use MCP/CLI actually appears |
-| Remote build cache | Phase 5 entry | ≥ 1 team dogfooding with measured duplicate-build pain |
+| Remote build cache | Phase 5 entry | ≥ 1 team dogfooding with measured duplicate-build pain *(evaluable since roadmap 7.4, ADR-0154: "measured" is a report from `tools/measure_cache_ceiling.py` on the team's own corpus, whose saving lies outside its noise; a "team" is ≥ 2 people building that corpus; `tools/adoption_report.py` reads the reports posted in issues. The number is unmoved)* |
 | Multi-tenancy, policy engine, RBAC | Phase 5 | An organization commits to deploying the server profile |
 | Rust hotpaths | Post-1.0 | Profiling shows a specific stage dominating and Python optimization exhausted |
 | SaaS offering | Never by default | Separate business decision with its own RFC; not an engineering milestone |

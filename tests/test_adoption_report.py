@@ -6,13 +6,17 @@
 network and an authenticated `gh`. What *can* be tested is the part that decides
 what an answer means, and on this gate that part is the whole argument: who counts
 as external, what an act is worth, and which of GitHub's numbers are ours rather
-than somebody else's.
+than somebody else's. Since roadmap 7.4 it also decides when a deferral's trigger
+has fired, from reports strangers paste into issues - so what a hostile report can
+and cannot do is pinned here too.
 
 Nothing here makes a network call.
 """
 
+import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -181,3 +185,169 @@ def test_the_bars_are_the_ones_d030_recut() -> None:
     assert report.RECURRING_MERGES_BAR == 2
     assert report.COMMUNITY_PLUGINS_BAR == 1
     assert report.DISTRIBUTION == "mycelium-os"
+
+
+# ---------------------------------------------------------------------------
+# The deferral it watches: spec 06 §3's remote-cache trigger (roadmap 7.4)
+# ---------------------------------------------------------------------------
+
+
+def _report(**overrides: object) -> dict[str, object]:
+    """A well-formed `measure_cache_ceiling.py` report: a team, and a real saving."""
+    payload: dict[str, object] = {
+        "schema": report.CACHE_REPORT_SCHEMA,
+        "documents": 4_000,
+        "people": 5,
+        "cold_s": {"p50": 360.0, "min": 355.0, "max": 371.0},
+        "seeded_s": {"p50": 190.0, "min": 186.0, "max": 197.0},
+        "ceiling_s": 170.0,
+        "cold_builds_per_week": 40,
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _body(payload: object) -> str:
+    return "Measured on our docs:\n\n```json\n" + json.dumps(payload) + "\n```\n"
+
+
+def _issue(number: int, login: str, body: str, state_reason: str | None = None) -> dict[str, Any]:
+    return {"number": number, "user": {"login": login}, "body": body, "state_reason": state_reason}
+
+
+def _comment(number: int, login: str, body: str) -> dict[str, Any]:
+    url = f"https://api.github.com/repos/{OWNER}/mycelium-os/issues/{number}"
+    return {"issue_url": url, "user": {"login": login}, "body": body}
+
+
+def test_one_team_s_measured_pain_fires_the_trigger() -> None:
+    reports = report.cache_reports([_issue(12, "a-team-lead", _body(_report()))], [], OWNER)
+    trigger = report.remote_cache_trigger(reports)
+    assert trigger.fired is True
+    assert trigger.item == "roadmap 7.1"
+    assert "a-team-lead on #12" in trigger.evidence[0]
+
+
+def test_a_report_in_a_comment_counts_against_its_issue() -> None:
+    reports = report.cache_reports([], [_comment(31, "a-team-lead", _body(_report()))], OWNER)
+    assert [(item.login, item.issue) for item in reports] == [("a-team-lead", 31)]
+
+
+@pytest.mark.parametrize("login", [OWNER, "dependabot[bot]", "app/dependabot"])
+def test_our_own_reports_do_not_fire_it(login: str) -> None:
+    """The trigger is a *team's* pain: ours is a performance item, and counting it
+    would be closing the gate by counting this repository (roadmap 6.12's rule)."""
+    reports = report.cache_reports([_issue(3, login, _body(_report()))], [], OWNER)
+    assert reports == []
+    assert report.remote_cache_trigger(reports).fired is False
+
+
+def test_one_person_is_not_a_team() -> None:
+    reports = report.cache_reports([_issue(4, "solo", _body(_report(people=1)))], [], OWNER)
+    trigger = report.remote_cache_trigger(reports)
+    assert trigger.fired is False
+    assert "one person is not a team" in trigger.evidence[0]
+
+
+def test_a_saving_inside_the_noise_is_not_pain() -> None:
+    """Overlapping ranges: the instrument cannot tell the cache from the weather."""
+    noisy = _report(
+        cold_s={"p50": 30.0, "min": 27.0, "max": 34.0},
+        seeded_s={"p50": 29.0, "min": 26.0, "max": 31.0},
+        ceiling_s=1.0,
+    )
+    trigger = report.remote_cache_trigger(
+        report.cache_reports([_issue(5, "a-team-lead", _body(noisy))], [], OWNER)
+    )
+    assert trigger.fired is False
+    assert "the saving is noise" in trigger.evidence[0]
+
+
+def test_closing_the_issue_as_not_planned_withdraws_its_reports() -> None:
+    """The owner's lever against a fabricated report, with no code change: GitHub's own
+    record of the decision. It withdraws the comments on that issue too."""
+    issues = [_issue(6, "a-stranger", _body(_report()), state_reason="not_planned")]
+    comments = [_comment(6, "another-stranger", _body(_report()))]
+    assert report.cache_reports(issues, comments, OWNER) == []
+    completed = [_issue(6, "a-stranger", _body(_report()), state_reason="completed")]
+    assert len(report.cache_reports(completed, comments, OWNER)) == 2
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        pytest.param(
+            '```json\n{"schema": "mycelium/cache-ceiling/v0", "documents": \n```',
+            id="malformed",
+        ),
+        # `bool` is an int to Python and not to JSON.
+        pytest.param(_body(_report(people=True)), id="bool-as-count"),
+        pytest.param(_body(_report(people=-3)), id="negative-count"),
+        pytest.param(_body(_report(documents="4000")), id="string-as-count"),
+        pytest.param(_body(_report(ceiling_s=float("nan"))), id="nan"),
+        pytest.param(
+            _body(_report(cold_s={"p50": 10**400, "min": 1.0, "max": 2.0})), id="overflow"
+        ),
+        pytest.param(_body(_report(seeded_s="fast")), id="string-as-arm"),
+        pytest.param(_body(_report(cold_builds_per_week=2.5)), id="fractional-rate"),
+        # Parses as an int, then overflows the first float it is multiplied by.
+        pytest.param(_body(_report(cold_builds_per_week=10**400)), id="absurd-count"),
+        pytest.param(_body(_report(people=10**9)), id="count-at-the-bound"),
+        pytest.param(_body(_report(ceiling_s=1e308)), id="absurd-duration"),
+        # A cache cannot save more than the build it replaces.
+        pytest.param(_body(_report(ceiling_s=400.0)), id="saving-above-the-build"),
+        pytest.param(_body(_report(schema="mycelium/cache-ceiling/v1")), id="other-schema"),
+        pytest.param(
+            '```json\n{"schema": "mycelium/cache-ceiling/v0", "x": '
+            + "[" * 100_000
+            + "]" * 100_000
+            + "}\n```",
+            id="nesting-bomb",
+        ),
+        pytest.param("no fence at all: " + json.dumps(_report()), id="unfenced"),
+    ],
+)
+def test_a_block_that_is_not_a_report_is_skipped_never_fatal(body: str) -> None:
+    """A report is text a stranger wrote. Malformed JSON, the wrong types, NaN (which
+    `json` admits), an integer too large for a float or for any real count, and nesting
+    deep enough to exhaust the parser - BUG-0030's shape - each read as *no report*."""
+    assert report.reports_in(body, login="a-stranger", issue=9) == []
+
+
+def test_a_report_s_strings_are_never_repeated_back() -> None:
+    """Only numbers survive the read, so nothing a stranger typed reaches a terminal."""
+    hostile = _report(note="\x1b]0;owned\x07", mycelium="\x1b[2J")
+    reports = report.cache_reports([_issue(8, "a-team-lead", _body(hostile))], [], OWNER)
+    trigger = report.remote_cache_trigger(reports)
+    rendered = " ".join([trigger.observed, *trigger.evidence])
+    assert "\x1b" not in rendered
+
+
+def test_no_report_holds_the_trigger_and_says_how_to_post_one() -> None:
+    trigger = report.remote_cache_trigger([])
+    assert trigger.fired is False
+    assert "adoption.md" in trigger.evidence[0]
+
+
+def test_a_fired_trigger_fails_the_report_and_a_holding_one_does_not() -> None:
+    """ADR-0118's polarity: a deferral is a failure once its condition has fired,
+    because the decision it deferred is owed - not before."""
+    met = [report.Signal(key="a", condition="a", phase="3", met=True, observed="")]
+    fired = report.remote_cache_trigger(
+        report.cache_reports([_issue(12, "a-team-lead", _body(_report()))], [], OWNER)
+    )
+    holding = report.remote_cache_trigger([])
+    assert report.verdict(met, [holding]) is True
+    assert report.verdict(met, [fired]) is False
+    unreadable = report.Trigger(
+        key="t", item="i", decision="d", condition="c", fired=None, observed=""
+    )
+    assert report.verdict(met, [unreadable]) is True
+
+
+def test_the_trigger_is_the_one_spec_06_wrote_given_readings() -> None:
+    """*≥ 1 team* stays one, as the spec wrote it; *team* reads as two or more people.
+    If either moves, it moves in a decision and this test is how the code finds out."""
+    assert report.TEAM_REPORTS_BAR == 1
+    assert report.TEAM_PEOPLE_BAR == 2
+    assert report.CACHE_REPORT_SCHEMA == "mycelium/cache-ceiling/v0"
