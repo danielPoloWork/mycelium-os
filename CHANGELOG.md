@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`mycelium eval --tasks --verdict`, and the agent-task verdict armed in CI** (roadmap 7.3,
+  D-031,
+  [ADR-0156](docs/adr/0156-read-the-agent-task-verdict-where-we-did-not-write-and-ask-it-for-significance.md)).
+  Spec 04 §7.4's 1.0 comparison — does Mycelium beat the agent's own grep loop? — is now a
+  gate, not a paragraph: the suite must be sound, Mycelium must find the evidence on **more
+  than two** tasks beyond grep *and* the tasks only one strategy found must split with a
+  one-sided exact **sign test p < 0.05**, and its **median** context must be at most **half**
+  grep's. It is gated on the corpora this project did not write — `uv-docs` and its ingested
+  twin, where it reads +6 (7 to 1, p = 0.035) and +7 (8 to 1, p = 0.020) at 3.8× less
+  context — and printed, never gated, on this repository's own, where it reads +2 (6 to 4,
+  p = 0.38). With `--gate` a verdict that does not hold exits 1.
+
 - **`tools/adoption_report.py` evaluates the three triggers that gate the server profile**
   (roadmap 7.5,
   [ADR-0155](docs/adr/0155-read-7-2s-three-triggers-and-say-which-one-cannot-be-read.md)).

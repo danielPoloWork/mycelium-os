@@ -1638,18 +1638,22 @@ def doctor(
 # ---------------------------------------------------------------------------
 
 
-def _run_task_suite(path: Path, *, as_json: bool, gate: bool) -> None:
+def _run_task_suite(path: Path, *, as_json: bool, gate: bool, verdict: bool = False) -> None:
     """Run the agent-task suite: what each strategy puts in front of a model, and its cost.
 
-    `gate` enforces the suite's **integrity**, not the product's quality: it fails
-    when a task requires a passage the snapshot no longer holds. That is the one
-    thing about this comparison that can be gated today, because a stale judgement
-    makes the number mean something other than what it says — while whether
-    Mycelium beats grep is scored qualitatively until 1.0 by spec 04 §7.4
-    (roadmap 6.4, ADR-0120).
+    `gate` enforces the suite's **integrity**: it fails when a task requires a
+    passage the snapshot no longer holds, because a stale judgement makes the
+    number mean something other than what it says (roadmap 6.4, ADR-0120).
+
+    `verdict` adds the **comparison** spec 04 §7.4 quantifies at 1.0 — a lead of more
+    than two tasks that a sign test can tell from chance, at half grep's median
+    context — and with `gate` it fails when the verdict does not hold. It is armed
+    on the corpora this project did not write, never on its own (roadmap 7.3,
+    ADR-0156): a corpus that grows with every merge cannot carry a verdict.
     """
 
     from mycelium.eval import load_tasks, run_task_suite
+    from mycelium.eval.tasks import task_verdict
     from mycelium.store import StoreError
 
     suite = path / "eval" / "tasks.jsonl"
@@ -1663,9 +1667,14 @@ def _run_task_suite(path: Path, *, as_json: bool, gate: bool) -> None:
     except StoreError as error:
         raise fail(str(error)) from error
 
+    judged = task_verdict(report) if verdict else None
+
     if as_json:
-        emit_json(report.as_dict())
-        if gate and report.unresolved:
+        document = report.as_dict()
+        if judged is not None:
+            document["verdict"] = judged.as_dict()
+        emit_json(document)
+        if gate and (report.unresolved or (judged is not None and not judged.holds)):
             # The JSON document is the output; the failure is the exit code, which
             # is ADR-0010's rule for a gated command that also emits `--json`.
             raise typer.Exit(ExitCode.FAILED)
@@ -1697,10 +1706,26 @@ def _run_task_suite(path: Path, *, as_json: bool, gate: bool) -> None:
     grep_tokens = report.summary("grep").get("total_tokens", 0.0)
     if mycelium_tokens:
         detail(f"  grep spends {grep_tokens / mycelium_tokens:.1f}x the context to answer")
+    if judged is not None:
+        detail(
+            f"  verdict: lead {judged.lead:+d} ({judged.mycelium_found} to {judged.grep_found}), "
+            f"{judged.only_mycelium} to {judged.only_grep} where they disagree "
+            f"(sign test p = {judged.sign_p:.3f}), median context "
+            f"{judged.median_tokens_mycelium:.0f} against {judged.median_tokens_grep:.0f} tokens"
+        )
+        if judged.holds:
+            success("  verdict holds: Mycelium beats grep (spec 04 §7.4, ADR-0156)")
+        else:
+            warn(f"  verdict does not hold: {'; '.join(judged.failures())}")
     if gate and report.unresolved:
         raise fail(
             f"{len(report.unresolved)} agent task(s) require a passage this snapshot does "
             "not hold; the suite is measuring its own rot, not retrieval"
+        )
+    if gate and judged is not None and not judged.holds:
+        raise fail(
+            "the agent-task verdict does not hold - spec 04 §7.4: fix the product, "
+            "not the benchmark"
         )
 
 
@@ -1734,6 +1759,15 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
         bool,
         typer.Option("--tasks", help="Run the agent-task suite against the grep loop."),
     ] = False,
+    verdict: Annotated[
+        bool,
+        typer.Option(
+            "--verdict",
+            help="With --tasks: also judge spec 04 §7.4's verdict - does Mycelium beat "
+            "grep? With --gate, fail when it does not. Read on the corpora we did not "
+            "write (ADR-0156).",
+        ),
+    ] = False,
     bless: Annotated[
         bool,
         typer.Option(
@@ -1758,8 +1792,12 @@ def eval(  # noqa: A001 - the spec names this command `mycelium eval`
         write_run,
     )
 
+    if verdict and not tasks:
+        raise fail(
+            "--verdict judges the agent-task suite; pass it with --tasks", code=ExitCode.USAGE
+        )
     if tasks:
-        _run_task_suite(path, as_json=as_json, gate=gate)
+        _run_task_suite(path, as_json=as_json, gate=gate, verdict=verdict)
         return
 
     resolved = case_set if case_set.is_absolute() else path / case_set

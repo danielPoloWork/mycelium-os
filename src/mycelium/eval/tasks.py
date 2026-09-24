@@ -53,9 +53,11 @@ exist, so it measures nothing about either.
 
 import json
 import re
+import statistics
 import time
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
+from math import comb
 from pathlib import Path
 from typing import Final, Literal
 
@@ -74,9 +76,15 @@ __all__ = [
     "TaskKind",
     "TaskOutcome",
     "TaskSuiteReport",
+    "TaskVerdict",
+    "VERDICT_CONTEXT_RATIO",
+    "VERDICT_LEAD_TASKS",
+    "VERDICT_SIGN_ALPHA",
     "encode_tasks",
     "load_tasks",
     "run_task_suite",
+    "sign_test_p",
+    "task_verdict",
 ]
 
 type TaskKind = Literal["answer", "locate", "relate"]
@@ -249,6 +257,149 @@ class TaskSuiteReport:
             "strategies": {name: self.summary(name) for name in strategies},
             "outcomes": [item.as_dict() for item in self.outcomes],
         }
+
+
+# ---------------------------------------------------------------------------
+# The verdict: does Mycelium beat the incumbent? (spec 04 §7.4, roadmap 7.3)
+# ---------------------------------------------------------------------------
+
+VERDICT_LEAD_TASKS: Final = 2
+"""Condition (a), first half: Mycelium finds the evidence on **more than** this many
+tasks beyond grep (ADR-0120). One task is the suite's granularity, so a bar one task
+can flip is a coin toss."""
+
+VERDICT_SIGN_ALPHA: Final = 0.05
+"""Condition (a), second half (D-031, ADR-0156): the one-sided exact sign test over the
+tasks exactly one strategy found must fall below this. The lead counts a difference;
+only the discordant pairs say whether it is one the suite can tell from chance — a
+3-to-0 clears the lead with p = 0.125."""
+
+VERDICT_CONTEXT_RATIO: Final = 0.5
+"""Condition (b): Mycelium's **median** context is at most this share of grep's. The
+median, because a mean is hostage to the corpus's largest document (ADR-0120)."""
+
+
+def sign_test_p(wins: int, losses: int) -> float:
+    """One-sided exact sign test: P(X >= wins) for X ~ Binomial(wins + losses, 1/2).
+
+    The paired test for a paired binary outcome — each task is scored for both
+    strategies, and only the tasks on which they disagree carry information about
+    which is better. With no disagreement there is no evidence either way: 1.0.
+    """
+    trials = wins + losses
+    if trials == 0:
+        return 1.0
+    tail: int = sum(comb(trials, k) for k in range(wins, trials + 1))
+    return tail / (1 << trials)
+
+
+@dataclass(frozen=True, slots=True)
+class TaskVerdict:
+    """Spec 04 §7.4's quantified comparison, read off one run of the suite."""
+
+    scorable: int
+    unresolved: int
+    mycelium_found: int
+    grep_found: int
+    only_mycelium: int
+    only_grep: int
+    sign_p: float
+    median_tokens_mycelium: float
+    median_tokens_grep: float
+
+    @property
+    def lead(self) -> int:
+        return self.mycelium_found - self.grep_found
+
+    @property
+    def lead_holds(self) -> bool:
+        return self.lead > VERDICT_LEAD_TASKS
+
+    @property
+    def significant(self) -> bool:
+        return self.sign_p < VERDICT_SIGN_ALPHA
+
+    @property
+    def context_holds(self) -> bool:
+        return (
+            self.median_tokens_grep > 0
+            and self.median_tokens_mycelium <= VERDICT_CONTEXT_RATIO * self.median_tokens_grep
+        )
+
+    @property
+    def holds(self) -> bool:
+        """All of it: a sound suite, condition (a) in both halves, and condition (b)."""
+        return (
+            self.unresolved == 0
+            and self.scorable > 0
+            and self.lead_holds
+            and self.significant
+            and self.context_holds
+        )
+
+    def failures(self) -> tuple[str, ...]:
+        """Why the verdict does not hold, one clause per failed condition."""
+        found: list[str] = []
+        if self.unresolved:
+            found.append(f"{self.unresolved} task(s) unresolved - the suite is not sound")
+        if not self.lead_holds:
+            found.append(f"lead {self.lead:+d} task(s), not more than {VERDICT_LEAD_TASKS}")
+        if not self.significant:
+            found.append(
+                f"sign test p = {self.sign_p:.3f} on {self.only_mycelium} to {self.only_grep}, "
+                f"not below {VERDICT_SIGN_ALPHA}"
+            )
+        if not self.context_holds:
+            found.append(
+                f"median context {self.median_tokens_mycelium:.0f} tokens against grep's "
+                f"{self.median_tokens_grep:.0f}, more than {VERDICT_CONTEXT_RATIO:.0%} of it"
+            )
+        return tuple(found)
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "holds": self.holds,
+            "scorable": self.scorable,
+            "unresolved": self.unresolved,
+            "mycelium_found": self.mycelium_found,
+            "grep_found": self.grep_found,
+            "lead": self.lead,
+            "only_mycelium": self.only_mycelium,
+            "only_grep": self.only_grep,
+            "sign_p": round(self.sign_p, 4),
+            "median_tokens_mycelium": self.median_tokens_mycelium,
+            "median_tokens_grep": self.median_tokens_grep,
+            "failures": list(self.failures()),
+        }
+
+
+def task_verdict(report: TaskSuiteReport) -> TaskVerdict:
+    """Read the verdict off a run: paired per task, over the scorable tasks only."""
+    pairs: dict[str, dict[str, TaskOutcome]] = {}
+    for item in report.outcomes:
+        if item.scorable:
+            pairs.setdefault(item.task_id, {})[item.strategy] = item
+    complete = [row for row in pairs.values() if {"mycelium", "grep"} <= row.keys()]
+    ours = [row["mycelium"].found for row in complete]
+    theirs = [row["grep"].found for row in complete]
+    wins = sum(1 for a, b in zip(ours, theirs, strict=True) if a and not b)
+    losses = sum(1 for a, b in zip(ours, theirs, strict=True) if b and not a)
+
+    def median(strategy: str) -> float:
+        tokens = [row[strategy].tokens for row in complete]
+        return float(statistics.median(tokens)) if tokens else 0.0
+
+    return TaskVerdict(
+        scorable=len(complete),
+        unresolved=len(report.unresolved),
+        mycelium_found=sum(ours),
+        grep_found=sum(theirs),
+        only_mycelium=wins,
+        only_grep=losses,
+        sign_p=sign_test_p(wins, losses),
+        median_tokens_mycelium=median("mycelium"),
+        median_tokens_grep=median("grep"),
+    )
 
 
 def load_tasks(path: Path) -> tuple[AgentTask, ...]:
