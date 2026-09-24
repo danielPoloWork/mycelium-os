@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 7.6 — the reference profile generates a corpus other than the
   one it names (BUG-0034, BUG-0035). Fix both, and publish the before and after at one
   commit so the benchmark series says where its corpus changed.
-- **PR:** #N (`fix/generate-the-corpus-the-profile-names`). Follows #197, merged as
+- **PR:** #198 (`fix/generate-the-corpus-the-profile-names`). Follows #197, merged as
   `df43af8`.
 - **Milestone 7:** 7.6 closed. 7.1 held at its trigger, 7.2 held at its three, 7.7 open.
 - **Decision it records:** none new — two bug records and a benchmark report. The

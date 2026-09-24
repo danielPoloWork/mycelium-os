@@ -79,7 +79,7 @@ corpus that quarantined a document can no longer be reported at the size it name
 
 ## References
 
-- Fixing PR: #N (roadmap 7.6)
+- Fixing PR: #198 (roadmap 7.6)
 - `CHANGELOG` entry: [Unreleased] › Fixed
 - Related: [BUG-0034](BUG-0034-the-reference-profile-harvests-one-of-the-two-corpora-it-names.md),
   roadmap 7.4 ([ADR-0154](../../../adr/0154-price-the-remote-cache-before-its-trigger-and-give-the-trigger-a-reading.md))

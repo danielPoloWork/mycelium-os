@@ -84,7 +84,7 @@ prose to be this repository's `docs/` at the report's commit; the manifests that
 
 ## References
 
-- Fixing PR: #N (roadmap 7.6)
+- Fixing PR: #198 (roadmap 7.6)
 - `CHANGELOG` entry: [Unreleased] › Fixed
 - Related: roadmap 6.4 ([ADR-0120](../../../adr/0120-build-the-reference-profile-publish-what-it-says-and-gate-the-instrument-not-the-verdict.md)),
   roadmap 7.4 ([ADR-0154](../../../adr/0154-price-the-remote-cache-before-its-trigger-and-give-the-trigger-a-reading.md)),
