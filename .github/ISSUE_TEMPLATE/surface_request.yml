@@ -1,0 +1,50 @@
+name: I cannot use MCP or the CLI
+description: You have a consumer that neither the MCP server nor the command line can serve
+labels: ["surface-request"]
+assignees: ["danielPoloWork"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Mycelium's public surfaces are the CLI and the MCP (stdio) server, by decision (D-011).
+        An HTTP API and SDKs are deferred until *"a consumer that cannot use MCP/CLI actually
+        appears"* (spec 06 §3). This form is how one appears: `tools/adoption_report.py` reads
+        these issues and fires that trigger, which puts the decision in front of the maintainer
+        ([ADR-0155](../../docs/adr/0155-read-7-2s-three-triggers-and-say-which-one-cannot-be-read.md)).
+        Fill it in only if you actually cannot — *"would prefer"* is a feature request.
+  - type: input
+    id: client
+    attributes:
+      label: Which client cannot use MCP or the CLI
+      placeholder: "e.g. a browser extension, a Java service, a no-code platform"
+    validations:
+      required: true
+  - type: textarea
+    id: mcp
+    attributes:
+      label: Why MCP (stdio) does not fit it
+      description: What stops the client from speaking MCP over stdio to a local server.
+    validations:
+      required: true
+  - type: textarea
+    id: cli
+    attributes:
+      label: Why the CLI does not fit it
+      description: What stops the client from running `mycelium search --json` and reading the result.
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: What surface would serve it
+      options:
+        - An HTTP API
+        - An SDK (say which language below)
+        - Something else (say what below)
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: The language for an SDK, how many people or systems would call it, what corpus it would read.

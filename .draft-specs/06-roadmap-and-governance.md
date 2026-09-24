@@ -138,10 +138,10 @@ verbatim — on top of contracts that have not changed since Phase 1.
 | Learned/LLM reranker | Post-Phase 3 | Deterministic pipeline plateaus on frozen sets AND budget exists for the latency/cost |
 | LLM summarization in serving path | Post-1.0 | Verbatim packing measurably insufficient for real agent tasks; requires fabrication-risk eval |
 | Formal ontology / entity acceptance workflow | Post-1.0 | Controlled vocabulary demonstrably limiting on a real corpus; a named owner exists |
-| Plugin sandboxing + signed registry | Ecosystem phase | ≥ 1 third-party plugin with meaningful adoption exists |
-| HTTP API + SDKs | Phase 5 | A consumer that cannot use MCP/CLI actually appears |
+| Plugin sandboxing + signed registry | Ecosystem phase | ≥ 1 third-party plugin with meaningful adoption exists *(evaluable since roadmap 7.5, ADR-0155: "exists" is a repository that is not this one and not a fork of it declaring a `mycelium.plugins` or `mycelium.modules` entry point, found by GitHub code search; "adoption" is one D-030 engaged actor on that repository who is not its owner; "meaningful" is the owner's judgement when it fires. The number is unmoved)* |
+| HTTP API + SDKs | Phase 5 | A consumer that cannot use MCP/CLI actually appears *(evaluable since roadmap 7.5, ADR-0155: a consumer appears by filing the "I cannot use MCP or the CLI" issue form, which asks why each surface does not fit; one filing by an external login not closed as not planned fires it, and whether "cannot" holds is the owner's reading)* |
 | Remote build cache | Phase 5 entry | ≥ 1 team dogfooding with measured duplicate-build pain *(evaluable since roadmap 7.4, ADR-0154: "measured" is a report from `tools/measure_cache_ceiling.py` on the team's own corpus, whose saving lies outside its noise; a "team" is ≥ 2 people building that corpus; `tools/adoption_report.py` reads the reports posted in issues. The number is unmoved)* |
-| Multi-tenancy, policy engine, RBAC | Phase 5 | An organization commits to deploying the server profile |
+| Multi-tenancy, policy engine, RBAC | Phase 5 | An organization commits to deploying the server profile *(not evaluable as written — a commitment is a promise, and the profile does not exist to deploy before roadmap 7.2 does; read since roadmap 7.5, ADR-0155, as a condition inside 7.2's own RFC, which names its deployer. `tools/adoption_report.py` reports it unreadable rather than guessing)* |
 | Rust hotpaths | Post-1.0 | Profiling shows a specific stage dominating and Python optimization exhausted |
 | SaaS offering | Never by default | Separate business decision with its own RFC; not an engineering milestone |
 

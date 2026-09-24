@@ -101,6 +101,26 @@ What the report does with it, and what it does not:
   issue as *not planned*. The trigger reads GitHub's own record of that, so no code
   changes.
 
+### The three that gate the server profile (roadmap 7.2, 7.5)
+
+The same report evaluates the three rows that let roadmap 7.2 in, read at 7.5
+([ADR-0155](../adr/0155-read-7-2s-three-triggers-and-say-which-one-cannot-be-read.md)):
+
+| Row | How it fires | Who acts |
+|---|---|---|
+| **HTTP API + SDKs** — *a consumer that cannot use MCP/CLI appears* | one issue by an external login filed through the **I cannot use MCP or the CLI** form in the issue chooser, which asks why each surface does not fit; recognised by the form's own field headings, never by its `surface-request` label | the consumer files it; the owner reads whether *cannot* holds |
+| **Multi-tenancy, policy engine, RBAC** — *an organization commits to deploying the server profile* | it does not: a commitment is a promise and the profile does not exist to deploy. Reported `UNREADABLE`, and read as a condition inside 7.2's own RFC, which names its deployer | nobody, until 7.2's RFC |
+| **Plugin sandboxing + signed registry** — *≥ 1 third-party plugin with meaningful adoption exists* | GitHub code search finds a `pyproject.toml` outside this repository (and not in a fork of it) declaring `mycelium.plugins` or `mycelium.modules`, and that repository has one engaged actor — D-030's definition — who is not its owner | the plugin's author publishes; somebody else engages; the owner weighs *meaningful* |
+
+The same three rules apply: a fired trigger is a decision owed and holds the exit code; the
+magnitude that justifies building is written nowhere in code; and *holding* means nothing was
+observed, not that nothing exists — a consumer who never files the form and a plugin in a
+private repository are invisible here.
+
+**If you are that consumer**, file the form; it is the fastest way to move D-011. **If you
+maintain a plugin**, keep its `pyproject.toml` on the default branch of a public repository
+that is not a fork of this one; code search does the rest.
+
 ## When the numbers move
 
 A signal that passes is recorded where the gate is, not here:
