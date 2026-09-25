@@ -4,7 +4,7 @@
   correctly*. Nothing of 7.2 is implemented, by design, so the audit was of its standing:
   the readings of its three triggers, whether anything grew ahead of them, and what its RFC
   will owe.
-- **PR:** #N (`docs/audit-7-2-standing`). Follows #202, merged as `03aa106`.
+- **PR:** #203 (`docs/audit-7-2-standing`). Follows #202, merged as `03aa106`.
 - **Milestone 7:** 7.11 closed; 7.13 filed.
 - **Record it leaves:** [`docs/rfc/server-profile-checklist.md`](../../../rfc/server-profile-checklist.md).
   No ADR: an audit decides nothing.
