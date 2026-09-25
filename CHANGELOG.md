@@ -12,6 +12,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`tools/check_repo_settings.py` reports the repository's About box** (roadmap 7.10,
+  [ADR-0159](docs/adr/0159-keep-the-front-door-to-what-a-first-reader-needs-and-move-the-rest-with-its-citations.md)).
+  The description and topics a stranger meets before the README were never set; they are now
+  drafted as `ABOUT_DESCRIPTION` and `ABOUT_TOPICS`, compared with the live box, and installed by
+  the two commands in `docs/workflow/github-setup.md` §7, which remain the owner's to run.
+
 - **`tools/check_repo_settings.py` reports the contribution-intake policy** (roadmap 7.9,
   [ADR-0158](docs/adr/0158-let-anyone-open-a-pull-request-and-keep-the-merge-with-named-reviewers.md)).
   Anyone may open a pull request; only the reviewers `.github/CODEOWNERS` names may review
@@ -73,6 +79,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   withdraws it.
 
 ### Changed
+
+- **The README is a front door again** (roadmap 7.10, ADR-0159). 1 022 lines become 274:
+  what the project is and who it is for, the ten-minute path to a cited answer, install, first
+  commands, and a table from each question a sceptical reader asks to where the evidence
+  answers it. The eighteen sections explaining each measured design decision move verbatim to
+  [`docs/how-it-works.md`](docs/how-it-works.md). Because this repository's documentation is its
+  own judged corpus, the 26 cases citing those sections are re-pointed in the same change and
+  checked to land on the same passages. The README no longer says the docs site is published:
+  it is not, until GitHub Pages is enabled.
 
 - **A touch is not an edit, and a fresh clone with a restored `.mycelium/` is incremental**
   (roadmap 7.7, D-032,
@@ -143,6 +158,10 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   runs the default branch's workflow against the tag's tree (BUG-0006).
 
 ### Security
+
+- **`SECURITY.md` states its response targets**: from v1.0.0 a critical report is acknowledged
+  within 24 hours and fixed or mitigated within 7 days (spec 06 §4); other severities are
+  triaged best-effort, and the policy says why.
 
 ## Released versions
 

@@ -34,9 +34,17 @@ Please include:
 - a minimal reproduction (a failing test is ideal);
 - the observed impact and, if known, the root cause.
 
+## Response targets
+
+From **v1.0.0**, a report rated **critical** is acknowledged within **24 hours** and fixed or
+mitigated within **7 days** — the targets spec 06 §4 adopts at the point where a published
+compatibility promise makes them honest. Before v1.0.0, and for every other severity, reports
+are triaged by severity on a best-effort basis; this is a single-maintainer project, and a
+target it could not keep would be worse than none.
+
 ## What to expect
 
-1. **Acknowledgement** of the report.
+1. **Acknowledgement** of the report, within the targets above.
 2. **Triage & fix under embargo** on a private branch / draft advisory; the SemVer level of
    the fix is assessed by the decision tree in
    [`docs/workflow/maintenance.md`](docs/workflow/maintenance.md).

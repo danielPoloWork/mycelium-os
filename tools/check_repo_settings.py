@@ -112,6 +112,34 @@ GUARDED_FORK_APPROVAL: frozenset[str] = frozenset(
     {"first_time_contributors", "all_external_contributors"}
 )
 
+#: The repository's *About* box (roadmap 7.10). A stranger meets it before the README —
+#: in search results, in the sidebar, on a fork — and until 7.10 it was empty. The words
+#: are drafted here once; `docs/workflow/github-setup.md` §7 prints the command that
+#: installs them and a test holds the two copies together.
+ABOUT_DESCRIPTION: str = (
+    "The knowledge compiler for AI agents: compile a repository's Markdown, PDFs, DOCX and "
+    "HTML into a deterministic, versioned index, and serve it over CLI and MCP with "
+    "citations an agent can check. Local-first, offline, no telemetry."
+)
+ABOUT_TOPICS: tuple[str, ...] = (
+    "knowledge-compiler",
+    "ai-agents",
+    "mcp",
+    "model-context-protocol",
+    "information-retrieval",
+    "bm25",
+    "sqlite",
+    "markdown",
+    "documentation",
+    "knowledge-base",
+    "citations",
+    "local-first",
+    "obsidian",
+    "llm",
+    "cli",
+    "python",
+)
+
 
 @dataclass
 class Finding:
@@ -303,6 +331,44 @@ def check_discussions(repo: dict[str, object]) -> Finding:
         if installed
         else "disabled, and .github/ISSUE_TEMPLATE/config.yml links a reader to it",
         remedy="" if installed else "gh api -X PATCH repos/:owner/:repo -F has_discussions=true",
+    )
+
+
+def check_about(repo: dict[str, object]) -> Finding:
+    """§7 — the *About* box: the description and topics a stranger reads first.
+
+    Compared with the drafted words rather than merely checked for presence, so an
+    edit made in the web UI shows up as drift instead of passing silently. Every field
+    it reads is on the repository object, so any token can ask.
+    """
+    description = repo.get("description")
+    topics = repo.get("topics")
+    topics = sorted(str(topic) for topic in topics) if isinstance(topics, list) else []
+    missing = sorted(set(ABOUT_TOPICS) - set(topics))
+    right_words = description == ABOUT_DESCRIPTION
+    installed = right_words and not missing
+    if installed:
+        detail = "the drafted description and topics are set"
+    elif not description:
+        detail = "no description"
+    elif not right_words:
+        detail = "the description differs from the draft"
+    else:
+        detail = f"{len(missing)} drafted topic(s) missing: {', '.join(missing)}"
+    remedy = ""
+    if not installed:
+        names = " ".join(f"-f names[]={topic}" for topic in ABOUT_TOPICS)
+        remedy = (
+            f'gh api -X PATCH repos/:owner/:repo -f description="{ABOUT_DESCRIPTION}"; '
+            f"gh api -X PUT repos/:owner/:repo/topics {names}"
+        )
+    return Finding(
+        key="about",
+        step="the About box: description and topics",
+        section="§7",
+        installed=installed,
+        detail=detail,
+        remedy=remedy,
     )
 
 
@@ -767,6 +833,7 @@ def collect(slug: str, repo: dict[str, object]) -> list[Finding]:
         check_labels(slug),
         check_branch_protection(slug, branch),
         check_discussions(repo),
+        check_about(repo),
         check_pages(slug),
         check_vulnerability_reporting(slug),
         check_milestones(slug),

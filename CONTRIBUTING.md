@@ -12,6 +12,8 @@ scale as more contributors join.
 - Check [`ROADMAP.md`](ROADMAP.md) for the current milestone and open items, and
   [`docs/bugs/`](docs/bugs/) for known issues, before opening new work.
 - For anything non-trivial, open an issue first to agree on scope before writing code.
+  A question that is not a bug or a proposal belongs in
+  [Discussions](https://github.com/danielPoloWork/mycelium-os/discussions).
 - **What is open and what is not is written down** — see *The ladder* below. Pre-1.0 the
   core is planned through `ROADMAP.md` and an unsolicited feature inside it is unlikely to
   be merged; bug reports, documentation fixes, reserved issues and **plugins** are the four
@@ -78,16 +80,23 @@ certifying.
 
 ```bash
 uv sync --all-extras --dev
-uv run pytest -q
-uv run ruff format --check src tests
-uv run ruff check src tests
-uv run mypy --strict src
-python tools/consistency_lint.py
+uv run python tools/verify.py
 ```
 
-All five must pass before a PR is opened; CI re-runs them on Linux, Windows, and macOS.
-`python tools/verify.py` runs the subset your diff implicates and prints which ones those
-are, which is the faster loop for a focused change (ADR-0055).
+`tools/verify.py` is the gate: it reads your diff, derives which checks it implicates —
+`docs`, `code`, `retrieval` or `full` — runs them cheapest first, and prints the mode it
+chose and why. CI derives the mode with the same script, so a green run locally is the run CI
+will make (ADR-0055). The individual commands it wraps, for a tighter loop while you work:
+
+```bash
+uv run ruff format --check src tests tools contrib
+uv run ruff check src tests tools contrib
+uv run mypy --strict src tools contrib/chats/src tests contrib/chats/tests
+uv run pytest -q
+uv run python tools/consistency_lint.py
+```
+
+CI re-runs them on Linux, Windows and macOS.
 
 ### When a property test fails intermittently
 

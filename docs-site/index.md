@@ -64,8 +64,8 @@ identity, so it survives a rename or a promotion from `candidate/` to `verified/
 the passage it names has moved or been rewritten since, `mycelium_fetch` says so rather
 than quietly returning something else.
 
-For the full account, with the measurements behind each claim, see the
-[project README](https://github.com/danielPoloWork/mycelium-os#readme).
+For the full account, with the measurement and the decision record behind each claim, see
+[How Mycelium OS works](https://github.com/danielPoloWork/mycelium-os/blob/main/docs/how-it-works.md).
 
 ## Status
 
