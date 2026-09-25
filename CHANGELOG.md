@@ -122,6 +122,20 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **A plugin's adoption tally excludes this repository's owner, not only the plugin's**
+  (roadmap 7.13,
+  [BUG-0038](docs/bugs/2026/09/BUG-0038-a-plugins-adoption-tally-let-this-repositorys-owner-count-as-a-stranger.md),
+  [ADR-0160](docs/adr/0160-exclude-this-repositorys-owner-from-a-plugins-own-adoption.md)).
+  ADR-0155's plugin-sandbox trigger reused D-030's engaged-actor definition on a plugin's own
+  repository, excluding that plugin's owner only — so this repository's owner read as a
+  stranger to every plugin, and one issue, comment, pull request or fork commit of theirs
+  could fire the trigger alone. `is_external` gains an optional `also_exclude`, threaded
+  through `tally`, `external_commits`, `fork_acts` and `engaged_actors`; only
+  `third_party_plugins` supplies it. ADR-0155's *exists* wording is also corrected to name
+  what `plugin_candidates` has always enforced: every repository this owner holds, not
+  `mycelium-os` by name alone. Neither moves today's verdict — code search still finds no
+  candidate.
+
 - **`tools/measure_result_rules.py --check` applies the bar it states**
   ([BUG-0037](docs/bugs/2026/09/BUG-0037-the-result-rules-check-reads-each-set-alone.md)). It
   read each release set alone, so a heading-proximity arm gaining +0.23 % on this repository's

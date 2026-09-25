@@ -191,3 +191,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0157](0157-take-the-timestamps-out-of-the-document-record.md) | Take the timestamps out of the document record, and keep the mtime as a memo | Accepted |
 | [0158](0158-let-anyone-open-a-pull-request-and-keep-the-merge-with-named-reviewers.md) | Let anyone open a pull request, and keep the merge with named reviewers | Accepted |
 | [0159](0159-keep-the-front-door-to-what-a-first-reader-needs-and-move-the-rest-with-its-citations.md) | Keep the front door to what a first reader needs, and move the rest with its citations | Accepted |
+| [0160](0160-exclude-this-repositorys-owner-from-a-plugins-own-adoption.md) | Exclude this repository's owner from a plugin's own adoption | Accepted |
