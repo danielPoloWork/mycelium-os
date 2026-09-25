@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 7.9 — open pull requests to everyone, keep review and merge
   with the owner. Write the policy down and make the settings it needs checkable.
-- **PR:** #N (`chore/open-pull-requests-to-everyone`). Follows #200, merged as `288707f`.
+- **PR:** #201 (`chore/open-pull-requests-to-everyone`). Follows #200, merged as `288707f`.
 - **Milestone 7:** 7.9 closed.
 - **Decision it records:**
   [ADR-0158](../../../adr/0158-let-anyone-open-a-pull-request-and-keep-the-merge-with-named-reviewers.md).
