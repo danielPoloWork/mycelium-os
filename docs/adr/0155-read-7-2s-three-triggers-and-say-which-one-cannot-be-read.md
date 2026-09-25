@@ -88,10 +88,21 @@ words get readings a command can check, and the fourth is left where only a pers
   GitHub code search. Forks are excluded by flag because a fork of this repository carries
   `contrib/chats` and the plugin cookiecutter back to us — the mirror of ADR-0138's finding that
   a fork's copy of our own branch counted as a contribution.
+
+  > **Corrected at roadmap 7.13 ([ADR-0160](0160-exclude-this-repositorys-owner-from-a-plugins-own-adoption.md)).**
+  > *"Not this one"* undersold what the code has always enforced: `plugin_candidates` excludes
+  > **every repository this repository's owner holds**, not only `mycelium-os` by name — a
+  > plugin authored by this owner under a different name is not third-party either.
 - **adoption** — D-030's *engaged actor*, turned on the plugin's repository: at least one login
   that is neither the plugin's owner nor a bot opened an issue or a pull request there,
   commented, or holds a fork with a commit of their own (`PLUGIN_ADOPTERS_BAR`). A plugin nobody
   but its author has touched is listed and not counted.
+
+  > **Corrected at roadmap 7.13 ([ADR-0160](0160-exclude-this-repositorys-owner-from-a-plugins-own-adoption.md)).**
+  > *Neither the plugin's owner nor a bot* excluded only the plugin's own owner: reusing D-030's
+  > definition on a plugin's repository dropped the half that excludes **this repository's**
+  > owner, so a comment by this repository's owner on somebody else's plugin was a stranger to
+  > it and fired the trigger alone. An engaged actor now excludes both owners.
 - **meaningful** — the owner's judgement at the moment the trigger fires. There is no telemetry
   and there will be none (D-017), so nothing here can say how much a plugin is used; what it can
   say is that somebody other than its author cared enough to act.

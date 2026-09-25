@@ -53,6 +53,19 @@ def test_only_a_stranger_who_is_not_a_bot_counts(login: str | None, external: bo
     assert report.is_external(login, OWNER) is external
 
 
+def test_also_exclude_drops_a_second_login() -> None:
+    """The parameter roadmap 7.13 added: a plugin's tally must exclude its own
+    owner *and* this repository's, and `is_external` is where every caller reads
+    that rule from."""
+    assert report.is_external("acme", "acme", also_exclude=OWNER) is False
+    assert report.is_external(OWNER, "acme", also_exclude=OWNER) is False
+    assert (
+        report.is_external(OWNER.upper(), "acme", also_exclude=OWNER) is False
+    )  # case-insensitive
+    assert report.is_external("blamevlan", "acme", also_exclude=OWNER) is True
+    assert report.is_external("blamevlan", "acme") is True  # unset, the old behaviour
+
+
 def test_an_actor_is_counted_once_however_many_acts_it_performed() -> None:
     """The bar is three *people*, not three events: one enthusiast leaving five
     comments must not read as five adopters."""
@@ -70,6 +83,18 @@ def test_an_actor_is_counted_once_however_many_acts_it_performed() -> None:
         "commented on an issue or pull request",
         "opened issue #149",
     )
+
+
+def test_tally_drops_the_also_excluded_login_too() -> None:
+    """The mistake roadmap 7.13 found: `tally(acts, plugin_owner)` alone let this
+    repository's owner read as a stranger to somebody else's plugin. Threading
+    `also_exclude` through is how a caller stops that."""
+    actors = report.tally(
+        [("acme", "opened issue #1"), (OWNER, "commented on an issue or pull request")],
+        "acme",
+        also_exclude=OWNER,
+    )
+    assert actors == []
 
 
 def test_the_acts_are_kept_so_the_verdict_can_be_audited() -> None:
@@ -482,6 +507,30 @@ def test_only_somebody_elses_repository_is_a_third_party_plugin() -> None:
     found = report.plugin_candidates(hits, OWNER)
     assert [plugin.slug for plugin in found] == ["acme/mycelium-jira", "Zed/mycelium-notion"]
     assert found[0].owner == "acme"
+
+
+def test_a_plugins_tally_excludes_this_repositorys_owner_too(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Roadmap 7.13's own scenario: this repository's owner comments on somebody
+    else's plugin, and that comment must not read as an adopter. `is_external`
+    and `tally` are already pinned to honour `also_exclude`; this pins that
+    `third_party_plugins` actually passes it down to `engaged_actors`, which is
+    where the mistake lived - only the plugin's own owner was ever excluded."""
+    calls: list[tuple[str, str, str | None]] = []
+
+    def fake_engaged_actors(
+        slug: str, owner: str, *, also_exclude: str | None = None
+    ) -> tuple[list[report.Actor], list[str], list[Any], list[Any]]:
+        calls.append((slug, owner, also_exclude))
+        return [], [], [], []
+
+    monkeypatch.setattr(report, "search_plugin_declarations", lambda: [_hit("acme/mycelium-jira")])
+    monkeypatch.setattr(report, "engaged_actors", fake_engaged_actors)
+
+    report.third_party_plugins(OWNER)
+
+    assert calls == [("acme/mycelium-jira", "acme", OWNER)]
 
 
 def test_a_plugin_fires_the_trigger_only_when_somebody_else_engaged_with_it() -> None:

@@ -379,25 +379,37 @@ def current_slug() -> str:
 # ---------------------------------------------------------------------------
 
 
-def is_external(login: str | None, owner: str) -> bool:
-    """True when this login is somebody other than us and other than a bot.
+def is_external(login: str | None, owner: str, *, also_exclude: str | None = None) -> bool:
+    """True when this login is somebody other than `owner` (and `also_exclude`, if
+    given) and other than a bot.
 
     Dependabot authored three of this repository's merged pull requests. It is a
     real contributor to the dependency tree and it is not adoption, so the rule is
     written here once rather than remembered at four call sites.
+
+    `also_exclude` is a second login no caller may count, and it exists for one
+    caller: a plugin's own engaged-actor tally must exclude that plugin's owner
+    *and* this repository's owner (roadmap 7.13). D-030 excludes a repository's
+    own owner from its own tally; reusing the definition for a plugin's repository
+    carried only that half, so a comment by this repository's owner on somebody
+    else's plugin was a stranger to the plugin and fired the trigger alone — the
+    mistake ADR-0138 found in a fork that carried our own commits back to us,
+    recurring one call site over.
     """
     if not login:
         return False
     if login.casefold() == owner.casefold():
         return False
+    if also_exclude is not None and login.casefold() == also_exclude.casefold():
+        return False
     return not (login.endswith("[bot]") or login.startswith("app/"))
 
 
-def tally(acts: Iterable[Act], owner: str) -> list[Actor]:
+def tally(acts: Iterable[Act], owner: str, *, also_exclude: str | None = None) -> list[Actor]:
     """Fold ``(login, act)`` pairs into one deduplicated, sorted actor per login."""
     grouped: dict[str, list[str]] = defaultdict(list)
     for login, act in acts:
-        if login is not None and is_external(login, owner):
+        if login is not None and is_external(login, owner, also_exclude=also_exclude):
             grouped[login].append(act)
     return [
         Actor(login=login, acts=tuple(sorted(set(grouped[login]))))
@@ -487,7 +499,7 @@ def branch_heads(slug: str) -> dict[str, str]:
     return heads
 
 
-def external_commits(commits: Iterable[Any], owner: str) -> int:
+def external_commits(commits: Iterable[Any], owner: str, *, also_exclude: str | None = None) -> int:
     """How many of a comparison's commits somebody outside this repository wrote.
 
     Split out from :func:`fork_acts` because it is the rule that decides the
@@ -497,11 +509,13 @@ def external_commits(commits: Iterable[Any], owner: str) -> int:
         1
         for commit in commits
         if isinstance(commit, dict)
-        and is_external((commit.get("author") or {}).get("login"), owner)
+        and is_external((commit.get("author") or {}).get("login"), owner, also_exclude=also_exclude)
     )
 
 
-def fork_acts(slug: str, owner: str) -> tuple[list[Act], list[str]]:
+def fork_acts(
+    slug: str, owner: str, *, also_exclude: str | None = None
+) -> tuple[list[Act], list[str]]:
     """Forks that carry commits *somebody external wrote*, and the ones that do not.
 
     Two corrections are folded in here, and both were found by running the tool
@@ -534,7 +548,9 @@ def fork_acts(slug: str, owner: str) -> tuple[list[Act], list[str]]:
             comparison = gh(f"repos/{slug}/compare/HEAD...{login}:{branch}")
             if not isinstance(comparison, dict):
                 continue
-            theirs = external_commits(comparison.get("commits", []), owner)
+            theirs = external_commits(
+                comparison.get("commits", []), owner, also_exclude=also_exclude
+            )
             if theirs > best_ahead:
                 best_branch, best_ahead = branch, theirs
         if best_ahead:
@@ -1073,21 +1089,43 @@ def search_plugin_declarations() -> list[Any]:
     return items
 
 
-def engaged_actors(slug: str, owner: str) -> tuple[list[Actor], list[str], list[Any], list[Any]]:
+def engaged_actors(
+    slug: str, owner: str, *, also_exclude: str | None = None
+) -> tuple[list[Actor], list[str], list[Any], list[Any]]:
     """D-030's tally for one repository: its actors, its bookmark forks, and the raw
-    issues and comments the tally read, so a caller can read them once more."""
+    issues and comments the tally read, so a caller can read them once more.
+
+    `also_exclude` excludes a second login from the tally — this repository's own
+    owner, passed by :func:`third_party_plugins` (roadmap 7.13): `slug`'s own owner
+    is always excluded, and a *plugin's* engaged actors must exclude ours too, or a
+    comment by this repository's owner on somebody else's plugin is a stranger to
+    that plugin and fires the sandbox trigger alone.
+    """
     issues = listed(f"repos/{slug}/issues", "-f", "state=all")
     issue_comments = listed(f"repos/{slug}/issues/comments")
     acts = issue_and_pr_acts(issues) + comment_acts(slug, issue_comments) + discussion_acts(slug)
-    fork_engagement, bookmarks = fork_acts(slug, owner)
-    return tally(acts + fork_engagement, owner), bookmarks, issues, issue_comments
+    fork_engagement, bookmarks = fork_acts(slug, owner, also_exclude=also_exclude)
+    return (
+        tally(acts + fork_engagement, owner, also_exclude=also_exclude),
+        bookmarks,
+        issues,
+        issue_comments,
+    )
 
 
 def third_party_plugins(owner: str) -> list[PluginRepository]:
-    """Somebody else's plugin repositories, each with its own engaged actors counted."""
+    """Somebody else's plugin repositories, each with its own engaged actors counted.
+
+    `owner` is this repository's, excluded from every plugin's tally alongside that
+    plugin's own owner (roadmap 7.13): D-030's engaged-actor definition excludes a
+    repository's own owner, and reusing it here without also excluding ours meant
+    this repository's owner counted as a stranger on anybody else's plugin.
+    """
     plugins: list[PluginRepository] = []
     for candidate in plugin_candidates(search_plugin_declarations(), owner):
-        adopters, _bookmarks, _issues, _comments = engaged_actors(candidate.slug, candidate.owner)
+        adopters, _bookmarks, _issues, _comments = engaged_actors(
+            candidate.slug, candidate.owner, also_exclude=owner
+        )
         plugins.append(
             PluginRepository(
                 slug=candidate.slug,
