@@ -63,7 +63,7 @@ gain on some release set, no overall regression on any set, no slice below the f
 
 ## References
 
-- Fixing PR: roadmap 7.10's (the change that exposed it)
+- Fixing PR: #202 (roadmap 7.10, the change that exposed it)
 - `CHANGELOG` entry: [Unreleased] › Fixed
 - Related: roadmap 6.38 ([ADR-0153](../../../adr/0153-decide-spec-04-s4s-result-set-rules-on-evidence.md)),
   roadmap 7.10 ([ADR-0159](../../../adr/0159-keep-the-front-door-to-what-a-first-reader-needs-and-move-the-rest-with-its-citations.md))

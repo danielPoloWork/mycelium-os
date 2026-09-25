@@ -2,7 +2,7 @@
 
 - **Session scope:** roadmap 7.10 — bring the reader-facing documents to the standard a
   first-tier engineering organisation publishes, and draft the repository's *About* box.
-- **PR:** #N (`docs/front-door-standard`). Follows #201, merged as `d18f5c0`.
+- **PR:** #202 (`docs/front-door-standard`). Follows #201, merged as `d18f5c0`.
 - **Milestone 7:** 7.10 closed.
 - **Decision it records:**
   [ADR-0159](../../../adr/0159-keep-the-front-door-to-what-a-first-reader-needs-and-move-the-rest-with-its-citations.md).
