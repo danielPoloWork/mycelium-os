@@ -67,6 +67,26 @@ maintainer's own `gh` is already authenticated (ADR-0118 records why this is not
 scheduled workflow: it would need a long-lived token, which is the one thing the
 supply-chain design has been built to avoid).
 
+## Contribution intake (roadmap 7.9)
+
+The policy is **anyone may open a pull request; only named reviewers may review and
+merge** — the named reviewers being the owners `.github/CODEOWNERS` lists on its `*`
+line, today the owner alone. Five settings make it true, and each is a finding:
+
+- `pull_request_creation_policy` is `all`. It was `collaborators_only`, which is what
+  stopped the first external contribution this repository received (issue #149) from
+  becoming a pull request — a field GitHub serves on the repository object and does not
+  yet document, which is why `docs/workflow/adoption.md` could say the cause was *"not
+  visible in today's settings"*.
+- `main` requires one approving review **from a code owner**. On a repository owned by a
+  user rather than an organisation, GitHub offers no push restriction, so this is the
+  mechanism that keeps a merge with the named reviewers: a collaborator with write access
+  cannot merge a pull request no code owner has approved.
+- nobody outside the named reviewers holds write, maintain or admin — a collaborator
+  with write access is a merge right the review gate only narrows.
+- a first-time contributor's workflows wait for approval before they run (boundary B1).
+- no interaction limit is active, since one would close the door this opens.
+
 Needs `gh`, authenticated. Exit 0 when every documented step is installed and no
 deferral has expired unremedied, 1 when one has, 2 when GitHub could not be asked.
 """
@@ -83,6 +103,14 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 SETUP_DOC = "docs/workflow/github-setup.md"
+CODEOWNERS = ROOT / ".github" / "CODEOWNERS"
+
+#: The approval policies that make a first-time contributor's workflows wait for a
+#: maintainer. `first_time_contributors_new_to_github` is weaker - it lets any account
+#: that has contributed anywhere on GitHub run workflows here unreviewed.
+GUARDED_FORK_APPROVAL: frozenset[str] = frozenset(
+    {"first_time_contributors", "all_external_contributors"}
+)
 
 
 @dataclass
@@ -392,6 +420,214 @@ def check_milestones(slug: str) -> Finding:
 
 
 # ---------------------------------------------------------------------------
+# §6 — contribution intake: anyone opens, named reviewers merge (roadmap 7.9)
+# ---------------------------------------------------------------------------
+
+
+def named_reviewers(text: str | None = None) -> tuple[str, ...]:
+    """The logins `.github/CODEOWNERS` names on its catch-all `*` line.
+
+    Read rather than restated, so naming a second reviewer is one edit to the file
+    GitHub already reads - and the merge-rights finding follows it.
+    """
+    source = CODEOWNERS.read_text(encoding="utf-8") if text is None else text
+    for line in source.splitlines():
+        fields = line.split("#", 1)[0].split()
+        if fields and fields[0] == "*":
+            return tuple(sorted({owner.lstrip("@") for owner in fields[1:]}, key=str.casefold))
+    return ()
+
+
+def check_pull_request_intake(repo: dict[str, object]) -> Finding:
+    """§6 — anyone may open a pull request.
+
+    `pull_request_creation_policy` is served on the repository object and not yet in
+    GitHub's documented schema; a response without it is reported unverifiable rather
+    than guessed either way.
+    """
+    policy = repo.get("pull_request_creation_policy")
+    if policy is None:
+        return Finding(
+            key="pull-request-intake",
+            step="anyone may open a pull request",
+            section="§6",
+            installed=None,
+            detail="the repository object carries no pull_request_creation_policy",
+            remedy=f"Settings -> General -> Pull Requests, or see {SETUP_DOC} §6",
+        )
+    installed = policy == "all"
+    return Finding(
+        key="pull-request-intake",
+        step="anyone may open a pull request",
+        section="§6",
+        installed=installed,
+        detail=(
+            "open to everyone (pull_request_creation_policy=all)"
+            if installed
+            else f"pull_request_creation_policy={policy} - a contributor without write "
+            "access cannot open a pull request, which is what stopped issue #149's"
+        ),
+        remedy=(
+            ""
+            if installed
+            else "gh api -X PATCH repos/:owner/:repo -f pull_request_creation_policy=all"
+        ),
+    )
+
+
+def review_gate_holds(protection: object) -> bool:
+    """Whether a branch-protection object requires one approving code-owner review."""
+    if not isinstance(protection, dict):
+        return False
+    reviews = protection.get("required_pull_request_reviews")
+    if not isinstance(reviews, dict):
+        return False
+    count = reviews.get("required_approving_review_count")
+    return (
+        isinstance(count, int)
+        and not isinstance(count, bool)
+        and count >= 1
+        and reviews.get("require_code_owner_reviews") is True
+    )
+
+
+def check_review_gate(slug: str, branch: str) -> Finding:
+    """§6 — a merge into the default branch needs a code owner's approval."""
+    step = f"`{branch}` needs a code owner's approving review"
+    try:
+        protection = gh(f"repos/{slug}/branches/{branch}/protection")
+    except PermissionDeniedError as error:
+        return Finding(
+            key="review-gate",
+            step=step,
+            section="§6",
+            installed=None,
+            detail=f"not readable by this token (needs administrative rights): {error}",
+            remedy=f"re-run as a maintainer, or see {SETUP_DOC} §3",
+        )
+    installed = review_gate_holds(protection)
+    return Finding(
+        key="review-gate",
+        step=step,
+        section="§6",
+        installed=installed,
+        detail=(
+            "one approving review from a code owner is required"
+            if installed
+            else "no review requirement on "
+            + ("an unprotected branch" if protection is None else "the protection rule")
+            + " - anyone with write access can merge an unreviewed pull request"
+        ),
+        remedy="" if installed else f"the `gh api -X PUT ... /protection` call in {SETUP_DOC} §3",
+    )
+
+
+def unnamed_mergers(collaborators: object, reviewers: Sequence[str]) -> list[str]:
+    """Collaborators holding write, maintain or admin who are not named reviewers."""
+    named = {reviewer.casefold() for reviewer in reviewers}
+    found: list[str] = []
+    for item in collaborators if isinstance(collaborators, list) else []:
+        if not isinstance(item, dict):
+            continue
+        login = str(item.get("login", ""))
+        permissions = item.get("permissions")
+        pushes = isinstance(permissions, dict) and any(
+            permissions.get(level) for level in ("push", "maintain", "admin")
+        )
+        if pushes and login.casefold() not in named:
+            found.append(f"{login} ({item.get('role_name', 'write')})")
+    return sorted(found, key=str.casefold)
+
+
+def check_merge_rights(slug: str) -> Finding:
+    """§6 — write access is held by the named reviewers and nobody else."""
+    reviewers = named_reviewers()
+    step = "only the named reviewers can merge"
+    try:
+        collaborators = gh(f"repos/{slug}/collaborators", "--paginate")
+    except PermissionDeniedError as error:
+        return Finding(
+            key="merge-rights",
+            step=step,
+            section="§6",
+            installed=None,
+            detail=f"not readable by this token (needs push rights): {error}",
+            remedy=f"re-run as a maintainer, or see {SETUP_DOC} §6",
+        )
+    extra = unnamed_mergers(collaborators, reviewers)
+    return Finding(
+        key="merge-rights",
+        step=step,
+        section="§6",
+        installed=not extra,
+        detail=(
+            f"write access is held by the named reviewers only: {list(reviewers)}"
+            if not extra
+            else f"write access beyond the named reviewers {list(reviewers)}: {extra}"
+        ),
+        remedy=(
+            ""
+            if not extra
+            else "an owner decision: lower each to triage, or name them in .github/CODEOWNERS "
+            f"(see {SETUP_DOC} §6)"
+        ),
+    )
+
+
+def check_fork_workflow_approval(slug: str) -> Finding:
+    """§6 — a first-time contributor's workflows wait for a maintainer (boundary B1)."""
+    step = "a first-time contributor's workflows wait for approval"
+    try:
+        state = gh(f"repos/{slug}/actions/permissions/fork-pr-contributor-approval")
+    except PermissionDeniedError as error:
+        return Finding(
+            key="fork-workflow-approval",
+            step=step,
+            section="§6",
+            installed=None,
+            detail=f"not readable by this token (needs administrative rights): {error}",
+            remedy=f"re-run as a maintainer, or see {SETUP_DOC} §6",
+        )
+    policy = state.get("approval_policy") if isinstance(state, dict) else None
+    installed = policy in GUARDED_FORK_APPROVAL
+    return Finding(
+        key="fork-workflow-approval",
+        step=step,
+        section="§6",
+        installed=installed,
+        detail=f"approval_policy={policy}",
+        remedy=(
+            ""
+            if installed
+            else f"gh api -X PUT repos/{slug}/actions/permissions/fork-pr-contributor-approval "
+            "-f approval_policy=first_time_contributors"
+        ),
+    )
+
+
+def check_interaction_limits(slug: str) -> Finding:
+    """§6 — no interaction limit closes the door the intake policy opens."""
+    try:
+        state = gh(f"repos/{slug}/interaction-limits")
+    except PermissionDeniedError as error:
+        return Finding(
+            key="interaction-limits",
+            step="no interaction limit is active",
+            section="§6",
+            installed=None,
+            detail=f"not readable by this token (needs administrative rights): {error}",
+            remedy=f"re-run as a maintainer, or see {SETUP_DOC} §6",
+        )
+    limit = state.get("limit") if isinstance(state, dict) else None
+    expires = state.get("expires_at") if isinstance(state, dict) else None
+    return Finding(
+        key="interaction-limits",
+        step="no interaction limit is active",
+        section="§6",
+        installed=not limit,
+        detail="none active" if not limit else f"active: {limit}, until {expires}",
+        remedy="" if not limit else f"gh api -X DELETE repos/{slug}/interaction-limits",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -534,6 +770,11 @@ def collect(slug: str, repo: dict[str, object]) -> list[Finding]:
         check_pages(slug),
         check_vulnerability_reporting(slug),
         check_milestones(slug),
+        check_pull_request_intake(repo),
+        check_review_gate(slug, branch),
+        check_merge_rights(slug),
+        check_fork_workflow_approval(slug),
+        check_interaction_limits(slug),
     ]
 
 

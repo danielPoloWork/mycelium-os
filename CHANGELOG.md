@@ -12,6 +12,18 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`tools/check_repo_settings.py` reports the contribution-intake policy** (roadmap 7.9,
+  [ADR-0158](docs/adr/0158-let-anyone-open-a-pull-request-and-keep-the-merge-with-named-reviewers.md)).
+  Anyone may open a pull request; only the reviewers `.github/CODEOWNERS` names may review
+  and merge. Five settings make it true and each is now a finding: pull requests open to
+  everyone, a code owner's approving review on `main`, write access held by the named
+  reviewers only, a first-time contributor's workflows held for approval, no interaction
+  limit. Checking found the cause `docs/workflow/adoption.md` had called invisible: the
+  repository object's undocumented `pull_request_creation_policy` read
+  **`collaborators_only`**, which is what stopped issue #149's finished contribution from
+  becoming a pull request. The policy is written in `CONTRIBUTING.md`, `AGENTS.md` §6.1 and
+  `docs/workflow/github-setup.md` §6; installing the settings is the owner's.
+
 - **`mycelium eval --tasks --verdict`, and the agent-task verdict armed in CI** (roadmap 7.3,
   D-031,
   [ADR-0156](docs/adr/0156-read-the-agent-task-verdict-where-we-did-not-write-and-ask-it-for-significance.md)).

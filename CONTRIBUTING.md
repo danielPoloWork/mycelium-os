@@ -117,8 +117,12 @@ hypothesis statistics, and a red run uploads the example database as an artifact
    under `[Unreleased]`. See `AGENTS.md` §7.
 4. Fill out `.github/PULL_REQUEST_TEMPLATE.md` in full — it is squash-merged into the
    permanent commit on `main`, so write it as it should read in `git log` forever.
-5. Open the PR against `main`. A maintainer reviews, requests changes if needed, and
-   merges (squash-only).
+5. Open the PR against `main`, from a branch in your fork. **Anyone may open a pull
+   request; only the named reviewers may review and merge** — the owners `.github/CODEOWNERS`
+   lists, today the maintainer alone. A reviewer requests changes if needed and merges
+   (squash-only). Your first pull request's CI waits for a maintainer to approve its
+   workflows — GitHub holds a first-time contributor's runs by design, and the checks start
+   once someone looks.
 
 ## Code of Conduct
 
