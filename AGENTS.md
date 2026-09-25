@@ -176,6 +176,13 @@ into the engine's internals, and a test enforces exactly that
 Agents **never merge**, **never force-push `main`**, and **never push directly
 to `main`**. When unsure, push the branch and ask.
 
+**Intake policy: anyone may open a pull request; only named reviewers may review and
+merge.** The named reviewers are the owners `.github/CODEOWNERS` lists on its `*` line —
+today the owner alone — and an agent is never one of them, whatever account it runs under.
+An agent may triage an outside pull request (read it, run it, comment what it found) and may
+not approve or merge it. The settings that make the policy true are the owner's and are
+reported by `tools/check_repo_settings.py` (roadmap 7.9, ADR-0158).
+
 **One roadmap item per PR — and one PR at a time.** Every `ROADMAP.md` item ships in its own
 standalone PR, branched from the `main` commit current when the work starts.
 After pushing the branch and drafting the PR, the agent **stops and waits for the maintainer

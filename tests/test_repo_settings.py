@@ -166,3 +166,76 @@ def test_the_condition_is_derived_from_github_not_from_a_stored_flag(private: bo
     here records *whether* a condition fired, so nothing here can go stale."""
     expired = checker.expiries(repo(private=private), [])
     assert all(item.fired is not private for item in expired)
+
+
+# ---------------------------------------------------------------------------
+# Contribution intake: anyone opens, named reviewers merge (roadmap 7.9)
+# ---------------------------------------------------------------------------
+
+
+def test_the_named_reviewers_are_read_from_codeowners_not_restated() -> None:
+    assert checker.named_reviewers() == ("danielPoloWork",)
+    text = "# a comment\n/docs/ @someone\n*   @danielPoloWork @SecondReviewer  # trailing\n"
+    assert checker.named_reviewers(text) == ("danielPoloWork", "SecondReviewer")
+    assert checker.named_reviewers("/src/ @only-a-path-owner\n") == ()
+
+
+@pytest.mark.parametrize(
+    ("policy", "installed"),
+    [("all", True), ("collaborators_only", False), (None, None)],
+)
+def test_intake_is_open_only_when_the_policy_says_all(
+    policy: str | None, installed: bool | None
+) -> None:
+    """`collaborators_only` is what kept issue #149's finished work from becoming a pull
+    request; a response without the field is not evidence either way."""
+    fixture = repo(private=False)
+    if policy is not None:
+        fixture["pull_request_creation_policy"] = policy
+    assert checker.check_pull_request_intake(fixture).installed is installed
+
+
+@pytest.mark.parametrize(
+    ("reviews", "holds"),
+    [
+        ({"required_approving_review_count": 1, "require_code_owner_reviews": True}, True),
+        ({"required_approving_review_count": 2, "require_code_owner_reviews": True}, True),
+        # Any approval, not a code owner's: a collaborator can approve another's merge.
+        ({"required_approving_review_count": 1, "require_code_owner_reviews": False}, False),
+        # The count github-setup.md used to document: protection with no review at all.
+        ({"required_approving_review_count": 0, "require_code_owner_reviews": True}, False),
+        ({"required_approving_review_count": True, "require_code_owner_reviews": True}, False),
+        (None, False),
+    ],
+)
+def test_the_review_gate_needs_a_code_owner_s_approval(reviews: object, holds: bool) -> None:
+    protection = {"required_pull_request_reviews": reviews} if reviews is not None else {}
+    assert checker.review_gate_holds(protection) is holds
+    assert checker.review_gate_holds(None) is False
+
+
+def test_write_access_outside_the_named_reviewers_is_a_merge_right() -> None:
+    collaborators = [
+        {"login": "danielPoloWork", "role_name": "admin", "permissions": {"admin": True}},
+        {"login": "MatteFil", "role_name": "write", "permissions": {"push": True}},
+        {"login": "a-triager", "role_name": "triage", "permissions": {"triage": True}},
+    ]
+    assert checker.unnamed_mergers(collaborators, ("danielPoloWork",)) == ["MatteFil (write)"]
+    assert checker.unnamed_mergers(collaborators, ("danielPoloWork", "mattefil")) == []
+
+
+def test_only_a_guarded_policy_holds_back_a_first_time_contributor_s_workflows() -> None:
+    """The weaker GitHub option lets any account that has contributed anywhere run
+    workflows here unreviewed, which is not what boundary B1 assumes."""
+    assert "first_time_contributors" in checker.GUARDED_FORK_APPROVAL
+    assert "all_external_contributors" in checker.GUARDED_FORK_APPROVAL
+    assert "first_time_contributors_new_to_github" not in checker.GUARDED_FORK_APPROVAL
+
+
+def test_the_intake_policy_is_written_where_a_newcomer_and_an_agent_read_it() -> None:
+    for relative in ("CONTRIBUTING.md", "AGENTS.md", "docs/workflow/github-setup.md"):
+        text = " ".join((ROOT / relative).read_text(encoding="utf-8").casefold().split())
+        assert "anyone may open a pull request" in text, relative
+    setup = (ROOT / "docs" / "workflow" / "github-setup.md").read_text(encoding="utf-8")
+    assert '"require_code_owner_reviews": true' in setup
+    assert '"required_approving_review_count": 1' in setup

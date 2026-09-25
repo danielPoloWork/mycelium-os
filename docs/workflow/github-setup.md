@@ -63,8 +63,13 @@ done
 
 ## 3. Branch protection / ruleset for `main`
 
-Require PRs, a green CI, linear history, and conversation resolution; block direct pushes and
-force-pushes. (Agents never push to the default branch — this enforces it server-side.)
+Require PRs, a green CI, linear history, conversation resolution, and **one approving review
+from a code owner**; block direct pushes and force-pushes. (Agents never push to the default
+branch — this enforces it server-side.) The review requirement is what keeps a merge with the
+named reviewers (§6): on a repository owned by a user rather than an organisation GitHub offers
+no push restriction, so a collaborator with write access is stopped only by needing a code
+owner's approval. `enforce_admins` stays `false` so the owner — who is also the account the
+agent opens pull requests under, and cannot approve their own — can still merge.
 
 ```bash
 gh api -X PUT repos/$OWNER/$REPO/branches/$BRANCH/protection \
@@ -75,7 +80,11 @@ gh api -X PUT repos/$OWNER/$REPO/branches/$BRANCH/protection \
     "contexts": ["consistency / lint"]
   },
   "enforce_admins": false,
-  "required_pull_request_reviews": { "required_approving_review_count": 0 },
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 1,
+    "require_code_owner_reviews": true,
+    "dismiss_stale_reviews": true
+  },
   "required_linear_history": true,
   "allow_force_pushes": false,
   "allow_deletions": false,
@@ -154,8 +163,31 @@ factory ships a helper (available in the in-place model): `python
 execute them. Creating a milestone that already exists returns HTTP 422, so the seeder is
 safely re-runnable.
 
+## 6. Contribution intake — anyone may open a pull request, named reviewers merge
+
+The policy (roadmap 7.9, [ADR-0158](../adr/0158-let-anyone-open-a-pull-request-and-keep-the-merge-with-named-reviewers.md)):
+**anyone may open a pull request; only the named reviewers — the owners `.github/CODEOWNERS`
+lists on its `*` line, today the owner alone — may review and merge.** Five settings make it
+true, and `tools/check_repo_settings.py` reports each:
+
+| Setting | Wanted | Install |
+|---|---|---|
+| `pull_request_creation_policy` | `all` | `gh api -X PATCH repos/$OWNER/$REPO -f pull_request_creation_policy=all`, or Settings → General → Pull Requests |
+| review gate on `main` | one approving code-owner review | the §3 call |
+| write access | the named reviewers only | an owner decision per collaborator: lower to *triage*, or name them in CODEOWNERS |
+| fork workflow approval | `first_time_contributors` or stricter | `gh api -X PUT repos/$OWNER/$REPO/actions/permissions/fork-pr-contributor-approval -f approval_policy=first_time_contributors` |
+| interaction limits | none | `gh api -X DELETE repos/$OWNER/$REPO/interaction-limits` |
+
+`pull_request_creation_policy` is served on the repository object and not yet in GitHub's
+documented REST schema. It read **`collaborators_only`** on 2026-09-25, and that is what told
+`blamevlan` on 2026-09-15 that *"pull request creation is limited to collaborators"* (issue
+#149) — the first external contribution this repository received, finished and unable to become
+a pull request.
+
+To name a second reviewer, add them to CODEOWNERS' `*` line: the merge-rights check reads the
+file, so nothing else changes.
+
 ## Re-running
 
 Every command here is idempotent or safely re-runnable. Re-run after changing labels, after a
-new CI check name should become required, or when onboarding a second collaborator (then bump
-`required_approving_review_count` to 1 and add reviewers to CODEOWNERS).
+new CI check name should become required, or when naming a second reviewer (§6).

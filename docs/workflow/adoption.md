@@ -62,10 +62,15 @@ saying plainly:
   reviewed and unmerged by decision**, and the Phase-3 gate cannot pass until intake
   reopens. Action 3 above is therefore not housekeeping: it is the gate.
 
-No interaction limit or ruleset is active as of 2026-09-20, and branch protection on `main`
-is still absent (`check_repo_settings.py` has reported that since roadmap 6.6). Whatever
-blocked the pull request on 2026-09-15 is not visible in today's settings, so **verify
-before announcing anything**: the cheapest check is to ask the contributor to try again.
+**Found at roadmap 7.9: the block is a setting, and it is visible.** The repository object
+carries `pull_request_creation_policy`, a field GitHub serves but does not yet document, and it
+read **`collaborators_only`** on 2026-09-25 — exactly the message the contributor quoted. The
+sentence that stood here said the cause was *"not visible in today's settings"*, which was true
+of every setting anybody had looked at. `tools/check_repo_settings.py` now reports it under
+`github-setup.md` §6, beside the review gate that keeps the merge with the named reviewers once
+the door is open. **Action 3 above is therefore one command**, the owner's:
+`gh api -X PATCH repos/:owner/:repo -f pull_request_creation_policy=all` — then ask the
+contributor to open the pull request.
 
 ## The deferred decision it also watches
 
