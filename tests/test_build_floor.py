@@ -122,7 +122,7 @@ def assert_equal_to_clean(tmp_path: Path, root: Path, name: str = "fresh") -> No
         target = fresh / path.relative_to(root)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)  # copy2: mtime is an input (ADR-0009)
-    assert observe_build(root, pin=False) == observe_build(fresh, pin=False)
+    assert observe_build(root) == observe_build(fresh)
 
 
 def document_reads(monkeypatch: pytest.MonkeyPatch, root: Path) -> list[Path]:
@@ -189,12 +189,14 @@ def test_an_edit_that_changes_size_or_mtime_is_read_and_rebuilt(
     assert_equal_to_clean(tmp_path, root)
 
 
-def test_touching_a_file_is_still_a_rebuild_of_its_record(
+def test_touching_a_file_reads_it_once_and_rebuilds_nothing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Same bytes, new mtime: the memo misses, the file is read, the digest agrees,
-    and the document is still dirty — mtime is an input (ADR-0009). Nothing the
-    memo does may change what a touch means."""
+    and the document is reused. The mtime's only role is the memo — it stopped
+    being an input at roadmap 7.7 (D-032), when the record stopped carrying it —
+    so a touch costs exactly one read and no stage, and the memo is refreshed so
+    the next build does not pay the read again."""
     root = repo(tmp_path)
     build(root)
     os.utime(root / GUIDE, ns=(OLD_MTIME_NS + 10**9, OLD_MTIME_NS + 10**9))
@@ -203,8 +205,9 @@ def test_touching_a_file_is_still_a_rebuild_of_its_record(
     result = build(root)
 
     assert [path.name for path in reads] == ["guide.md"]
-    assert result.stats.rebuilt == 1
-    assert result.stats.parse_hits == 1  # the content did not change; the cache had it
+    assert result.stats.rebuilt == 0
+    assert result.stats.reused == 4
+    assert memo_of(root, GUIDE)[1] == OLD_MTIME_NS + 10**9
     assert_equal_to_clean(tmp_path, root)
 
 

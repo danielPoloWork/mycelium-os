@@ -590,7 +590,6 @@ def populate_store(workspace: Path, prose: Prose, chunks: int, *, seed: int) -> 
 
     per_document = CHUNKS_PER_DOCUMENT
     documents = max(1, chunks // per_document)
-    now = datetime(2026, 1, 1, tzinfo=UTC)
     headings: list[tuple[str, str, str]] = []
     with SqliteStore.open(workspace) as store:
         for start in range(0, documents, 2_000):
@@ -610,8 +609,6 @@ def populate_store(workspace: Path, prose: Prose, chunks: int, *, seed: int) -> 
                             verification_status=VerificationStatus.VERIFIED,
                             provenance=Provenance(),
                             stats=DocumentStats(tokens=0, headings=1, chunks=0, links_out=0),
-                            created_at=now,
-                            updated_at=now,
                         )
                     )
 

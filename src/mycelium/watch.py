@@ -36,7 +36,6 @@ import queue
 import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any, Final
 
@@ -150,10 +149,10 @@ def has_real_change(root: Path, batch: Iterable[Path], scope: CorpusScope | None
     every one of them would publish a snapshot.
 
     So the loop asks the same question the build asks, against the same
-    ``doc_state`` truth: is this file's content — and its mtime, which becomes
-    ``created_at`` (ADR-0009) — different from what is indexed? A read changes
-    neither. This reads only the batch's own files, so it costs one digest per
-    changed document rather than a scan.
+    ``doc_state`` truth: is this file's content different from what is indexed?
+    A read changes nothing, and neither does a touch — the mtime is not an
+    input since roadmap 7.7 (D-032). This reads only the batch's own files, so
+    it costs one digest per changed document rather than a scan.
 
     Conservative in every direction: an unreadable file, a missing store, a path
     with no row, or anything unexpected answers **yes, build**. The guard may
@@ -190,10 +189,9 @@ def has_real_change(root: Path, batch: Iterable[Path], scope: CorpusScope | None
 
         try:
             raw = path.read_bytes().decode("utf-8")
-            mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=UTC).isoformat()
         except (OSError, UnicodeDecodeError):
             return True
-        if digest_text(raw) != state.source_digest or mtime != state.source_mtime:
+        if digest_text(raw) != state.source_digest:
             return True
 
     return False

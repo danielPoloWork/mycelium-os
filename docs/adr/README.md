@@ -188,3 +188,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0154](0154-price-the-remote-cache-before-its-trigger-and-give-the-trigger-a-reading.md) | Price the remote cache before its trigger fires, and give the trigger a reading | Accepted |
 | [0155](0155-read-7-2s-three-triggers-and-say-which-one-cannot-be-read.md) | Read 7.2's three triggers, and say which one cannot be read | Accepted |
 | [0156](0156-read-the-agent-task-verdict-where-we-did-not-write-and-ask-it-for-significance.md) | Read the agent-task verdict where we did not write the corpus, and ask it for significance | Accepted |
+| [0157](0157-take-the-timestamps-out-of-the-document-record.md) | Take the timestamps out of the document record, and keep the mtime as a memo | Accepted |

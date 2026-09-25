@@ -110,8 +110,8 @@ def assert_equal_to_clean(tmp_path: Path, root: Path, name: str = "fresh") -> No
         target = fresh / path.relative_to(root)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)  # copy2: mtime is an input (ADR-0009)
-    incremental = observe_build(root, pin=False)
-    from_scratch = observe_build(fresh, pin=False)
+    incremental = observe_build(root)
+    from_scratch = observe_build(fresh)
     assert incremental == from_scratch
 
 
@@ -163,26 +163,22 @@ def test_single_edit_rebuilds_only_that_document(tmp_path: Path) -> None:
     assert_equal_to_clean(tmp_path, root)
 
 
-def test_touching_a_file_reruns_only_the_assemble_stage(tmp_path: Path) -> None:
-    """Same bytes, new mtime: mtime is an input (it becomes ``created_at``,
-    ADR-0009), so the document is dirty — but parse and chunk hit the cache."""
+def test_touching_a_file_reuses_it(tmp_path: Path) -> None:
+    """Same bytes, new mtime: nothing is rebuilt, because nothing published
+    depends on the mtime. Until roadmap 7.7 it became ``created_at`` (ADR-0009)
+    and a touch reran the assemble stage; D-032 took the timestamps out of the
+    record, so a touched file — and every file of a fresh clone — is reused."""
     root = repo(tmp_path)
     build(root)
     target = root / "knowledge/guide.md"
-    later = int(target.stat().st_mtime) + 100  # integral: datetime keeps microseconds only
+    later = int(target.stat().st_mtime) + 100
     os.utime(target, (later, later))
 
     result = build(root)
-    assert result.stats.rebuilt == 1
-    assert result.stats.reused == 3
+    assert result.stats.rebuilt == 0
+    assert result.stats.reused == 4
     assert result.stats.parsed == 0
-    assert result.stats.parse_hits == 1
     assert result.stats.chunked == 0
-    assert result.stats.chunk_hits == 1
-    with SqliteStore.open(root, read_only=True) as store:
-        document = store.get_document_by_path("knowledge/guide.md")
-        assert document is not None
-        assert document.created_at.timestamp() == later
     assert_equal_to_clean(tmp_path, root)
 
 
@@ -413,13 +409,25 @@ def test_clean_build_bypasses_the_cache_and_agrees(tmp_path: Path) -> None:
     assert result.manifest.artifact_digests == incremental.manifest.artifact_digests
 
 
+def forget(root: Path, doc_path: str) -> None:
+    """Drop one document's rows so the next build must run its stages again.
+
+    A touch used to do this — the mtime was an input until roadmap 7.7 — and
+    now does nothing; deleting the document (its `doc_state` row cascades) is
+    what makes it dirty while leaving its `build_cache` rows in place, which is
+    the state these tests are about: a row that names a blob the CAS lacks.
+    """
+    with SqliteStore.open(root) as store, store.transaction():
+        document = store.get_document_by_path(doc_path)
+        assert document is not None
+        store.delete_document(document.doc_id)
+
+
 def test_a_deleted_cas_tree_heals_itself(tmp_path: Path) -> None:
     root = repo(tmp_path)
     first = build(root)
     shutil.rmtree(root / ".mycelium" / "cas")
-    target = root / "knowledge/guide.md"
-    later = target.stat().st_mtime + 100
-    os.utime(target, (later, later))  # dirty enough to need the parse artifact
+    forget(root, "knowledge/guide.md")  # dirty enough to need the parse artifact
 
     result = build(root)
     assert result.stats.parsed == 1  # the row was there; the blob was not
@@ -434,9 +442,7 @@ def test_a_corrupted_cas_blob_is_discarded_not_believed(tmp_path: Path) -> None:
     for blob in blobs:
         if blob.is_file():
             blob.write_bytes(b"not the bytes this name promises")
-    target = root / "knowledge/guide.md"
-    later = target.stat().st_mtime + 100
-    os.utime(target, (later, later))
+    forget(root, "knowledge/guide.md")
 
     result = build(root)
     assert result.stats.parsed == 1

@@ -66,6 +66,13 @@ publish.
 rebuilds in place, which is what the G6 golden test (2.10) measures. Real provenance times
 arrive with ingestion.
 
+> **Amended by [ADR-0157](0157-take-the-timestamps-out-of-the-document-record.md) (roadmap
+> 7.7, D-032, 2026-09-25):** the record carries no timestamp. *Stable across rebuilds in
+> place* was true and was the whole of it: across checkouts the mtime is the moment the clone
+> was written, so every fresh clone recompiled every record whatever its cache held
+> (ADR-0154), and gate G6 could only hold by pinning every mtime first. The mtime survives as
+> the stat memo (ADR-0133) and nowhere else.
+
 **Discovery** (v0): `knowledge/**/*.md` when `knowledge/` exists (spec 02 §3), else the
 whole root — so a plain docs repository gets value with zero layout ceremony (TTFV) —
 never entering dot-prefixed directories, which excludes `.mycelium`, `.git`, and editor

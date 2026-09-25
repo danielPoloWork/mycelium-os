@@ -37,9 +37,10 @@ clean" rule); ``rescan=True`` reads every file once, at the old floor and no
 more; and `mycelium doctor` re-digests the corpus and names a document whose
 bytes no longer match the index. Renames need none of this — a moved file is a
 new path with no row, and is read. A document is untouched only when its source
-digest, its mtime (which ADR-0009 turns into ``created_at``), and the build
-environment digest all match its ``doc_state`` row; a matching digest under a
-new mtime reruns only the assemble stage.
+digest and the build environment digest match its ``doc_state`` row. The mtime
+is **not** an input: since roadmap 7.7 (D-032) the record carries no timestamp,
+so a file with the same bytes under a new mtime — every file of a fresh clone —
+is reused, and the mtime's only role is the stat memo above.
 
 The manifest's corpus digests are folded from per-document artifact digests
 (``digest_json`` over the path-ordered digest list) rather than from the full
@@ -243,8 +244,6 @@ class _Entry:
     doc_id: str = ""
     raw: str = ""
     source_digest: str = ""
-    mtime: datetime | None = None
-    mtime_key: str = ""
     size: int = 0
     mtime_ns: int = 0
     """The stat memo this build records for the file (roadmap 6.20): the size and
@@ -398,14 +397,14 @@ def _assemble(
     relative: Path,
     doc_id: str,
     namespace: str,
-    mtime: datetime,
     mycelium_dir: Path,
 ) -> tuple[Document, tuple[str, ...]]:
     """Derive the Document record — cheap arithmetic over the cached stages' output.
 
-    Deliberately uncached (ADR-0015): one of its inputs is the file's mtime,
-    which becomes ``created_at``/``updated_at`` (ADR-0009) and is exactly the
-    input that most often changes alone.
+    Deliberately uncached (ADR-0015): it is a dict-build over inputs that are
+    already cached, and caching it would trade that for a CAS round-trip. Until
+    roadmap 7.7 it also read the file's mtime into the record; it reads nothing
+    of the file now (D-032).
     """
     doc_path = relative.as_posix()
     frontmatter = parsed.frontmatter
@@ -444,8 +443,6 @@ def _assemble(
             chunks=len(chunks),
             links_out=sum(1 for node in parsed.kir.nodes if node.kind in _LINK_KINDS),
         ),
-        created_at=mtime,
-        updated_at=mtime,
     )
     return document, tuple(warnings)
 
@@ -622,7 +619,6 @@ def _state_of(entry: "_Entry", env_digest: str) -> DocState:
         doc_id=entry.doc_id,
         path=entry.doc_path,
         source_digest=entry.source_digest,
-        source_mtime=entry.mtime_key,
         source_size=entry.size,
         source_mtime_ns=entry.mtime_ns,
         env_digest=env_digest,
@@ -1015,8 +1011,6 @@ def _plan(
                 stat = path.stat()  # the pin rewrote the file: record what is there now
             entry.size = stat.st_size
             entry.mtime_ns = stat.st_mtime_ns
-            entry.mtime = datetime.fromtimestamp(stat.st_mtime, tz=UTC)
-            entry.mtime_key = entry.mtime.isoformat()
         except Exception as error:  # noqa: BLE001 - quarantine is the failure taxonomy
             entry.outcome = _Outcome.QUARANTINED
             entry.warnings = (
@@ -1110,7 +1104,6 @@ def _build_locked(
                 and prev is not None
                 and prev.doc_id == entry.doc_id
                 and prev.source_digest == entry.source_digest
-                and prev.source_mtime == entry.mtime_key
                 and prev.env_digest == env_digest
             ):
                 entry.outcome = _Outcome.REUSED
@@ -1146,7 +1139,6 @@ def _build_locked(
                     use_cache=not clean,
                     cache_rows=cache_rows,
                 )
-                assert entry.mtime is not None  # set whenever the plan read succeeded
                 document, warnings = _assemble(
                     parsed,
                     chunks,
@@ -1154,7 +1146,6 @@ def _build_locked(
                     relative=entry.path.relative_to(root),
                     doc_id=entry.doc_id,
                     namespace=namespace,
-                    mtime=entry.mtime,
                     mycelium_dir=mycelium_dir,
                 )
             except Exception as error:  # noqa: BLE001 - quarantine is the failure taxonomy

@@ -21,7 +21,6 @@ from mycelium.build import build
 from mycelium.determinism import (
     DeterminismObservation,
     observe_build,
-    pin_mtimes,
     read_golden,
 )
 
@@ -119,24 +118,26 @@ def test_volatile_manifest_fields_really_do_vary(tmp_path: Path) -> None:
     assert first.artifact_digests == second.artifact_digests  # what *is* claimed
 
 
-def test_mtime_is_an_input_and_the_gate_pins_it(tmp_path: Path) -> None:
-    """A fresh checkout has fresh mtimes; without pinning, records would differ.
+def test_mtime_is_not_an_input_and_a_fresh_checkout_observes_the_golden(tmp_path: Path) -> None:
+    """Same bytes, new timestamps on every file: the observation is identical.
 
-    Documented rather than hidden: mtime becomes `created_at`/`updated_at` on every
-    document record (ADR-0009), so the golden would otherwise encode the moment the
-    repository was cloned.
+    Until roadmap 7.7 the gate pinned every mtime before building, because mtime
+    became `created_at`/`updated_at` on every document record (ADR-0009) and a
+    fresh checkout would have observed a different golden. D-032 removed the
+    timestamps from the record, so the pin is gone and this is the claim it used
+    to work around: a clone's mtimes are the moment it was written, and nothing
+    the compiler publishes depends on that moment.
     """
     root = workspace(tmp_path)
-    pinned = observe_build(root, pin=True)
+    first = observe_build(root)
 
     for path in sorted(root.rglob("*.md")):
         path.touch()  # simulate a fresh checkout: same bytes, new timestamps
-    unpinned = observe_build(root, pin=False)
+    second = observe_build(root)
 
-    assert unpinned.chunks == pinned.chunks  # content is unaffected
-    assert unpinned.documents != pinned.documents  # timestamps are not
-    assert unpinned.artifact_digests["chunks"] == pinned.artifact_digests["chunks"]
-    assert unpinned.artifact_digests["documents"] != pinned.artifact_digests["documents"]
+    assert second == first
+    assert second.artifact_digests["documents"] == first.artifact_digests["documents"]
+    assert all("created_at" not in document for document in second.documents)
 
 
 # ---------------------------------------------------------------------------
@@ -289,11 +290,3 @@ def test_observation_is_comparable_and_serialisable(tmp_path: Path) -> None:
     assert observation.as_dict()["chunks"] == list(observation.chunks)
     with pytest.raises(AttributeError):
         observation.counts = {}  # type: ignore[misc]  # frozen: an observation is evidence
-
-
-def test_pin_mtimes_is_idempotent(tmp_path: Path) -> None:
-    root = workspace(tmp_path)
-    pin_mtimes(root)
-    stamps = {path: path.stat().st_mtime for path in sorted(root.rglob("*.md"))}
-    pin_mtimes(root)
-    assert {path: path.stat().st_mtime for path in sorted(root.rglob("*.md"))} == stamps

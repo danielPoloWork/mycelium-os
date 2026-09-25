@@ -13,7 +13,7 @@ The per-document chain in v1 is::
 
     parse    source text ─▶ frontmatter + KIR            (markdown-it; expensive)
     chunk    KIR ─▶ chunk records                        (heading-bounded packer)
-    assemble frontmatter + KIR + chunks + mtime ─▶ Document record   (cheap)
+    assemble frontmatter + KIR + chunks ─▶ Document record           (cheap)
     extract  KIR + chunks ─▶ link and symbol references  (cheap; kept in doc_state)
 
 ``parse`` and ``chunk`` are cached (CAS blob + ``build_cache`` row); ``assemble``

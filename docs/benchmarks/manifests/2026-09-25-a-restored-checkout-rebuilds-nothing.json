@@ -1,0 +1,516 @@
+{
+  "budgets": {
+    "cold_build_documents": 1000,
+    "cold_build_s": 60
+  },
+  "cache_profile": [
+    {
+      "ceiling": {
+        "ceiling_s": 7.601,
+        "ceiling_share": 0.536,
+        "ceiling_with_seeding_s": 0.289,
+        "cold_p50_s": 14.18,
+        "compute_saved_s": 1.918,
+        "compute_share_of_cold": 0.1353,
+        "documents_digest_kept_with_mtimes": true,
+        "documents_digest_varies_by_checkout": false,
+        "file_operations_saved_s": 5.683,
+        "outputs_identical": true,
+        "ranges_separated": true,
+        "restored_mtimes_p50_s": 0.605,
+        "restored_mtimes_saving_s": 13.575,
+        "restored_mtimes_saving_with_restore_s": 2.38,
+        "restored_p50_s": 0.809,
+        "restored_saving_s": 13.371,
+        "restored_saving_with_restore_s": 2.177,
+        "restoring_p50_s": 11.195,
+        "seeded_p50_s": 6.579,
+        "seeding_p50_s": 7.312
+      },
+      "chunks": 1244,
+      "documents": 250,
+      "label": "reference profile, 250 documents",
+      "measurements": [
+        {
+          "arm": "cold",
+          "budget": null,
+          "chunk_hits": [
+            0,
+            0
+          ],
+          "max": 14.538,
+          "mean": 14.18,
+          "min": 13.822,
+          "name": "cold build of a fresh checkout, 250 documents",
+          "p50": 14.18,
+          "p95": 13.822,
+          "parse_hits": [
+            0,
+            0
+          ],
+          "rebuilt": [
+            250,
+            250
+          ],
+          "samples": 2,
+          "stages_ms_median": {
+            "compile": 12234.0,
+            "discover": 30.0,
+            "graph": 47.0,
+            "plan": 571.0,
+            "store": 1007.0,
+            "symbols": 37.5,
+            "total": 13984.0
+          },
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "seeded",
+          "budget": null,
+          "chunk_hits": [
+            250,
+            250
+          ],
+          "max": 6.779,
+          "mean": 6.579,
+          "min": 6.379,
+          "name": "seeded build: every stage artifact present, nothing else, 250 documents",
+          "p50": 6.579,
+          "p95": 6.379,
+          "parse_hits": [
+            250,
+            250
+          ],
+          "rebuilt": [
+            250,
+            250
+          ],
+          "samples": 2,
+          "stages_ms_median": {
+            "compile": 4640.0,
+            "discover": 38.5,
+            "graph": 46.0,
+            "plan": 554.0,
+            "store": 1008.0,
+            "symbols": 47.0,
+            "total": 6381.5
+          },
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "restored",
+          "budget": null,
+          "chunk_hits": [
+            0,
+            0
+          ],
+          "max": 0.835,
+          "mean": 0.809,
+          "min": 0.783,
+          "name": "restored build: a previous checkout's whole .mycelium, 250 documents",
+          "p50": 0.809,
+          "p95": 0.783,
+          "parse_hits": [
+            0,
+            0
+          ],
+          "rebuilt": [
+            0,
+            0
+          ],
+          "samples": 2,
+          "stages_ms_median": {
+            "compile": 0.0,
+            "discover": 30.0,
+            "graph": 47.0,
+            "plan": 421.5,
+            "store": 109.0,
+            "symbols": 38.5,
+            "total": 695.5
+          },
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "restored-mtimes",
+          "budget": null,
+          "chunk_hits": [
+            0,
+            0
+          ],
+          "max": 0.606,
+          "mean": 0.605,
+          "min": 0.605,
+          "name": "restored build with that checkout's mtimes kept, 250 documents",
+          "p50": 0.605,
+          "p95": 0.605,
+          "parse_hits": [
+            0,
+            0
+          ],
+          "rebuilt": [
+            0,
+            0
+          ],
+          "samples": 2,
+          "stages_ms_median": {
+            "compile": 0.0,
+            "discover": 31.0,
+            "graph": 47.0,
+            "plan": 273.0,
+            "store": 54.0,
+            "symbols": 47.0,
+            "total": 500.0
+          },
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "seeding",
+          "budget": null,
+          "max": 7.532,
+          "mean": 7.312,
+          "min": 7.091,
+          "name": "seeding the stage artifacts into a fresh checkout, 250 documents",
+          "p50": 7.312,
+          "p95": 7.091,
+          "rows": [
+            500,
+            500
+          ],
+          "samples": 2,
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "restoring",
+          "budget": null,
+          "max": 11.496,
+          "mean": 11.236,
+          "min": 11.058,
+          "name": "restoring a whole .mycelium into a fresh checkout, 250 documents",
+          "p50": 11.195,
+          "p95": 11.234,
+          "samples": 4,
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "compute-miss",
+          "budget": null,
+          "documents": 250,
+          "max": 2.109,
+          "mean": 2.099,
+          "min": 2.089,
+          "name": "compute a miss runs (parse, chunk, encode, hash), 250 documents",
+          "p50": 2.099,
+          "p95": 2.089,
+          "samples": 2,
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "compute-hit",
+          "budget": null,
+          "documents": 250,
+          "max": 0.182,
+          "mean": 0.181,
+          "min": 0.18,
+          "name": "compute a hit runs instead (re-hash, decode), 250 documents",
+          "p50": 0.181,
+          "p95": 0.18,
+          "samples": 2,
+          "unit": "s",
+          "within_budget": null
+        }
+      ],
+      "portability": {
+        "checkout": "CRLF line endings, seeded from the LF source build",
+        "chunk_hits": 250,
+        "outputs_identical": true,
+        "parse_hits": 250,
+        "rebuilt": 250
+      },
+      "rounds": 2
+    },
+    {
+      "ceiling": {
+        "ceiling_s": 21.401,
+        "ceiling_share": 0.3669,
+        "ceiling_with_seeding_s": -18.185,
+        "cold_p50_s": 58.325,
+        "compute_saved_s": 11.562,
+        "compute_share_of_cold": 0.1982,
+        "documents_digest_kept_with_mtimes": true,
+        "documents_digest_varies_by_checkout": false,
+        "file_operations_saved_s": 9.839,
+        "outputs_identical": true,
+        "ranges_separated": true,
+        "restored_mtimes_p50_s": 2.314,
+        "restored_mtimes_saving_s": 56.011,
+        "restored_mtimes_saving_with_restore_s": 5.65,
+        "restored_p50_s": 5.392,
+        "restored_saving_s": 52.934,
+        "restored_saving_with_restore_s": 2.573,
+        "restoring_p50_s": 50.361,
+        "seeded_p50_s": 36.924,
+        "seeding_p50_s": 39.586
+      },
+      "chunks": 4955,
+      "documents": 1000,
+      "label": "reference profile, 1000 documents",
+      "measurements": [
+        {
+          "arm": "cold",
+          "budget": 60,
+          "chunk_hits": [
+            0,
+            0
+          ],
+          "max": 61.221,
+          "mean": 58.325,
+          "min": 55.43,
+          "name": "cold build of a fresh checkout, 1000 documents",
+          "p50": 58.325,
+          "p95": 55.43,
+          "parse_hits": [
+            0,
+            0
+          ],
+          "rebuilt": [
+            1000,
+            1000
+          ],
+          "samples": 2,
+          "stages_ms_median": {
+            "compile": 49109.0,
+            "discover": 76.5,
+            "graph": 250.5,
+            "plan": 2219.0,
+            "store": 5444.5,
+            "symbols": 226.0,
+            "total": 57624.5
+          },
+          "unit": "s",
+          "within_budget": true
+        },
+        {
+          "arm": "seeded",
+          "budget": null,
+          "chunk_hits": [
+            1000,
+            1000
+          ],
+          "max": 36.961,
+          "mean": 36.924,
+          "min": 36.888,
+          "name": "seeded build: every stage artifact present, nothing else, 1000 documents",
+          "p50": 36.924,
+          "p95": 36.888,
+          "parse_hits": [
+            1000,
+            1000
+          ],
+          "rebuilt": [
+            1000,
+            1000
+          ],
+          "samples": 2,
+          "stages_ms_median": {
+            "compile": 25258.5,
+            "discover": 93.5,
+            "graph": 217.5,
+            "plan": 5116.0,
+            "store": 5037.5,
+            "symbols": 242.5,
+            "total": 36250.0
+          },
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "restored",
+          "budget": null,
+          "chunk_hits": [
+            0,
+            0
+          ],
+          "max": 5.725,
+          "mean": 5.392,
+          "min": 5.058,
+          "name": "restored build: a previous checkout's whole .mycelium, 1000 documents",
+          "p50": 5.392,
+          "p95": 5.058,
+          "parse_hits": [
+            0,
+            0
+          ],
+          "rebuilt": [
+            0,
+            0
+          ],
+          "samples": 2,
+          "stages_ms_median": {
+            "compile": 8.0,
+            "discover": 77.5,
+            "graph": 233.0,
+            "plan": 3905.0,
+            "store": 359.5,
+            "symbols": 234.0,
+            "total": 5109.5
+          },
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "restored-mtimes",
+          "budget": null,
+          "chunk_hits": [
+            0,
+            0
+          ],
+          "max": 2.752,
+          "mean": 2.314,
+          "min": 1.876,
+          "name": "restored build with that checkout's mtimes kept, 1000 documents",
+          "p50": 2.314,
+          "p95": 1.876,
+          "parse_hits": [
+            0,
+            0
+          ],
+          "rebuilt": [
+            0,
+            0
+          ],
+          "samples": 2,
+          "stages_ms_median": {
+            "compile": 0.0,
+            "discover": 84.5,
+            "graph": 258.0,
+            "plan": 929.5,
+            "store": 210.5,
+            "symbols": 249.5,
+            "total": 2006.5
+          },
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "seeding",
+          "budget": null,
+          "max": 40.813,
+          "mean": 39.586,
+          "min": 38.358,
+          "name": "seeding the stage artifacts into a fresh checkout, 1000 documents",
+          "p50": 39.586,
+          "p95": 38.358,
+          "rows": [
+            2000,
+            2000
+          ],
+          "samples": 2,
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "restoring",
+          "budget": null,
+          "max": 51.584,
+          "mean": 50.305,
+          "min": 48.916,
+          "name": "restoring a whole .mycelium into a fresh checkout, 1000 documents",
+          "p50": 50.361,
+          "p95": 50.929,
+          "samples": 4,
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "compute-miss",
+          "budget": null,
+          "documents": 1000,
+          "max": 12.7,
+          "mean": 12.639,
+          "min": 12.577,
+          "name": "compute a miss runs (parse, chunk, encode, hash), 1000 documents",
+          "p50": 12.639,
+          "p95": 12.577,
+          "samples": 2,
+          "unit": "s",
+          "within_budget": null
+        },
+        {
+          "arm": "compute-hit",
+          "budget": null,
+          "documents": 1000,
+          "max": 1.105,
+          "mean": 1.077,
+          "min": 1.049,
+          "name": "compute a hit runs instead (re-hash, decode), 1000 documents",
+          "p50": 1.077,
+          "p95": 1.049,
+          "samples": 2,
+          "unit": "s",
+          "within_budget": null
+        }
+      ],
+      "portability": {
+        "checkout": "CRLF line endings, seeded from the LF source build",
+        "chunk_hits": 1000,
+        "outputs_identical": true,
+        "parse_hits": 1000,
+        "rebuilt": 1000
+      },
+      "rounds": 2
+    }
+  ],
+  "commit": "8670f3e3cf26d96e121210c5874e5a18b53b813b",
+  "corpus": {
+    "corpus_digests": {
+      "1000": "sha256:d0100f075056341767833344c837b65106d8b38fdf314531e21cb50e8ec4f9e5",
+      "250": "sha256:44e7e1d4c9b30bba345429ad4a9c9ecfa4ecbc3b259efd96385c50eedbce3766"
+    },
+    "generator": "tools/measure_cache_ceiling.py",
+    "harvested_from": "df43af82198e4269bb020383cc5f0c9012df8ee9",
+    "kind": "generated reference profile (tools/benchmark_reference_profile.py)",
+    "scales": [
+      250,
+      1000
+    ],
+    "seed": 20260923,
+    "sources": [
+      "eval/corpora/uv-docs/docs",
+      "docs"
+    ]
+  },
+  "file_io": {
+    "budget": null,
+    "files": 250,
+    "max": 1.553,
+    "mean": 1.029,
+    "mean_bytes": 3222,
+    "min": 0.895,
+    "name": "read one small Markdown file, warm",
+    "p50": 1.006,
+    "p95": 1.186,
+    "samples": 250,
+    "unit": "ms",
+    "within_budget": null
+  },
+  "generated_at": "2026-09-24T22:59:34.960799Z",
+  "hardware": {
+    "logical_cpus": 20,
+    "machine": "AMD64",
+    "memory_gib": 31.7,
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 151 Stepping 2, GenuineIntel"
+  },
+  "schema": "mycelium/benchmark/v0",
+  "toolchain": {
+    "mycelium": "0.6.0",
+    "python": "3.12.10"
+  }
+}

@@ -751,7 +751,7 @@ def test_an_untouched_document_keeps_its_symbols_through_an_incremental_build(
         target = fresh / path.relative_to(root)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
-    assert observe_build(root, pin=False) == observe_build(fresh, pin=False)
+    assert observe_build(root) == observe_build(fresh)
 
 
 def test_rollback_restores_the_symbols_the_snapshot_published(

@@ -66,8 +66,6 @@ SPEC_DOCUMENT = {
     "fidelity_report": None,
     "secret_flags": [],
     "stats": {"tokens": 4180, "headings": 12, "chunks": 9, "links_out": 14},
-    "created_at": "2026-07-31T10:00:00Z",
-    "updated_at": "2026-07-31T10:00:00Z",
 }
 
 # spec 03 §4 — the KIR example: heading, paragraph, and the opaque escape hatch.
@@ -193,9 +191,10 @@ def test_document_semantics() -> None:
     assert doc.trust_class is TrustClass.AUTHORED
     assert doc.verification_status is VerificationStatus.VERIFIED
     assert doc.provenance.origin is ProvenanceOrigin.AUTHORED
-    assert doc.created_at == datetime(2026, 7, 31, 10, 0, tzinfo=UTC)
-    # JSON serialization keeps the spec's Z-suffixed RFC 3339 form.
-    assert json.loads(doc.model_dump_json())["created_at"] == "2026-07-31T10:00:00Z"
+    # No timestamp: a build's process metadata is not part of the record (D-032).
+    assert "created_at" not in json.loads(doc.model_dump_json())
+    with pytest.raises(ValidationError):
+        Document.model_validate({**SPEC_DOCUMENT, "created_at": "2026-07-31T10:00:00Z"})
 
 
 def test_entity_record_carries_conventions() -> None:
@@ -345,7 +344,6 @@ def test_unknown_fields_are_rejected() -> None:
         {"content_digest": "sha256:abc123"},  # truncated digest
         {"content_digest": "md5:" + "0" * 64},
         {"trust_class": "banana"},
-        {"created_at": "2026-07-31T10:00:00"},  # naive timestamp
     ],
 )
 def test_document_field_contracts_reject(mutation: dict[str, Any]) -> None:
@@ -353,19 +351,28 @@ def test_document_field_contracts_reject(mutation: dict[str, Any]) -> None:
         Document.model_validate({**SPEC_DOCUMENT, **mutation})
 
 
+def test_a_naive_timestamp_is_rejected() -> None:
+    """`UtcDatetime` on the manifest, the record that still carries a wall clock."""
+    with pytest.raises(ValidationError):
+        SnapshotManifest.model_validate({**SPEC_MANIFEST, "created_at": "2026-07-31T10:04:12"})
+
+
 def test_aware_non_utc_timestamps_normalize_to_utc() -> None:
-    doc = Document.model_validate({**SPEC_DOCUMENT, "created_at": "2026-07-31T12:00:00+02:00"})
-    assert doc.created_at == datetime(2026, 7, 31, 10, 0, tzinfo=UTC)
-    assert doc.created_at.tzinfo is UTC
-    assert json.loads(doc.model_dump_json())["created_at"] == "2026-07-31T10:00:00Z"
+    manifest = SnapshotManifest.model_validate(
+        {**SPEC_MANIFEST, "created_at": "2026-07-31T12:04:12+02:00"}
+    )
+    assert manifest.created_at == datetime(2026, 7, 31, 10, 4, 12, tzinfo=UTC)
+    assert manifest.created_at.tzinfo is UTC
+    # JSON serialization keeps the spec's Z-suffixed RFC 3339 form.
+    assert json.loads(manifest.model_dump_json())["created_at"] == "2026-07-31T10:04:12Z"
 
 
 def test_aware_datetime_objects_also_normalize() -> None:
     cet = timezone(timedelta(hours=2))
-    doc = Document.model_validate(
-        {**SPEC_DOCUMENT, "created_at": datetime(2026, 7, 31, 12, 0, tzinfo=cet)}
+    manifest = SnapshotManifest.model_validate(
+        {**SPEC_MANIFEST, "created_at": datetime(2026, 7, 31, 12, 4, 12, tzinfo=cet)}
     )
-    assert doc.created_at == datetime(2026, 7, 31, 10, 0, tzinfo=UTC)
+    assert manifest.created_at == datetime(2026, 7, 31, 10, 4, 12, tzinfo=UTC)
 
 
 def test_chunk_anchor_shape_is_validated() -> None:

@@ -283,6 +283,16 @@ class Document(Record):
     survives renames); ``content_digest`` is content identity (changes on every
     edit, drives dirty detection). ``verification_status`` is derived from the
     folder at build time — the folder is the single source of status (D-021).
+
+    It carries **no timestamp**. Until roadmap 7.7 it held ``created_at`` and
+    ``updated_at``, both the source file's mtime (ADR-0009) — a fact about the
+    checkout, not the document, which made every fresh clone recompile every
+    record whatever its cache held (ADR-0154). D-032 removed them: a build's
+    process metadata does not belong in the compiled record, and a date a
+    document *has* arrives declared by its author or, for an ingested one, as
+    ``provenance.ingested_at``. The tag stays ``v0``: the record is not one of
+    the five frozen contracts and changes at a MINOR (`docs/compatibility.md`),
+    and PR #56 added ``secret_flags`` under the same tag.
     """
 
     schema_version: Literal["mycelium/document/v0"] = "mycelium/document/v0"
@@ -303,8 +313,6 @@ class Document(Record):
     )
     secret_flags: tuple[str, ...] = ()
     stats: DocumentStats
-    created_at: UtcDatetime
-    updated_at: UtcDatetime
 
 
 # ---------------------------------------------------------------------------

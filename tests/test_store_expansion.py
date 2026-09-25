@@ -279,7 +279,10 @@ def test_the_schema_version_records_the_new_index(store: SqliteStore) -> None:
     # v8 added two nullable columns to `doc_state` — the incremental build's stat
     # memo (roadmap 6.20, ADR-0133) — and, once more, nothing here: the lexical
     # index's statement is byte-identical across the bump.
-    assert SCHEMA_VERSION == "mycelium/store/v8"
+    # v9 dropped three columns — `documents.created_at`/`updated_at` and
+    # `doc_state.source_mtime` — when the record stopped carrying the file's
+    # mtime (roadmap 7.7, D-032). Nothing lexical moved.
+    assert SCHEMA_VERSION == "mycelium/store/v9"
     columns = {
         row[1] for row in store._connection.execute("PRAGMA table_info(chunks_fts)").fetchall()
     }

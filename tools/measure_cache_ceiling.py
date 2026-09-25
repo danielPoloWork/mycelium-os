@@ -28,11 +28,12 @@ in `.mycelium/` differs:
 - **restored** — another checkout's whole `.mycelium/`, copied in. What a CI job
   caching the directory buys today, with no feature built.
 - **restored-mtimes** — the same, with every document's mtime set to the one the
-  cached checkout had. A document record carries its file's mtime (ADR-0009), so a
-  fresh checkout re-assembles and re-stores every document whatever its cache holds;
-  this arm prices that dependency. It is what a directory cache buys a checkout whose
-  mtimes are deterministic — set from the commit, as `git restore-mtime` does — or a
-  record that did not carry them.
+  cached checkout had. Until roadmap 7.7 a document record carried its file's mtime
+  (ADR-0009), so a fresh checkout re-assembled and re-stored every document whatever
+  its cache held, and this arm priced that dependency: 40 s against 1.6 s at 1 000
+  documents (ADR-0154). D-032 took the timestamps out of the record, so `restored`
+  and this arm now coincide; the arm stays as the control that says so — a gap
+  between the two would be the mtime finding its way back into the record.
 
 The seeding and the restore are timed separately from the build they precede. The
 seeding is the local half of every fetch — the bytes re-hashed and written, the rows
@@ -47,12 +48,12 @@ touched, the computation a miss runs against the one a hit runs instead
 collects; the rest is file operations, and only a machine that pays for them saves them.
 
 **An arm is only evidence if it measured what it names.** So each build's cache hits
-are recorded beside its time, and its manifest's `chunks`, `edges` and `symbols`
-digests are compared with the cold arm's: a cache that changed the output would be a
-bug, and a seeded arm that missed would be timing a cold build under another name.
-The `documents` digest is *expected* to differ between checkouts — a document record
-carries its file's mtime (ADR-0009) — and that expectation is itself a finding about
-what any cache of a checkout can reuse.
+are recorded beside its time, and its manifest's `documents`, `chunks`, `edges` and
+`symbols` digests are compared with the cold arm's: a cache that changed the output
+would be a bug, and a seeded arm that missed would be timing a cold build under
+another name. The `documents` digest joined that list at roadmap 7.7: until then it
+was *expected* to differ between checkouts, because a document record carried its
+file's mtime (ADR-0009), and that expectation was the finding that became D-032.
 
 **Portability is measured, not assumed.** A remote cache is worthless if two
 machines mint different keys for the same commit, so each scale also seeds a
@@ -123,12 +124,13 @@ from mycelium.store import STORE_DIRNAME, SqliteStore  # noqa: E402
 ARMS: Final = ("cold", "seeded", "restored", "restored-mtimes")
 """Rotated one place per round, so drift across a run cannot land on one arm."""
 
-PORTABLE_DIGESTS: Final = ("chunks", "edges", "symbols")
+PORTABLE_DIGESTS: Final = ("documents", "chunks", "edges", "symbols")
 """The manifest digests two checkouts of one tree must agree on (spec 03 §7).
 
-`documents` is deliberately absent: a document record carries the file's mtime as
-`created_at`/`updated_at` (ADR-0009), and a fresh checkout's mtimes are the moment it
-was written."""
+`documents` was deliberately absent until roadmap 7.7: a document record carried the
+file's mtime as `created_at`/`updated_at` (ADR-0009), and a fresh checkout's mtimes
+are the moment it was written. D-032 removed the timestamps, so every published
+digest is now a function of the tree."""
 
 DEFAULT_SCALES: Final = (250, COLD_BUILD_DOCUMENTS)
 DEFAULT_ROUNDS: Final = 3

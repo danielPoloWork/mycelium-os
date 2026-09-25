@@ -103,7 +103,6 @@ class DocState:
     doc_id: str
     path: str
     source_digest: Sha256Digest
-    source_mtime: str
     env_digest: Sha256Digest
     document_digest: Sha256Digest
     chunks_digest: Sha256Digest

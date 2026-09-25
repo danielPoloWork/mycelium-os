@@ -14,7 +14,6 @@ and the deferral outlived the item by three milestones. It exists now:
 """
 
 from collections.abc import Iterator
-from datetime import UTC, datetime
 
 import pytest
 from pytest_benchmark.fixture import BenchmarkFixture
@@ -66,8 +65,6 @@ def populated_store(tmp_path_factory: pytest.TempPathFactory) -> Iterator[Sqlite
                     verification_status=VerificationStatus.VERIFIED,
                     provenance=Provenance(),
                     stats=DocumentStats(tokens=0, headings=0, chunks=0, links_out=0),
-                    created_at=datetime(2026, 7, 31, tzinfo=UTC),
-                    updated_at=datetime(2026, 7, 31, tzinfo=UTC),
                 )
             )
             store.put_chunks(_chunks(1000))
@@ -96,8 +93,6 @@ def test_put_chunks(tmp_path_factory: pytest.TempPathFactory, benchmark: Benchma
                 verification_status=VerificationStatus.VERIFIED,
                 provenance=Provenance(),
                 stats=DocumentStats(tokens=0, headings=0, chunks=0, links_out=0),
-                created_at=datetime(2026, 7, 31, tzinfo=UTC),
-                updated_at=datetime(2026, 7, 31, tzinfo=UTC),
             )
         )
     batch = _chunks(100)

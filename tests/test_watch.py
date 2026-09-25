@@ -344,16 +344,17 @@ def test_an_edit_is_a_change(tmp_path: Path) -> None:
     assert has_real_change(root, [document]) is True
 
 
-def test_a_touch_is_a_change_because_mtime_becomes_created_at(tmp_path: Path) -> None:
-    """Identical bytes, new mtime: a manual build would publish different records
-    (ADR-0009), so the watcher must not decide otherwise."""
+def test_a_touch_is_not_a_change(tmp_path: Path) -> None:
+    """Identical bytes, new mtime: a manual build would publish the same records
+    — the mtime stopped being an input at roadmap 7.7 (D-032), when ADR-0009's
+    ``created_at`` left the record — so the watcher must not build for it."""
     root = repo(tmp_path)
     build(root, config=LEXICAL)
     document = root / "knowledge" / "retries.md"
     later = int(document.stat().st_mtime) + 120
     os.utime(document, (later, later))
 
-    assert has_real_change(root, [document]) is True
+    assert has_real_change(root, [document]) is False
 
 
 def test_appearing_and_disappearing_are_changes(tmp_path: Path) -> None:

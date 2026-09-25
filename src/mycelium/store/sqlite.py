@@ -637,9 +637,8 @@ class SqliteStore:
             INSERT INTO documents(
                 doc_id, path, title, namespace, collection, tags_json, trust_class,
                 curated, verification_status, verification_json, content_digest,
-                provenance_json, fidelity_report, secret_flags_json, stats_json,
-                created_at, updated_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                provenance_json, fidelity_report, secret_flags_json, stats_json)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(doc_id) DO UPDATE SET
                 path = excluded.path, title = excluded.title,
                 namespace = excluded.namespace, collection = excluded.collection,
@@ -651,7 +650,7 @@ class SqliteStore:
                 provenance_json = excluded.provenance_json,
                 fidelity_report = excluded.fidelity_report,
                 secret_flags_json = excluded.secret_flags_json,
-                stats_json = excluded.stats_json, updated_at = excluded.updated_at
+                stats_json = excluded.stats_json
             """,
             (
                 document.doc_id,
@@ -671,8 +670,6 @@ class SqliteStore:
                 document.fidelity_report,
                 canonical_json(list(document.secret_flags)),
                 canonical_json(document.stats.model_dump(mode="json")),
-                _rfc3339(document.created_at),
-                _rfc3339(document.updated_at),
             ),
         )
 
@@ -784,12 +781,12 @@ class SqliteStore:
         self._connection.execute(
             """
             INSERT INTO doc_state(
-                doc_id, path, source_digest, source_mtime, source_size, source_mtime_ns,
+                doc_id, path, source_digest, source_size, source_mtime_ns,
                 env_digest, document_digest, chunks_digest, warnings_json, graph_json)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?)
+            VALUES(?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(doc_id) DO UPDATE SET
                 path = excluded.path, source_digest = excluded.source_digest,
-                source_mtime = excluded.source_mtime, source_size = excluded.source_size,
+                source_size = excluded.source_size,
                 source_mtime_ns = excluded.source_mtime_ns, env_digest = excluded.env_digest,
                 document_digest = excluded.document_digest,
                 chunks_digest = excluded.chunks_digest,
@@ -800,7 +797,6 @@ class SqliteStore:
                 state.doc_id,
                 state.path,
                 state.source_digest,
-                state.source_mtime,
                 state.source_size,
                 state.source_mtime_ns,
                 state.env_digest,
@@ -1773,7 +1769,6 @@ def _doc_state_from_row(row: sqlite3.Row) -> DocState:
         doc_id=str(row["doc_id"]),
         path=str(row["path"]),
         source_digest=str(row["source_digest"]),
-        source_mtime=str(row["source_mtime"]),
         source_size=None if row["source_size"] is None else int(row["source_size"]),
         source_mtime_ns=None if row["source_mtime_ns"] is None else int(row["source_mtime_ns"]),
         env_digest=str(row["env_digest"]),
@@ -1867,8 +1862,6 @@ def _document_from_row(row: sqlite3.Row) -> Document:
         fidelity_report=row["fidelity_report"],
         secret_flags=tuple(json.loads(row["secret_flags_json"])),
         stats=json.loads(row["stats_json"]),
-        created_at=row["created_at"],
-        updated_at=row["updated_at"],
     )
 
 
