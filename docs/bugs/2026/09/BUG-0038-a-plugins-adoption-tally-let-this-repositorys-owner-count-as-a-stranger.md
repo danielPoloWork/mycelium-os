@@ -97,7 +97,7 @@ corrects the record to match the code, which was already right.
 
 ## References
 
-- Fixing PR: #N (filled in once opened — never pre-written)
+- Fixing PR: #204
 - `CHANGELOG` entry: `[Unreleased]` → Fixed
 - Related: roadmap 7.11, 7.13
   ([ADR-0155](../../../adr/0155-read-7-2s-three-triggers-and-say-which-one-cannot-be-read.md),

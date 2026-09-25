@@ -4,7 +4,7 @@
   reusing D-030's engaged-actor definition on a plugin's own repository excluded only that
   plugin's owner, so this repository's owner read as a stranger to every plugin and could
   fire the trigger alone.
-- **PR:** #N (`fix/exclude-this-owner-from-plugin-adoption`). Follows #203, merged as
+- **PR:** #204 (`fix/exclude-this-owner-from-plugin-adoption`). Follows #203, merged as
   `f19d38d`.
 - **Milestone 7:** 7.13 closed.
 - **Decision it records:**
