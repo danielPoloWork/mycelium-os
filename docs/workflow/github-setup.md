@@ -187,6 +187,22 @@ a pull request.
 To name a second reviewer, add them to CODEOWNERS' `*` line: the merge-rights check reads the
 file, so nothing else changes.
 
+## 7. The About box — description and topics
+
+A stranger meets the repository's *About* box before the README: in search results, in the
+sidebar, on every fork. Until roadmap 7.10 it was empty. The words are drafted once, as
+`ABOUT_DESCRIPTION` and `ABOUT_TOPICS` in `tools/check_repo_settings.py`, which compares the
+live box with them; a test holds this page to the same words.
+
+```bash
+gh api -X PATCH repos/$OWNER/$REPO -f description="The knowledge compiler for AI agents: compile a repository's Markdown, PDFs, DOCX and HTML into a deterministic, versioned index, and serve it over CLI and MCP with citations an agent can check. Local-first, offline, no telemetry."
+gh api -X PUT repos/$OWNER/$REPO/topics -f names[]=knowledge-compiler -f names[]=ai-agents -f names[]=mcp -f names[]=model-context-protocol -f names[]=information-retrieval -f names[]=bm25 -f names[]=sqlite -f names[]=markdown -f names[]=documentation -f names[]=knowledge-base -f names[]=citations -f names[]=local-first -f names[]=obsidian -f names[]=llm -f names[]=cli -f names[]=python
+```
+
+Set the *Website* field to `https://danielpolowork.github.io/mycelium-os/` only once §4's
+Pages step is done: until then the address answers 404, and an empty field is better than a
+dead link.
+
 ## Re-running
 
 Every command here is idempotent or safely re-runnable. Re-run after changing labels, after a

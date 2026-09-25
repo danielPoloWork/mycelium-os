@@ -243,7 +243,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.CONCEPTUAL,),
         (
             (
-                "README.md#what-makes-it-different/retrieval-is-lexical-by-default-and-that-was-measured/",
+                "docs/how-it-works.md#retrieval-is-lexical-by-default-and-that-was-measured/",
                 3,
             ),
         ),
@@ -259,7 +259,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.CONCEPTUAL,),
         (
             (
-                "README.md#what-makes-it-different/the-lexical-index-matches-inflections-and-still-prefers-your-exact-word/0",
+                "docs/how-it-works.md#the-lexical-index-matches-inflections-and-still-prefers-your-exact-word/0",
                 3,
             ),
         ),
@@ -273,7 +273,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.CONCEPTUAL,),
         (
             (
-                "README.md#what-makes-it-different/your-question-is-answered-by-its-content-words/0",
+                "docs/how-it-works.md#your-question-is-answered-by-its-content-words/0",
                 3,
             ),
         ),
@@ -306,7 +306,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.CONCEPTUAL,),
         (
             (
-                "README.md#what-makes-it-different/nothing-becomes-verified-without-a-gate-and-a-person/0",
+                "docs/how-it-works.md#nothing-becomes-verified-without-a-gate-and-a-person/0",
                 3,
             ),
             ("docs-site/how-to/verify-and-promote.md#3-check-its-grounding/0", 2),
@@ -847,7 +847,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.EXACT,),
         (
             (
-                "README.md#what-makes-it-different/a-name-in-your-query-is-looked-up-and-fifty-eight-cases-took-the-default-back-off/0",
+                "docs/how-it-works.md#a-name-in-your-query-is-looked-up-and-fifty-eight-cases-took-the-default-back-off/0",
                 3,
             ),
         ),
@@ -861,7 +861,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.EXACT,),
         (
             (
-                "README.md#what-makes-it-different/ingestion-picks-its-parser-and-you-pick-which-one/0",
+                "docs/how-it-works.md#ingestion-picks-its-parser-and-you-pick-which-one/0",
                 3,
             ),
         ),
@@ -875,7 +875,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.EXACT,),
         (
             (
-                "README.md#what-makes-it-different/a-citation-that-has-gone-stale-tells-you-instead-of-quietly-answering/0",
+                "docs/how-it-works.md#a-citation-that-has-gone-stale-tells-you-instead-of-quietly-answering/0",
                 3,
             ),
             ("README.md#how-it-compiles/0", 2),
@@ -890,7 +890,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.EXACT,),
         (
             (
-                "README.md#what-makes-it-different/nothing-becomes-verified-without-a-gate-and-a-person/0",
+                "docs/how-it-works.md#nothing-becomes-verified-without-a-gate-and-a-person/0",
                 3,
             ),
             ("docs-site/how-to/verify-and-promote.md#3-check-its-grounding/0", 2),
@@ -905,7 +905,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.EXACT,),
         (
             (
-                "README.md#what-makes-it-different/entities-are-declared-by-your-vault-not-guessed-from-your-prose/0",
+                "docs/how-it-works.md#entities-are-declared-by-your-vault-not-guessed-from-your-prose/0",
                 3,
             ),
         ),
@@ -1531,7 +1531,7 @@ DEV: tuple[Judgment, ...] = (
         (
             ("docs/adr/0035-let-an-llm-write-only-what-a-machine-can-check.md#decision/0", 3),
             (
-                "README.md#what-makes-it-different/an-llm-may-write-but-only-what-a-machine-can-check/0",
+                "docs/how-it-works.md#an-llm-may-write-but-only-what-a-machine-can-check/0",
                 2,
             ),
         ),
@@ -1674,7 +1674,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.FACT,),
         (
             (
-                "README.md#what-makes-it-different/your-question-is-answered-by-its-content-words/0",
+                "docs/how-it-works.md#your-question-is-answered-by-its-content-words/0",
                 3,
             ),
         ),
@@ -1688,7 +1688,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.FACT,),
         (
             (
-                "README.md#what-makes-it-different/the-graph-is-typed-and-every-type-is-derived-from-something-you-wrote/0",
+                "docs/how-it-works.md#the-graph-is-typed-and-every-type-is-derived-from-something-you-wrote/0",
                 3,
             ),
         ),
@@ -1710,7 +1710,7 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.FACT,),
         (
             (
-                "README.md#what-makes-it-different/nothing-becomes-verified-without-a-gate-and-a-person/0",
+                "docs/how-it-works.md#nothing-becomes-verified-without-a-gate-and-a-person/0",
                 3,
             ),
         ),
@@ -2330,11 +2330,11 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.RELATIONSHIP,),
         (
             (
-                "README.md#what-makes-it-different/the-graph-is-typed-and-every-type-is-derived-from-something-you-wrote/0",
+                "docs/how-it-works.md#the-graph-is-typed-and-every-type-is-derived-from-something-you-wrote/0",
                 3,
             ),
             (
-                "README.md#what-makes-it-different/an-ingested-document-joins-the-graph-and-is-never-mistaken-for-something-someone-wrote/0",
+                "docs/how-it-works.md#an-ingested-document-joins-the-graph-and-is-never-mistaken-for-something-someone-wrote/0",
                 2,
             ),
         ),
@@ -2370,11 +2370,11 @@ DEV: tuple[Judgment, ...] = (
         (EvalSlice.RELATIONSHIP,),
         (
             (
-                "README.md#what-makes-it-different/retrieval-is-lexical-by-default-and-that-was-measured/0",
+                "docs/how-it-works.md#retrieval-is-lexical-by-default-and-that-was-measured/0",
                 3,
             ),
             (
-                "README.md#what-makes-it-different/the-graph-can-widen-a-search-and-it-did-not-earn-the-right-to/0",
+                "docs/how-it-works.md#the-graph-can-widen-a-search-and-it-did-not-earn-the-right-to/0",
                 3,
             ),
         ),
@@ -2390,7 +2390,7 @@ DEV: tuple[Judgment, ...] = (
         (
             ("docs-site/how-to/verify-and-promote.md#4-promote-it/0", 3),
             (
-                "README.md#what-makes-it-different/nothing-becomes-verified-without-a-gate-and-a-person/0",
+                "docs/how-it-works.md#nothing-becomes-verified-without-a-gate-and-a-person/0",
                 2,
             ),
         ),
@@ -3452,7 +3452,7 @@ RELEASE: tuple[Judgment, ...] = (
         (EvalSlice.EXACT,),
         (
             (
-                "README.md#what-makes-it-different/retrieval-is-lexical-by-default-and-that-was-measured/0",
+                "docs/how-it-works.md#retrieval-is-lexical-by-default-and-that-was-measured/0",
                 3,
             ),
         ),
@@ -4711,7 +4711,7 @@ RELEASE: tuple[Judgment, ...] = (
         (EvalSlice.EXACT,),
         (
             (
-                "README.md#what-makes-it-different/"
+                "docs/how-it-works.md#"
                 "a-citation-that-has-gone-stale-tells-you-instead-of-quietly-answering/0",
                 3,
             ),
@@ -4751,7 +4751,7 @@ RELEASE: tuple[Judgment, ...] = (
         (EvalSlice.FACT,),
         (
             (
-                "README.md#what-makes-it-different/"
+                "docs/how-it-works.md#"
                 "the-original-is-kept-and-hostile-files-are-refused-before-they-cost-anything/0",
                 3,
             ),
@@ -4764,7 +4764,7 @@ RELEASE: tuple[Judgment, ...] = (
         (EvalSlice.RELATIONSHIP,),
         (
             (
-                "README.md#what-makes-it-different/"
+                "docs/how-it-works.md#"
                 "an-ingested-document-joins-the-graph-and-is-never-mistaken-for-something-"
                 "someone-wrote/0",
                 3,
@@ -4784,8 +4784,7 @@ RELEASE: tuple[Judgment, ...] = (
         (EvalSlice.FACT,),
         (
             (
-                "README.md#what-makes-it-different/"
-                "nothing-becomes-verified-without-a-gate-and-a-person/0",
+                "docs/how-it-works.md#nothing-becomes-verified-without-a-gate-and-a-person/0",
                 3,
             ),
         ),
@@ -4824,7 +4823,7 @@ RELEASE: tuple[Judgment, ...] = (
         (EvalSlice.RELATIONSHIP,),
         (
             (
-                "README.md#what-makes-it-different/"
+                "docs/how-it-works.md#"
                 "your-query-is-planned-and-the-plan-tells-you-which-rule-chose-it/0",
                 3,
             ),
@@ -4843,7 +4842,7 @@ RELEASE: tuple[Judgment, ...] = (
         (EvalSlice.CONCEPTUAL,),
         (
             (
-                "README.md#what-makes-it-different/"
+                "docs/how-it-works.md#"
                 "the-lexical-index-matches-inflections-and-still-prefers-your-exact-word/0",
                 3,
             ),
@@ -4857,8 +4856,7 @@ RELEASE: tuple[Judgment, ...] = (
         (EvalSlice.FACT,),
         (
             (
-                "README.md#what-makes-it-different/"
-                "retrieval-is-lexical-by-default-and-that-was-measured/1",
+                "docs/how-it-works.md#retrieval-is-lexical-by-default-and-that-was-measured/1",
                 3,
             ),
         ),
@@ -4871,7 +4869,7 @@ RELEASE: tuple[Judgment, ...] = (
         (EvalSlice.RELATIONSHIP,),
         (
             (
-                "README.md#what-makes-it-different/"
+                "docs/how-it-works.md#"
                 "your-chatbot-conversations-become-citable-knowledge-through-a-real-plugin/0",
                 3,
             ),
@@ -4886,7 +4884,7 @@ RELEASE: tuple[Judgment, ...] = (
         (EvalSlice.EXACT,),
         (
             (
-                "README.md#what-makes-it-different/"
+                "docs/how-it-works.md#"
                 "the-graph-is-typed-and-every-type-is-derived-from-something-you-wrote/0",
                 3,
             ),

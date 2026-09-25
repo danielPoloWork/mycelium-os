@@ -298,6 +298,41 @@ def _report_arm(label: str, base: Scores, arm: Scores) -> tuple[float, float]:
     return overall, delta
 
 
+@dataclass(frozen=True)
+class Reading:
+    """One arm on one set: its overall move and its worst slice's move."""
+
+    set_name: str
+    overall: float
+    worst_slice: float
+
+    @property
+    def is_release(self) -> bool:
+        return self.set_name.endswith("/release")
+
+
+def earning_arms(readings: dict[str, list[Reading]]) -> list[str]:
+    """The arms that clear the bar, read across **every** set together.
+
+    The bar is the module docstring's, and it is a statement about an arm, not about a
+    set: a gain on some release set, **no overall regression on any set**, and no slice
+    worse than `SLICE_FLOOR` anywhere. Until roadmap 7.10 the check read each release set
+    alone, so an arm gaining +0.23 % on this repository's own corpus while losing 19 % on
+    each vendored one was reported as earning the default (BUG-0037).
+    """
+    earned: list[str] = []
+    for arm, rows in readings.items():
+        gains = [row for row in rows if row.is_release and row.overall > 0]
+        if not gains:
+            continue
+        if any(row.overall < 0 for row in rows):
+            continue
+        if any(row.worst_slice < SLICE_FLOOR for row in rows):
+            continue
+        earned.append(arm + " " + ", ".join(f"{row.set_name} {row.overall:+.2%}" for row in gains))
+    return earned
+
+
 def fields(store: SqliteStore) -> dict[str, Counter[str]]:
     """The distinct values of every field a spec 04 §4 boost would read."""
     seen: dict[str, Counter[str]] = {
@@ -393,7 +428,7 @@ def main() -> int:
 
     corpora = (("corpus", args.root),) if args.root else CORPORA
     measured = 0
-    earned: list[str] = []
+    readings: dict[str, list[Reading]] = {}
     for label, root in corpora:
         if not (root / STORE_DIRNAME / STORE_FILENAME).exists():
             print(f"{label:<22} no store; skipped (build it to measure this corpus)")
@@ -425,18 +460,19 @@ def main() -> int:
                     arm = score(cases, case_pools, weight)
                     label_arm = f"depth^{weight} (~{ranks_moved(weight):.0f}r)"
                     overall, delta = _report_arm(label_arm, base, arm)
-                    if set_name == "release" and overall > 0 and delta >= SLICE_FLOOR:
-                        earned.append(f"{name} depth^{weight} {overall:+.2%}")
+                    readings.setdefault(f"depth^{weight}", []).append(Reading(name, overall, delta))
                     narrow = score(cases, case_pools, weight, within=True)
                     inside, inside_delta = _report_arm(f"  ^{weight} within ten", base, narrow)
-                    if set_name == "release" and inside > 0 and inside_delta >= SLICE_FLOOR:
-                        earned.append(f"{name} depth^{weight} within-ten {inside:+.2%}")
+                    readings.setdefault(f"depth^{weight} within-ten", []).append(
+                        Reading(name, inside, inside_delta)
+                    )
                 control = score(cases, case_pools, CONTROL_WEIGHT, shuffle=True)
                 _report_arm(f"shuffled^{CONTROL_WEIGHT}", base, control)
 
     if not measured:
         print("nothing measured: no corpus in this tree carries a store and a case set")
         return 1
+    earned = earning_arms(readings)
     if args.check and earned:
         print(
             "\na heading-proximity arm now earns a default this product does not carry: "

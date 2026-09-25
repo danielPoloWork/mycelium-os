@@ -12,6 +12,12 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`tools/check_repo_settings.py` reports the repository's About box** (roadmap 7.10,
+  [ADR-0159](docs/adr/0159-keep-the-front-door-to-what-a-first-reader-needs-and-move-the-rest-with-its-citations.md)).
+  The description and topics a stranger meets before the README were never set; they are now
+  drafted as `ABOUT_DESCRIPTION` and `ABOUT_TOPICS`, compared with the live box, and installed by
+  the two commands in `docs/workflow/github-setup.md` §7, which remain the owner's to run.
+
 - **`tools/check_repo_settings.py` reports the contribution-intake policy** (roadmap 7.9,
   [ADR-0158](docs/adr/0158-let-anyone-open-a-pull-request-and-keep-the-merge-with-named-reviewers.md)).
   Anyone may open a pull request; only the reviewers `.github/CODEOWNERS` names may review
@@ -74,6 +80,15 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **The README is a front door again** (roadmap 7.10, ADR-0159). 1 022 lines become 274:
+  what the project is and who it is for, the ten-minute path to a cited answer, install, first
+  commands, and a table from each question a sceptical reader asks to where the evidence
+  answers it. The eighteen sections explaining each measured design decision move verbatim to
+  [`docs/how-it-works.md`](docs/how-it-works.md). Because this repository's documentation is its
+  own judged corpus, the 26 cases citing those sections are re-pointed in the same change and
+  checked to land on the same passages. The README no longer says the docs site is published:
+  it is not, until GitHub Pages is enabled.
+
 - **A touch is not an edit, and a fresh clone with a restored `.mycelium/` is incremental**
   (roadmap 7.7, D-032,
   [ADR-0157](docs/adr/0157-take-the-timestamps-out-of-the-document-record.md)). Dirty
@@ -106,6 +121,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   filesystem or from Git.
 
 ### Fixed
+
+- **`tools/measure_result_rules.py --check` applies the bar it states**
+  ([BUG-0037](docs/bugs/2026/09/BUG-0037-the-result-rules-check-reads-each-set-alone.md)). It
+  read each release set alone, so a heading-proximity arm gaining +0.23 % on this repository's
+  own corpus while losing 19–21 % on both vendored ones was reported as earning the default. An
+  arm now earns it only with a release gain, no overall regression on any set and no slice past
+  the floor anywhere.
 
 - **The reference profile generates the corpus it names** (roadmap 7.6,
   [BUG-0034](docs/bugs/2026/09/BUG-0034-the-reference-profile-harvests-one-of-the-two-corpora-it-names.md),
@@ -143,6 +165,10 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   runs the default branch's workflow against the tag's tree (BUG-0006).
 
 ### Security
+
+- **`SECURITY.md` states its response targets**: from v1.0.0 a critical report is acknowledged
+  within 24 hours and fixed or mitigated within 7 days (spec 06 §4); other severities are
+  triaged best-effort, and the policy says why.
 
 ## Released versions
 

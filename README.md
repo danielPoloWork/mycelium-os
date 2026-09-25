@@ -32,7 +32,14 @@ knowledge **compiler and serving layer** — not an agent runtime, not a RAG fra
 chat product (D-001). v1 targets repo-scale, local-first, single-tenant corpora of
 10²–10⁵ documents (D-002), offline by default: no accounts, no API keys, no telemetry.
 
-The design of record is [RFC-0001](docs/rfc/0001-mycelium-os-v1.md); the specification is
+**Who it is for:** teams whose coding agents work in a repository with more documentation than
+fits in a context window — ADRs, specs, runbooks, and the PDFs and wikis that govern the code —
+and who want answers an agent can cite and a person can check. It runs on one machine, against
+one corpus, and nothing leaves that machine unless you configure a provider to send it.
+
+**Ten minutes to a cited answer** is the budget the specification sets (NFR-4): install below,
+then follow the [tutorial](docs-site/tutorial.md). The design of record is
+[RFC-0001](docs/rfc/0001-mycelium-os-v1.md); the specification is
 [`docs/specs/01_spec_mycelium.md`](docs/specs/01_spec_mycelium.md).
 
 ## Install
@@ -51,7 +58,6 @@ inside the brackets the same way:
 `pip install "mycelium-os[embeddings] @ git+https://github.com/danielPoloWork/mycelium-os@v0.6.0"`.
 Once the first release is published this collapses to `pip install mycelium-os[embeddings]`,
 which is how the rest of this page writes it.
-
 ## Try it
 
 ```bash
@@ -102,7 +108,6 @@ its words actually reached in the index) — returning
 verbatim passages with `mycelium://` citations, trust class, and verification status. Every response states in words that its
 content is data, never instructions: retrieved text is quoted evidence, and injection
 resistance is a tested property, not a promise (D-017).
-
 ## How it compiles
 
 ```text
@@ -122,7 +127,6 @@ Citations key on document identity rather than path, so a `mycelium://` URI surv
 being renamed or moved — including the `candidate/` → `verified/` promotion that records a
 document as checked (D-021). A dead anchor returns a typed `ANCHOR_GONE` with the nearest
 surviving ancestor, never silently wrong content.
-
 ## What makes it different
 
 | | Retrieval-time RAG | Mycelium OS |
@@ -138,726 +142,63 @@ That last row is the honest one: the evaluation harness ships in Milestone 2, no
 victory lap. If compiled knowledge cannot beat grep on a corpus, the harness is built to say
 so.
 
-### Retrieval is lexical by default, and that was measured
-
-Mycelium OS compiles vectors with a local embedder (no API key, no account, offline once the
-model is on disk), and can fuse them with BM25 by Reciprocal Rank Fusion. **It does not do
-so by default.** Gate G2 requires hybrid retrieval to *earn* the default — ≥ +5 % nDCG@10
-with no slice worse than −2 % — and it has not.
-
-The uncomfortable part is what "has not" now means. Re-measured across six judged sets, G2
-splits **three to three**: hybrid clears the +5 % bar on five of the six, and fails on three
-of them because a slice of four to seven cases moved by one or two. The verdict is not even
-dev-versus-release — this repository's release set passes where its dev set fails. So the
-lexical default stands on the **burden of proof** (spec 04 §7.3 puts it on hybrid) rather
-than on a stable measurement, and saying otherwise would be claiming a decision the
-benchmark cannot currently make. What that costs, and what would fix it, is
-[ADR-0064](docs/adr/0064-measure-the-gate-that-decides-the-default.md); re-run it yourself
-with `python tools/measure_hybrid_gate.py`.
-
-That verdict is now **written down and dated**, in [`eval/g2-verdict.json`](eval/g2-verdict.json),
-with fingerprints of the retrieval configuration, the corpora and the judgements it was
-measured under. It had to be: G2 needs the embedding model, CI does not have one, and the
-lexical leg it is measured *against* changed four times while the verdict sat in prose. CI
-cannot re-measure it, so it enforces the next best thing — that the recorded verdict still
-describes this product — and a ranking change now has to re-record G2 before it can land
-([ADR-0068](docs/adr/0068-give-gate-g2-a-runner-by-dating-its-verdict.md)).
-
-The most uncomfortable part is last. G2's second condition — *no slice worse than −2 %* —
-sounds like a statement about a category of question, and at four to seven cases a slice it
-is a statement about **one**: a slice trips when a single case loses more than `0.02·n·m`,
-which here is a median of 0.053 against a median losing case of 0.126. Hybrid worsens 15 % of
-the judged cases, so something trips on nearly any set. **The bar is kept anyway** — read case
-by case the trips are real, including one where hybrid loses the answer outright (0.316 →
-0.000), so it is catching harm rather than noise. What that means plainly: hybrid cannot be
-promoted until the judged sets are several times larger, and the lexical default rests on a
-burden that cannot currently be discharged rather than on a weighing that came out against it
-([ADR-0069](docs/adr/0069-read-g2s-slices-case-by-case-and-keep-the-bar.md); the sets are
-roadmap 6.8).
-
-So the shipped default is `[retrieval] profile = "lexical"`. Turn hybrid on with one setting
-or `mycelium search --hybrid` — on a natural-language question it can be the difference
-between an answer and none: one judged case has its answer at vector rank 3 of 568 and
-lexical rank 227. The original measurement, the similarity-floor sweep that failed to fix
-abstention, and the precondition that fixed it instead are in
-[ADR-0017](docs/adr/0017-adopt-the-local-embedder-and-hybrid-retrieval.md) and
-[ADR-0025](docs/adr/0025-make-lexical-evidence-the-vector-legs-precondition.md).
-
-`--explain` also says what each word of your query reached, which is the one question
-ranking cannot answer about itself: a term matching nothing contributes nothing to a score,
-which is arithmetically identical to a term that matched and lost.
-
-On a two-document corpus that says *signed off* and *contribution*:
-
-```text
-$ mycelium search "who signs off a kubernetes contribution" --explain
-terms: 6, 2 matching nothing, 1 reached only by stem
-warning:    who: nothing in this corpus, in any inflection
-warning:    kubernetes: nothing in this corpus, in any inflection
-   signs: 0 doc(s); stem "sign" 1  <- only via its stem
-   off: 1 doc(s)
-   a: 1 doc(s)
-   contribution: 1 doc(s); stem "contribut" 1
-```
-
-Three outcomes, kept apart: written that way, reached only by its stem, or absent from the
-corpus in every inflection. A query standing on one weak word is then visible in one command
-— which on this project's own evaluation set it once was not, for two milestones
-([ADR-0050](docs/adr/0050-report-what-each-query-term-reached.md)).
-
-Embeddings are an optional install — `pip install mycelium-os[embeddings]` — and a build
-without them publishes normally, marked `degraded: ["vectors"]`, with lexical search intact.
-Nothing is ever downloaded unless `[embedding] allow_download` says so.
-
-### The lexical index matches inflections, and still prefers your exact word
-
-`signs` used to find nothing in a corpus that says `signed`: FTS5's tokenizer does no
-stemming, so a query that inflects a word differently from the document simply missed it.
-Each indexed field now carries a **stem column beside** the surface one, at a tenth of its
-weight — so a document that spells your word exactly matches two columns where one that
-only inflects it matches one. You get the reach without losing the literal match, which is
-what swapping in a stemming tokenizer would have cost: measured, that swap wins overall and
-regresses the `exact` slice on one corpus and `conceptual` on the other, and it fails gate
-G3 on both.
-
-A stem can never make the system answer a question your words have no footing for. That is
-not a detail: Porter's algorithm over-stems — `organization` and `organ` collapse to the
-same token — so without the rule a question about something this corpus does not contain
-gets answered anyway, and answering what you cannot answer is worse than missing it. So the
-rule is a gate on the *query*: if not one of your words appears in the corpus as you spelled
-it, you get silence. It used to be a filter on the *documents* too — every candidate had to
-carry one of your words literally — and roadmap 4.23 found that half was costing reach and
-buying no safety, so it is gone. The numbers, the variants refused, and the price still paid
-are in [ADR-0048](docs/adr/0048-index-the-stem-beside-the-surface-form.md) and
-[ADR-0054](docs/adr/0054-gate-the-query-not-the-documents.md).
-
-### Your question is answered by its content words
-
-`mycelium search "what does resolution mean"` used to return a section titled *"What is
-CycloneDX"* at rank 1, with the definition it asked for at rank 5 — because `what` and
-`does` matched a **heading** at three times a body's weight. The lexical leg now drops
-function words before it searches, and `--explain` names the ones it dropped and the query
-it actually ran. The **vector** leg still receives the whole question: an embedder is asked
-in the words it was trained on, and the grammar is what it reads.
-
-The list of words is not new, and that is the uncomfortable part. It has lived in the
-evaluation harness since the `grep` baseline was written — applied to both retrievers so
-neither got an easier question — and it was never applied to the product. So every number
-this README publishes was measured through a query path no user had. They do not move here;
-they simply describe the shipped one now. Measured through the product's own tokenisation,
-`uv`'s dev set read **0.510** where the harness reported 0.673, and against its own
-committed baselines the product as it stood **would have failed** the regression gate.
-
-What was *not* fixed is worth stating too: a stemmed function word can still outrank a
-definition if the stem weight is raised, `mean` cannot go in the list because it is a
-content word elsewhere, and an IDF floor is refused on measurement — document frequency does
-not tell a function word from a corpus's own nouns (`what` reaches 37 % of this repository's
-chunks; `adr` reaches 60 %). The numbers, the refusals and the two instruments that re-run
-them are in
-[ADR-0057](docs/adr/0057-drop-the-function-words-and-score-the-seam-that-ships.md).
-
-The other rule about your question is a **bound on its length**: the first 64 terms are
-read, and `--explain` says how many were not. Everything else on this path was already
-bounded — `k` at 50, `budget_tokens` on the answer, the embedder at its sequence length —
-and the question was not, so what the server spent was decided by what you pasted rather
-than by what the corpus holds. Pasting *this README* as a query held it for **146 seconds**;
-it now takes 94 milliseconds, and so does a document seven times shorter, which is the
-property that was missing. Nothing is refused, because an agent pasting a document is
-ordinary use and the answer to its opening is a real answer. Sixty-four is seven times the
-longest question this project measures itself on — nine terms — and a test fails on the day
-a judged question grows past it, because on that day the truncation is a scoring change
-([ADR-0129](docs/adr/0129-bound-the-question-once-before-anything-reads-it.md)).
-
-### The graph is typed, and every type is derived from something you wrote
-
-D-014 fixes a vocabulary of eight edge types and no graph database. **All eight are derived**,
-each from a fact rather than a guess: `links_to` and `cites` from the links you write (a link
-into `knowledge/evidence/` is a citation), `part_of` from a document's own headings,
-`derived_from` from the frontmatter that marks a document synthesized, `defines`/`references`
-from what the code fences declare and use, `mentions` from the entities a document declares, and
-`supersedes` from one frontmatter key:
-
-```yaml
----
-supersedes: [old-retry-note.md]
----
-```
-
-That key exists because nothing else could say it. A folder can carry a document's *status*, and
-a Markdown link can say two documents are *related* — but no link says one **replaced** the
-other, because a link carries no type. So an agent reading a decision can ask the question that
-actually matters about it:
-
-```bash
-mycelium neighbors docs/api.md                  # links out and in, sections, citations
-mycelium neighbors sym:python:RetryPolicy       # where it is defined, and what uses it
-mycelium neighbors docs/adr/0002-old.md --type supersedes   # what replaced this
-```
-
-Every edge says whether a human asserted it or a machine found it. `links_to`, `cites`,
-`part_of`, `derived_from` and `supersedes` are **authored** — they come from your links, your
-headings, your frontmatter. `defines`, `references` and `mentions` are **extracted**, because a
-grammar or the entity stage found them, and spec 03 §6's rule is that extracted never becomes
-authored silently. The same rule decides the status of a `supersedes:` key in an *ingested*
-document: that text came from the source, not from you, so the edge is extracted and can never
-pass for your decision.
-
-The measured effect on the vendored uv documentation: **76 linked sections** that were traversal
-dead ends are now joined to their documents, which is what a `[[doc#Heading]]` link should have
-meant all along. Weights are all 1.0 today — the field is served because the contract promises
-it, and what the numbers should be is a ranking question the graph-expansion ablation will answer
-([ADR-0074](docs/adr/0074-give-every-edge-type-a-derivation-or-a-reason-it-has-none.md)).
-
-### A fence that defines something becomes a symbol, and so does a heading that names one
-
-Spec 03 §2 gives a symbol an identity — `sym:python:RetryPolicy.delay` — and two sources:
-tree-sitter for code, definition syntax for docs. Since roadmap 5.1 the build's `extract` stage
-fills the `symbols` table from both. A code fence is read by its grammar's **own** tags query —
-the one GitHub's code navigation runs, shipped inside each tree-sitter wheel — for nine languages
-(Python, JavaScript, TypeScript and TSX, Rust, Go, Java, C, C++, Ruby), and every definition is
-qualified by its nesting, so `def delay` inside `class RetryPolicy` is the same symbol whether the
-fence is Python, Rust or Java. A heading defines the documentation term it is *about* — the name
-itself (`## uv.lock`), or the name and one framing word (`## The pyproject.toml`,
-`## pylock.toml format`) — and so does a definition list, the Markdown construct that carries the
-name, measured at zero occurrences across the three evaluation corpora and supported anyway,
-because it is the syntax.
-
-A **command** is a symbol too, since roadmap 5.23: what the corpus both *demonstrates* at a
-prompt (`$ uv tool install ruff`) and *names* as code (`` `uv tool install` ``) is minted as
-`sym:cli:uv tool install`, and neither half alone is — `uv add requests` is shown and never
-named, `uv cache prune` named and never shown. On the uv documentation that intersection is 45
-phrases and reads as the CLI's own command list; on this repository it is the `mycelium` and `uv`
-commands the README lists. A query that *is* a command (`uv lock --check`, `uvx`) is looked up
-whole and exactly, and the measured outcome is in
-[ADR-0094](docs/adr/0094-mint-a-command-the-corpus-demonstrates-and-names-and-report-what-promotion-can-and-cannot-reorder.md): the leg stays off, because promotion for commands clears the bar on the dev
-sets and moves nothing on the held-out ones.
-
-Each record says where the thing is defined — the Markdown line, `docs/api.md#L20` — and which
-chunks define it; it is in the export bundle's `symbols.jsonl` and in the manifest's counts and
-digests. `defined_in` is deliberately a *naming* fact and not an editorial one: it is the most
-direct site at which the corpus defines the name, never a guess at which section documents it
-best. Roadmap 5.19 tried to make it that guess and could not — on the four sections uv has for
-`pyproject.toml`, prose volume, mention count and path order each pick a different one, and the
-section a judge grades relevant is the shortest and mentions the name least. Every site is in
-`doc_refs` instead, where a reader can weigh them. The grammars are an optional install (`pip install mycelium-os[symbols]`); without them a
-build still compiles, and its snapshot says `degraded: symbols` and names the extra.
-
-The yields are stated rather than implied, because they are modest: this repository's own
-documentation defines **3** symbols (all headings — its four Python fences assign and call), the
-vendored uv documentation **23** (16 terms such as `uv.lock` and `pyproject.toml`, 5 Python
-functions, a Rust module and its method). Documentation fences mostly *use* rather than *define*;
-the table earns its keep on a corpus that documents an API with definitions in fences, which is
-what the spec wrote it for
-([ADR-0073](docs/adr/0073-take-the-grammars-word-for-a-definition-and-the-headings-for-a-name.md)).
-
-### A name in your query is looked up, and fifty-eight cases took the default back off
-
-Spec 04 §3 lists a third candidate generator beside BM25 and vectors: an *exact lookup in the
-symbol table for identifier-like tokens*. Roadmap 5.9 built it. Ask for `RetryPolicy` or
-`uv.lock` and the passages that **define** the name join the ranking, labelled
-`defines sym:python:RetryPolicy` by `mycelium search --explain`, ranked by the same BM25 as
-everything else and discounted so a definition cannot outrank your best direct match.
-
-**It shipped off for three items, then on for one milestone, and it is off again** — which is
-the more interesting half, because nothing about the ranking changed at any point. At roadmap 5.9 the leg could not reach the slice it
-exists for: the judged `symbol` cases ask for `uv tool install`, `uv lock --check` and nine more
-multi-word commands, and spec 04 §2's identifier test rejects every one of them on whitespace
-alone, so the lookup fired on **0 of 19**. Roadmap 5.23 gave a command a source — a phrase the
-corpus both *demonstrates* at a prompt and *names* as code — and a multi-word lookup to find it
-with, and the ablation moved to *proposable*: it cleared the bar on both dev sets and was
-identical on every held-out one.
-
-What finally earned it was a **corpus repair, not a tuning change**. The evidence projector was
-dropping the backticks an HTML source puts around `uv cache prune --ci`, so the ingested twin
-minted 11 commands against its Markdown original's 69 and could fire on **none** of its four
-judged `symbol` cases. With the namings carried (roadmap 5.25) it fires on all four, and
-`uv-ingested/release` — a held-out set — gains **+5.6 % on the slice and +0.9 % overall** with
-nothing regressing. The flag follows the measurement, because that is the rule, and CI fails if
-the two ever disagree again.
-
-The caveat was in the record rather than in a footnote — on the release sets that gain was
-**one case**, and the set that gained was the twin of the set that did not — and at roadmap 6.8
-the caveat became the verdict. Authoring the judged sets took the `symbol` slice from **four
-cases to fifty-eight**, and at that size the reading inverts on the very corpus the gain was
-claimed for: `uv/release` earns it (+5.0 % on the slice, +0.7 % overall) and
-`uv-ingested/release` **regresses** (−5.8 % on the slice, −0.7 % overall). The bar is a
-release-set gain with *no overall regression on any set*, so the flag follows the measurement
-back off and the leg is opt-in again
-([ADR-0137](docs/adr/0137-let-a-gated-default-follow-its-ablation-and-narrow-the-rule-that-would-refuse-it.md)).
-Four cases could not see this; fifty-eight can, and that is what a judged set is for.
-
-Turn it on with `[retrieval] symbol_lookup = true`; re-run any of it with
-`python tools/measure_symbol_leg.py`,
-and `--coverage` to see what it can fire on
-([ADR-0080](docs/adr/0080-look-a-name-up-exactly-and-report-that-the-table-points-at-naming-sites.md),
-[ADR-0096](docs/adr/0096-write-the-span-back-and-pin-the-arm-that-judges-it.md)).
-
-Getting there exposed a defect in the guard itself, worth naming because it is a general shape:
-both ablations scored their control arm with the *shipped* configuration, so the moment a leg
-earned its default the control acquired the leg under test and the measurement went to zero.
-The guard could accept only one of the two answers it exists to choose between. Both now score
-against a retriever with every optional leg pinned off.
-
-### The graph can widen a search, and it did not earn the right to
-
-Spec 04 §5 describes graph expansion — walk one hop from the best hits over the typed edges,
-and let what you find compete — and it describes the gate the feature has to clear before it
-ships on: **+3 % nDCG@10 on the `relationship` slice with no overall regression**. Roadmap 5.3
-built the feature and ran the gate. It lost, on all six judged case sets across all three
-corpora, so `[retrieval] graph_expansion` ships **off** and this section says so rather than
-quietly omitting the number.
-
-What it does when you turn it on: the graph proposes *nodes* — a neighbouring section,
-document or symbol — and the ranking disposes of *chunks*, because a document holds six of
-them and which one answers your question is not something an edge knows. Every proposal is
-ranked by the same BM25 as everything else, at most ten survive, one per document, and each
-is labelled in `--explain` with the edge and the hit that reached it. It adds passages the
-ranking buried; it never re-votes for one already found.
-
-The honest numbers: it rescues the case it was filed for (`r-0018`, whose two documents hold
-the two halves of an answer, 0.0000 → 0.2275) and loses six other relationship cases doing
-it, for −0.0 % to −4.1 % overall. Re-run it yourself with
-`python tools/measure_graph_expansion.py`; CI runs the same measurement and fails if the
-shipped default ever stops matching it
-([ADR-0075](docs/adr/0075-let-the-graph-propose-and-the-ranking-dispose-and-report-that-it-lost.md)).
-
-Since roadmap 5.11 it is also *routed*, which costs nothing and is worth stating: the leg
-runs on the queries spec 04 §2 sends it — relationship phrasing, or your own `--related` —
-rather than on everything, so the overall price of turning it on falls from that −4.1 % to
-**0.0 %** on all six judged sets. It does not change the verdict, and the measurement says
-why it cannot: route by the judged `relationship` slice itself, which no rule can beat, and
-the slice's numbers come back identical. Six of the thirteen cases expansion loses *are*
-relationship cases.
-
-### Your query is planned, and the plan tells you which rule chose it
-
-Spec 04 §2 describes a planner as *a small, deterministic, logged rule set — not a model
-call*, and asks that every response explaining itself carry the plan and the rule behind it.
-`mycelium search --explain` now does:
-
-```console
-$ mycelium search "can an agent keep querying while a build is running" --related --explain
-plan: relationship -> lexical+graph
-   asked for with --related: one hop over the typed edges from the fused seeds
-   graph leg: 10 passage(s) proposed by one hop from 10 seed(s) and ranked against the query
-```
-
-A query naming an identifier (`SqliteStore`, `uv.lock`, a quoted phrase) asks for the symbol
-lookup; relationship phrasing or `--related` asks for graph expansion; anything else is a
-natural-language question. The rule that matters most is what the plan **cannot** do: it may
-withhold a leg your configuration enabled, and never enable one it disabled. Three of this
-project's defaults were set by measurement, and a phrase list is not allowed to overturn them
-([ADR-0083](docs/adr/0083-route-the-query-and-report-that-routing-cannot-save-a-lost-ablation.md)).
-
-The phrase list's own recall is in the ADR rather than hidden: against the judged
-`relationship` slice it fires on 3 of 22. The slice is judged by where an answer lives, not by
-how the question is worded, so `--related` is the signal that works — and the wider list that
-reaches 13 of 22 was written by reading the queries it had to catch, which is fitting the
-router to the benchmark.
-
-### Entities are declared by your vault, not guessed from your prose
-
-The last stage of the compiler is optional and **off by default**, and the measurement is
-why. An *entity* here is a name your corpus declares — a `#tag`, or an `aliases:` key saying
-the thing a document is about answers to other names. Turn `[entities] enabled` on and each
-one becomes a record with its other names and the documents that declare it, plus a
-`mentions` edge wherever a passage writes that name without having declared it. So
-`mycelium neighbors` answers *what does this document talk about* and *what talks about
-this*, and the export bundle carries `entities.jsonl`.
-
-What it will not do is invent one. Matching document *titles* in prose was the obvious way
-to fill the table and it was measured and refused: across the three evaluation corpora it
-produces 587 hits whose most frequent members are `README`, `Documentation`, `Changelog`,
-`Projects` and `Tools` — ordinary words, wrong in the way that reads as coverage. So the
-vocabulary is authored and the mentions over it are extracted, which is the status
-discipline the data model asks for.
-
-The honest yield on corpora that are not vaults: with the stage on, this repository declares
-**one** entity — a `#NNN` placeholder in a bug template — and the vendored uv documentation
-declares **none**. Neither uses tags or aliases; an Obsidian vault uses both, which is who
-the switch is for
-([ADR-0076](docs/adr/0076-let-the-corpus-declare-its-entities-and-refuse-to-guess-the-rest.md)).
-
-### Your chatbot conversations become citable knowledge, through a real plugin
-
-Knowledge lives inside conversations with chatbots — decisions, designs, research — and it
-evaporates: locked in provider silos, unsearchable across tools, deletable by a vendor. The
-**`chats` module** archives them locally and compiles them into your vault:
-
-```bash
-pip install mycelium-chats            # a distribution of its own
-# then, in mycelium.toml:  [modules]\n enabled = ["chats"]
-mycelium chats import conversations.json --project research
-mycelium build && mycelium search "what did we decide about retries"
-```
-
-Each conversation becomes two files: a canonical `chats/…/*.chat.jsonl` record — one message
-per line, lossless, the shape every chatbot API consumes — and a Markdown projection under
-`knowledge/evidence/chats/` that the compiler indexes like any other document. So a search
-result cites a **conversation and a message**, and `--collection chats/research` filters to
-one project. It reads ChatGPT and Claude exports, Markdown transcripts, pasted text, and any
-JSON through a configured field mapping; it keeps the original in custody, scans for secrets,
-and touches no network unless you configure one of the two opt-in LLM lanes below.
-
-Four promises, each a named test: content is **verbatim** always; structure may be inferred
-and the record says so; unknown provider fields are **preserved**, not dropped; and an
-unlabelled paste gets **no invented speakers** — it is kept whole instead, because a
-fabricated attribution that reaches the index is a false statement about who said what.
-
-With an LLM configured, `mycelium chats distil <id>` writes one conversation's decisions and
-outcomes into `knowledge/candidate/` as an ordinary synthesized document, and **every claim
-cites the message it came from** — `[[conversation#12 · assistant]]`, never the conversation.
-That is the point rather than a detail: citing fifty turns means *somewhere in here*, which
-neither a reader nor the entailment judge behind `mycelium verify` can check, so the model's
-whole citable vocabulary is message anchors and a draft that cites the transcript whole is
-sent back with the messages it could have cited instead
-([ADR-0087](docs/adr/0087-distil-a-conversation-at-authoring-time-and-cite-the-message.md)).
-It never fires from `import`: a provider export is a year of conversations, and that many
-LLM calls is not a decision to make on somebody's behalf.
-
-The second opt-in lane is for the input the deterministic readers refuse to guess at. A paste
-with no `You said:` labels is kept as one fragment, because inventing a speaker is the one
-thing the format forbids — so it gets no message anchors at all. With `[chats] segmenter =
-"llm"` a model proposes turn *boundaries*: it returns line numbers and roles, never text, and
-the segments are sliced out of your own paste, so a model that invented a sentence has nowhere
-to put it. A proposal that does not partition the paste exactly is refused, and what leaves
-your machine is redacted first — a paste holding a private key is not sent at all
-([ADR-0088](docs/adr/0088-let-a-model-propose-line-numbers-and-slice-the-paste-ourselves.md)).
-
-The module is also the reason the plugin API is worth trusting. Doc 08 says it plainly: *if
-the extension points can't support this module cleanly, they get fixed before the 1.0
-freeze*. Building it found four things — modules could not be configured at all, mounting a
-module's commands at import time created a silent cycle, the chunker did not give a callout a
-chunk boundary the way the profile promised, and a fidelity report cannot describe a source
-that produces no KIR. Three are fixed — the third at roadmap 5.13, where reading the two
-specifications against each other showed the promise was right about not merging callouts and
-wrong about never splitting them
-([ADR-0085](docs/adr/0085-let-a-callout-bound-a-chunk-rather-than-atomise-one.md)) — and the
-fourth is filed with its measurement.
-And a test now parses every line of the module's source and fails if it imports anything
-outside the published surface, so "zero core patches" is checked rather than claimed
-([ADR-0077](docs/adr/0077-give-a-module-an-entry-point-a-section-and-a-command-and-report-what-it-could-not-reach.md)).
-
-### A citation that has gone stale tells you, instead of quietly answering
-
-A `mycelium://` citation keys on the document's pinned id, so renaming the file or
-promoting it from `candidate/` to `verified/` costs nothing — the citation keeps
-resolving. What it names inside the document is a heading path and an ordinal, so
-renaming the heading kills it deliberately: you get a typed `ANCHOR_GONE` and the nearest
-surviving ancestor, never a plausible-looking wrong answer.
-
-The ordinal, though, is a *position*. Delete a paragraph above the one you cited and the
-anchor still resolves, to the passage that moved up into it. Proving the stale-anchor
-story on a corpus of eleven refactorings found six citations doing exactly that, in
-silence — including the worst shape available, renaming the first of two headings that
-slugify alike, where a citation to the first section returns the second.
-
-So every URI this product hands out carries two pieces of evidence about what it was
-minted against: the line range it sat at, and twelve characters of the passage's own
-content digest. The read surfaces check both, independently, and say which one differs:
-
-```
-mycelium://01ARZ…#retries/0?lines=15-19&digest=c9c0aa14b08c
-```
-
-| `kind` | what happened | what to do |
+The rest of what makes it different is a set of decisions, each measured and each written
+down with its ADR. They used to fill this page; they now live in
+**[How Mycelium OS works](docs/how-it-works.md)**, one section each:
+
+- [Retrieval is lexical by default, and that was measured](docs/how-it-works.md#retrieval-is-lexical-by-default-and-that-was-measured)
+- [The lexical index matches inflections, and still prefers your exact word](docs/how-it-works.md#the-lexical-index-matches-inflections-and-still-prefers-your-exact-word)
+- [Your question is answered by its content words](docs/how-it-works.md#your-question-is-answered-by-its-content-words)
+- [The graph is typed, and every type is derived from something you wrote](docs/how-it-works.md#the-graph-is-typed-and-every-type-is-derived-from-something-you-wrote)
+- [A fence that defines something becomes a symbol, and so does a heading that names one](docs/how-it-works.md#a-fence-that-defines-something-becomes-a-symbol-and-so-does-a-heading-that-names-one)
+- [A name in your query is looked up, and fifty-eight cases took the default back off](docs/how-it-works.md#a-name-in-your-query-is-looked-up-and-fifty-eight-cases-took-the-default-back-off)
+- [The graph can widen a search, and it did not earn the right to](docs/how-it-works.md#the-graph-can-widen-a-search-and-it-did-not-earn-the-right-to)
+- [Your query is planned, and the plan tells you which rule chose it](docs/how-it-works.md#your-query-is-planned-and-the-plan-tells-you-which-rule-chose-it)
+- [Entities are declared by your vault, not guessed from your prose](docs/how-it-works.md#entities-are-declared-by-your-vault-not-guessed-from-your-prose)
+- [Your chatbot conversations become citable knowledge, through a real plugin](docs/how-it-works.md#your-chatbot-conversations-become-citable-knowledge-through-a-real-plugin)
+- [A citation that has gone stale tells you, instead of quietly answering](docs/how-it-works.md#a-citation-that-has-gone-stale-tells-you-instead-of-quietly-answering)
+- [An ingested document joins the graph, and is never mistaken for something someone wrote](docs/how-it-works.md#an-ingested-document-joins-the-graph-and-is-never-mistaken-for-something-someone-wrote)
+- [Ingestion picks its parser, and you pick which one](docs/how-it-works.md#ingestion-picks-its-parser-and-you-pick-which-one)
+- [An ingested source becomes a document you can read](docs/how-it-works.md#an-ingested-source-becomes-a-document-you-can-read)
+- [The original is kept, and hostile files are refused before they cost anything](docs/how-it-works.md#the-original-is-kept-and-hostile-files-are-refused-before-they-cost-anything)
+- [A refused file is written down, and a credential is not written out](docs/how-it-works.md#a-refused-file-is-written-down-and-a-credential-is-not-written-out)
+- [An LLM may write, but only what a machine can check](docs/how-it-works.md#an-llm-may-write-but-only-what-a-machine-can-check)
+- [Nothing becomes verified without a gate and a person](docs/how-it-works.md#nothing-becomes-verified-without-a-gate-and-a-person)
+
+## Where the evidence lives
+
+Every claim this project makes about itself is measured, and the measurement is committed next
+to the code that produced it. The benchmark reports are the marketing (spec 06 §4), including
+the ones that say a budget is missed.
+
+| Question | Where it is answered |
+|---|---|
+| Does it retrieve better than an agent's own `grep`? | [`eval/`](eval/README.md) — judged case sets over three corpora, two of them documentation this project did not write; `mycelium eval --against grep` re-runs the comparison, and CI gates on it |
+| Does it hold what an agent needs, at what context cost? | the agent-task suite in the same directory, run by `mycelium eval --tasks` |
+| How fast is it, and on what machine? | [`docs/benchmarks/`](docs/benchmarks/README.md) — one report per scenario, each with its run manifest |
+| What are the numbers for this release? | the release notes under [`docs/releases/`](docs/releases/README.md) |
+| Why is it built this way, and what was refused? | [`docs/adr/`](docs/adr/README.md) — one decision record each, with the arithmetic |
+| What stays stable, and how does a change to it happen? | [`docs/compatibility.md`](docs/compatibility.md) |
+
+## Status
+
+Pre-1.0 and milestone-driven. **v0.6.0** closed Milestone 6: the five stable contracts are
+frozen behind goldens and the [1.0 compatibility promise](docs/compatibility.md) is published.
+Milestone 7 leads to **v1.0.0**. What is not done is said plainly: the package is **not on a
+public index yet**, so the external-adoption gate is carried by name rather than waived
+([ADR-0138](docs/adr/0138-recut-the-adoption-gates-onto-acts-we-can-observe.md),
+[`docs/workflow/adoption.md`](docs/workflow/adoption.md)).
+| # | Title | Status |
 |---|---|---|
-| `moved` | same words, new position | cite the URI in the block from now on |
-| `rewritten` | same position, different words | re-read it before re-quoting |
-| `moved_and_rewritten` | both | re-read it |
+| 1 | v0.1.0 — Project bootstrap & CI | ✅ done |
+| 2 | v0.2.0 — Walking skeleton (spec Phase 0) | ✅ done |
+| 3 | v0.3.0 — The compiler (spec Phase 1) | ✅ done |
+| 4 | v0.4.0 — Ingestion (spec Phase 2) | ✅ done |
+| 5 | v0.5.0 — Structure (spec Phase 3) | ✅ done |
+| 6 | v0.6.0 — Stable (spec Phase 4) | ✅ done |
+| 7 | v1.0.0 — Team & platform (spec Phase 5; separate RFC cycle) | 🚧 in progress |
 
-The content still comes back in every case, because the anchor is fine and refusing to
-serve it would punish every consumer of a document under active editing. What you get is
-the annotation: what you cited, what is there now, and the citation to use instead.
-
-The digest is what closes the one case a position cannot see — a passage rewritten without
-changing length — and it is also what lets a *pure* move be reported as harmless, which a
-line range alone could never promise. Adding it meant extending the citation grammar, which
-is part of a contract that freezes at 1.0, so it waited for an item of its own and an
-argument about what an older client does with a URI it has never seen the shape of
-([ADR-0089](docs/adr/0089-put-content-identity-in-the-citation-and-make-the-grammar-extensible.md)).
-
-### An ingested document joins the graph, and is never mistaken for something someone wrote
-
-Compile a corpus of PDFs and HTML and the projections land in a flat
-`knowledge/evidence/` tree, while the links inside them still name the tree they were
-acquired from. Each projection records where it came from, so those links resolve through
-the source tree — and because a page rendered to HTML keeps the `.md` hrefs it was written
-with, the match is on the path without its extension. And the links are *there* to resolve:
-a reference the parser found is rendered back into the projection around the very words it
-labelled, so the document reads as the source did and the compiler sees what the source
-referred to, in the chunk it referred from. On the vendored ingested corpus the graph goes
-from 54 edges to 366, 293 of them links; the 42 that stay unresolved all name pages the
-corpus never included, the same family as the authored twin's 54.
-
-Every one of those edges is **`extracted`**, and that is the more important half. A link
-in a document a person wrote is `authored`; a link found in a document that was *acquired*
-is a finding, because its content is untrusted by default and nobody here wrote it. The
-distinction is not cosmetic: proving it out found that an acquired PDF containing the
-characters `[[api]]` was producing an **authored** edge into your knowledge graph, and an
-inline `#production` in one was declaring an authored entity. The projector used to strip
-the link syntax it could recognise, and a PDF has no wikilinks to recognise — so the
-guarantee lives where the assertion is made rather than where the text is written
-([ADR-0079](docs/adr/0079-resolve-an-ingested-documents-links-through-its-source-tree-and-never-call-them-authored.md)),
-which is also what lets the projector keep a source's links instead of throwing them away
-([ADR-0090](docs/adr/0090-project-a-sources-links-as-links-now-that-the-compiler-knows-who-asserted-them.md)).
-
-### Ingestion picks its parser, and you pick which one
-
-Non-Markdown sources are compiled by adapters over engines that already exist — Mycelium OS
-owns the representation, not the parsing research (D-007). Four ship: `markdown`
-(markdown-it), `docling` (DOCX and HTML through docling's declarative backends), `pandoc`
-(DOCX, HTML, ODT, EPUB, reStructuredText and LaTeX, through one sandboxed binary), and `pdf`
-(the text layer, via PDFium). The proof that the boundary is real: one document rendered
-into DOCX, HTML and reStructuredText reaches four different engines and comes back with the
-*same* citable anchors as its Markdown original.
-
-Which one runs is **pinned, in order**, and never guessed:
-
-```toml
-[ingest]
-parsers = ["docling", "pandoc", "pdf"]   # first one declaring a format wins
-```
-
-An entry that cannot be resolved is an error naming what to install — not a quiet fall-back
-to whatever else is installed, because a build has to be explainable from its manifest alone
-(spec 05 §4.2). `mycelium doctor` tells you before a build does. The engines are an optional
-install (`pip install mycelium-os[ingest]`, plus [pandoc](https://pandoc.org/installing.html)
-for that one), and the default `parsers = ["markdown"]` needs none of them.
-
-What an engine emits that KIR cannot model becomes an `opaque` node carrying the construct's
-name — visible loss, never silent loss. That is a claim, so it is a gate: the fixture corpus
-carries a hand-written **declaration** of what each source document contains, and CI fails if
-any engine's output differs from it without a recorded reason. It has to be hand-written,
-because the fidelity report is computed from the parse and so cannot notice an element that
-never arrived — which is exactly how a DOCX footnote was disappearing until the corpus asked
-([BUG-0016](docs/bugs/2026/09/BUG-0016-docx-footnotes-vanish-unreported.md)).
-
-**And it is measured, not asserted.** The third judged corpus is the second one *ingested* —
-the same 81 documents rendered into DOCX, HTML and PDF and put back through `mycelium
-ingest` — scored with the judgements already frozen for the Markdown originals, so the
-document is the only thing that varies. The same 14 cases, twice: **recall does not move**,
-and where structure survives — DOCX, HTML — the numbers are *identical*, not merely close.
-PDF's apparent ranking gain is refused as an artefact of a target ten times the size
-([ADR-0039](docs/adr/0039-measure-what-projection-costs.md)). What projection *does* cost is
-the graph: 229 edges become 10, which is open as roadmap 5.7.
-
-What v1 does *not* do is read PDF structure, and that was **re-tested rather than assumed**.
-docling's ML pipeline recovers 82 % of a PDF's headings where the text layer recovers none —
-and costs ~2.4 GB and three seconds a page to retrieve *worse* than the Markdown the document
-came from, because it restores section boundaries while degrading what is inside them. Refused
-on the measurements, with the one benefit it does deliver — citing a section instead of an
-ordinal — named as the thing no metric here can score yet
-([ADR-0040](docs/adr/0040-refuse-the-pdf-layout-pipeline-on-its-merits.md), roadmap 6.7). The
-earlier reasoning is in [ADR-0032](docs/adr/0032-adapt-four-engines-and-pin-which-one-runs.md), and
-`tools/measure_pdf_structure.py` re-runs every number.
-
-### An ingested source becomes a document you can read
-
-`mycelium ingest report.pdf` acquires the file, keeps it, compiles it, and writes an
-**evidence document** under `knowledge/evidence/` — Markdown, with provenance frontmatter,
-which `mycelium build` then compiles like anything else you wrote. Nothing but the compiler
-ever writes an index (D-020), so an ingested PDF gets chunks, citations and `ingested` trust
-by the same path an authored note does. Its links are links: a reference the parser found is
-rendered back around the words it labelled, and `mycelium ingest` says how many it carried.
-
-Every projection comes with a **fidelity report**: how many of the document's elements were
-represented, how many survived with their structure simplified, and how many did not survive
-at all. The last number is the one `[ingest] max_failed_elements` bounds — 5 % by default —
-and it is deliberately *only* that number. A budget that fired on a document which lost
-nothing would teach you to raise the budget. Where something was lost, the projected document
-says so where a person looks:
-
-```markdown
-> [!missing] page 3 has no text layer
-```
-
-So a PDF of scans is refused rather than projected as an empty document that claims to be
-evidence — with its bytes and its report already in custody, so you can see why. Raise the
-budget if you want it anyway.
-
-### The original is kept, and hostile files are refused before they cost anything
-
-An ingested source is stored **verbatim** under its own digest in tier-1 custody
-(`.mycelium/cas/originals/`), together with the KIR compiled from it and a record of where
-it came from. That is what makes a verbatim quote checkable a year later, when the source
-file has moved or changed — and it is why `mycelium gc`, which sweeps every other blob under
-`.mycelium/`, walks past that subtree and tells you how much it walked past. A blob that
-stops matching its own digest is *reported* by `mycelium doctor`, never quietly deleted: the
-build cache heals itself, evidence does not get to.
-
-Untrusted files are bounded by **shape** before any engine reads them, because bytes are the
-wrong unit. A 55 KB HTML file nested 5 000 elements deep took docling 45 seconds — at 50 000
-it never finished — and made the pandoc adapter raise an uncaught `RecursionError`; a 51 KB
-`.docx` declared 50 MB of contents. All three are now refused in under a tenth of a second,
-by ceilings set two orders of magnitude clear of anything an honest document does. A hostile
-file fails as **one document**, and its bytes are in custody before the refusal, so you can
-still look at it. The committed suite that proves this lives in
-[`tests/fixtures/ingest/hostile/`](tests/fixtures/ingest/hostile), generated by a script you
-can read rather than shipped as opaque binaries
-([ADR-0033](docs/adr/0033-keep-the-original-and-bound-the-hostile.md)).
-
-The same bounds now hold for **authored** Markdown, because D-017 draws no line between a
-PDF somebody sent you and a file in your own vault, and the 6.3 security review found the
-authored lane had none: nine lines of YAML aliases in frontmatter held a build past ninety
-seconds, forty kilobytes of asterisks crashed `mycelium ingest`, and a document of any size
-was read whole before anything asked how big it was. Each is refused by name now, in
-milliseconds, and each refusal is held by a test at the size that used to break it. The
-review also left an **injection corpus** behind — twenty-three documents under
-[`tests/fixtures/injection/`](tests/fixtures/injection), one attack class each, from an
-instruction in a heading to a forged `mycelium_search` symbol — and a suite that asserts every
-payload comes back verbatim, labelled, and inside a typed field, never anywhere else. The
-threat model names the tests that hold each of its boundaries, and `uv run pytest -m boundary`
-runs them ([ADR-0119](docs/adr/0119-derive-the-suite-from-the-threat-model-and-bound-what-a-document-may-cost-to-read.md)).
-
-### A refused file is written down, and a credential is not written out
-
-Two things ingestion does with a document that should not simply pass through, and both are
-about the same question: what happens when the answer is *not* "project it".
-
-**A refusal is recorded, not just reported.** A source that cannot be acquired, that no
-pinned parser reads, that breaches a shape guard, that the engine cannot compile, or that
-loses more than its budget allows is **quarantined**: one record under
-`.mycelium/quarantine/` naming the stage that refused it, the reason, and the digest of the
-bytes that caused it — which are already in custody, because ingestion stores the original
-before it tries to parse it. So an hour later you can still answer *which files failed, and
-why*, and open them again. Ingesting a source successfully clears its record;
-`mycelium ingest --forget <source>` clears one that is never coming back; `mycelium gc`
-never sweeps them.
-
-```console
-$ mycelium doctor
-warning: quarantine: 2 source(s) quarantined in .mycelium/quarantine:
-         legacy.doc (dispatch: UnsupportedMediaTypeError), scans.pdf (budget: LossBudgetError)
-```
-
-A quarantined source is a **warning**, never a failed health check. It is the system working
-as designed, and a `doctor` that goes red for one unreadable PDF is a `doctor` nobody runs.
-
-**A credential found in an ingested source is redacted before it can spread.** An ingested
-document is somebody else's file, and the lane's job is to write its content into your Git
-tree and then into an index. So the content is scanned, and a match is replaced *before the
-compiled form is stored*:
-
-```markdown
-export AWS_ACCESS_KEY_ID=[redacted: aws-access-key-id]
-```
-
-The verbatim bytes survive in exactly one place — the tier-1 original under `.mycelium/`,
-which is gitignored and is what a citation is checked against. Everything derived from it
-carries the placeholder. The rules that matched are recorded on the document
-(`secret_flags`), **whether or not** redaction acted: `[ingest] redact_secrets = false`
-turns off the redaction, not the record, and `mycelium doctor` says so while it is off.
-
-The scan is eleven **structural** rules — vendor key prefixes, PEM armour, credentials in a
-URL — and no entropy heuristic, because a scanner that fires on base64 images, digests and
-UUIDs is one you would turn off within a week. That trade is deliberate and it has a cost:
-a bare password or a home-grown token goes through unflagged. **This is not a substitute for
-a secret scanner on your repository** — it is the check ingestion can make on content it is
-about to write into your tree
-([ADR-0037](docs/adr/0037-record-what-was-refused-and-redact-what-was-found.md)).
-
-### An LLM may write, but only what a machine can check
-
-Ingestion is dual-lane. The **evidence lane** above always runs and is deterministic. The
-**synthesis lane** additionally asks a model to write a readable document from that
-evidence — and that is allowed for exactly one reason: every claim it makes has to cite the
-evidence layer, and the citation is checked before the file is written (D-020).
-
-```toml
-[synthesis]
-provider = "anthropic"         # naming one is the consent; without it, nothing calls out
-min_citation_coverage = 1.0    # every claim-bearing block cites, or nothing is written
-```
-
-The check is the product, not the prose:
-
-- **A citation that does not resolve fails the document.** Not a warning — prose that merely
-  *looks* grounded is the most dangerous thing this project could produce.
-- **A rejected draft gets one repair round-trip**, with the violations quoted back. A second
-  failure writes nothing and says the evidence does not support the document.
-- **Coverage is measured** per claim-bearing block and recorded, and the floor defaults to
-  *every* block.
-
-What comes out lands in `knowledge/candidate/` — the folder **is** the verification status
-(D-021) — carrying `origin: synthesized` and the model that wrote it. `mycelium build`
-compiles it like any other file, retrieval labels it a candidate, and its citations are
-`cites` edges you can query. Nothing here can produce a `verified` document: promotion is a
-human action in Git, and the next section is the gate it has to pass.
-
-The lane is **off unless you configure a provider**. A default install ingests entirely
-offline and calls nothing; the engines are an optional install
-(`pip install mycelium-os[synthesis]`). The reasoning, and the limits — coverage is per
-block, and a resolving citation is not yet a *supporting* one — are in
-[ADR-0035](docs/adr/0035-let-an-llm-write-only-what-a-machine-can-check.md). Whether a
-citation *supports* its claim is what `mycelium verify` asks, below.
-
-### Nothing becomes verified without a gate and a person
-
-A candidate document is a claim, not truth. `mycelium verify` measures **gate G7** on it, and
-the two halves of that gate are not the same kind of thing:
-
-```bash
-mycelium verify                    # measure every synthesized document
-mycelium verify --gate             # ...and fail in CI on a measured shortfall
-mycelium promote knowledge/candidate/webhook-retries.md
-mycelium demote  knowledge/verified/webhook-retries.md
-```
-
-**Citation coverage** is recomputed against the corpus *as it is*, and that recomputation is
-why the command exists. A candidate accepted last month cites evidence that may have been
-edited, re-projected under a different heading, or deleted since — nothing at writing time
-can catch that, and `verify` reports it as `citations-unresolved`.
-
-**Sampled entailment** asks whether the cited evidence actually *says* what the claim says.
-Nothing in this repository can answer that, so it asks the configured model — a deterministic
-sample of claims, fail-closed, so a verdict that cannot be read counts as *not* entailed.
-With no provider configured it is reported as **not measured**. Not zero, not a guess:
-
-> There is deliberately no offline approximation. Term overlap between a claim and its
-> citation would produce a number in the right range and it would be a fabricated grounding
-> score, which is the one artifact this project refuses above all others.
-
-The score written into the document is `min(coverage, entailment)`, because an average would
-let perfect citations hide a failed entailment.
-
-**Promotion is a file move, in Git, by a person.** `knowledge/candidate/` → `knowledge/verified/`
-— the folder *is* the status (D-021) — and `promote` measures the gate first rather than
-trusting the number already in the file. Below the gate it refuses and names the component
-that blocked it. `--force` is your override, and it is written into the document:
-
-```yaml
-verified_by: 'Daniel Polo (forced: entailment-not-measured)'
-verified_at: 2026-09-01
-grounding: 1.0
-```
-
-so the override lives in the diff rather than in someone's terminal. `demote` moves a document
-back and *removes* that block — a demoted document is not badly grounded, it is no longer
-vouched for.
-
-Two more things worth knowing before you rely on the number. `[verification] auto_promote`
-exists and is **off**: with it on, a document clearing both components is promoted for you.
-And with `[verification] model_id` unset, the model that wrote the document is the model that
-judges it — a real bias, so the report, the document and the CLI all say `self-judged` rather
-than averaging it away. The full reasoning is in
-[ADR-0036](docs/adr/0036-measure-what-can-be-measured-and-let-a-human-outrank-the-gate.md).
-
-## Inspiration & Origins
-
-This project was directly inspired by [Andrej Karpathy](https://github.com/karpathy)'s
-**[llm-wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)** — the
-pattern where an LLM incrementally builds and maintains a persistent wiki of interlinked
-Markdown files instead of re-deriving knowledge from raw sources at every query. The core
-insight, **knowledge should be compiled, not retrieved**, is the foundation this is built on.
-
-llm-wiki has a deliberate scope: a flat index and direct LLM navigation, elegant up to a few
-hundred documents. Past that, context windows saturate and the index becomes the bottleneck.
-Mycelium OS keeps the insight and changes what carries it — a content-addressed incremental
-compiler, immutable snapshots, and structural retrieval over the compiled artifact — so the
-knowledge base can grow without the index becoming the limit.
-
-> Credit where it is due: none of this would exist without Karpathy's idea opening the door.
+The numbered plan, with what each item delivered, is [`ROADMAP.md`](ROADMAP.md).
 
 ## Build, test, run
 
@@ -876,121 +217,15 @@ uv run hatch build
 See [`docs/development/local-build.md`](docs/development/local-build.md) for the full local
 setup.
 
-## Status
+## Contributing and reporting a vulnerability
 
-Pre-1.0 and milestone-driven. **Milestone 6 is complete**: the thing is now *stable, packaged
-and honest about itself*. The five contracts — identity, KIR, the snapshot manifest, the MCP
-tools and the plugin protocols — are frozen behind goldens, and the 1.0 compatibility promise
-says what is promised and how a change to it is made. The package builds, signs and inventories
-its artifact, and publishes through a workflow that runs only by hand and re-checks the version
-against the tag before it uploads. A security pass turned the threat model into a test suite. The
-docs site is built, checked and deployed.
+Contributions are welcome through pull requests, from anyone; review and merge stay with named
+maintainers. [`CONTRIBUTING.md`](CONTRIBUTING.md) says what is open to outside work and how to
+get a change merged — every commit carries a DCO sign-off — and everyone taking part agrees to
+the [Code of Conduct](CODE_OF_CONDUCT.md).
 
-Underneath that, most of this milestone is **measurement** — and a good deal of it is measurement
-that said no. The performance work removed real constants (a cold build, an incremental floor, a
-stemmer re-stemming the same words six hundred thousand times, a CLI that imported the whole
-engine to print `--help`), while the retrieval work mostly *refused* what it measured: every
-per-document diversity policy, every heading-proximity boost, and near-duplicate collapse. Each
-refusal is an ADR with the arithmetic written down and a runner on CI that fails the day the
-refusal stops being true.
-
-Milestone 5's structure and Milestone 4's ingestion lane are unchanged underneath it. The
-evaluation still spans three corpora, two of them documentation this project did not write, and
-the judged sets now hold **2 001 cases across six sets** with a frozen dev/release split gating
-CI. What is promised — from which version, and how a change to it is made — is written down in
-[`docs/compatibility.md`](docs/compatibility.md).
-
-**What is not done:** the package is not on a public index yet, so the external-adoption exit
-gate stands at zero and is carried by name rather than waived (roadmap 6.11, 6.12; ADR-0138).
-
-Three candidate retrieval legs were built and ablated this milestone, and **two of them ship
-switched off** — graph expansion because it lost, hybrid because it cannot clear gate G2's bar on
-sets this small. The symbol leg lost three times, earned it at the fourth and ships on. Each of
-those is a measurement in an ADR rather than a preference, which is the part of this project
-worth copying.
-
-For two milestones the honest part of that paragraph was what was missing from it: on the
-second corpus a plain `grep` loop ranked better than we did. **It no longer does.** Measured
-on the release sets — the ones nobody develops against — the product now leads every corpus:
-
-| release set | Mycelium OS | the `grep` loop |
-|---|---:|---:|
-| `uv`'s documentation (the corpus this was filed about) | **0.614** | 0.532 |
-| the same documents, ingested from DOCX/HTML/PDF | **0.614** | 0.575 |
-| this repository | **0.521** | 0.263 |
-
-The second row has narrowed twice, and both times the reason was worth more than the number.
-At roadmap 5.22 it went from +0.151 to +0.045: a projector defect was flattening whole sections
-of the ingested documents into code blocks, and the unmatched markers that did it were *also*
-splitting real code blocks — so parts of those documents re-parsed as headings that the sources
-never had. Our field-weighted retrieval was leaning on them and the incumbent was not
-([ADR-0093](docs/adr/0093-escape-the-prose-that-would-open-a-block-and-report-what-that-costs.md)).
-
-At roadmap 5.24 it narrowed again, +0.045 to +0.038, and this time the defect was **ours,
-upstream of everything the product does**. The corpus was rendered into DOCX, HTML and PDF by
-`pandoc --from markdown` — pandoc's own dialect, which rejects mkdocs-material's
-```` ```toml title="pyproject.toml" ```` and reads the opening fence as prose, leaving the
-*closing* fence to open a block instead of shutting one. The committed renderings had lost
-**127 of the corpus's 554 headings and invented 59 others**, across 21 of the 81 documents,
-before ingestion began. Reading the corpus in the dialect it is actually written in brings both
-counts to zero — and hands the incumbent the larger half of the repair, which is the direction
-that says nobody fitted it
-([ADR-0095](docs/adr/0095-read-the-corpus-in-the-dialect-it-is-written-in.md)).
-
-The third row moved *down* on both sides when this repository's own changelog and release
-notes left the corpus (roadmap 4.44). They restate what the ADRs already say, and a
-term-counting baseline suffers from that far more than we do — so indexing them was widening
-our reported lead for a reason that has nothing to do with retrieval.
-
-Fourteen candidate re-rankings were measured on the way there and **all fourteen refused**
-([ADR-0031](docs/adr/0031-refuse-three-rerankings.md),
-[ADR-0041](docs/adr/0041-bound-the-section-unit-and-refuse-six-more.md)) — including one that
-*passed* the release gate and was refused anyway, because the dev set the gate does not read
-showed it returning a 14-token lead-in in place of the paragraph that answered. Nothing in
-that family is what closed the gap. Two changes to what gets *indexed* did: a chunker that
-lets a code block share a chunk with the prose it belongs to (`pack_atomic`, on by default
-since roadmap 4.15), and a lexical index that carries each word's stem beside its surface
-form (roadmap 4.19), with the query gated on having *some* literal footing in the corpus
-rather than every candidate document needing one (roadmap 4.23). The evidence re-runs with
-`python tools/measure_ranking.py --release --oracle`.
-
-The overall lead still hides a slice, and the harness prints it rather than rounding it off:
-
-```text
-vs grep: nDCG@10 0.614 against grep's 0.532 (+0.082) - ahead of the incumbent;
-         still conceded: fact 0.438 vs 0.497
-```
-
-`fact` on that corpus — seven cases of "how do I do X", the shape the corpus is made of — is
-still the incumbent's, and it is roadmap 4.25. `mycelium eval --against grep` is how any run
-answers the question, and CI runs it on all three corpora so the answer cannot go stale
-unnoticed again ([ADR-0049](docs/adr/0049-close-the-grep-gap-and-keep-the-incumbent-in-the-manifest.md)).
-
-**Two of those three sets are gated; the third is reported, and that is deliberate.** The
-regression gate needs the corpus held fixed, and this repository's documentation *is* its
-own corpus — every PR here adds an ADR and a journal entry, so there is no fixed corpus to
-compare against. The two vendored sets are frozen, so gate G3 enforces on them; our own set
-is reported, its baseline re-blessed as its own deliberate act, and a slow decay on it is
-caught by holding the judgments fixed and varying only the corpus
-([ADR-0053](docs/adr/0053-report-on-the-corpus-we-author-and-gate-on-the-one-we-do-not.md)).
-
-One number in that table is worth reading twice: the incumbent went **up** as well, 0.409 to
-0.519, because the corpus was re-judged and the chunker moved underneath both of us. That is
-why the comparison is now computed inside a single run — same snapshot, same cases, same
-anchor space — instead of by diffing two runs and hoping nothing else changed. Set
-`[chunking] pack_atomic = false` to get the v0.3 boundaries back.
-
-| # | Title | Status |
-|---|---|---|
-| 1 | v0.1.0 — Project bootstrap & CI | ✅ done |
-| 2 | v0.2.0 — Walking skeleton (spec Phase 0) | ✅ done |
-| 3 | v0.3.0 — The compiler (spec Phase 1) | ✅ done |
-| 4 | v0.4.0 — Ingestion (spec Phase 2) | ✅ done |
-| 5 | v0.5.0 — Structure (spec Phase 3) | ✅ done |
-| 6 | v0.6.0 — Stable (spec Phase 4) | ✅ done |
-| 7 | v1.0.0 — Team & platform (spec Phase 5; separate RFC cycle) | 🚧 in progress |
-
-The numbered plan, with what each item delivered, is [`ROADMAP.md`](ROADMAP.md).
+**Found a security problem? Do not open a public issue.** [`SECURITY.md`](SECURITY.md) says how
+to report it privately and what happens next.
 
 ## How this project is run
 
@@ -1001,11 +236,12 @@ analysis, property tests, documented design decisions, SemVer releases.
 |---|---|
 | [`AGENTS.md`](AGENTS.md) | How AI agents (and humans) work in this repo — the contract. |
 | [`ROADMAP.md`](ROADMAP.md) | The numbered plan and what is done. |
-| [Docs site](docs-site/index.md) | Tutorial, how-to guides, the plugin-author guide, and a generated SDK reference — published at [danielpolowork.github.io/mycelium-os](https://danielpolowork.github.io/mycelium-os/) on every push to `main`; `uv run mkdocs serve` to preview a change before it lands. |
+| [Docs site](docs-site/index.md) | Tutorial, how-to guides, the plugin-author guide, and a generated SDK reference. `uv run mkdocs serve` serves it locally; it publishes to [danielpolowork.github.io/mycelium-os](https://danielpolowork.github.io/mycelium-os/) from `main` once GitHub Pages is enabled, which is an owner setting still pending ([ADR-0127](docs/adr/0127-publish-docs-site-from-a-workflow-artifact-tracking-main.md)). |
 | [Plugin cookiecutter](tools/cookiecutter-mycelium-plugin/) | Generates a `Connector`, `Parser` or `Module` plugin, checked by rendering it. |
 | [`docs/adr/`](docs/adr/) | Why it is built the way it is (Architecture Decision Records). |
 | [`docs/rfc/`](docs/rfc/) | Design of record, reviewed and approved before code. |
 | [`docs/patterns/`](docs/patterns/) | Design patterns adopted, rejected, or considered. |
+| [`docs/how-it-works.md`](docs/how-it-works.md) | Every design decision a user meets, with its measurement and its ADR. |
 | [`docs/workflow/`](docs/workflow/) | Git, documentation, release, and maintenance conventions. |
 | [`docs/compatibility.md`](docs/compatibility.md) | What stays stable, from which version, and how a change to it is made. |
 | [`docs/security/`](docs/security/) | The threat model, the tests that hold each of its boundaries, and the registers of what each review found. |
@@ -1015,6 +251,22 @@ analysis, property tests, documented design decisions, SemVer releases.
 | [`SECURITY.md`](SECURITY.md) | How to report a vulnerability. |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to propose and submit a change (DCO required). |
 | [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) | Community standards for participation. |
+
+## Inspiration & Origins
+
+This project was directly inspired by [Andrej Karpathy](https://github.com/karpathy)'s
+**[llm-wiki](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)** — the
+pattern where an LLM incrementally builds and maintains a persistent wiki of interlinked
+Markdown files instead of re-deriving knowledge from raw sources at every query. The core
+insight, **knowledge should be compiled, not retrieved**, is the foundation this is built on.
+
+llm-wiki has a deliberate scope: a flat index and direct LLM navigation, elegant up to a few
+hundred documents. Past that, context windows saturate and the index becomes the bottleneck.
+Mycelium OS keeps the insight and changes what carries it — a content-addressed incremental
+compiler, immutable snapshots, and structural retrieval over the compiled artifact — so the
+knowledge base can grow without the index becoming the limit.
+
+> Credit where it is due: none of this would exist without Karpathy's idea opening the door.
 
 ## License
 

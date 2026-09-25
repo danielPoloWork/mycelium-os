@@ -239,3 +239,40 @@ def test_the_intake_policy_is_written_where_a_newcomer_and_an_agent_read_it() ->
     setup = (ROOT / "docs" / "workflow" / "github-setup.md").read_text(encoding="utf-8")
     assert '"require_code_owner_reviews": true' in setup
     assert '"required_approving_review_count": 1' in setup
+
+
+# ---------------------------------------------------------------------------
+# The About box (roadmap 7.10)
+# ---------------------------------------------------------------------------
+
+
+def test_the_about_box_is_installed_only_with_the_drafted_words() -> None:
+    drafted: dict[str, object] = {
+        "description": checker.ABOUT_DESCRIPTION,
+        "topics": list(checker.ABOUT_TOPICS),
+    }
+    assert checker.check_about(drafted).installed is True
+    assert checker.check_about({"description": None, "topics": []}).installed is False
+    edited = {**drafted, "description": "A knowledge tool."}
+    assert checker.check_about(edited).detail == "the description differs from the draft"
+    short = {**drafted, "topics": list(checker.ABOUT_TOPICS[1:])}
+    finding = checker.check_about(short)
+    assert finding.installed is False
+    assert checker.ABOUT_TOPICS[0] in finding.detail
+
+
+def test_the_setup_page_installs_the_words_the_check_compares() -> None:
+    page = (ROOT / "docs" / "workflow" / "github-setup.md").read_text(encoding="utf-8")
+    assert checker.ABOUT_DESCRIPTION in page
+    for topic in checker.ABOUT_TOPICS:
+        assert f"names[]={topic}" in page
+
+
+def test_the_about_words_fit_github_s_limits() -> None:
+    """A description over 350 characters or a malformed topic is refused by the API."""
+    assert len(checker.ABOUT_DESCRIPTION) <= 350
+    assert len(checker.ABOUT_TOPICS) <= 20
+    assert len(set(checker.ABOUT_TOPICS)) == len(checker.ABOUT_TOPICS)
+    for topic in checker.ABOUT_TOPICS:
+        assert topic == topic.lower() and len(topic) <= 50
+        assert all(char.isalnum() or char == "-" for char in topic)

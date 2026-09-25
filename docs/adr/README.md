@@ -190,3 +190,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0156](0156-read-the-agent-task-verdict-where-we-did-not-write-and-ask-it-for-significance.md) | Read the agent-task verdict where we did not write the corpus, and ask it for significance | Accepted |
 | [0157](0157-take-the-timestamps-out-of-the-document-record.md) | Take the timestamps out of the document record, and keep the mtime as a memo | Accepted |
 | [0158](0158-let-anyone-open-a-pull-request-and-keep-the-merge-with-named-reviewers.md) | Let anyone open a pull request, and keep the merge with named reviewers | Accepted |
+| [0159](0159-keep-the-front-door-to-what-a-first-reader-needs-and-move-the-rest-with-its-citations.md) | Keep the front door to what a first reader needs, and move the rest with its citations | Accepted |
