@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 7.7 — a document's timestamps were its checkout's, so no
   cache could make a fresh clone incremental. Decide what a record's time should be a
   function of.
-- **PR:** #N (`feat/decide-what-a-documents-time-is-a-function-of`). Follows #198, merged
+- **PR:** #199 (`feat/decide-what-a-documents-time-is-a-function-of`). Follows #198, merged
   as `8670f3e`.
 - **Milestone 7:** 7.7 closed. 7.1 and 7.2 held at their triggers. **7.8–7.12 filed** at
   the maintainer's request, in the order they pay off: the issue audit, the open-intake
