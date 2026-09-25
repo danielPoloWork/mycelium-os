@@ -2,8 +2,9 @@
 
 - **Session scope:** roadmap 7.8 — audit every open issue against what the milestones have
   since delivered, and say for each: still needed, solved, or superseded.
-- **PR:** none — the deliverable is a comment per issue and this table, per the item's own
-  text; closing an issue is the owner's click, not this session's.
+- **PR:** #200 (`docs/audit-open-issues-against-delivered-milestones`) carries this record;
+  the audit's own deliverable is the comment posted on each issue, not a code change.
+  Closing an issue is the owner's click, not this session's.
 - **Milestone 7:** 7.8 closed.
 - **Decision it records:** none — no code, no ADR. Three comments posted to public issues,
   listed below.
