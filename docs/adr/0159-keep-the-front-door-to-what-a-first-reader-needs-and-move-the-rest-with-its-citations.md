@@ -109,6 +109,12 @@ could not keep.
 - `tools/check_repo_settings.py` reports one more absent setting until the owner runs §7.
 - G2's recorded verdict carries a digest of the judged cases, so it is re-recorded in this
   change; no retrieval arithmetic moved.
+- **The move exposed a defect in a guard.** Promoting the sections to H2 changed this corpus's
+  heading depths, and `tools/measure_result_rules.py --check` then reported a heading boost as
+  earning the default on `ours/release` (+0.23 %) while the same run measured it at −19 % and
+  −21 % on the two vendored release sets. The check read each set alone where its own bar
+  reads the arm across all of them; fixed here, because the ladder cannot pass without it
+  ([BUG-0037](../bugs/2026/09/BUG-0037-the-result-rules-check-reads-each-set-alone.md)).
 
 ## References
 

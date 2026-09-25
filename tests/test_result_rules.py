@@ -147,3 +147,51 @@ def test_redundancy_counts_a_repeated_digest_once_per_extra_slot() -> None:
         ]
     )
     assert found.duplicate_slots == 1
+
+
+# ---------------------------------------------------------------------------
+# The bar --check applies (roadmap 7.10, BUG-0037)
+# ---------------------------------------------------------------------------
+
+
+def reading(set_name: str, overall: float, worst: float = 0.0) -> rules.Reading:
+    return rules.Reading(set_name, overall, worst)
+
+
+def test_a_release_gain_with_no_loss_anywhere_earns_the_default() -> None:
+    readings = {
+        "depth^1.05": [
+            reading("ours/release", 0.01),
+            reading("ours/dev", 0.0),
+            reading("uv/release", 0.002),
+        ]
+    }
+    assert rules.earning_arms(readings) == ["depth^1.05 ours/release +1.00%, uv/release +0.20%"]
+
+
+def test_a_gain_on_one_set_does_not_earn_against_a_loss_on_another() -> None:
+    """BUG-0037: +0.23 % on this repository's corpus against -19 % on each vendored one
+    was reported as earning the default. The bar is about the arm, across every set."""
+    readings = {
+        "depth^1.05": [
+            reading("ours/release", 0.0023),
+            reading("uv/release", -0.1895),
+            reading("uv-ingested/release", -0.2071),
+        ]
+    }
+    assert rules.earning_arms(readings) == []
+
+
+def test_a_dev_regression_also_refuses_the_arm() -> None:
+    readings = {"depth^0.9": [reading("ours/release", 0.01), reading("ours/dev", -0.001)]}
+    assert rules.earning_arms(readings) == []
+
+
+def test_a_slice_past_the_floor_refuses_the_arm_anywhere() -> None:
+    readings = {"depth^0.9": [reading("ours/release", 0.02), reading("uv/dev", 0.01, -0.03)]}
+    assert rules.earning_arms(readings) == []
+
+
+def test_a_gain_confined_to_dev_is_proposable_and_earns_nothing() -> None:
+    readings = {"depth^0.9": [reading("ours/dev", 0.05), reading("ours/release", 0.0)]}
+    assert rules.earning_arms(readings) == []

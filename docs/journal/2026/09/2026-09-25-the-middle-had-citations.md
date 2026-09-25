@@ -37,6 +37,17 @@ because enabling Pages is still an owner step. `CONTRIBUTING.md`'s setup ran ruf
 `src` alone, while the gate runs them on `src tests tools contrib`. Both are corrected, and
 contributing now leads with `tools/verify.py`, which is what CI runs.
 
+## A guard that read the wrong half of its own bar
+
+The ladder stopped at *result rules*: a heading-depth boost "now earns a default" on this
+repository's corpus, +0.23 %. The move had promoted eighteen sections to H2, so the depths
+had changed, and a runner built to notice exactly that had noticed. What it had not done was
+apply its own bar — the same run printed that arm at −19 % and −21 % on the two vendored
+release sets, and the bar says *no overall regression on any set*. The check tested each
+release set alone. That is BUG-0037, fixed here because the gate could not pass without it,
+and it is the unsafe direction for a guard: the same code would have waved through a
+one-corpus gain as a mandate.
+
 ## What the next session should know
 
 - **The owner's two About commands** are in `docs/workflow/github-setup.md` §7, and

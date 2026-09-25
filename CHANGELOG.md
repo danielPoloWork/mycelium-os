@@ -122,6 +122,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Fixed
 
+- **`tools/measure_result_rules.py --check` applies the bar it states**
+  ([BUG-0037](docs/bugs/2026/09/BUG-0037-the-result-rules-check-reads-each-set-alone.md)). It
+  read each release set alone, so a heading-proximity arm gaining +0.23 % on this repository's
+  own corpus while losing 19–21 % on both vendored ones was reported as earning the default. An
+  arm now earns it only with a release gain, no overall regression on any set and no slice past
+  the floor anywhere.
+
 - **The reference profile generates the corpus it names** (roadmap 7.6,
   [BUG-0034](docs/bugs/2026/09/BUG-0034-the-reference-profile-harvests-one-of-the-two-corpora-it-names.md),
   [BUG-0035](docs/bugs/2026/09/BUG-0035-a-generated-reference-title-can-be-yaml-the-parser-refuses.md)).
