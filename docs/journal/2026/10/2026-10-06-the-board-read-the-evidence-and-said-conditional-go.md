@@ -19,7 +19,7 @@ earlier configuration, same commit) produced 410 findings, every one with a trac
 number, a test or a command behind it; seven triage clerks merged them into 180 clusters and
 rejected none; the adversarial pass refuted none outright but cut 23 of 33 standard-tier
 severities and re-read two defects as disagreements with recorded decisions. What survives as
-release-blocking after 67 challenge verdicts is one P0 (the authored lane follows a junction
+release-blocking after 50 challenge verdicts is one P0 (the authored lane follows a junction
 out of the repository and pins identity into the outside file, confirmed by both of its
 challengers), three consolidated P1 groups (the widened tree-sitter pin, the recovery
 commands that wipe a foreign-version store, MCP stdin in the Windows code page), a ledger of
