@@ -54,10 +54,13 @@ GitHub title are what drifted). Eight more P1 groups were confirmed and judged n
 
 - **Everything the board produced lives outside the tree** under the project's
   `panel-7-12/board/` directory (reviews, clusters, challenge verdicts, the clerk's
-  adjudication, the 30 rendered issue drafts) — the analysis quotes the evidence a reader
-  needs and names the cluster ids as stable keys. The drafts are opened **one at a time, each
-  confirmed by the maintainer** (their instruction of 2026-10-05), in the order of the
-  analysis §3.
+  adjudication, the rendered issue bodies) — the analysis quotes the evidence a reader needs
+  and names the cluster ids as stable keys. **The 30 issues are open as #206–#235**, one at a
+  time in the order of the analysis §3: the maintainer confirmed the first two and then
+  authorised the rest without a per-issue confirmation (2026-10-06). Every body went through
+  `mycelium.ingest.secrets` before publishing, because one reviewer's probe output carried a
+  planted token-shaped string, and the bodies name each other by number where one depends on
+  another.
 - **`docs/analysis/` is the maintainer's untracked directory** (`0001`, `README.md`): this PR
   stages `0002` alone by path, and the README's index row is theirs to add.
 - **Three records the board corrected on the way**, none silently: the dossier's "two open

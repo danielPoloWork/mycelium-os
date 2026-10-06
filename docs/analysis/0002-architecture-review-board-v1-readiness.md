@@ -80,11 +80,11 @@ Every seat answered the questions in its remit; every answer below is the board'
 - **Evidence rule, applied twice.** Mechanically: a finding with no tracked path, number, test or command was to be dropped before counting — none was (410 of 410 carried verifiable evidence). By reading: seven partition clerks merged semantically equivalent findings (410 → 180 clusters; 46 merged across partitions), recorded 49 contradictions between reviewers, and rejected none as unsupported.
 - **Severity is impact.** A cluster's severity is the highest a member assigned, never its member count; the reviewer count is recorded as metadata.
 - **Adversarial pass.** Every P0/P1 cluster was challenged by a reviewer who did not originate it, instructed to disprove it by the seven routes the brief names (incomplete evidence, intentional, ADR-accepted, unrealistic, existing test, overstated severity, roadmap work): the P0 by two frontier challengers, the 15 P1 clusters carrying release-blocking votes by one frontier challenger each, the 33 other P1 clusters by one standard-model challenger each. Of the 33 standard-model verdicts: 7 confirmed at P1, 23 downgraded (mostly to P2, three to P3), 3 reclassified as disagreements with a recorded decision, 0 refuted outright. Of the 17 frontier verdicts: 10 confirmed (the P0 by both challengers; eight P1 clusters), 6 downgraded in severity or stripped of their release-blocking vote, 1 reclassified as an owner action, 0 refuted outright. After the pass: 1 P0, 19 P1, 98 P2, 62 P3 clusters; five clusters remain release-blocking. P2 and P3 clusters were adjudicated by the clerk from the record.
-- **Classification.** Each of the 180 clusters is exactly one of: GitHub issue (141 clusters, consolidated by remedy into 30 drafts, §8); roadmap candidate (22, §7); documented disagreement with an owner decision (4, §4); accepted technical debt (9, §5); owner action already tracked (4, a condition, never a new issue); rejected (0 after triage; three severities were cut to P3 and two findings re-read as disagreements by the challenge).
+- **Classification.** Each of the 180 clusters is exactly one of: GitHub issue (141 clusters, consolidated by remedy into 30 issues, #206–#235, §8); roadmap candidate (22, §7); documented disagreement with an owner decision (4, §4); accepted technical debt (9, §5); owner action already tracked (4, a condition, never a new issue); rejected (0 after triage; three severities were cut to P3 and two findings re-read as disagreements by the challenge).
 
 ## 3. Validated findings ranked by impact
 
-Thirty consolidated findings; each row is a GitHub-ready draft under the board's working directory, opened only on the owner's confirmation. "Seats" counts distinct independent seats (metadata). Challenge: outcome of the adversarial pass on the P0/P1 members.
+Thirty consolidated findings; each row is a GitHub issue, numbered in §8. "Seats" counts distinct independent seats (metadata). Challenge: outcome of the adversarial pass on the P0/P1 members.
 
 | # | Finding (draft title, abridged) | Sev | Blocking | Category | Clusters | Seats | Challenge |
 |---|---|---|---|---|---|---|---|
@@ -200,9 +200,42 @@ A proposal in the roadmap's vocabulary, as the EADOS plan phase produced on 2026
 
 Relocation of a dead anchor by the digest the URI already carries (representation-c39); the learned-reranker trigger, deliberately not declared met (ADR-0152's headroom is reachable by re-ordering); the graph database; roadmap 7.1 (remote cache) and 7.2 (server profile) as held; Rust hot paths. None enters without its trigger and its own RFC.
 
-## 8. GitHub issues drafted
+## 8. GitHub issues opened
 
-Thirty drafts, one per row of §3, each with problem statement, supporting evidence (every member cluster's canonical claim and evidence entries), affected components, reproduction, architectural significance, acceptance criteria, suggested priority, references and dependencies. They are held under the board's working directory and opened **one at a time on the owner's confirmation** (owner instruction of 2026-10-05), in the order of §3, with label = the lead change type and milestone = the open roadmap milestone. No existing issue duplicates any of them: #149–#151 are the reserved first-contribution issues and are named as related where they touch (I-10, I-30, I-34).
+Thirty issues, one per row of §3, each with problem statement, supporting evidence (every member cluster's canonical claim and evidence entries), affected components, reproduction, architectural significance, acceptance criteria, suggested priority, references, dependencies and the adversarial challenge's outcome. They were opened **one at a time**, in the order of §3, with label = the lead change type and milestone = the open roadmap milestone: the owner confirmed the first two on 2026-10-06 and then authorised the rest without a per-issue confirmation. Every body passed through the project's own secret scanner first (a reviewer's probe had planted a token-shaped string in one evidence entry). Where one issue depends on another, its body names the other by number. No existing issue duplicates any of them: #149–#151 are the reserved first-contribution issues and are named as related where they touch (I-10, I-30, I-34).
+
+| Finding | Issue | Sev | Blocking | Label |
+|---|---|---|---|---|
+| I-01 | #206 | P0 | yes | security |
+| I-03 | #207 | P1 | yes | build |
+| I-05 | #208 | P1 | yes | fix |
+| I-12 | #209 | P1 | yes | fix |
+| I-02 | #210 | P1 | no | fix |
+| I-07 | #211 | P1 | no | fix |
+| I-09 | #212 | P1 | no | fix |
+| I-10 | #213 | P1 | no | ci |
+| I-11 | #214 | P1 | no | fix |
+| I-04 | #215 | P2 | no | fix |
+| I-14 | #216 | P1 | no | security |
+| I-16 | #217 | P1 | no | fix |
+| I-18 | #218 | P1 | no | fix |
+| I-22 | #219 | P1 | no | fix |
+| I-23 | #220 | P1 | no | perf |
+| I-06 | #221 | P2 | no | fix |
+| I-13 | #222 | P2 | no | fix |
+| I-15 | #223 | P2 | no | fix |
+| I-17 | #224 | P2 | no | fix |
+| I-19 | #225 | P2 | no | fix |
+| I-20 | #226 | P2 | no | ci |
+| I-24 | #227 | P2 | no | docs |
+| I-25 | #228 | P2 | no | fix |
+| I-26 | #229 | P2 | no | fix |
+| I-28 | #230 | P2 | no | feat |
+| I-29 | #231 | P2 | no | fix |
+| I-30 | #232 | P2 | no | docs |
+| I-33 | #233 | P2 | no | fix |
+| I-34 | #234 | P2 | no | security |
+| I-36 | #235 | P2 | no | test |
 
 ---
 
