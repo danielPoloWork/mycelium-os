@@ -100,7 +100,16 @@ plugins before 1.0 asked strangers to do the thing **D-029** reserves for after 
 The five move behind the freeze with the topology that permits them); zero critical
 findings open from security review; 1.0 compatibility promise published.
 
+> **Amended at roadmap 7.14 (ADR-0161).** Phase 4's *scope* shipped as **v0.6.0** in Milestone 6
+> (ADR-0113: pre-1.0 the version counts milestones, not phases). Its *exit gates* are what the
+> **v1.0.0** tag binds to, and Milestone 8 is where they are met, or carried by the maintainer's
+> recorded decision — the contribution gate above is the one no engineering work can move.
+
 ### Phase 5 — v2.x "Team & platform" (separate RFC cycle; `gpt-specs/` is the blueprint)
+
+> **Placed at roadmap 7.14 (ADR-0161).** Phase 5 is **Milestone 10**. Its first two items sat in
+> Milestone 7 until then, which also carried the v1.0.0 label, so the milestone holding the tag
+> could not close while they waited for their triggers; they are carried by name, still held.
 
 Remote build cache (the Bazel move — team-scale value without a server); then the server
 profile: HTTP API, authn/z, namespaces/ACL with policy pushdown, Postgres catalog +
