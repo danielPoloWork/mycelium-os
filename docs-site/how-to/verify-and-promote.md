@@ -17,6 +17,10 @@ Nothing calls out to a provider, and no key is read, until this line is present
 (D-013/D-017). Naming a provider here is you consenting to send the evidence documents
 you point at it to that provider — say so to anyone else who works in this repository.
 
+The provider's SDK is an extra of its own: install `mycelium-os[synthesis]` beside the
+`[ingest]` extra the evidence lane needs. Without it the lane does not guess — the provider
+is reported unavailable, with the command that installs it.
+
 ## 2. Ingest, and let the synthesis lane run
 
 ```bash
