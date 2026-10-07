@@ -8,13 +8,14 @@
     python tools/measure_cache_ceiling.py --corpus <repository> --out <scratch>
         [--people N] [--cold-builds-per-week N] [--rounds 1]
 
-Roadmap 7.1 is the remote build cache, and spec 06 §3 defers it until **"≥ 1 team
-dogfooding with measured duplicate-build pain"**. Nothing could take that
-measurement: the pain has no unit and there was no instrument, so the trigger could
-only ever be asserted — the defect ADR-0138 found in the adoption gates, one row
-further down the same table. This tool is the instrument. It prices the one thing a
-remote cache can change, **a cold build**, because after the first build every
-rebuild is incremental and a cache has nothing left to skip (roadmap 6.20).
+Roadmap 10.1 (7.1 until roadmap 7.14 carried it, ADR-0161) is the remote build
+cache, and spec 06 §3 defers it until **"≥ 1 team dogfooding with measured
+duplicate-build pain"**. Nothing could take that measurement: the pain has no unit
+and there was no instrument, so the trigger could only ever be asserted — the defect
+ADR-0138 found in the adoption gates, one row further down the same table. This tool
+is the instrument. It prices the one thing a remote cache can change, **a cold
+build**, because after the first build every rebuild is incremental and a cache has
+nothing left to skip (roadmap 6.20).
 
 **Every arm builds a fresh checkout**: a copy of the corpus at a new path, every file
 written anew, which is what `git clone` and `actions/checkout` produce. Only what is

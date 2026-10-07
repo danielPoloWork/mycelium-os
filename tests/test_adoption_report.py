@@ -250,7 +250,7 @@ def test_one_team_s_measured_pain_fires_the_trigger() -> None:
     reports = report.cache_reports([_issue(12, "a-team-lead", _body(_report()))], [], OWNER)
     trigger = report.remote_cache_trigger(reports)
     assert trigger.fired is True
-    assert trigger.item == "roadmap 7.1"
+    assert trigger.item == "roadmap 10.1"
     assert "a-team-lead on #12" in trigger.evidence[0]
 
 
@@ -439,7 +439,7 @@ def test_a_consumer_that_files_the_form_fires_the_http_api_trigger() -> None:
     requests = report.surface_requests([_issue(40, "a-consumer", _form_body())], OWNER)
     trigger = report.surface_trigger(requests)
     assert trigger.fired is True
-    assert trigger.item.startswith("roadmap 7.2")
+    assert trigger.item.startswith("roadmap 10.2")
     assert trigger.evidence == ["a-consumer on #40"]
 
 
@@ -479,7 +479,7 @@ def test_the_server_profile_row_is_unreadable_and_never_fires() -> None:
     (2026-09-24), and `None` never fails the report (ADR-0118)."""
     trigger = report.server_profile_trigger()
     assert trigger.fired is None
-    assert "7.2" in trigger.item
+    assert "10.2" in trigger.item
     met = [report.Signal(key="a", condition="a", phase="3", met=True, observed="")]
     assert report.verdict(met, [trigger]) is True
 

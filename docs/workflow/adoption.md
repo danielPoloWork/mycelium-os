@@ -74,7 +74,7 @@ contributor to open the pull request.
 
 ## The deferred decision it also watches
 
-Spec 06 §3 defers the **remote build cache** (roadmap 7.1) until *"≥ 1 team dogfooding with
+Spec 06 §3 defers the **remote build cache** (roadmap 10.1, carried from 7.1 at 7.14) until *"≥ 1 team dogfooding with
 measured duplicate-build pain"*. Until roadmap 7.4 that trigger was the same kind of
 sentence the adoption gates were before D-030: nothing could measure the pain, so nothing
 could ever say it had fired. It has an instrument now, and the report above reads it
@@ -106,9 +106,9 @@ What the report does with it, and what it does not:
   issue as *not planned*. The trigger reads GitHub's own record of that, so no code
   changes.
 
-### The three that gate the server profile (roadmap 7.2, 7.5)
+### The three that gate the server profile (roadmap 10.2, read at 7.5)
 
-The same report evaluates the three rows that let roadmap 7.2 in, read at 7.5
+The same report evaluates the three rows that let roadmap 10.2 in (7.2 until 7.14), read at 7.5
 ([ADR-0155](../adr/0155-read-7-2s-three-triggers-and-say-which-one-cannot-be-read.md)):
 
 | Row | How it fires | Who acts |
