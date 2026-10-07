@@ -34,8 +34,12 @@ that reaches an index cannot be recalled.
 `python tools/check_distribution.py` is what holds this: it builds both archives, asserts the
 sdist carries only what it declares, asserts the wheel carries the package and its marker,
 runs `twine check --strict`, then installs the wheel into a clean environment and walks it
-from `mycelium init` to a cited answer. It runs in CI at `code` mode and again inside the
-publish workflow, because an index cannot un-publish.
+from `mycelium init` to a cited answer. A second clean environment takes the wheel with every
+extra at the newest versions the published ranges allow, because that — not `uv.lock` — is
+what a consumer installs: every grammar must load, every input known to have faulted a native
+dependency must read in a child interpreter, and the determinism corpus must build twice to one
+observation (roadmap 8.2, ADR-0162). It runs in CI at `code` mode and again inside the publish
+workflow, because an index cannot un-publish.
 
 ## Registry
 

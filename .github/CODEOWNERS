@@ -47,6 +47,7 @@
 /pyproject.toml                     @danielPoloWork
 /uv.lock                            @danielPoloWork
 /tools/check_distribution.py        @danielPoloWork
+/tools/check_known_faults.py        @danielPoloWork
 /tools/build_sbom.py                @danielPoloWork
 
 # ---------------------------------------------------------------------------

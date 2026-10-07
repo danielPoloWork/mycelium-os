@@ -19,18 +19,27 @@ incremental build.
 **A missing grammar is a gap, not a failure.** The document compiles, the
 snapshot says it is degraded and names the extra, and installing the extra is a
 change the build sees without anyone editing a file.
+
+**A binding release that kills the process stays out of every range.** A fault
+in native code is not an exception ([BUG-0022]), so the input that faulted is
+committed and replayed in a child interpreter, and no declared range may admit
+the release it faulted on (roadmap 8.2).
 """
 
 import json
 import shutil
+import sys
+import tomllib
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Literal
+from typing import Any, Final, Literal
 
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 from mycelium.build import build, rollback
 from mycelium.build.snapshots import decode_snapshot_state
@@ -62,6 +71,11 @@ from mycelium.symbols import (
     resolve_symbols,
     symbols_digest,
 )
+
+ROOT = Path(__file__).parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+
+from check_known_faults import KNOWN_FAULTS, KnownFault, altered, replay  # noqa: E402
 
 pytestmark = pytest.mark.boundary("B14")
 """The threat-model boundary these tests hold (docs/security/threat-model.md §4)."""
@@ -452,6 +466,86 @@ def test_any_python_fence_is_read_without_error_and_deterministically(text: str)
     for item in first:
         # Every name the extractor emits is a legal symbol id and record.
         Symbol(symbol=symbol_id("python", item.name), kind=item.kind, defined_in="a.md#L1")
+
+
+# ---------------------------------------------------------------------------
+# The binding's defect pin, held by tests rather than by a comment (BUG-0022)
+# ---------------------------------------------------------------------------
+
+
+def declared_requirements(config: Mapping[str, Any]) -> Iterator[tuple[str, Requirement]]:
+    """Every requirement `pyproject.toml` declares, with the place that declares it."""
+    project = config["project"]
+    for entry in project.get("dependencies", []):
+        yield "the core dependencies", Requirement(entry)
+    for extra, entries in project.get("optional-dependencies", {}).items():
+        for entry in entries:
+            yield f"the {extra} extra", Requirement(entry)
+    for group, entries in config.get("dependency-groups", {}).items():
+        for entry in entries:
+            if isinstance(entry, str):
+                yield f"the {group} group", Requirement(entry)
+
+
+@pytest.mark.parametrize("fault", KNOWN_FAULTS, ids=lambda fault: fault.bug)
+def test_no_declared_range_admits_a_release_known_to_fault(fault: KnownFault) -> None:
+    """BUG-0022's pin is a test now, not a comment (roadmap 8.2, ADR-0162).
+
+    Dependabot #128 widened `<0.26` to `<0.27` in both places the binding is
+    declared, the comment beside the pin went on saying `<0.26`, and nothing
+    failed: the lock kept 0.25.2, so every job ran the release that does not
+    fault while every consumer of the extra resolved the one that does. A range
+    is read here the way an installer reads it, and must exclude every release
+    the record names.
+    """
+    with (ROOT / "pyproject.toml").open("rb") as handle:
+        config = tomllib.load(handle)
+    name = canonicalize_name(fault.distribution)
+    declared = [
+        (place, requirement)
+        for place, requirement in declared_requirements(config)
+        if canonicalize_name(requirement.name) == name
+    ]
+    assert declared, f"{fault.distribution} is no longer declared; retire {fault.bug}'s row"
+    for place, requirement in declared:
+        admitted = [
+            version
+            for version in fault.faulting
+            if requirement.specifier.contains(version, prereleases=True)
+        ]
+        assert not admitted, (
+            f"{place} declares {requirement}, which admits {', '.join(admitted)}: "
+            f"{fault.bug} records that release killing the build process. Restore the "
+            "ceiling, or lift it only against a release that survives "
+            "`python tools/check_distribution.py` (ADR-0162)"
+        )
+
+
+@pytest.mark.parametrize("fault", KNOWN_FAULTS, ids=lambda fault: fault.bug)
+def test_each_input_that_faulted_is_committed_as_the_bytes_that_faulted(
+    fault: KnownFault,
+) -> None:
+    """A reproducer an editor re-saved reproduces nothing, and says nothing about it."""
+    assert altered(fault) is None, altered(fault)
+
+
+@pytest.mark.parametrize("fault", KNOWN_FAULTS, ids=lambda fault: fault.bug)
+def test_an_input_that_faulted_the_binding_reads_in_a_fresh_interpreter(
+    fault: KnownFault,
+) -> None:
+    """The reproducer BUG-0022 declined to commit, committed and replayed (roadmap 8.2).
+
+    Out of process, because the failure is the process dying, and five reads in
+    one child, because the fault is heap corruption whose timing moves. The
+    interpreter is this one, so the binding is the lock's: a lock that resolves
+    a faulting release fails here, in each cell of the matrix whose platform
+    reproduces the fault — Windows, where it was observed. The newest release
+    the ranges allow is `tools/check_distribution.py`'s to replay.
+    """
+    outcome = replay(sys.executable, fault)
+    if outcome.status == "unavailable":
+        pytest.skip(f"{outcome.detail}; install {EXTRA}")
+    assert outcome.passed, outcome.detail
 
 
 # ---------------------------------------------------------------------------

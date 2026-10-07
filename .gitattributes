@@ -35,6 +35,12 @@ tests/fixtures/ingest/corpus/*.png binary
 # quietly weaken the test that guards against it (roadmap 4.2).
 tests/fixtures/ingest/hostile/* binary
 
+# The fence that faulted the grammar binding ([BUG-0022], roadmap 8.2) is hostile in the
+# same sense: it reproduces because of its exact bytes - LF-only, no final newline - and
+# `tools/check_known_faults.py` refuses to replay it if its digest moves. Binary, so no
+# line-ending filter rewrites it on a Windows checkout and quietly retires the reproducer.
+tests/fixtures/symbols/*.txt binary
+
 # The third judged corpus (roadmap 4.10). Its sources are the *inputs* the
 # evidence was compiled from, and a judged anchor carries the source's digest in
 # its filename — so a line-ending filter rewriting one on checkout would move

@@ -1741,7 +1741,6 @@ embeddings = [
     { name = "tokenizers" },
 ]
 ingest = [
-    { name = "anthropic" },
     { name = "docling-slim", extra = ["convert-core", "format-docx", "format-html", "format-latex", "format-pdf"] },
     { name = "pypdfium2" },
 ]
@@ -1766,6 +1765,7 @@ watch = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "anthropic" },
     { name = "anyio" },
     { name = "cookiecutter" },
     { name = "docling-slim", extra = ["convert-core", "format-docx", "format-html", "format-latex", "format-pdf"] },
@@ -1779,6 +1779,7 @@ dev = [
     { name = "mypy" },
     { name = "numpy" },
     { name = "onnxruntime" },
+    { name = "packaging" },
     { name = "pypdfium2" },
     { name = "pytest" },
     { name = "pytest-benchmark" },
@@ -1804,7 +1805,6 @@ render = [
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", marker = "extra == 'ingest'", specifier = ">=1.2" },
     { name = "anthropic", marker = "extra == 'synthesis'", specifier = ">=1.2" },
     { name = "docling-slim", extras = ["convert-core", "format-docx", "format-html", "format-latex", "format-pdf"], marker = "extra == 'ingest'", specifier = ">=2.124" },
     { name = "markdown-it-py", specifier = ">=3.0" },
@@ -1814,7 +1814,7 @@ requires-dist = [
     { name = "pypdfium2", marker = "extra == 'ingest'", specifier = ">=4.30" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "tokenizers", marker = "extra == 'embeddings'", specifier = ">=0.20" },
-    { name = "tree-sitter", marker = "extra == 'symbols'", specifier = ">=0.25,<0.27" },
+    { name = "tree-sitter", marker = "extra == 'symbols'", specifier = ">=0.25,<0.26" },
     { name = "tree-sitter-c", marker = "extra == 'symbols'", specifier = ">=0.23" },
     { name = "tree-sitter-cpp", marker = "extra == 'symbols'", specifier = ">=0.23" },
     { name = "tree-sitter-go", marker = "extra == 'symbols'", specifier = ">=0.23" },
@@ -1831,6 +1831,7 @@ provides-extras = ["embeddings", "ingest", "symbols", "synthesis", "watch"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "anthropic", specifier = ">=1.2" },
     { name = "anyio", specifier = ">=4" },
     { name = "cookiecutter", specifier = ">=2.6" },
     { name = "docling-slim", extras = ["convert-core", "format-docx", "format-html", "format-latex", "format-pdf"], specifier = ">=2.124" },
@@ -1844,12 +1845,13 @@ dev = [
     { name = "mypy", specifier = ">=1.13" },
     { name = "numpy", specifier = ">=1.26" },
     { name = "onnxruntime", specifier = ">=1.20" },
+    { name = "packaging", specifier = ">=24" },
     { name = "pypdfium2", specifier = ">=4.30" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-benchmark", specifier = ">=4.0" },
     { name = "ruff", specifier = ">=0.7" },
     { name = "tokenizers", specifier = ">=0.20" },
-    { name = "tree-sitter", specifier = ">=0.25,<0.27" },
+    { name = "tree-sitter", specifier = ">=0.25,<0.26" },
     { name = "tree-sitter-c", specifier = ">=0.23" },
     { name = "tree-sitter-cpp", specifier = ">=0.23" },
     { name = "tree-sitter-go", specifier = ">=0.23" },

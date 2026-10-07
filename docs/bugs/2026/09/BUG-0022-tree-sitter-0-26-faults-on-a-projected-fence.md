@@ -93,9 +93,43 @@ the reason the pin exists. Lifting it needs a release that survives `pytest -m d
 `tools/verify.py` builds that corpus from `retrieval` mode upward, so a bad binding fails the
 ladder within seconds rather than reaching a merge.
 
+> **Amended at roadmap 8.2 (2026-10-07,
+> [ADR-0162](../../../adr/0162-hold-a-defect-pin-with-a-test-and-verify-the-ranges-a-wheel-resolves.md)):**
+> the corpus stopped being a guard two days after this record named it. #122 re-rendered the
+> twin on 2026-09-12 (BUG-0025) and the faulting document left it; on 2026-09-13 Dependabot
+> #128 widened the pin to `<0.27` with nothing failing, and v0.6.0 shipped that range. Lifting
+> the pin now needs a release that survives the committed fence's replay at the newest version
+> the range allows: widen the range and run `python tools/check_distribution.py`.
+
 No minimal fixture is committed: bisecting the fence by line reached 14 268 bytes / 258 lines
 and no further, so the smallest known trigger is a large blob of mangled documentation. The
 vendored corpus is a better guard than a checked-in copy of part of it.
+
+> **Reversed at roadmap 8.2:** the whole fence is committed instead, as
+> `tests/fixtures/symbols/bug-0022-fence.txt` — 20 644 bytes recovered from `db84cc5` through
+> the compiler's own parser, binary in `.gitattributes`, its digest asserted — and replayed out
+> of process by `tools/check_known_faults.py`. A corpus guards an input only while it contains
+> it.
+
+## Widened, and restored (roadmap 8.2)
+
+Found by the architecture review board (analysis 0002, issue #207) and measured again for the
+fix:
+
+| Observation | Result |
+|---|---|
+| `uv pip compile` of v0.6.0's range, `tree-sitter>=0.25,<0.27` | `tree-sitter==0.26.0`, the latest release |
+| The recovered fence on 0.26.0, one read per fresh process (Windows 11) | 4 faults in 10 |
+| The same, five reads per process | 10 faults in 10 |
+| The same fence on 0.25.2, five and twenty reads per process | read every time, identically: 0 definitions, 7 references |
+| The current ingested corpus on 0.26.0 (the board's run) | 584 fences read, no fault |
+
+What holds the pin now (ADR-0162): `tests/test_symbols.py` fails on any declared range that
+admits 0.26.0; `.github/dependabot.yml` ignores the binding from 0.26; and the fence is replayed
+in a child interpreter by the suite, in the locked environment, and by
+`tools/check_distribution.py` at the newest release the range allows. Linux and macOS were not
+measured, so the replay detects the fault where it reproduces; the range test refuses 0.26.0
+everywhere.
 
 ## Lesson
 
@@ -103,3 +137,7 @@ An in-process C parser makes "a parser failure is a per-document warning" a prom
 process cannot keep. The threat model said so as a control (B14); it is now amended to say
 what is actually true — a faulting grammar takes the build with it, and the control is the
 version pin plus the corpus that reproduces it.
+
+And a second, from roadmap 8.2: a guard has to assert that it still guards. The corpus was
+regenerated for an unrelated reason, went on compiling cleanly, and so went on passing, which
+from outside is exactly what guarding looks like.

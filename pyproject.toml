@@ -86,10 +86,6 @@ watch = ["watchdog>=4.0"]
 ingest = [
     "docling-slim[convert-core,format-docx,format-html,format-latex,format-pdf]>=2.124",
     "pypdfium2>=4.30",
-    # The synthesis extra is a dev dependency so CI type-checks the provider
-    # adapter on every platform. No test calls the API: the lane is exercised
-    # against a scripted provider, and the one live smoke test skips without a key.
-    "anthropic>=1.2",
 ]
 # The LLM synthesis lane (roadmap 4.4, ADR-0035). Optional because the evidence
 # lane — the deterministic one — needs none of it, and because a default install
@@ -106,13 +102,17 @@ synthesis = ["anthropic>=1.2"]
 # versions - and a build without them compiles, says it is degraded, and names this
 # extra. `tree-sitter>=0.25` is the release that moved matching onto `QueryCursor`;
 # `<0.26` is a defect pin, not caution: 0.26.0 faults with an access violation while
-# reading a fence of the vendored ingested corpus, deterministically, and takes the
-# whole build process with it. 0.25.2 reads the same bytes repeatedly and produces
-# byte-identical definitions ([BUG-0022], roadmap 5.2). Lift the pin only against a
-# release that survives `uv run pytest -m determinism` plus a build of
-# eval/corpora/uv-docs-ingested.
+# reading a fence projected from an ingested PDF, and takes the whole build process
+# with it. 0.25.2 reads the same bytes repeatedly and produces byte-identical
+# definitions ([BUG-0022], roadmap 5.2). A bot widened the pin once and nothing failed
+# (Dependabot #128; restored at roadmap 8.2), so three things hold it now:
+# `tests/test_symbols.py` fails on a range that admits a release known to fault,
+# `.github/dependabot.yml` stops proposing one, and the fence is committed and replayed
+# out of process by `tools/check_known_faults.py` - in the locked environment by the
+# suite, at the newest release this range allows by `tools/check_distribution.py`.
+# Lift the pin only against a release that survives that check (ADR-0162).
 symbols = [
-    "tree-sitter>=0.25,<0.27",
+    "tree-sitter>=0.25,<0.26",
     "tree-sitter-c>=0.23",
     "tree-sitter-cpp>=0.23",
     "tree-sitter-go>=0.23",
@@ -209,11 +209,22 @@ dev = [
     "mycelium-chats",
     "docling-slim[convert-core,format-docx,format-html,format-latex,format-pdf]>=2.124",
     "pypdfium2>=4.30",
+    # The synthesis extra is a dev dependency so CI type-checks the provider
+    # adapter on every platform. No test calls the API: the lane is exercised
+    # against a scripted provider, and the one live smoke test skips without a key.
+    # It sat in the `ingest` extra from roadmap 4.4 until 8.2, comment and all, so
+    # every `mycelium-os[ingest]` install received an SDK only the synthesis lane uses.
+    "anthropic>=1.2",
+    # Reads a requirement the way an installer does, for the test that holds the
+    # binding's defect pin (roadmap 8.2): whether a range admits a release is
+    # PEP 440's question, and a string comparison is how a pin reads as held when
+    # it is not - `<0.26.1` admits 0.26.0.
+    "packaging>=24",
     # The symbols extra is a dev dependency for the same reason again: CI exercises
     # every grammar on every platform, and gate G6's golden is blessed with them
     # installed - the gate refuses to run without them rather than compare a
     # degraded snapshot against it (roadmap 5.1).
-    "tree-sitter>=0.25,<0.27",
+    "tree-sitter>=0.25,<0.26",
     "tree-sitter-c>=0.23",
     "tree-sitter-cpp>=0.23",
     "tree-sitter-go>=0.23",

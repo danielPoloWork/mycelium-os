@@ -117,6 +117,12 @@ in `tools/verify.py` and in CI's `distribution` job (one implementation, two cal
 ADR-0059), and again inside the publish workflow, because an index cannot un-publish. 64 s,
 the same price as the ingested-corpus check beside it.
 
+> **Amended by [ADR-0162](0162-hold-a-defect-pin-with-a-test-and-verify-the-ranges-a-wheel-resolves.md) (2026-10-07):**
+> a fifth check installs the wheel with every extra at the newest versions the published ranges
+> allow, in a second clean environment, because every other environment is installed from
+> `uv.lock` and a consumer's is not — the gap through which v0.6.0 shipped a tree-sitter range
+> admitting the release BUG-0022 pins out. The default-install walk above is unchanged.
+
 **The metadata describes the package to a reader who has not heard of it**: keywords,
 classifiers whose Python versions are compared against the CI matrix by a test rather than
 maintained beside it, and the five URLs a registry expects. No `License ::` classifier — the

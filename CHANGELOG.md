@@ -12,6 +12,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Added
 
+- **`tools/check_distribution.py` installs the wheel's extras at their newest allowed
+  versions** (roadmap 8.2, #207,
+  [ADR-0162](docs/adr/0162-hold-a-defect-pin-with-a-test-and-verify-the-ranges-a-wheel-resolves.md)).
+  Every job installs from `uv.lock`, while a consumer gets whatever the published ranges
+  resolve to on the day, and the two had parted. A fifth check takes the built wheel with every
+  extra at `--resolution highest` into a clean environment, which must load every grammar, read
+  every input known to have faulted a native dependency in a child interpreter
+  (`tools/check_known_faults.py`), and build the determinism corpus twice to one observation.
+  Which direct requirements resolved past the lock, and whether the corpus still compiles to
+  the golden at those versions, is printed rather than gated.
+
 - **`tools/check_repo_settings.py` reports the repository's About box** (roadmap 7.10,
   [ADR-0159](docs/adr/0159-keep-the-front-door-to-what-a-first-reader-needs-and-move-the-rest-with-its-citations.md)).
   The description and topics a stranger meets before the README were never set; they are now
@@ -80,6 +91,13 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
 
 ### Changed
 
+- **`mycelium-os[ingest]` no longer installs the Anthropic SDK** (roadmap 8.2, #207,
+  [ADR-0162](docs/adr/0162-hold-a-defect-pin-with-a-test-and-verify-the-ranges-a-wheel-resolves.md)).
+  `anthropic>=1.2` sat in the `ingest` extra from roadmap 4.4 under a comment calling it a dev
+  dependency, so an ingestion-only install carried an LLM SDK and its dependencies. It is a dev
+  dependency now, as the comment said; the synthesis lane is installed with
+  `mycelium-os[synthesis]`, as it has always been documented.
+
 - **The README is a front door again** (roadmap 7.10, ADR-0159). 1 022 lines become 274:
   what the project is and who it is for, the ten-minute path to a cited answer, install, first
   commands, and a table from each question a sceptical reader asks to where the evidence
@@ -121,6 +139,17 @@ PR. A release PR moves the `[Unreleased]` entries into a new per-version file un
   filesystem or from Git.
 
 ### Fixed
+
+- **The tree-sitter defect pin is `<0.26` again, and a test holds it** (roadmap 8.2, #207,
+  [BUG-0022](docs/bugs/2026/09/BUG-0022-tree-sitter-0-26-faults-on-a-projected-fence.md),
+  [ADR-0162](docs/adr/0162-hold-a-defect-pin-with-a-test-and-verify-the-ranges-a-wheel-resolves.md)).
+  Dependabot #128 widened BUG-0022's `<0.26` to `<0.27` and nothing failed, because the lock
+  kept 0.25.2 and no job resolved the published range — so v0.6.0's `mycelium-os[symbols]`
+  installs 0.26.0, the binding that kills the build with an access violation. The range is
+  restored and re-locked; `tests/test_symbols.py` refuses any declared range that admits a
+  release known to fault; Dependabot ignores the binding from 0.26; and the faulting fence,
+  which the ingested corpus stopped carrying when it was re-rendered on 2026-09-12, is
+  committed and replayed out of process. On Windows 11, 0.26.0 dies on it in 10 runs of 10.
 
 - **A plugin's adoption tally excludes this repository's owner, not only the plugin's**
   (roadmap 7.13,
