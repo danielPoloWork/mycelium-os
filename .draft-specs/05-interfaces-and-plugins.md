@@ -287,6 +287,7 @@ the CHANGELOG migration note and, for an incompatible change, the version-token 
 requires. The four tools declare an `outputSchema` beside the `inputSchema` §3 always had, so
 the output an agent depends on is pinned with the input, and the error result's fields are
 declared per code. The 1.0 promise is published in `docs/compatibility.md` and **binds at the
-v1.0.0 tag**, which Milestone 7 cuts; the first bullet's pre-1.0 clause governs until then. Two
+v1.0.0 tag**, which Milestone 8 cuts (Milestone 7 until roadmap 7.14 re-cut it, ADR-0161); the
+first bullet's pre-1.0 clause governs until then. Two
 things the §4.1 sketch lists stay outside the freeze on the evidence rather than by omission:
 `Embedder`, which no entry point can supply, and the three Protocols that were never built.

@@ -14,7 +14,8 @@
 
 7.2 bundles the server profile — HTTP API, authn/z, namespaces and ACL with policy pushdown, a
 Postgres catalog and object-store CAS, OpenSearch/Qdrant adapters, out-of-process plugin
-isolation, OTel — and the Milestone 7 heading admits each part only through its spec 06 §3
+isolation, OTel — and the Milestone 10 heading (Milestone 7's until roadmap 7.14 carried the
+item there as 10.2, ADR-0161) admits each part only through its spec 06 §3
 trigger and its own RFC. None of the triggers has fired (the audit below), so no RFC exists and
 none should be written ahead of the consumer who decides its hardest questions. What *can* be
 written now is the list of questions that consumer's RFC will not be allowed to skip: each one

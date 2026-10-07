@@ -184,7 +184,10 @@ the ones that say a budget is missed.
 
 Pre-1.0 and milestone-driven. **v0.6.0** closed Milestone 6: the five stable contracts are
 frozen behind goldens and the [1.0 compatibility promise](docs/compatibility.md) is published.
-Milestone 7 leads to **v1.0.0**. What is not done is said plainly: the package is **not on a
+Milestone 7 closes with **v0.7.0**, and **v1.0.0** is Milestone 8, planned on the
+[architecture review](docs/analysis/0002-architecture-review-board-v1-readiness.md)'s findings
+([ADR-0161](docs/adr/0161-close-milestone-7-as-v0-7-0-and-plan-v1-0-0-on-the-boards-findings.md)).
+What is not done is said plainly: the package is **not on a
 public index yet**, so the external-adoption gate is carried by name rather than waived
 ([ADR-0138](docs/adr/0138-recut-the-adoption-gates-onto-acts-we-can-observe.md),
 [`docs/workflow/adoption.md`](docs/workflow/adoption.md)).
@@ -196,7 +199,10 @@ public index yet**, so the external-adoption gate is carried by name rather than
 | 4 | v0.4.0 — Ingestion (spec Phase 2) | ✅ done |
 | 5 | v0.5.0 — Structure (spec Phase 3) | ✅ done |
 | 6 | v0.6.0 — Stable (spec Phase 4) | ✅ done |
-| 7 | v1.0.0 — Team & platform (spec Phase 5; separate RFC cycle) | 🚧 in progress |
+| 7 | v0.7.0 — Readiness for the 1.0 cut | 🚧 release pending |
+| 8 | v1.0.0 — The stable foundation | ⏳ planned |
+| 9 | v1.1.0 — Hardening | ⏳ planned |
+| 10 | v2.x — Team & platform (spec Phase 5; separate RFC cycle) | ⏸ held at its triggers |
 
 The numbered plan, with what each item delivered, is [`ROADMAP.md`](ROADMAP.md).
 

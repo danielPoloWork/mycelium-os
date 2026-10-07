@@ -91,6 +91,13 @@ because there the phase name and the release agree.
 > publishes at M6 or at M7 belongs with 6.1, the contract freeze, which is where it has to be
 > answered anyway.
 
+> **Amended at roadmap 7.14 ([ADR-0161](0161-close-milestone-7-as-v0-7-0-and-plan-v1-0-0-on-the-boards-findings.md)).**
+> 1.0 no longer lands at M7. M7 kept the spec's Phase-5 identity beside its v1.0.0 label, and two
+> of its items, 7.1 and 7.2, can open only when their spec 06 §3 triggers fire, so the milestone
+> carrying the tag could not close. M7 now ships **v0.7.0**; v1.0.0 is **Milestone 8**, whose
+> heading states the exit gates; 7.1 and 7.2 are carried by name to Milestone 10 (v2.x) — this
+> record's rule, applied to items rather than gates.
+
 **`packaging.md` is corrected to describe what exists**, with the intended registry step named as
 roadmap 6.11 instead of written as fact. Making the README's install lines true belongs to that
 item, not to this one.

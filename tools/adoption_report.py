@@ -52,14 +52,14 @@ about the exclusions:
 
 ## The deferral it also watches
 
-Spec 06 §3 defers the remote build cache (roadmap 7.1) until **"≥ 1 team dogfooding
-with measured duplicate-build pain"**, and until roadmap 7.4 nothing could evaluate
-that either: the pain had no unit and no instrument. Now *measured* means a report
-from `tools/measure_cache_ceiling.py`, run on the team's own corpus and pasted into
-an issue or an issue comment, and a *team* is more than one person building that
-corpus (ADR-0154). This tool reads those reports and says whether the trigger has
-fired. A fired trigger is a **finding**, in the sense ADR-0118 gave a void premise:
-the deferral no longer holds and the decision it deferred is owed.
+Spec 06 §3 defers the remote build cache (roadmap 10.1, carried from 7.1 at 7.14)
+until **"≥ 1 team dogfooding with measured duplicate-build pain"**, and until roadmap
+7.4 nothing could evaluate that either: the pain had no unit and no instrument. Now
+*measured* means a report from `tools/measure_cache_ceiling.py`, run on the team's own
+corpus and pasted into an issue or an issue comment, and a *team* is more than one
+person building that corpus (ADR-0154). This tool reads those reports and says whether
+the trigger has fired. A fired trigger is a **finding**, in the sense ADR-0118 gave a
+void premise: the deferral no longer holds and the decision it deferred is owed.
 
 A report is text a stranger wrote, so it is read as data and nothing else: only its
 numbers are taken, none of its strings is ever printed, and a block that does not
@@ -68,8 +68,9 @@ rather than fatal. What a fabricated report can do is fire a trigger, and a fire
 trigger decides nothing — it puts a decision in front of the owner, who can withdraw
 the report by closing its issue as *not planned*.
 
-Roadmap 7.5 gave the three rows that gate the server profile (roadmap 7.2) the same
-treatment (ADR-0155), and one of them the honest answer that it has no reading:
+Roadmap 7.5 gave the three rows that gate the server profile (roadmap 10.2, carried
+from 7.2 at 7.14) the same treatment (ADR-0155), and one of them the honest answer
+that it has no reading:
 
 - **HTTP API + SDKs** — *"a consumer that cannot use MCP/CLI actually appears"*. A
   consumer appears by filing the *I cannot use MCP or the CLI* issue form; the form's
@@ -77,8 +78,8 @@ treatment (ADR-0155), and one of them the honest answer that it has no reading:
   the login and the issue number are ever printed.
 - **Multi-tenancy, policy engine, RBAC** — *"an organization commits to deploying the
   server profile"*. Not evaluable as written and reported so: a commitment is a
-  promise, and there is no server profile to deploy until 7.2 exists. The row is
-  read as a condition inside 7.2's own RFC, which names its deployer.
+  promise, and there is no server profile to deploy until 10.2 exists. The row is
+  read as a condition inside 10.2's own RFC, which names its deployer.
 - **Plugin sandboxing + signed registry** — *"≥ 1 third-party plugin with meaningful
   adoption exists"*. *Exists* is a repository that is not this one and not a fork of
   it declaring one of the plugin entry-point groups, found by GitHub code search;
@@ -765,7 +766,7 @@ def community_plugins_signal() -> Signal:
 
 
 # ---------------------------------------------------------------------------
-# The deferral: spec 06 §3's remote-cache trigger (roadmap 7.1, 7.4)
+# The deferral: spec 06 §3's remote-cache trigger (roadmap 10.1, read at 7.4)
 # ---------------------------------------------------------------------------
 
 _FENCED: Final = re.compile(r"```[^\n]*\n(.*?)```", re.DOTALL)
@@ -938,7 +939,7 @@ def remote_cache_trigger(reports: Sequence[CacheReport]) -> Trigger:
         evidence.append(f"not counted ({reason}) - {report.describe()}")
     return Trigger(
         key="remote-cache-trigger",
-        item="roadmap 7.1",
+        item="roadmap 10.1",
         decision="remote build cache (spec 06 section 3, Phase 5 entry)",
         condition=condition,
         fired=len(qualifying) >= TEAM_REPORTS_BAR,
@@ -949,7 +950,7 @@ def remote_cache_trigger(reports: Sequence[CacheReport]) -> Trigger:
 
 
 # ---------------------------------------------------------------------------
-# The three deferrals that gate the server profile (roadmap 7.2, 7.5; ADR-0155)
+# The three deferrals that gate the server profile (roadmap 10.2, read at 7.5; ADR-0155)
 # ---------------------------------------------------------------------------
 
 
@@ -994,7 +995,7 @@ def surface_trigger(requests: Sequence[tuple[str, int]]) -> Trigger:
     """
     return Trigger(
         key="http-api-trigger",
-        item="roadmap 7.2 (HTTP API + SDKs)",
+        item="roadmap 10.2 (HTTP API + SDKs)",
         decision="an HTTP API and SDKs beside the CLI and MCP (D-011; spec 06 section 3, Phase 5)",
         condition=(
             f">= {SURFACE_REQUESTS_BAR} issue by an external login filed through the "
@@ -1012,14 +1013,14 @@ def server_profile_trigger() -> Trigger:
 
     *An organization commits to deploying the server profile*: a commitment is a
     promise, which no endpoint reports, and the thing to be deployed does not exist
-    until roadmap 7.2 does - so as an *entry* trigger the sentence can never fire
+    until roadmap 10.2 does - so as an *entry* trigger the sentence can never fire
     before the item it gates. The owner read it, on 2026-09-24, as a condition inside
-    7.2's own RFC, which must name its deployer (ADR-0155). ``fired`` is ``None`` for
+    10.2's own RFC, which must name its deployer (ADR-0155). ``fired`` is ``None`` for
     ADR-0118's reason: *could not evaluate* is neither a pass nor a finding.
     """
     return Trigger(
         key="server-profile-trigger",
-        item="roadmap 7.2 (multi-tenancy, policy engine, RBAC)",
+        item="roadmap 10.2 (multi-tenancy, policy engine, RBAC)",
         decision="tenancy, a policy engine and RBAC in the server profile (spec 06 section 3)",
         condition="an organization commits to deploying the server profile",
         fired=None,
@@ -1028,7 +1029,7 @@ def server_profile_trigger() -> Trigger:
             "exist to deploy"
         ),
         evidence=[
-            "read as a condition inside roadmap 7.2's RFC, which names its deployer (ADR-0155)",
+            "read as a condition inside roadmap 10.2's RFC, which names its deployer (ADR-0155)",
             "the HTTP API trigger above is the door a deployer would come through first",
         ],
     )
@@ -1153,7 +1154,7 @@ def plugin_trigger(
         f"a `{'` or `'.join(PLUGIN_ENTRY_POINT_GROUPS)}` entry point, with "
         f">= {PLUGIN_ADOPTERS_BAR} engaged actor (D-030) who is not its owner"
     )
-    item = "roadmap 7.2 (out-of-process plugin isolation: sandboxing + signed registry)"
+    item = "roadmap 10.2 (out-of-process plugin isolation: sandboxing + signed registry)"
     decision = "plugin sandboxing and a signed registry (D-012; spec 06 section 3)"
     if plugins is None:
         return Trigger(
