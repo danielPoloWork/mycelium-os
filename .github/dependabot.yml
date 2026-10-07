@@ -32,6 +32,14 @@ updates:
     groups:
       project-dependencies:
         patterns: ["*"]
+    # A defect pin is not an update to propose. tree-sitter 0.26.0 kills the build process
+    # with an access violation (docs/bugs BUG-0022), and the grouped PR #128 widened the pin
+    # past it with nothing failing. `tests/test_symbols.py` now fails on any range that
+    # admits it; this stops the bot opening the PR that test would refuse. Lifting the pin
+    # is a person's call, against `tools/check_distribution.py` (roadmap 8.2, ADR-0162).
+    ignore:
+      - dependency-name: "tree-sitter"
+        versions: [">=0.26"]
     commit-message:
       prefix: "build"
     labels: ["build"]

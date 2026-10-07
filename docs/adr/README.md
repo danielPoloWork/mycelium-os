@@ -193,3 +193,4 @@ cannot state it truthfully ([ADR-0092](0092-leave-the-amendment-relation-in-pros
 | [0159](0159-keep-the-front-door-to-what-a-first-reader-needs-and-move-the-rest-with-its-citations.md) | Keep the front door to what a first reader needs, and move the rest with its citations | Accepted |
 | [0160](0160-exclude-this-repositorys-owner-from-a-plugins-own-adoption.md) | Exclude this repository's owner from a plugin's own adoption | Accepted |
 | [0161](0161-close-milestone-7-as-v0-7-0-and-plan-v1-0-0-on-the-boards-findings.md) | Close Milestone 7 as v0.7.0, carry the platform items past the cut, and plan v1.0.0 on the board's findings | Accepted |
+| [0162](0162-hold-a-defect-pin-with-a-test-and-verify-the-ranges-a-wheel-resolves.md) | Hold a defect pin with a test, and verify the ranges a wheel resolves | Accepted |

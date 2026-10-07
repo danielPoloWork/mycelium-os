@@ -355,7 +355,11 @@ def plan(mode: str) -> list[tuple[str, list[str]]]:
         # a clean environment to walk it from `mycelium init` to a cited answer. 64 s on
         # this machine — the same price as the ingested corpus above, and for the same
         # reason: a published version is immutable, so the last cheap moment to find a
-        # broken artifact is before the tag, not after the upload.
+        # broken artifact is before the tag, not after the upload. Since roadmap 8.2 it
+        # also installs every extra at the newest version its range allows, because that
+        # and not the lock is what a consumer gets, and replays the inputs known to have
+        # faulted a native dependency there (ADR-0162): 178 s in all, about a minute of
+        # it Windows deleting the two environments.
         ("distribution", [python, "tools/check_distribution.py"]),
     ]
     if mode == "code":

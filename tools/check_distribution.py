@@ -12,7 +12,7 @@ the upload rather than after it — and until roadmap 6.11 nothing was. CI ran
 ``hatch build`` on every cell, proved the tag compiled, and threw the result
 away; no test opened the archive, and no test ever installed it.
 
-Four things are checked here, in the order a defect is cheapest to find:
+Five things are checked here, in the order a defect is cheapest to find:
 
 1. **The sdist carries exactly what it declares.** `[tool.hatch.build.targets.sdist]`
    names an allowlist; this asserts the archive's top level matches it. The
@@ -31,6 +31,16 @@ Four things are checked here, in the order a defect is cheapest to find:
    making on the project's behalf since M1: that a reader who installs the
    package can reach a cited answer. Default install, so no extras, no model and
    no network — the lexical path the tutorial actually walks.
+5. **The extras work at the newest versions their ranges allow.** Every other
+   environment this project verifies is installed from `uv.lock`; a consumer gets
+   whatever the published ranges resolve to on the day. The two parted at
+   Dependabot #128, which widened tree-sitter past the release BUG-0022 pinned out
+   while the lock kept the one that works: every job passed on 0.25.2, and the
+   v0.6.0 wheel's `[symbols]` resolves 0.26.0 (roadmap 8.2, ADR-0162). A second
+   clean environment takes the wheel with every extra at the highest allowed
+   versions, and must load every grammar, replay every input known to have
+   faulted a native dependency (`tools/check_known_faults.py`), and build the
+   determinism corpus twice to the same observation.
 
 Exit code 0 if every check passes, 1 otherwise. `--skip-install` stops after the
 first three (they need no network and take about ten seconds); `--keep` leaves
@@ -40,17 +50,23 @@ the build directory behind for inspection.
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 import tomllib
 import zipfile
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
+sys.path.insert(0, str(ROOT / "tools"))
+
+from check_known_faults import KNOWN_FAULTS, replay  # noqa: E402
 
 from mycelium.__about__ import __version__  # noqa: E402
 
@@ -304,6 +320,185 @@ def check_install(uv: str, wheel: Path, scratch: Path) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# 5. The extras, at the newest versions their ranges allow
+# ---------------------------------------------------------------------------
+
+DETERMINISM = ROOT / "tests" / "fixtures" / "determinism"
+
+INSTALLED = (
+    "import importlib.metadata, json;"
+    "print(json.dumps({d.metadata['Name']: d.version for d in importlib.metadata.distributions()}))"
+)
+MISSING_GRAMMARS = (
+    "import json; from mycelium.symbols import missing_grammars;"
+    "print(json.dumps([[s.name, s.detail] for s in missing_grammars()]))"
+)
+OBSERVE = (
+    "import json, sys; from pathlib import Path;"
+    "from mycelium.determinism import observe_build;"
+    "root = Path(sys.argv[1]);"
+    "first = observe_build(root).as_dict();"
+    "second = observe_build(root).as_dict();"
+    "print(json.dumps({'stable': first == second, 'observation': first}))"
+)
+
+
+def normalized(name: str) -> str:
+    """A distribution name as an index compares it (PEP 503)."""
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def project_table() -> dict[str, Any]:
+    with (ROOT / "pyproject.toml").open("rb") as handle:
+        project: dict[str, Any] = tomllib.load(handle)["project"]
+    return project
+
+
+def direct_requirements(project: dict[str, Any]) -> set[str]:
+    """The names the wheel depends on directly, through its core or any extra."""
+    entries = list(project.get("dependencies", []))
+    for extra in project.get("optional-dependencies", {}).values():
+        entries.extend(extra)
+    return {normalized(re.split(r"[\s\[<>=!~;@]", entry, maxsplit=1)[0]) for entry in entries}
+
+
+def locked_versions() -> dict[str, str]:
+    """What `uv.lock` holds, by name. The project itself has no locked version: it is dynamic."""
+    with (ROOT / "uv.lock").open("rb") as handle:
+        lock = tomllib.load(handle)
+    return {
+        normalized(package["name"]): package["version"]
+        for package in lock["package"]
+        if "version" in package
+    }
+
+
+def check_extras(uv: str, wheel: Path, scratch: Path, *, keep: bool) -> bool:
+    """A clean environment holding the wheel with every extra at its newest allowed version.
+
+    What it asks of that environment is what roadmap 8.2 found nothing asking:
+    every grammar loads, every input known to have faulted a native dependency
+    reads, and the determinism corpus builds twice to the same observation. The
+    golden is **reported, not gated**. It is blessed against the lock, and a newer
+    allowed release may compile the corpus differently with nothing wrong — the
+    build key carries the grammar versions for exactly that reason (ADR-0073) — so
+    gating it here would fail a commit for a release somebody else made. What the
+    check prints is which direct requirements resolved past the lock, and whether
+    the corpus still compiles to the golden at those versions.
+
+    The environment lives in the system's temporary directory, not in `build/`,
+    so that it sits on the volume uv's cache does and uv can link files rather than
+    copy them: with the checkout on another drive, the same install measured 234 s
+    copied and 30 s linked on Windows (roadmap 8.2).
+    """
+    parent = Path(tempfile.mkdtemp(prefix="mycelium-extras-"))
+    try:
+        return extras_hold(uv, wheel, scratch, parent / "venv")
+    finally:
+        if keep:
+            print(f"  extras: environment kept at {parent}")
+        else:
+            shutil.rmtree(parent, ignore_errors=True)
+
+
+def extras_hold(uv: str, wheel: Path, scratch: Path, venv: Path) -> bool:
+    """:func:`check_extras`'s questions, asked of the environment at `venv`."""
+    project = project_table()
+    extras = sorted(project.get("optional-dependencies", {}))
+    result = run([uv, "venv", str(venv), "--python", "3.12"])
+    if result.returncode != 0:
+        return fail("extras", f"could not create a clean environment: {result.stderr.strip()}")
+
+    env = {**os.environ, "VIRTUAL_ENV": str(venv)}
+    env.pop("PYTHONPATH", None)
+    requirement = f"{project['name']}[{','.join(extras)}] @ {wheel.resolve().as_uri()}"
+    # `highest` is uv's default for `pip install`; spelled out because it is the point.
+    result = run([uv, "pip", "install", "--resolution", "highest", requirement], env=env)
+    if result.returncode != 0:
+        return fail(
+            "extras",
+            f"`uv pip install` of the wheel with {', '.join(extras)} failed: "
+            f"{result.stderr.strip()}",
+        )
+    python = str(venv / ("Scripts/python.exe" if os.name == "nt" else "bin/python"))
+
+    result = run([python, "-I", "-c", INSTALLED])
+    if result.returncode != 0:
+        return fail("extras", f"could not list the installed versions: {result.stderr.strip()}")
+    installed = {normalized(name): version for name, version in json.loads(result.stdout).items()}
+    locked = locked_versions()
+    moved = sorted(
+        f"{name} {installed[name]} (lock {locked[name]})"
+        for name in direct_requirements(project)
+        if name in installed and name in locked and installed[name] != locked[name]
+    )
+    print(
+        f"  extras: [{','.join(extras)}] resolved past the lock for {', '.join(moved)}"
+        if moved
+        else f"  extras: [{','.join(extras)}] resolved to the lock's versions throughout"
+    )
+
+    result = run([python, "-I", "-c", MISSING_GRAMMARS])
+    if result.returncode != 0:
+        return fail("extras", f"could not ask for the grammars: {result.stderr.strip()}")
+    missing = json.loads(result.stdout)
+    if missing:
+        named = "; ".join(f"{name}: {detail}" for name, detail in missing)
+        return fail(
+            "extras",
+            f"the symbols extra installed and a grammar does not load ({named}) - the "
+            "newest releases its ranges allow do not work together",
+        )
+
+    for fault in KNOWN_FAULTS:
+        outcome = replay(python, fault)
+        if not outcome.passed:
+            return fail(
+                "extras",
+                f"{fault.bug}'s input [{outcome.status}]: {outcome.detail}. A consumer "
+                "installing these extras gets a build that dies; narrow the range",
+            )
+        print(f"  extras: {fault.bug}'s input {outcome.detail}")
+
+    corpus = scratch / "determinism"
+    shutil.copytree(DETERMINISM / "knowledge", corpus / "knowledge")
+    shutil.copyfile(DETERMINISM / "mycelium.toml", corpus / "mycelium.toml")
+    result = run([python, "-I", "-c", OBSERVE, str(corpus)])
+    if result.returncode != 0:
+        return fail(
+            "extras",
+            "building the determinism corpus failed: "
+            f"{(result.stderr or result.stdout).strip()[-2000:]}",
+        )
+    observed = json.loads(result.stdout)
+    if not observed["stable"]:
+        return fail(
+            "extras",
+            "the determinism corpus built twice to two observations at the newest allowed "
+            "versions - gate G6's claim does not hold for what a consumer installs",
+        )
+    # Read as JSON rather than through `mycelium.determinism`, which imports the whole
+    # compiler - this module is imported by `tools/build_sbom.py` for two helpers.
+    golden = json.loads((DETERMINISM / "golden.json").read_text(encoding="utf-8"))
+    differs = sorted(
+        section
+        for section, value in observed["observation"].items()
+        if golden.get(section) != value
+    )
+    counts = observed["observation"]["counts"]
+    print(
+        f"  extras: the determinism corpus builds twice to one observation "
+        f"({counts.get('documents')} documents); "
+        + (
+            "it matches the committed golden"
+            if not differs
+            else f"it differs from the golden in {', '.join(differs)} (reported, not gated)"
+        )
+    )
+    return True
+
+
+# ---------------------------------------------------------------------------
 
 
 def main() -> int:
@@ -346,8 +541,10 @@ def main() -> int:
     ok = check_metadata(sys.executable, (sdist, wheel)) and ok
     if not arguments.skip_install:
         ok = check_install(uv, wheel, scratch) and ok
+        ok = check_extras(uv, wheel, scratch, keep=arguments.keep) and ok
     else:
         print("  install: skipped (--skip-install)")
+        print("  extras: skipped (--skip-install)")
 
     if not arguments.keep:
         shutil.rmtree(scratch, ignore_errors=True)
