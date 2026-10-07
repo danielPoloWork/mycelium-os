@@ -3,7 +3,7 @@
 - **Session scope:** roadmap 7.14 — the maintainer asked, after the architecture review (7.12),
   whether 7.1 and 7.2 should close, whether to cut v0.7.0, and proposed correcting the board's
   issues before v1.0.0.
-- **PR:** `docs/recut-milestone-seven`, from `23d8858` (#205).
+- **PR:** #236 (`docs/recut-milestone-seven`), from `23d8858` (#205).
 - **Milestone 7:** 7.14 closed; 7.1 and 7.2 carried by name to Milestone 10; Milestone 7 complete
   and waiting for its release.
 - **Decision it records:**
