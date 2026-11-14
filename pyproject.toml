@@ -164,7 +164,7 @@ Issues = "https://github.com/danielPoloWork/mycelium-os/issues"
 # cannot drift apart. The bytes still are not reproducible — typst stamps a timestamp, measured
 # at ADR-0039 — but the *typesetter* is, which is what governs layout and the text layer a
 # parser reads back.
-render = ["typst==0.15.0"]
+render = ["typst==0.15.2"]
 dev = [
     "hatch>=1.13",
     "pytest>=8.3",
